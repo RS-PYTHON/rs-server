@@ -46,6 +46,7 @@ init_app_cluster_mode()
 for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
     os.environ[envvar] = ""
 from rs_server_common import settings as common_settings
+from rs_server_staging.asset_info import AssetInfo
 from rs_server_staging.main import app  # pylint: disable=import-error
 
 # Restore the local mode by default
@@ -60,6 +61,8 @@ from rs_server_staging.processors import (  # pylint: disable=import-error
     Staging,
 )
 
+RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "expiration_bucket.csv")
 TEST_DETAIL = "Test detail"
 
 
@@ -108,7 +111,7 @@ def client_(mocker):
 @pytest.fixture(name="geoapi_cfg")
 def geoapi_cfg_() -> Path:
     """Return pygeoapi config file path"""
-    return Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
+    return RESOURCES_FOLDER / "test_config.yml"
 
 
 @pytest.fixture(name="predefined_config")
@@ -222,9 +225,7 @@ def staging(mocker, config):
 
     mocker.patch.dict(
         os.environ,
-        {
-            "RSPY_CATALOG_BUCKET": "fake_bucket",
-        },
+        {"BUCKET_CONFIG_FILE_PATH": S3_EXPIRATION_BUCKET_CSV_FILE},
     )
 
     # Instantiate the Staging class with the mocked dependencies
@@ -239,8 +240,8 @@ def staging(mocker, config):
     staging_instance.stream_list = [mocker.Mock(id=1), mocker.Mock(id=2)]
     # mock assets_info
     staging_instance.assets_info = [
-        ("https://cadip/some_asset_1", "some_asset_1"),
-        ("https://cadip/some_asset_2", "some_asset_2"),
+        AssetInfo("https://cadip/some_asset_1", "some_asset_1", "fake_bucket"),
+        AssetInfo("https://cadip/some_asset_2", "some_asset_2", "fake_bucket"),
     ]
     yield staging_instance
 

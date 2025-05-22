@@ -588,8 +588,8 @@ class TestPrepareStreaming:
         assert result is True
         # Assert that assets_info has been populated correctly
         assert staging_instance.assets_info == [
-            ("https://example.com/asset1", f"{catalog_collection}/{feature.id}/asset1"),
-            ("https://example.com/asset2", f"{catalog_collection}/{feature.id}/asset2"),
+            AssetInfo("https://example.com/asset1", f"{catalog_collection}/{feature.id}/asset1", "fake_bucket"),
+            AssetInfo("https://example.com/asset2", f"{catalog_collection}/{feature.id}/asset2", "fake_bucket"),
         ]
         # Assert that asset hrefs are updated correctly
         assert feature.assets["asset1"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset1"
@@ -625,7 +625,7 @@ class TestStagingDeleteFromBucket:
             },
         )
         # Mock the assets_info to simulate a list of assets
-        staging_instance.assets_info = [("fake_asset_href", "fake_s3_path")]
+        staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
         # Mock S3StorageHandler and its delete_file_from_s3 method
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
@@ -658,7 +658,7 @@ class TestStagingDeleteFromBucket:
             },
         )
         # Mock assets_info
-        staging_instance.assets_info = [("fake_asset_href", "fake_s3_path")]
+        staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
         # Mock the logger to check if the error is logged
         mock_logger = mocker.patch.object(staging_instance, "logger")
         # Call the method and expect it to handle KeyError
@@ -680,7 +680,7 @@ class TestStagingDeleteFromBucket:
             },
         )
         # Mock assets_info
-        staging_instance.assets_info = [("fake_asset_href", "fake_s3_path")]
+        staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
         # Mock S3StorageHandler and raise a RuntimeError
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.delete_file_from_s3.side_effect = RuntimeError("Fake runtime error")
@@ -951,7 +951,7 @@ class TestStagingMainExecution:
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         # Simulate successful task preparation
         mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
-        staging_instance.assets_info = ["some_asset"]
+        staging_instance.assets_info = [AssetInfo("some_asset", "fake_s3_path", "fake_bucket")]
 
         # Mock token retrieval
         mocker.patch(

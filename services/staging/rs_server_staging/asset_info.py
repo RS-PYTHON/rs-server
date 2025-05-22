@@ -29,6 +29,15 @@ class AssetInfo:
         self.s3_file = s3_file
         self.s3_bucket = s3_bucket
 
+    def __eq__(self, other):
+        if isinstance(other, AssetInfo):
+            return (
+                self.product_url == other.product_url
+                and self.s3_file == other.s3_file
+                and self.s3_bucket == other.s3_bucket
+            )
+        return False
+
     def get_product_url(self) -> str:
         """Returns asset's href.
 
