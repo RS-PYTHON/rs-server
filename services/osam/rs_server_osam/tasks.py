@@ -31,7 +31,6 @@ span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
 
 
-
 # Decorator to trace functions
 def traced_function(name=None):
     """
