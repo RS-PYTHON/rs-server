@@ -75,7 +75,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
 
     @classmethod
     @lru_cache
-    def create(cls, *args, **kwargs):
+    def create(cls, *args, **kwargs) -> "CustomEODataAccessGateway":
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 

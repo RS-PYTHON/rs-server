@@ -55,6 +55,7 @@ coverage.xml
 cover/
 cov-report.xml
 junit-xml-report*.xml
+**/tests/prof/
 
 # Translations
 *.mo
