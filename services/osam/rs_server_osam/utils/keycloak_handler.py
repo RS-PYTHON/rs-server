@@ -17,6 +17,7 @@ import os
 from typing import Any
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
+from keycloak.exceptions import KeycloakPutError
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +69,12 @@ class KeycloakHandler:
         attributes = keycloak_user.get("attributes", {})
         attributes["obs-user"] = [obs_user]  # Must be a list
 
-        payload = {
-            "attributes": attributes
-        }
+        payload = {"attributes": attributes}
 
-        self.keycloak_admin.update_user(user_id=keycloak_user['id'], payload=payload)
+        self.keycloak_admin.update_user(user_id=keycloak_user["id"], payload=payload)
 
     def update_keycloak_user(self, user_id: str, payload: dict):
-        self.keycloak_admin.update_user(user_id=user_id, payload=payload)
+        try:
+            self.keycloak_admin.update_user(user_id=user_id, payload=payload)
+        except KeycloakPutError as kpe:
+            raise RuntimeError(f"Could not update client, {kpe}")
