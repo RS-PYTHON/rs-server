@@ -808,7 +808,7 @@ class TestStagingMainExecution:
             staging_instance.dask_cluster_connect()
 
     def test_manage_dask_tasks_succesfull(self, mocker, staging_instance: Staging, client):
-        """Test to mock managing of successul tasks"""
+        """Test to mock managing of successful tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
         task1.result = mocker.Mock(return_value="simultated_filename_1")  # Simulate a successful task

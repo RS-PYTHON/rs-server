@@ -857,6 +857,7 @@ class Staging(
                 self.logger.debug("%s Task streaming completed", task.key)
                 # Submit a new task if available and no errors occurred
                 try:
+                    new_task = next(data_iter)
                     # refresh the token if needed
                     if not update_station_token(refresh_token, self.logger):
                         raise RuntimeError("Could not retrieve or refresh the station token")
@@ -865,7 +866,7 @@ class Staging(
                     tasks.add(
                         client.submit(
                             streaming_task,
-                            next(data_iter),
+                            new_task,
                             refresh_token.config,
                             access_token,
                         ),
