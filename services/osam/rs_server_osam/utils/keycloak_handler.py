@@ -64,11 +64,15 @@ class KeycloakHandler:
         except KeyError:
             return None
 
-    def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str) -> dict[Any, Any]:
-        if "attributes" not in keycloak_user.keys():
-            keycloak_user["attributes"] = {}
-        keycloak_user["attributes"]["obs-user"] = obs_user
-        return keycloak_user
+    def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str):
+        attributes = keycloak_user.get("attributes", {})
+        attributes["obs-user"] = [obs_user]  # Must be a list
+
+        payload = {
+            "attributes": attributes
+        }
+
+        self.keycloak_admin.update_user(user_id=keycloak_user['id'], payload=payload)
 
     def update_keycloak_user(self, user_id: str, payload: dict):
         self.keycloak_admin.update_user(user_id=user_id, payload=payload)
