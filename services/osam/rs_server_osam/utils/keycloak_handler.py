@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Class to handle connection and requests to Keycloak"""
+
 import logging
 import os
-from typing import Any
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class KeycloakHandler:
+    """Class to handle connection and requests to Keycloak"""
 
     def __init__(self) -> None:
         self.keycloak_admin = self.__open_keycloak_connection()
@@ -52,23 +54,63 @@ class KeycloakHandler:
                 f"realm_name={realm_name} with client_id={client_id}.",
             ) from error
 
-    def get_keycloak_user_roles(self, keycloak_user: dict):
-        return self.keycloak_admin.get_realm_roles_of_user(keycloak_user["id"])
+    def get_keycloak_user_roles(self, user_id: str) -> list[dict]:
+        """Returns the list of roles for a given user
+        RoleRepresentation: https://www.keycloak.org/docs-api/latest/rest-api/index.html#RoleRepresentation
+
+        Args:
+            user_id (str): ID of user for who we want the roles
+
+        Returns:
+            list[dict]: List of RoleRepresentation as dicts
+        """
+        return self.keycloak_admin.get_realm_roles_of_user(user_id)
 
     def get_keycloak_users(self) -> list[dict]:
+        """Returns the list of all Keycloak users
+        UserRepresentation: https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation
+
+        Returns:
+            list[dict]: List of UserRepresentation as dicts
+        """
         return self.keycloak_admin.get_users({})
 
     def get_obs_user_from_keycloak_user(self, keycloak_user: dict) -> str | None:
+        """Retrieves the attribute 'obs-user' from the given Keycloak user.
+        Returns None if the field doesn't exist.
+
+        Args:
+            keycloak_user (dict): UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
+
+        Returns:
+            str | None: obs user ID or None
+        """
         try:
             return keycloak_user["attributes"]["obs-user"]
         except KeyError:
             return None
 
-    def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str) -> dict[Any, Any]:
+    def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str) -> dict:
+        """Sets the attribute 'obs-user' in the given Keycloak user.
+
+        Args:
+            keycloak_user (dict): UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
+
+        Returns:
+            dict: UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
+        """
         if "attributes" not in keycloak_user.keys():
             keycloak_user["attributes"] = {}
         keycloak_user["attributes"]["obs-user"] = obs_user
         return keycloak_user
 
     def update_keycloak_user(self, user_id: str, payload: dict):
+        """Updates the Keycloak user linked to the given user_id with the given payload.
+        The payload must follow Keycloak's UserRepresentation:
+        https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation
+
+        Args:
+            user_id (str): ID of the Keycloak user to update
+            payload (dict): UserRepresentation with the up-to-date data
+        """
         self.keycloak_admin.update_user(user_id=user_id, payload=payload)
