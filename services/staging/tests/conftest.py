@@ -48,6 +48,7 @@ for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_P
 from rs_server_common import settings as common_settings
 from rs_server_staging.asset_info import AssetInfo
 from rs_server_staging.main import app  # pylint: disable=import-error
+from rs_server_staging.rspy_models import Feature
 
 # Restore the local mode by default
 os.environ["RSPY_LOCAL_MODE"] = "1"
@@ -180,12 +181,62 @@ def feature(f_id: str) -> dict:
     }
 
 
+def detailed_feature(f_id: str, owner: str, eopf_type: str = "") -> dict:
+    """Create a new empty Feature with more details"""
+    test_feature = Feature(
+        type="Feature",
+        properties={"owner": owner},
+        id=f_id,
+        stac_version="1.0.0",
+        assets={f"asset_{f_id}": {"href": f"https://fake-data/{f_id}"}},
+        stac_extensions=[],
+    )
+    if eopf_type:
+        test_feature.properties["eopf:type"] = eopf_type
+    return test_feature
+
+
 @pytest.fixture(name="staging_inputs")
 def staging_inputs():
     """Fixture to mock the staging execution inputs"""
     return {
         "collection": "test_collection",
         "items": {"value": {"type": "FeatureCollection", "features": [feature("1"), feature("2")]}},
+    }
+
+
+@pytest.fixture(name="staging_input_for_config_tests_1")
+def staging_input_for_config_tests_1():
+    """Fixture to mock the staging execution inputs for the first set of tests
+    checking that config settings are correctly used.
+    """
+    return {
+        "collection": "s1-l1",
+        "items": {
+            "value": {
+                "type": "FeatureCollection",
+                "features": [detailed_feature("TC001", "copernicus"), detailed_feature("TC002", "ANY")],
+            },
+        },
+    }
+
+
+@pytest.fixture(name="staging_input_for_config_tests_2")
+def staging_input_for_config_tests_2():
+    """Fixture to mock the staging execution inputs for the first set of tests
+    checking that config settings are correctly used.
+    """
+    return {
+        "collection": "s1-aux",
+        "items": {
+            "value": {
+                "type": "FeatureCollection",
+                "features": [
+                    detailed_feature("TC003", "copernicus", "XXX"),
+                    detailed_feature("TC004", "copernicus", "orbsct"),
+                ],
+            },
+        },
     }
 
 
