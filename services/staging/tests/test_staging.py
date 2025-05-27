@@ -729,7 +729,10 @@ async def test_execute_staging(
     assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
 
     mock_db_table = mocker.MagicMock()
-    mocker.patch("rs_server_staging.processors.Staging.execute", return_value=(None, {"running": "mock_job_id"}))
+    mocker.patch(
+        "rs_server_staging.processors.processor_staging.Staging.execute",
+        return_value=(None, {"running": "mock_job_id"}),
+    )
 
     # ----- Test case where both staging body and response are compliant with ogc
     mock_db_table.get_job.return_value = next(

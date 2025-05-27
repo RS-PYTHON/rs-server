@@ -24,12 +24,10 @@ from dask_gateway import Gateway
 from pygeoapi.util import JobStatus
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.token_auth import TokenAuth
-from rs_server_staging.asset_info import AssetInfo
-from rs_server_staging.processors import (
-    Staging,
-    streaming_task,
-)
-from rs_server_staging.rspy_models import FeatureCollectionModel
+from rs_server_staging.processors.processor_staging import Staging
+from rs_server_staging.processors.tasks import streaming_task
+from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.rspy_models import FeatureCollectionModel
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
@@ -92,7 +90,7 @@ class TestStreaming:
         # Mock S3StorageHandler instance
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.s3_streaming_upload.side_effect = s3_key
-        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
 
         assert (
             streaming_task(
@@ -143,7 +141,7 @@ class TestStreaming:
         test_asset_info = AssetInfo("https://example.com/product.zip", "file.zip", "bucket")
         # Mock the s3 handler
         mock_s3_handler = mocker.Mock()
-        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
         # Mock streaming upload to raise RuntimeError
         mock_s3_handler.s3_streaming_upload.side_effect = RuntimeError("Streaming failed")
         with pytest.raises(
@@ -175,7 +173,7 @@ class TestStreaming:
         # Mock streaming upload to fail multiple times
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.s3_streaming_upload.side_effect = ConnectionError("Streaming failed")
-        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
 
         with pytest.raises(
             ValueError,
@@ -340,7 +338,7 @@ class TestStaging:
 
         # Mock datetime
         fake_now = datetime(2024, 1, 1, 12, 0, 0)
-        mock_datetime = mocker.patch("rs_server_staging.processors.datetime")
+        mock_datetime = mocker.patch("rs_server_staging.processors.processor_staging.datetime")
         mock_datetime.now.return_value = fake_now
 
         # Call log_job_execution to test status update with default attrs
@@ -696,7 +694,7 @@ class TestStagingDeleteFromBucket:
         staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
         # Mock S3StorageHandler and its delete_file_from_s3 method
         mock_s3_handler = mocker.Mock()
-        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mocker.patch("rs_server_staging.processors.processor_staging.S3StorageHandler", return_value=mock_s3_handler)
         # Call the delete_files_from_bucket method
         staging_instance.delete_files_from_bucket()
         # Assert that S3StorageHandler was instantiated with the correct environment variables
@@ -707,7 +705,7 @@ class TestStagingDeleteFromBucket:
         staging_instance.assets_info = []
         # Mock S3StorageHandler to ensure it's not used
         mock_s3_handler = mocker.Mock()
-        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mocker.patch("rs_server_staging.processors.processor_staging.S3StorageHandler", return_value=mock_s3_handler)
         # Call the method
         staging_instance.delete_files_from_bucket()
         # Assert that delete_file_from_s3 was never called since there are no assets
@@ -752,7 +750,7 @@ class TestStagingDeleteFromBucket:
         # Mock S3StorageHandler and raise a RuntimeError
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.delete_file_from_s3.side_effect = RuntimeError("Fake runtime error")
-        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mocker.patch("rs_server_staging.processors.processor_staging.S3StorageHandler", return_value=mock_s3_handler)
         # Mock the logger to verify error handling
         mock_logger = mocker.patch.object(staging_instance, "logger")
         # Call the method and expect it to handle RuntimeError
@@ -791,7 +789,11 @@ class TestStagingMainExecution:
         # Mock the JupyterHubAuth, Gateway, and Client classes
         mock_list_clusters = mocker.patch.object(Gateway, "list_clusters")
         mock_connect = mocker.patch.object(Gateway, "connect")
-        mock_client = mocker.patch("rs_server_staging.processors.Client", autospec=True, return_value=None)
+        mock_client = mocker.patch(
+            "rs_server_staging.processors.processor_staging.Client",
+            autospec=True,
+            return_value=None,
+        )
 
         mock_list_clusters.return_value = [cluster]
         mock_connect.return_value = cluster
@@ -887,7 +889,7 @@ class TestStagingMainExecution:
         task2.key = "task2"
 
         # mock distributed as_completed
-        mocker.patch("rs_server_staging.processors.as_completed", return_value=iter([task1, task2]))
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=iter([task1, task2]))
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
 
@@ -912,7 +914,7 @@ class TestStagingMainExecution:
         task2.key = "task2"
 
         # Create mock for task, and distributed.as_completed func
-        mocker.patch("rs_server_staging.processors.as_completed", return_value=iter([task1, task2]))
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=iter([task1, task2]))
         # Create mock for handle_task_failure, publish_rspy_feature, delete_files_from_bucket, log_job_execution methods
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
@@ -944,7 +946,7 @@ class TestStagingMainExecution:
 
         staging_instance.stream_list = [task1, task2]  # set streaming list
         # mock distributed as_completed
-        mocker.patch("rs_server_staging.processors.as_completed", return_value=iter([task1, task2]))
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=iter([task1, task2]))
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
 
         mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=False)
@@ -1023,7 +1025,7 @@ class TestStagingMainExecution:
 
         # Mock token retrieval
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_domain",
+            "rs_server_staging.processors.processor_staging.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
         mocker.patch(
@@ -1078,14 +1080,14 @@ class TestStagingMainExecution:
 
         # Mock token retrieval
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_domain",
+            "rs_server_staging.processors.processor_staging.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
 
         # Mock the external auth configuration
         config.trusted_domains = ["test_trusted.example"]  # Set the trusted_domains member
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_domain",
+            "rs_server_staging.processors.processor_staging.load_external_auth_config_by_domain",
             return_value=config,
         )
 
@@ -1094,7 +1096,7 @@ class TestStagingMainExecution:
 
         # Mock update_station_token
         mocker.patch(
-            "rs_server_staging.processors.update_station_token",
+            "rs_server_staging.processors.processor_staging.update_station_token",
             return_value=True,
         )
 
