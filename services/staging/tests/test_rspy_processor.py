@@ -623,7 +623,9 @@ class TestPrepareStreaming:
         staging_input_for_config_tests_1: dict,
         staging_input_for_config_tests_2: dict,
     ):
-        """Test prepare_streaming_tasks with different assets to check if bucket_name is properly retrieved in from the config"""
+        """Test prepare_streaming_tasks with different assets to check
+        if bucket_name is properly retrieved in from the config
+        """
         staging_instance.assets_info = []
         results = []
 

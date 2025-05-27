@@ -80,7 +80,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
     environment variables for credentials.
 
     Args:
-        asset_info (AssetInfo): Object containing the essential informations about the product to download, such as its URL, the destination bucket name and the destination path/key in the S3 bucket where the file will be uploaded.
+        asset_info (AssetInfo): Object containing the essential informations about the product
+            to download, such as its URL, the destination bucket name and the destination path/key
+            in the S3 bucket where the file will be uploaded.
         config (ExternalAuthenticationConfig): Authentification configuration containing the list of
         auth: The station token. This has to be refreshed from the caller
     Returns:
