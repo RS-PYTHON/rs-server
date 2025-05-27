@@ -29,7 +29,10 @@ from osam.utils.tools import (
 
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
+DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
+from rs_server_common.s3_storage_handler import s3_storage_config
 
+configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
 
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
@@ -63,12 +66,21 @@ def traced_function(name=None):
     return decorator
 
 
+def get_allowed_buckets(user: str, csv_rows: list[list[str]]) -> list[str]:
+    return [rule[-1] for rule in csv_rows if rule[0] == user or rule[0] == "*"]
+
+
 @traced_function()
 def get_keycloak_configmap_values(keycloak_handler: KeycloakHandler):
     """
     WIP
     """
+    configmap_data = configmap_singleton.get_s3_bucket_configuration(
+        os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
+    )
     kc_users = keycloak_handler.get_keycloak_users()
+    for user in kc_users:
+        print(f"User {user['username']} allowed buckets: {get_allowed_buckets(user['username'], configmap_data)}")
     # ps ps
     return kc_users, None
 
