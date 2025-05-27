@@ -98,6 +98,7 @@ async def main_osam_task(timeout: int = 60):
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Handle cancellation properly even for asyncio.CancelledError (for example when FastAPI shuts down)
             logger.exception(f"Handle cancellation: {e}")
+            app.extra["keycloack_event"].release()
             break
     logger.info("Exiting from the getting keycloack attributes thread !")
     return
