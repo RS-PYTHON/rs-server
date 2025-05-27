@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
-import logging
 import os
 import threading
 import time
@@ -41,251 +41,26 @@ from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
     ServiceNotFound,
     load_external_auth_config_by_domain,
 )
-from rs_server_common.authentication.token_auth import (
-    TokenAuth,
-    TokenDataNotFound,
-    get_station_token,
-)
+from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_bucket_name_from_config,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    S3_MAX_RETRIES,
-    S3_RETRY_TIMEOUT,
     S3StorageHandler,
 )
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
+from rs_server_staging.processors.authentication import (
+    RefreshTokenData,
+    update_station_token,
+)
+from rs_server_staging.processors.tasks import streaming_task
+from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
 from starlette.requests import Request
-
-from .asset_info import AssetInfo
-from .rspy_models import Feature, FeatureCollectionModel
-
-
-def streaming_task(  # pylint: disable=R0913, R0917
-    asset_info: AssetInfo,
-    config: ExternalAuthenticationConfig,
-    auth: str,
-):
-    """
-    Streams a file from a product URL and uploads it to an S3-compatible storage.
-
-    This function downloads a file from the specified `product_url` using provided
-    authentication and uploads it to an S3 bucket using a streaming mechanism.
-    If no S3 handler is provided, it initializes a default `S3StorageHandler` using
-    environment variables for credentials.
-
-    Args:
-        asset_info (AssetInfo): Object containing the essential informations about the product
-            to download, such as its URL, the destination bucket name and the destination path/key
-            in the S3 bucket where the file will be uploaded.
-        config (ExternalAuthenticationConfig): Authentification configuration containing the list of
-        auth: The station token. This has to be refreshed from the caller
-    Returns:
-        str: The S3 file path where the file was uploaded.
-
-    Raises:
-        ValueError: If the streaming process fails, raises a ValueError with details of the failure.
-
-    Retry Mechanism:
-        - Retries occur for network-related errors (`RequestException`) or S3 client errors
-        (`ClientError`, `BotoCoreError`).
-        - The function waits before retrying, with the delay time increasing exponentially
-        (based on the `backoff_factor`).
-        - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively
-        longer wait times between retries.
-    """
-
-    logger_dask = logging.getLogger(__name__)
-    logger_dask.info("The streaming task started")
-
-    product_url = asset_info.get_product_url()
-    s3_file = asset_info.get_s3_file()
-    bucket = asset_info.get_s3_bucket()
-    # time.sleep(5)
-    # get the retry timeout
-    s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
-    # get the number of retries in case of failure
-    max_retries = int(os.environ.get("S3_MAX_RETRIES", S3_MAX_RETRIES))
-    # set counter for retries
-    attempt = 0
-    while attempt < max_retries:
-        try:
-            logger_dask.debug(f"{s3_file}: Creating the s3_handler")
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
-
-            s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
-            s3_handler.disconnect_s3()
-            break
-        except ConnectionError as e:
-            attempt += 1
-            if attempt < max_retries:
-                # keep retrying
-                s3_handler.disconnect_s3()
-                logger_dask.error(f"S3 level failed to stream. Retrying in {s3_retry_timeout} seconds.")
-                s3_handler.wait_timeout(s3_retry_timeout)
-                continue
-            logger_dask.exception(f"S3 level failed to stream. Tried for {max_retries} times, giving up")
-            raise ValueError(
-                f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
-            ) from e
-        except KeyError as key_exc:
-            logger_dask.exception(f"KeyError exception in streaming_task for {s3_file}: {key_exc}")
-            raise ValueError(f"Cannot create s3 connector object. Reason: {key_exc}") from key_exc
-        except RuntimeError as e:
-            logger_dask.exception(f"RuntimeError exception in streaming_task for {s3_file} : {e}")
-            raise ValueError(
-                f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
-            ) from e
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger_dask.exception(f"Unhandled exception in streaming_task for {s3_file} : {e}")
-            raise ValueError(
-                f"Unhandled exception in streaming_task : {e}",
-            ) from e
-    logger_dask.info(f"The streaming task finished. Returning name of the streamed file {s3_file}")
-    return s3_file
-
-
-class RefreshTokenData:  # pylint: disable=too-few-public-methods
-    """
-    Stores and manages authentication token refresh data for an external station.
-
-    This class maintains authentication configuration details, a token dictionary,
-    and a subscriber count to track whether the token should be refreshed.
-
-    Attributes:
-        config (ExternalAuthenticationConfig): Authentication configuration for the station.
-        padlock (threading.Lock): Lock to synchronize token updates.
-        token_dict (dict): Dictionary containing authentication token details.
-        subscribers (int): Number of active subscribers tracking the token refresh status.
-    """
-
-    def __init__(
-        self,
-        config: ExternalAuthenticationConfig,
-    ):
-        """
-        Initializes the `RefreshTokenData` instance with station authentication details.
-
-        Args:
-            config (ExternalAuthenticationConfig): The authentication configuration for the station.
-        """
-        # NOTE: station_id has to be unique !
-        self.config = config
-        self.padlock = threading.Lock()
-        self.token_dict: dict = {}
-        self.subscribers = 1
-
-    def station_id(self):
-        """
-        Retrieves the unique station identifier.
-
-        Returns:
-            str: The station ID.
-        """
-        return self.config.station_id
-
-    def subscribe(self, logger):
-        """
-        Increments the subscriber count for token tracking.
-
-        This method is thread-safe using a lock.
-
-        Args:
-            logger (logging.Logger): Logger instance for logging subscription events.
-        """
-        with self.padlock:
-            self.subscribers += 1
-            logger.debug(f"Subscribe to {self.station_id()}. Number of subscribers : {self.subscribers}")
-
-    def unsubscribe(self, logger):
-        """
-        Decrements the subscriber count when a subscription ends.
-
-        This method is thread-safe using a lock.
-
-        Args:
-            logger (logging.Logger): Logger instance for logging unsubscription events.
-        """
-        with self.padlock:
-            self.subscribers -= 1
-            logger.debug(f"Unsubscribe from station {self.station_id()}. Number of subscribers : {self.subscribers}")
-
-    def update_dict_token(self, new_dict_token, logger):
-        """
-        Updates the authentication token dictionary with new token data.
-
-        This method is NOT thread-safe ! The caller should use the padlock
-
-        Args:
-            new_dict_token (dict): The new token data to store.
-            logger (logging.Logger): Logger instance for logging token update events.
-        """
-        logger.debug(f"Updating dictionary token with: {new_dict_token}")
-        self.token_dict = new_dict_token.copy()
-
-    def get_access_token(self):
-        """
-        Gets the access_token field from the dictionays
-
-        This method is thread-safe using a lock.
-
-        """
-        with self.padlock:
-            return self.token_dict["access_token"]
-
-
-def update_station_token(auth_refresh_token: RefreshTokenData, logger: logging.Logger):
-    """
-    Refreshes the authentication token for an external station.
-
-    This function retrieves the current authentication token from the shared variable,
-    and refreshes it if necessary.
-
-    Args:
-        auth_refresh_token (RefreshTokenData): The authentication token data, with the dictionary that keeps the
-            token.
-        logger (logging.Logger): Logger instance for logging events.
-
-    Returns:
-        bool: `True` if the token was successfully refreshed, `False` if an error occurred.
-
-    Raises:
-        RuntimeError: If an unexpected error occurs during token retrieval or update.
-    """
-    try:
-        if auth_refresh_token.subscribers == 0:
-            logger.debug(f"No subscribers for {auth_refresh_token.station_id()}, so no token refreshment")
-            return True
-        logger.debug(f"Refreshing token for {auth_refresh_token.station_id()}")
-        # Get/refresh the access token if necessary
-        with auth_refresh_token.padlock:
-            token_dict = get_station_token(auth_refresh_token.config, auth_refresh_token.token_dict)
-            if auth_refresh_token.token_dict != token_dict:
-                auth_refresh_token.update_dict_token(token_dict, logger)
-    except (TokenDataNotFound, ValueError) as e:
-        logger.exception(f"Token dictionary not valid: {e}")
-        return False
-    except HTTPException as http_exception:
-        logger.exception(
-            f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-        )
-        return False
-
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Unhandled exception in update_station_token: {e}")
-        return False
-    logger.debug("Refreshing token finished.")
-    return True
 
 
 class Staging(
