@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Main tasks executed by OSAM service."""
+
 import os
 from functools import wraps
 
@@ -24,11 +26,9 @@ from osam.utils.tools import (
     create_description_from_template,
     get_keycloak_user_from_description,
 )
-from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    S3StorageHandler,
-)
 
-DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE")
+DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
+DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 
 
 # Setup tracer
@@ -88,24 +88,13 @@ def link_rspython_users_and_obs_users():
     keycloak_handler = KeycloakHandler()
     ovh_handler = OVHApiHandler()
     keycloak_users, _ = get_keycloak_configmap_values(keycloak_handler)
-    try:
-        s3_handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
-        )
-    except KeyError as key_exc:
-        print(f"KeyError exception in getting the s3 storage handler: {key_exc}")
-        return
-    s3_handler.disconnect_s3()
-    # for user in keycloak_users:
-    #    if not keycloak_handler.get_obs_user_from_keycloak_user(user):
-    #        create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
+    for user in keycloak_users:
+        if not keycloak_handler.get_obs_user_from_keycloak_user(user):
+            create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
 
     obs_users = ovh_handler.get_all_users()
-    # for obs_user in obs_users:
-    #    delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
+    for obs_user in obs_users:
+        delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
 
 
 @traced_function()
@@ -156,6 +145,8 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             does_user_exist = True
 
     if not does_user_exist:
+        # NOTE: this may seem strange considering that we retrieve the keycloak_user_id from get_keycloak_user_from_description,
+        # but when the original description doesn't match the template, get_keycloak_user_from_description returns the full description
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
             ovh_handler.delete_user(obs_user["id"])

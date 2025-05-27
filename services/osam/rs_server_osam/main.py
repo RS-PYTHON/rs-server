@@ -21,8 +21,8 @@ from contextlib import asynccontextmanager
 
 # from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI
-from osam import opentelemetry
 from osam.tasks import link_rspython_users_and_obs_users
+from rs_server_common.utils import init_opentelemetry
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK  # pylint: disable=C0411
 
@@ -112,4 +112,4 @@ async def ping():
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan  # type: ignore
-opentelemetry.init_traces(app, "osam.service")
+init_opentelemetry.init_traces(app, "osam.service")
