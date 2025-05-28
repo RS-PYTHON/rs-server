@@ -118,14 +118,17 @@ def link_rspython_users_and_obs_users():
     keycloak_handler = KeycloakHandler()
     ovh_handler = OVHApiHandler()
     keycloak_users, user_allowed_buckets = get_keycloak_configmap_values(keycloak_handler)
+    try:
+        for user in keycloak_users:
+            if not keycloak_handler.get_obs_user_from_keycloak_user(user):
+                create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
 
-    for user in keycloak_users:
-        if not keycloak_handler.get_obs_user_from_keycloak_user(user):
-            create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
-
-    obs_users = ovh_handler.get_all_users()
-    for obs_user in obs_users:
-        delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
+        obs_users = ovh_handler.get_all_users()
+        for obs_user in obs_users:
+            delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Exception: {e}")
+        print("Continuing anyway")
 
     return build_s3_rights(keycloak_users, user_allowed_buckets)
 
@@ -147,7 +150,7 @@ def create_obs_user_account_for_keycloak_user(
     Returns:
         None
     """
-    new_user_description = create_description_from_template(keycloak_user["id"], template=DESCRIPTION_TEMPLATE)
+    new_user_description = create_description_from_template(keycloak_user["username"], template=DESCRIPTION_TEMPLATE)
     new_user = ovh_handler.create_user(description=new_user_description)
     keycloak_user = keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
     keycloak_handler.update_keycloak_user(keycloak_user["id"], keycloak_user)

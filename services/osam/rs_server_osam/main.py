@@ -33,7 +33,7 @@ DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 
 app = FastAPI(title="osam-service", root_path="", debug=True)
 router = APIRouter(tags=["OSAM service"])
 
-#logger = logging.getLogger("my_logger")
+# logger = logging.getLogger("my_logger")
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
