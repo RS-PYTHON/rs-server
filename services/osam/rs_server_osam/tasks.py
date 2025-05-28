@@ -16,6 +16,7 @@
 
 import os
 from functools import wraps
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -26,11 +27,12 @@ from osam.utils.tools import (
     create_description_from_template,
     get_keycloak_user_from_description,
 )
+from rs_server_common.s3_storage_handler import s3_storage_config
 
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
-from rs_server_common.s3_storage_handler import s3_storage_config
+
 
 configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
 
@@ -67,6 +69,7 @@ def traced_function(name=None):
 
 
 def get_allowed_buckets(user: str, csv_rows: list[list[str]]) -> list[str]:
+    """Get the allowed buckets for user from the csv configmap"""
     return [rule[-1] for rule in csv_rows if rule[0] == user or rule[0] == "*"]
 
 
@@ -79,10 +82,25 @@ def get_keycloak_configmap_values(keycloak_handler: KeycloakHandler):
         os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
     )
     kc_users = keycloak_handler.get_keycloak_users()
+    user_allowed_buckets = {}
     for user in kc_users:
-        print(f"User {user['username']} allowed buckets: {get_allowed_buckets(user['username'], configmap_data)}")
+        allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
+        print(f"User {user['username']} allowed buckets: {allowed_buckets}")
+        user_allowed_buckets[user["username"]] = allowed_buckets
     # ps ps
-    return kc_users, None
+    return kc_users, user_allowed_buckets
+
+
+def build_s3_rights(keycloak_users, user_allowed_buckets):
+    """
+    Get the OBS access rights to be set for each RS user
+    """
+    # maybe we should use the user id instead of the username ?
+    users_s3_rights = dict[str, Any]
+    for user in keycloak_users:
+        print(f"USER = {user} | allowed buckets = {user_allowed_buckets[user['username']]}")
+
+    return users_s3_rights
 
 
 @traced_function()
@@ -99,7 +117,8 @@ def link_rspython_users_and_obs_users():
     """
     keycloak_handler = KeycloakHandler()
     ovh_handler = OVHApiHandler()
-    keycloak_users, _ = get_keycloak_configmap_values(keycloak_handler)
+    keycloak_users, user_allowed_buckets = get_keycloak_configmap_values(keycloak_handler)
+
     for user in keycloak_users:
         if not keycloak_handler.get_obs_user_from_keycloak_user(user):
             create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
@@ -107,6 +126,8 @@ def link_rspython_users_and_obs_users():
     obs_users = ovh_handler.get_all_users()
     for obs_user in obs_users:
         delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
+
+    return build_s3_rights(keycloak_users, user_allowed_buckets)
 
 
 @traced_function()
@@ -157,8 +178,9 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             does_user_exist = True
 
     if not does_user_exist:
-        # NOTE: this may seem strange considering that we retrieve the keycloak_user_id from get_keycloak_user_from_description,
-        # but when the original description doesn't match the template, get_keycloak_user_from_description returns the full description
+        # NOTE: this may seem strange considering that we retrieve the keycloak_user_id from
+        # get_keycloak_user_from_description, but when the original description doesn't match
+        # the template, get_keycloak_user_from_description returns the full description
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
             ovh_handler.delete_user(obs_user["id"])

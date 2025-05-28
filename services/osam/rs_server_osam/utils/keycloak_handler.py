@@ -81,7 +81,8 @@ class KeycloakHandler:
         Returns None if the field doesn't exist.
 
         Args:
-            keycloak_user (dict): UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
+            keycloak_user (dict): UserRepresentation
+            (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
 
         Returns:
             str | None: obs user ID or None
@@ -95,7 +96,8 @@ class KeycloakHandler:
         """Sets the attribute 'obs-user' in the given Keycloak user.
 
         Args:
-            keycloak_user (dict): UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
+            keycloak_user (dict): UserRepresentation
+            (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
 
         Returns:
             dict: UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
@@ -119,4 +121,4 @@ class KeycloakHandler:
         try:
             self.keycloak_admin.update_user(user_id=user_id, payload=payload)
         except KeycloakPutError as kpe:
-            raise RuntimeError(f"Could not update client, {kpe}")
+            raise RuntimeError(f"Could not update client, {kpe}") from kpe
