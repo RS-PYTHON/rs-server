@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from osam.tasks import link_rspython_users_and_obs_users
 from rs_server_common.utils import init_opentelemetry
+from rs_server_common.utils.logging import Logging
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK  # pylint: disable=C0411
 
@@ -32,7 +33,8 @@ DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 
 app = FastAPI(title="osam-service", root_path="", debug=True)
 router = APIRouter(tags=["OSAM service"])
 
-logger = logging.getLogger("my_logger")
+#logger = logging.getLogger("my_logger")
+logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
 
