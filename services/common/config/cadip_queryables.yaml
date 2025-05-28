@@ -74,6 +74,11 @@ cadip:antenna_id:
   title: cadip:antenna_id
   format: string
   description: AntennaId
+cadip:station_id:
+  type: string
+  title: cadip:station_id
+  format: string
+  description: StationId
 cadip:station_unit_id:
   type: string
   title: cadip:station_unit_id
