@@ -1202,8 +1202,8 @@ class TestAuthenticationDownload:
         users_map = {"toto:": "fe916452-ba6f-4631-9154-c249924a122d", "": "hi916451-ca6f-4631-9154-4249924a133d"}
         try:
             requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-            # Upload a file to catalog-bucket
-            catalog_bucket = "catalog-bucket"
+            # Upload a file to rspython-ops-catalog-all-production
+            catalog_bucket = "rspython-ops-catalog-all-production"  # Name of default catalog from config file
             s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
             object_content = "testing\n"
             s3_handler.s3_client.put_object(
@@ -1278,8 +1278,8 @@ class TestAuthenticationDownload:
 
         try:
             requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-            # Upload a file to catalog-bucket
-            catalog_bucket = "catalog-bucket"
+            # Upload a file to rspython-ops-catalog-all-production
+            catalog_bucket = "rspython-ops-catalog-all-production"  # Name of default bucket from config file
             s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
             object_content = "testing\n"
             s3_handler.s3_client.put_object(
