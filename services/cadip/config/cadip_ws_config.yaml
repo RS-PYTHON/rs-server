@@ -722,6 +722,9 @@ cadip_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -800,6 +803,7 @@ cadip_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -821,6 +825,7 @@ cadip_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -903,6 +908,9 @@ ins_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -981,6 +989,7 @@ ins_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1002,6 +1011,7 @@ ins_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1084,6 +1094,9 @@ mps_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1162,6 +1175,7 @@ mps_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1183,6 +1197,7 @@ mps_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1265,6 +1280,9 @@ mti_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1343,6 +1361,7 @@ mti_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1364,6 +1383,7 @@ mti_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1446,6 +1466,9 @@ nsg_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1524,6 +1547,7 @@ nsg_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1545,6 +1569,7 @@ nsg_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1627,6 +1652,9 @@ sgs_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1705,6 +1733,7 @@ sgs_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1726,6 +1755,7 @@ sgs_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
