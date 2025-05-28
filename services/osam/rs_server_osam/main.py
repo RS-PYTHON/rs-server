@@ -111,9 +111,9 @@ async def main_osam_task(timeout: int = 60):
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
                 logger.info("Finishing the main background thread  and exit")
                 break
-            if app.extra["endpoint_trigger"].is_set():  # If shutting down, exit loop
+            if app.extra["endpoint_trigger"].is_set():  # If triggered, prepare for the next one
                 logger.debug("Releasing endpoint_trigger")
-                app.extra["endpoint_trigger"].release()
+                app.extra["endpoint_trigger"].clear()
 
             logger.debug("Starting the process to get the keycloack attributes ")
 
