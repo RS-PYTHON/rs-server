@@ -44,7 +44,6 @@ def init_app_cluster_mode():
 
     os.environ["RSPY_LOCAL_MODE"] = "0"
     os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-    os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
     os.environ["RSPY_UAC_HOMEPAGE"] = RSPY_UAC_HOMEPAGE
     os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
     os.environ["OIDC_ENDPOINT"] = OIDC_ENDPOINT
