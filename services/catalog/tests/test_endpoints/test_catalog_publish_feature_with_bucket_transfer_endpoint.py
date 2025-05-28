@@ -36,7 +36,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     """This class is used to group tests that just post a feature on catalogDB without moving assets."""
 
     temp_bucket = "temp-bucket"
-    catalog_bucket = "catalog-bucket"
+    catalog_bucket = "rspython-ops-catalog-all-production"  # Default bucket from the config file
 
     @pytest.mark.parametrize(
         "owner, collection_id",
