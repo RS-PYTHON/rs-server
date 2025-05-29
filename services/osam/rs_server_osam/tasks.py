@@ -35,7 +35,9 @@ DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 
 
 configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
-
+configmap_data = configmap_singleton.get_s3_bucket_configuration(
+    os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
+)
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
@@ -78,9 +80,6 @@ def get_keycloak_configmap_values(keycloak_handler: KeycloakHandler):
     """
     WIP
     """
-    configmap_data = configmap_singleton.get_s3_bucket_configuration(
-        os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
-    )
     kc_users = keycloak_handler.get_keycloak_users()
     user_allowed_buckets = {}
     for user in kc_users:
@@ -89,6 +88,43 @@ def get_keycloak_configmap_values(keycloak_handler: KeycloakHandler):
         user_allowed_buckets[user["username"]] = allowed_buckets
     # ps ps
     return kc_users, user_allowed_buckets
+
+
+def get_configmap_user_values(user):
+    records = [rule for rule in configmap_data if rule[0] == user or rule[0] == "*"]
+    collections, eopf_type, bucket = zip(*[(r[1], r[2], r[-1]) for r in records]) if records else ([], [], [])
+    return list(collections), list(eopf_type), list(bucket)
+
+
+def build_users_data_map(keycloak_handler: KeycloakHandler):
+    """
+    Builds a dictionary mapping usernames to their associated user data.
+
+    For each user retrieved from Keycloak, this function gathers:
+      - Custom attributes from Keycloak
+      - Assigned Keycloak roles
+      - Associated collections, EOPF types, and buckets from the configmap
+
+    Returns:
+        dict: A dictionary where each key is a username and the value is another
+              dictionary containing:
+                - "keycloak_attribute": Custom user attribute from Keycloak
+                - "keycloak_roles": List of roles assigned to the user
+                - "collections": List of collections the user has access to
+                - "eopf:type": List of EOPF types linked to the user
+                - "buckets": List of buckets associated with the user
+    """
+    users = keycloak_handler.get_keycloak_users()
+    return {
+        user["username"]: {
+            "keycloak_attribute": keycloak_handler.get_obs_user_from_keycloak_user(user),
+            "keycloak_roles": keycloak_handler.get_keycloak_user_roles(user["id"]),
+            "collections": (cfgmap_data := get_configmap_user_values(user["username"]))[0],
+            "eopf:type": cfgmap_data[1],
+            "buckets": cfgmap_data[2],
+        }
+        for user in users
+    }
 
 
 def build_s3_rights(keycloak_users, user_allowed_buckets):
