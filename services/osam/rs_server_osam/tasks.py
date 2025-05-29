@@ -118,7 +118,7 @@ def build_users_data_map(keycloak_handler: KeycloakHandler):
     return {
         user["username"]: {
             "keycloak_attribute": keycloak_handler.get_obs_user_from_keycloak_user(user),
-            "keycloak_roles": keycloak_handler.get_keycloak_user_roles(user["id"]),
+            "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],
             "collections": (cfgmap_data := get_configmap_user_values(user["username"]))[0],
             "eopf:type": cfgmap_data[1],
             "buckets": cfgmap_data[2],
