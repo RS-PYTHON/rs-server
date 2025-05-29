@@ -23,9 +23,9 @@ from typing import Any
 # from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI, HTTPException
 from osam.tasks import (
+    build_s3_rights,
     build_users_data_map,
     link_rspython_users_and_obs_users,
-    build_s3_rights,
 )
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -96,7 +96,8 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     if user not in app.extra["users_info"]:
         return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     logger.debug(f"DATA = {app.extra['users_info']}")
-    user_s3_rights = build_s3_rights(app.extra["users_info"][user])
+    output = build_s3_rights(app.extra["users_info"][user])
+    return JSONResponse(status_code=HTTP_200_OK, content=output)
 
 
 async def main_osam_task(timeout: int = 60):

@@ -14,7 +14,11 @@
 
 """Main tasks executed by OSAM service."""
 
+import json
 import os
+
+# from collections import defaultdict
+from fnmatch import fnmatch
 from functools import wraps
 from typing import Any
 
@@ -130,15 +134,71 @@ def build_users_data_map():
     }
 
 
+def parse_role(role):
+    """Helper to parse a role string"""
+    try:
+        process_owner, perm = role.split(":")
+        collection, op = perm.rsplit("_", 1)
+        _, owner = process_owner.split("_", 1)
+        return owner, collection, op.lower()
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Skipping invalid role format: {role}: {e}")
+        return None
+
+
 def build_s3_rights(user_info):
     """
     Get the OBS access rights to be set for each RS user
     """
     # maybe we should use the user id instead of the username ?
     print(f"USER = {user_info}")
+    # Step 1: Parse roles
+    read_roles = []
+    write_roles = []
+    download_roles = []
 
+    for role in user_info["keycloak_roles"]:
+        parsed = parse_role(role)
+        if not parsed:
+            continue
+        owner, collection, op = parsed
+        if op == "read":
+            read_roles.append((owner, collection))
+        elif op == "write":
+            write_roles.append((owner, collection))
+        elif op == "download":
+            download_roles.append((owner, collection))
 
-    
+    # Step 2-3: Match against configmap
+    def match_roles(roles):
+        matched = set()
+        for role_owner, role_collection in roles:
+            for cfg_owner, cfg_collection, _, _, bucket in configmap_data:
+                if fnmatch(cfg_owner.strip(), role_owner.strip()) and fnmatch(
+                    cfg_collection.strip(),
+                    role_collection.strip(),
+                ):
+                    matched.add(f"{bucket.strip()}/{cfg_owner.strip()}/{cfg_collection.strip()}/")
+        return matched
+
+    read_set = match_roles(read_roles)
+    write_set = match_roles(write_roles)
+    download_set = match_roles(download_roles)
+
+    # Step 3: Merge access
+    read_only = read_set - download_set - write_set
+    read_download = download_set
+    write_download = write_set
+
+    # Step 4: Output
+    output = {
+        "read": sorted(read_only),
+        "read_download": sorted(read_download),
+        "write_download": sorted(write_download),
+    }
+
+    print(json.dumps(output, indent=2))
+    return output
 
 
 @traced_function()
@@ -165,7 +225,7 @@ def link_rspython_users_and_obs_users():
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Exception: {e}")
-        print("Continuing anyway")    
+        print("Continuing anyway")
 
 
 @traced_function()
