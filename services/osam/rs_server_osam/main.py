@@ -18,12 +18,17 @@ import asyncio  # for handling asynchronous tasks
 import logging
 import os
 from contextlib import asynccontextmanager
+from typing import Any
 
 # from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI
-from osam.tasks import link_rspython_users_and_obs_users
+from osam.tasks import (
+    build_users_data_map,
+    link_rspython_users_and_obs_users,
+)
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
+from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK  # pylint: disable=C0411
 
@@ -49,6 +54,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
         main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
     )
+    fastapi_app.extra["users_info"] = dict[str, Any]
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -67,12 +73,22 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 
 @router.post("/storage/accounts/update")
-async def execute_process():  # pylint: disable=unused-argument
+async def accounts_update():
     """Used as a trigger to link the keycloak users to the obs users
     It also creates the s3 access rights for each user
     """
     logger.debug("Endpoint for triggering the users synchronization process called")
     app.extra["endpoint_trigger"].set()
+
+
+@router.get("/storage/account/{user}/rights")
+async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
+    """Used as a trigger to link the keycloak users to the obs users
+    It also creates the s3 access rights for each user
+    """
+    logger.debug("Endpoint for getting the user rights")
+    # roles =
+    logger.debug(f"DATA = {app.extra['users_info']}")
 
 
 async def main_osam_task(timeout: int = 60):
@@ -120,6 +136,7 @@ async def main_osam_task(timeout: int = 60):
             logger.debug("Starting the process to get the keycloack attributes ")
 
             link_rspython_users_and_obs_users()
+            app.extra["users_info"] = build_users_data_map()
 
             logger.debug("Getting the keycloack attributes finished")
 

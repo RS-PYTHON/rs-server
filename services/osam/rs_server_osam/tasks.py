@@ -33,6 +33,8 @@ DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 
+keycloak_handler = KeycloakHandler()
+ovh_handler = OVHApiHandler()
 
 configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
 configmap_data = configmap_singleton.get_s3_bucket_configuration(
@@ -76,7 +78,7 @@ def get_allowed_buckets(user: str, csv_rows: list[list[str]]) -> list[str]:
 
 
 @traced_function()
-def get_keycloak_configmap_values(keycloak_handler: KeycloakHandler):
+def get_keycloak_configmap_values():
     """
     WIP
     """
@@ -96,7 +98,7 @@ def get_configmap_user_values(user):
     return list(collections), list(eopf_type), list(bucket)
 
 
-def build_users_data_map(keycloak_handler: KeycloakHandler):
+def build_users_data_map():
     """
     Builds a dictionary mapping usernames to their associated user data.
 
@@ -151,17 +153,16 @@ def link_rspython_users_and_obs_users():
         The linking/unlinking logic is currently commented out and should be implemented
         based on specific integration rules.
     """
-    keycloak_handler = KeycloakHandler()
-    ovh_handler = OVHApiHandler()
-    keycloak_users, user_allowed_buckets = get_keycloak_configmap_values(keycloak_handler)
+
+    keycloak_users, user_allowed_buckets = get_keycloak_configmap_values()
     try:
         for user in keycloak_users:
             if not keycloak_handler.get_obs_user_from_keycloak_user(user):
-                create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
+                create_obs_user_account_for_keycloak_user(user)
 
         obs_users = ovh_handler.get_all_users()
         for obs_user in obs_users:
-            delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Exception: {e}")
         print("Continuing anyway")
@@ -171,8 +172,6 @@ def link_rspython_users_and_obs_users():
 
 @traced_function()
 def create_obs_user_account_for_keycloak_user(
-    ovh_handler: OVHApiHandler,
-    keycloak_handler: KeycloakHandler,
     keycloak_user: dict,
 ):
     """
@@ -188,13 +187,11 @@ def create_obs_user_account_for_keycloak_user(
     """
     new_user_description = create_description_from_template(keycloak_user["username"], template=DESCRIPTION_TEMPLATE)
     new_user = ovh_handler.create_user(description=new_user_description)
-    keycloak_user = keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
-    keycloak_handler.update_keycloak_user(keycloak_user["id"], keycloak_user)
+    keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
 
 
 @traced_function()
 def delete_obs_user_account_if_not_used_by_keycloak_account(
-    ovh_handler: OVHApiHandler,
     obs_user: dict,
     keycloak_users: list[dict],
 ):
