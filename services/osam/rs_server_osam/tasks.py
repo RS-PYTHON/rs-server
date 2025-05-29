@@ -84,6 +84,7 @@ def get_keycloak_configmap_values():
     """
     kc_users = keycloak_handler.get_keycloak_users()
     user_allowed_buckets = {}
+    print(f"CONFIGMAP: {configmap_data}")
     for user in kc_users:
         allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
         print(f"User {user['username']} allowed buckets: {allowed_buckets}")
@@ -122,23 +123,22 @@ def build_users_data_map():
             "keycloak_attribute": keycloak_handler.get_obs_user_from_keycloak_user(user),
             "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],
             "collections": (cfgmap_data := get_configmap_user_values(user["username"]))[0],
-            "eopf:type": cfgmap_data[1],
+            "eopf_type": cfgmap_data[1],
             "buckets": cfgmap_data[2],
         }
         for user in users
     }
 
 
-def build_s3_rights(keycloak_users, user_allowed_buckets):
+def build_s3_rights(user_info):
     """
     Get the OBS access rights to be set for each RS user
     """
     # maybe we should use the user id instead of the username ?
-    users_s3_rights = dict[str, Any]
-    for user in keycloak_users:
-        print(f"USER = {user} | allowed buckets = {user_allowed_buckets[user['username']]}")
+    print(f"USER = {user_info}")
 
-    return users_s3_rights
+
+    
 
 
 @traced_function()
@@ -165,9 +165,7 @@ def link_rspython_users_and_obs_users():
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Exception: {e}")
-        print("Continuing anyway")
-
-    return build_s3_rights(keycloak_users, user_allowed_buckets)
+        print("Continuing anyway")    
 
 
 @traced_function()

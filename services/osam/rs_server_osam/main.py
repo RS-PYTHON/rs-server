@@ -21,16 +21,22 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 # from dask.distributed import LocalCluster
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException
 from osam.tasks import (
     build_users_data_map,
     link_rspython_users_and_obs_users,
+    build_s3_rights,
 )
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_200_OK  # pylint: disable=C0411
+from starlette.status import (  # pylint: disable=C0411
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
 
@@ -87,8 +93,10 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     It also creates the s3 access rights for each user
     """
     logger.debug("Endpoint for getting the user rights")
-    # roles =
+    if user not in app.extra["users_info"]:
+        return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     logger.debug(f"DATA = {app.extra['users_info']}")
+    user_s3_rights = build_s3_rights(app.extra["users_info"][user])
 
 
 async def main_osam_task(timeout: int = 60):
