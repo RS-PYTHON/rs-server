@@ -125,7 +125,7 @@ def build_users_data_map():
     return {
         user["username"]: {
             "keycloak_attribute": keycloak_handler.get_obs_user_from_keycloak_user(user),
-            "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],            
+            "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],
         }
         for user in users
     }
