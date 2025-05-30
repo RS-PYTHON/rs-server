@@ -37,33 +37,6 @@ DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 
-configmap_data = [
-    ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
-    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
-    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
-    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
-    ["copernicus", "s1-aux", "obmemc", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
-    ["copernicus", "s3-l1-nrt", "*", "10", "rspython-ops-catalog-copernicus-s3-l1-nrt"],
-    ["copernicus", "s3-l1-ntc", "*", "10", "rspython-ops-catalog-copernicus-s3-l1-ntc"],
-    ["copernicus", "s3-l1-stc", "*", "10", "rspython-ops-catalog-copernicus-s3-l1-stc"],
-    ["jules", "*", "*", "10", "rspython-ops-catalog-jules-production"],
-    ["jules", "s2-l2", "*", "30", "rspython-ops-catalog-jules-s2-l2"],
-    ["antoine", "*", "*", "60", "rspython-ops-catalog-antoine-production"],
-    ["antoine", "*", "TM_0_HKM___", "100", "rspython-ops-catalog-antoine-s3-hkm"],
-    ["osam", "*", "TM_0_HKM___", "100", "rspython-ops-catalog-osam-s3"],
-    ["osam", "s1-l1", "orbsct", "100", "rspython-ops-catalog-osam-s3-temp"],
-]
-configmap_data = [
-    ["*", "*", "*", "30", "rspython-ops-catalog"],
-    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
-    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
-    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
-    ["emilie", "s1-aux", "obmemc", "7300", "rspython-ops-catalog-emilie-s1-aux-infinite"],
-    ["paul", "*", "*", "10", "rspython-ops-catalog"],
-    ["emilie", "*", "*", "10", "rspython-ops-catalog"],
-    ["*", "s1-l1", "*", "10", "rspython-ops-catalog-default-s1-l1"],
-]
-
 keycloak_handler = KeycloakHandler()
 ovh_handler = OVHApiHandler()
 
@@ -152,10 +125,7 @@ def build_users_data_map():
     return {
         user["username"]: {
             "keycloak_attribute": keycloak_handler.get_obs_user_from_keycloak_user(user),
-            "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],
-            "collections": (cfgmap_data := get_configmap_user_values(user["username"]))[0],
-            "eopf_type": cfgmap_data[1],
-            "buckets": cfgmap_data[2],
+            "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],            
         }
         for user in users
     }
