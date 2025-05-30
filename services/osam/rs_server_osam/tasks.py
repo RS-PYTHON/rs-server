@@ -37,6 +37,33 @@ DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 
+configmap_data = [
+    ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
+    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
+    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
+    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+    ["copernicus", "s1-aux", "obmemc", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+    ["copernicus", "s3-l1-nrt", "*", "10", "rspython-ops-catalog-copernicus-s3-l1-nrt"],
+    ["copernicus", "s3-l1-ntc", "*", "10", "rspython-ops-catalog-copernicus-s3-l1-ntc"],
+    ["copernicus", "s3-l1-stc", "*", "10", "rspython-ops-catalog-copernicus-s3-l1-stc"],
+    ["jules", "*", "*", "10", "rspython-ops-catalog-jules-production"],
+    ["jules", "s2-l2", "*", "30", "rspython-ops-catalog-jules-s2-l2"],
+    ["antoine", "*", "*", "60", "rspython-ops-catalog-antoine-production"],
+    ["antoine", "*", "TM_0_HKM___", "100", "rspython-ops-catalog-antoine-s3-hkm"],
+    ["osam", "*", "TM_0_HKM___", "100", "rspython-ops-catalog-osam-s3"],
+    ["osam", "s1-l1", "orbsct", "100", "rspython-ops-catalog-osam-s3-temp"],
+]
+configmap_data = [
+    ["*", "*", "*", "30", "rspython-ops-catalog"],
+    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
+    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
+    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+    ["emilie", "s1-aux", "obmemc", "7300", "rspython-ops-catalog-emilie-s1-aux-infinite"],
+    ["paul", "*", "*", "10", "rspython-ops-catalog"],
+    ["emilie", "*", "*", "10", "rspython-ops-catalog"],
+    ["*", "s1-l1", "*", "10", "rspython-ops-catalog-default-s1-l1"],
+]
+
 keycloak_handler = KeycloakHandler()
 ovh_handler = OVHApiHandler()
 
@@ -134,73 +161,6 @@ def build_users_data_map():
     }
 
 
-def parse_role(role):
-    """Helper to parse a role string"""
-    try:
-        process_owner, perm = role.split(":")
-        collection, op = perm.rsplit("_", 1)
-        _, owner = process_owner.split("_", 1)
-        return owner, collection, op.lower()
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Skipping invalid role format: {role}: {e}")
-        return None
-
-
-def build_s3_rights(user_info):
-    """
-    Get the OBS access rights to be set for each RS user
-    """
-    # maybe we should use the user id instead of the username ?
-    print(f"USER = {user_info}")
-    # Step 1: Parse roles
-    read_roles = []
-    write_roles = []
-    download_roles = []
-
-    for role in user_info["keycloak_roles"]:
-        parsed = parse_role(role)
-        if not parsed:
-            continue
-        owner, collection, op = parsed
-        if op == "read":
-            read_roles.append((owner, collection))
-        elif op == "write":
-            write_roles.append((owner, collection))
-        elif op == "download":
-            download_roles.append((owner, collection))
-
-    # Step 2-3: Match against configmap
-    def match_roles(roles):
-        matched = set()
-        for role_owner, role_collection in roles:
-            for cfg_owner, cfg_collection, _, _, bucket in configmap_data:
-                if fnmatch(cfg_owner.strip(), role_owner.strip()) and fnmatch(
-                    cfg_collection.strip(),
-                    role_collection.strip(),
-                ):
-                    matched.add(f"{bucket.strip()}/{cfg_owner.strip()}/{cfg_collection.strip()}/")
-        return matched
-
-    read_set = match_roles(read_roles)
-    write_set = match_roles(write_roles)
-    download_set = match_roles(download_roles)
-
-    # Step 3: Merge access
-    read_only = read_set - download_set - write_set
-    read_download = download_set
-    write_download = write_set
-
-    # Step 4: Output
-    output = {
-        "read": sorted(read_only),
-        "read_download": sorted(read_download),
-        "write_download": sorted(write_download),
-    }
-
-    print(json.dumps(output, indent=2))
-    return output
-
-
 @traced_function()
 def link_rspython_users_and_obs_users():
     """
@@ -214,7 +174,7 @@ def link_rspython_users_and_obs_users():
         based on specific integration rules.
     """
 
-    keycloak_users, user_allowed_buckets = get_keycloak_configmap_values()
+    keycloak_users, _ = get_keycloak_configmap_values()
     try:
         for user in keycloak_users:
             if not keycloak_handler.get_obs_user_from_keycloak_user(user):
@@ -278,3 +238,116 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
             ovh_handler.delete_user(obs_user["id"])
+
+
+def parse_role(role):
+    """
+    Parses a Keycloak role string into owner, collection, and operation components.
+
+    This function expects the role to follow the format: `<prefix>_<owner>:<collection>_<operation>`.
+    It extracts and returns the owner, collection name, and operation (e.g., read, write, download).
+
+    Args:
+        role (str): Role string to be parsed.
+
+    Returns:
+        tuple[str, str, str] | None: A tuple (owner, collection, operation) if parsing is successful;
+                                     otherwise, returns None on format error or exception.
+    """
+    try:
+        lhs, rhs = role.split(":")
+        # Split the left part from the last underscore to get owner
+        process_owner_split = lhs.rsplit("_", 1)
+        if len(process_owner_split) != 2:
+            return None
+        owner = process_owner_split[1]
+
+        # Right side is collection_operation
+        if "_" not in rhs:
+            return None
+        collection, op = rhs.rsplit("_", 1)
+        return owner.strip(), collection.strip(), op.lower().strip()
+    except Exception as e:
+        print(f"Error parsing role '{role}': {e}")
+        return None
+
+
+def match_roles(roles):
+    """
+    Matches parsed roles against a configuration map to determine S3 bucket access paths.
+
+    Args:
+        roles (list[tuple[str, str]]): List of tuples representing (owner, collection) pairs
+                                       from parsed user roles.
+
+    Returns:
+        set[str]: Set of S3 access paths that match the given roles based on wildcards and
+                  configmap entries.
+    """
+    matched = set()
+    for role_owner, role_collection in roles:
+        for cfg_owner, cfg_collection, _, _, bucket in configmap_data:
+            owner_match = role_owner == "*" or cfg_owner == "*" or fnmatch(cfg_owner.strip(), role_owner)
+            collection_match = (
+                role_collection == "*" or cfg_collection == "*" or fnmatch(cfg_collection.strip(), role_collection)
+            )
+            if owner_match and collection_match:
+                matched.add(f"{bucket.strip()}/{role_owner.strip()}/{role_collection.strip()}/")
+    return matched
+
+
+def build_s3_rights(user_info):  # pylint: disable=too-many-locals
+    """
+    Builds the S3 access rights structure for a user based on their Keycloak roles.
+
+    This function classifies roles into read, write, and download operations, then computes
+    the corresponding access rights by matching them against a configmap.
+
+    Args:
+        user_info (dict): Dictionary containing user attributes, specifically the "keycloak_roles" key
+                          with a list of role strings.
+
+    Returns:
+        dict: A dictionary with three keys:
+              - "read": List of read-only access paths.
+              - "read_download": List of read+download access paths.
+              - "write_download": List of write+download access paths.
+    """
+    # maybe we should use the user id instead of the username ?
+    print(f"USER = {user_info}")
+    # Step 1: Parse roles
+    read_roles = []
+    write_roles = []
+    download_roles = []
+
+    for role in user_info["keycloak_roles"]:
+        parsed = parse_role(role)
+        if not parsed:
+            continue
+        owner, collection, op = parsed
+        if op == "read":
+            read_roles.append((owner, collection))
+        elif op == "write":
+            write_roles.append((owner, collection))
+        elif op == "download":
+            download_roles.append((owner, collection))
+
+    # Step 2-3: Match against configmap
+    read_set = match_roles(read_roles)
+    write_set = match_roles(write_roles)
+    download_set = match_roles(download_roles)
+
+    # Step 3: Merge access
+    read_only = read_set - download_set - write_set
+    read_download = download_set
+    write_download = write_set
+
+    # Step 4: Output
+    output = {
+        "read": sorted(read_only),
+        "read_download": sorted(read_download),
+        "write_download": sorted(write_download),
+    }
+
+    print(json.dumps(output, indent=2))
+    return output

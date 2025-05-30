@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Classes to handle connections and requests to Cloud Provider API"""
-
 import os
+from typing import Optional
 
 import ovh
 
 
 class OVHApiHandler:
-    """Class to handle connection and requests to OVH API"""
 
     def __init__(self):
         self.ovh_client = self.__open_ovh_connection()
@@ -47,38 +45,16 @@ class OVHApiHandler:
         return ovh_client
 
     def get_all_users(self) -> list[dict]:
-        """
-        Returns a list of users. Example of user format:
-        https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
-
-        Returns:
-            list[dict]: list of users (each one of them is a dict)
-        """
+        # Returns a list of users. Example of user format:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user")
 
     def get_user(self, user_id: str) -> dict:
-        """
-        Returns a specific users. Example of user format:
-        https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
-
-        Returns:
-            dict: representation of an user
-        """
+        # Example of user returned:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
 
     def create_user(self, description: str | None = None, role=None, roles=None) -> dict:
-        """
-        Creates a new user in OVH with the given description.
-        Returns the newly created user as a dict.
-        Example of user format:
-        https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
-
-        Args:
-            description (str): description for the new user
-
-        Returns:
-            dict: representation of an user
-        """
         return self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
@@ -87,10 +63,4 @@ class OVHApiHandler:
         )
 
     def delete_user(self, user_id: str):
-        """
-        Deletes the user with the given ID.
-
-        Args:
-           user_id (str): ID of user to delete
-        """
         return self.ovh_client.delete(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
