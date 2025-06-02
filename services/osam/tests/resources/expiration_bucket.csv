@@ -1,3 +1,15 @@
-*, *, *, 30, rs-dev-cluster-catalog
-*, *, orbsct, 7300, rs-dev-cluster-catalog-aux-orbsct
+*, *, *, 15, test-bucket-default
+alpha, mars-imagery, *, 45, test-bucket-alpha-mars-imagery
+alpha, mars-sensors, *, 20, test-bucket-alpha-mars-sensors
+alpha, mars-sensors, xray, 999, test-bucket-alpha-mars-xray-special
+zeus, *, *, 60, test-bucket-zeus-main
+*, mars-imagery, *, 25, test-bucket-fallback-mars-imagery
+alpha, mars-sensors, deepcore, 888, test-bucket-alpha-mars-deepcore
+alpha, jupiter-data-nrt, *, 12, test-bucket-alpha-jupiter-nrt
+alpha, jupiter-data-ntc, *, 18, test-bucket-alpha-jupiter-ntc
+alpha, jupiter-data-stc, *, 20, test-bucket-alpha-jupiter-stc
+orion, *, *, 8, test-bucket-orion-prod
+orion, venus-l2, *, 33, test-bucket-orion-venus-l2
+luna, *, *, 77, test-bucket-luna-main
+luna, *, ZB_9_PQZ___, 300, test-bucket-luna-special-pqz
 test_user_1, *, orbsct, 7300, rs-dev-cluster-catalog-test_user_1-bucket
