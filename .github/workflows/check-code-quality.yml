@@ -219,39 +219,13 @@ jobs:
             -ra --disable-pytest-warnings \
             --color=yes \
             --durations=0 \
-            --durations-min=0.05 \
-            --cov=./rs_client \
-            --cov=./rs_common \
-            --cov-report=term \
-            --cov-report=xml:./cov-report.xml \
-            --junit-xml=./junit-xml-report.xml \
-
-          # There seems to be a bug in pytest cov with --cov-append.
-          # The last tested project is malformed in the report file.
-          # Use this workaround to run pytest on a dummy empty dir. This reformats the report file.
-          dummy="/tmp/empty-pytest"
-          mkdir -p $dummy
-          poetry run pytest $dummy \
-            --disable-pytest-warnings \
-            --cov=$dummy \
-            --cov-report=term \
-            --cov-report=xml:./cov-report.xml \
-            --cov-append \
-          || true # ignore the error message that says no tests exist
-
+            --durations-min=0.05
         shell: bash
-
-      - name: Display code coverage summary in this console
-        uses: irongut/CodeCoverageSummary@v1.3.0
-        with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
-          filename: ./cov-report.xml
 
       - name: Save reports
         uses: actions/upload-artifact@v4
         with:
           name: run-all-pytests
           path: |
-            .coverage
-            ./cov-report.xml
             ./junit-xml-report.xml
           retention-days: 1
