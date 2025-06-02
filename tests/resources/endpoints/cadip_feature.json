@@ -12,7 +12,7 @@
         "cadip:num_channels": 2,
         "cadip:station_unit_id": "01",
         "sat:absolute_orbit": 53186,
-        "cadip:acquisition_id": 531861,
+        "cadip:acquisition_id": "53186_A1",
         "cadip:antenna_id": "MSP21",
         "cadip:front_end_id": "01",
         "cadip:retransfer": false,
