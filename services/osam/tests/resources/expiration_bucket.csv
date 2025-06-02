@@ -1,0 +1,3 @@
+*, *, *, 30, rs-dev-cluster-catalog
+*, *, orbsct, 7300, rs-dev-cluster-catalog-aux-orbsct
+test_user_1, *, orbsct, 7300, rs-dev-cluster-catalog-test_user_1-bucket

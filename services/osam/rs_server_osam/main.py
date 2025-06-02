@@ -31,12 +31,7 @@ from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
-from starlette.status import (  # pylint: disable=C0411
-    HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND  # pylint: disable=C0411
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
 

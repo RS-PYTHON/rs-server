@@ -11,22 +11,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""OVH Handler module"""
 import os
-from typing import Optional
 
 import ovh
 
 
 class OVHApiHandler:
+    """
+    Handler for interacting with the OVH Cloud API for project users.
+
+    This class manages the OVH API client, providing methods to create,
+    retrieve, and delete users associated with a cloud project.
+    """
 
     def __init__(self):
+        """
+        Initializes the OVH API client and retrieves the service name dynamically.
+        """
         self.ovh_client = self.__open_ovh_connection()
-        # Get ovh name dinamically
         self.ovh_service_name = self.ovh_client.get("/cloud/project")[0]
 
     def __open_ovh_connection(self) -> ovh.Client:
+        """
+        Establishes a connection to the OVH API using credentials from environment variables.
 
+        Returns:
+            ovh.Client: An authenticated OVH API client.
+
+        Raises:
+            RuntimeError: If the connection to the OVH API fails.
+        """
         ovh_endpoint = os.environ["OVH_ENDPOINT"]
         ovh_application_key = os.environ["OVH_APPLICATION_KEY"]
         ovh_application_secret = os.environ["OVH_APPLICATION_SECRET"]
@@ -45,16 +60,38 @@ class OVHApiHandler:
         return ovh_client
 
     def get_all_users(self) -> list[dict]:
-        # Returns a list of users. Example of user format:
-        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
+        """
+        Retrieves a list of all users associated with the OVH cloud project.
+
+        Returns:
+            list[dict]: A list of user dictionaries.
+        """
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user")
 
     def get_user(self, user_id: str) -> dict:
-        # Example of user returned:
-        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
+        """
+        Retrieves details of a specific user by user ID.
+
+        Args:
+            user_id (str): The ID of the user to retrieve.
+
+        Returns:
+            dict: A dictionary containing user details.
+        """
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
 
     def create_user(self, description: str | None = None, role=None, roles=None) -> dict:
+        """
+        Creates a new user in the OVH cloud project.
+
+        Args:
+            description (str | None): Optional description for the user.
+            role: (deprecated) Optional legacy role specification.
+            roles: Optional list of roles for the user.
+
+        Returns:
+            dict: The created user object as returned by the OVH API.
+        """
         return self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
@@ -63,4 +100,13 @@ class OVHApiHandler:
         )
 
     def delete_user(self, user_id: str):
+        """
+        Deletes a user from the OVH cloud project.
+
+        Args:
+            user_id (str): The ID of the user to delete.
+
+        Returns:
+            Any: Response from the OVH API upon successful deletion.
+        """
         return self.ovh_client.delete(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")

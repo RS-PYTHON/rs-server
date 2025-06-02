@@ -20,7 +20,6 @@ import os
 # from collections import defaultdict
 from fnmatch import fnmatch
 from functools import wraps
-from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -37,9 +36,6 @@ DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 
-keycloak_handler = KeycloakHandler()
-ovh_handler = OVHApiHandler()
-
 configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
 configmap_data = configmap_singleton.get_s3_bucket_configuration(
     os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
@@ -49,6 +45,17 @@ trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
+
+
+# Get keycloak/ovh handler (it doesn't creates duplicates)
+def get_keycloak_handler():
+    """Used to get a copy of Keycloak handler"""
+    return KeycloakHandler()
+
+
+def get_ovh_handler():
+    """Used to get a copy of Ovh handler"""
+    return OVHApiHandler()
 
 
 # Decorator to trace functions
@@ -84,9 +91,15 @@ def get_allowed_buckets(user: str, csv_rows: list[list[str]]) -> list[str]:
 @traced_function()
 def get_keycloak_configmap_values():
     """
-    WIP
+    Retrieves all Keycloak users and computes the list of allowed S3 buckets
+    for each user based on a predefined ConfigMap.
+
+    Returns:
+        tuple: A tuple containing:
+            - kc_users (list): List of Keycloak user dictionaries.
+            - user_allowed_buckets (dict): A mapping of usernames to lists of allowed buckets.
     """
-    kc_users = keycloak_handler.get_keycloak_users()
+    kc_users = get_keycloak_handler().get_keycloak_users()
     user_allowed_buckets = {}
     print(f"CONFIGMAP: {configmap_data}")
     for user in kc_users:
@@ -98,6 +111,23 @@ def get_keycloak_configmap_values():
 
 
 def get_configmap_user_values(user):
+    """
+    Retrieves collection, eopf_type, and bucket access values for a given user
+    based on rules defined in the `configmap_data`.
+
+    The function filters `configmap_data` entries where the first element
+    (the user specifier) matches the provided `user` or the wildcard `"*"`.
+    It then extracts and groups the second, third, and last values from the matching rules.
+
+    Args:
+        user (str): The username to look up in the configmap rules.
+
+    Returns:
+        tuple[list, list, list]: Three lists corresponding to:
+            - collections (list): Values from the second element in matched rules.
+            - eopf_type (list): Values from the third element in matched rules.
+            - bucket (list): Values from the last element in matched rules.
+    """
     records = [rule for rule in configmap_data if rule[0] == user or rule[0] == "*"]
     collections, eopf_type, bucket = zip(*[(r[1], r[2], r[-1]) for r in records]) if records else ([], [], [])
     return list(collections), list(eopf_type), list(bucket)
@@ -121,11 +151,11 @@ def build_users_data_map():
                 - "eopf:type": List of EOPF types linked to the user
                 - "buckets": List of buckets associated with the user
     """
-    users = keycloak_handler.get_keycloak_users()
+    users = get_keycloak_handler().get_keycloak_users()
     return {
         user["username"]: {
-            "keycloak_attribute": keycloak_handler.get_obs_user_from_keycloak_user(user),
-            "keycloak_roles": [role["name"] for role in keycloak_handler.get_keycloak_user_roles(user["id"])],
+            "keycloak_attribute": get_keycloak_handler().get_obs_user_from_keycloak_user(user),
+            "keycloak_roles": [role["name"] for role in get_keycloak_handler().get_keycloak_user_roles(user["id"])],
         }
         for user in users
     }
@@ -144,14 +174,18 @@ def link_rspython_users_and_obs_users():
         based on specific integration rules.
     """
 
-    keycloak_users, _ = get_keycloak_configmap_values()
+    keycloak_users = get_keycloak_handler().get_keycloak_users()
     try:
+        # Iterate keycloak users and create an cloud provider account if missing
         for user in keycloak_users:
-            if not keycloak_handler.get_obs_user_from_keycloak_user(user):
+            if not get_keycloak_handler().get_obs_user_from_keycloak_user(user):
                 create_obs_user_account_for_keycloak_user(user)
 
-        obs_users = ovh_handler.get_all_users()
+        # Get the updated keycloak users and cloud provider users
+        keycloak_users = get_keycloak_handler().get_keycloak_users()
+        obs_users = get_ovh_handler().get_all_users()
         for obs_user in obs_users:
+            # If the cloud provider user is not linked with a keycloak account, remove it.
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Exception: {e}")
@@ -174,8 +208,8 @@ def create_obs_user_account_for_keycloak_user(
         None
     """
     new_user_description = create_description_from_template(keycloak_user["username"], template=DESCRIPTION_TEMPLATE)
-    new_user = ovh_handler.create_user(description=new_user_description)
-    keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
+    new_user = get_ovh_handler().create_user(description=new_user_description)
+    get_keycloak_handler().set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
 
 
 @traced_function()
@@ -207,7 +241,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         # the template, get_keycloak_user_from_description returns the full description
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
-            ovh_handler.delete_user(obs_user["id"])
+            get_ovh_handler().delete_user(obs_user["id"])
 
 
 def parse_role(role):
@@ -237,7 +271,7 @@ def parse_role(role):
             return None
         collection, op = rhs.rsplit("_", 1)
         return owner.strip(), collection.strip(), op.lower().strip()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error parsing role '{role}': {e}")
         return None
 

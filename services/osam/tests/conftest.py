@@ -14,10 +14,15 @@
 
 """Fixtures and tests configuration for OSAM unit tests."""
 
+import os
 from unittest.mock import patch
 
 import pytest
 from osam.utils.keycloak_handler import KeycloakHandler
+
+os.environ["BUCKET_CONFIG_FILE_PATH"] = (
+    "/Users/ovidiu/work/operational-services/object_storage_access_manager/tests/resources/expiration_bucket.csv"
+)
 
 # Test list for Keycloak users:
 #   - one user already linked to an existing obs_user
@@ -35,7 +40,7 @@ TEST_OVH_USERS_LIST = [
     {
         "id": "obs1",
         "username": "obs_user_for_existing_keycloak_user",
-        "description": "## linked to keycloak user 00001",
+        "description": "## linked to keycloak user test_user_1",
         "roles": [],
     },
     {
@@ -61,32 +66,32 @@ NEW_OVH_USER_WHEN_CREATING = {
 }
 
 
-@pytest.fixture
-def mock_keycloak_handler():
+@pytest.fixture(name="mock_keycloak_handler")
+def mock_keycloak_handler_():
     """Mock for KeycloakHandler for test_link_rspython_users_and_obs_users"""
-    with patch("osam.tasks.KeycloakHandler") as MockKeycloakHandler:
-        mock_instance = MockKeycloakHandler.return_value
+    with patch("osam.tasks.KeycloakHandler") as mock_keycloak_handler:
+        mock_instance = mock_keycloak_handler.return_value
         mock_instance.get_keycloak_users.return_value = TEST_KEYCLOAK_USERS_LIST
         mock_instance.update_keycloak_user.return_value = None
         mock_instance.get_obs_user_from_keycloak_user.side_effect = (
-            lambda keycloak_user: KeycloakHandler.get_obs_user_from_keycloak_user(MockKeycloakHandler, keycloak_user)
+            lambda keycloak_user: KeycloakHandler.get_obs_user_from_keycloak_user(mock_keycloak_handler, keycloak_user)
         )
         mock_instance.set_obs_user_in_keycloak_user.side_effect = (
             lambda keycloak_user, obs_user: KeycloakHandler.set_obs_user_in_keycloak_user(
-                MockKeycloakHandler,
+                mock_keycloak_handler,
                 keycloak_user,
                 obs_user,
             )
         )
-        yield MockKeycloakHandler
+        yield mock_keycloak_handler
 
 
-@pytest.fixture
-def mock_ovh_handler():
+@pytest.fixture(name="mock_ovh_handler")
+def mock_ovh_handler_():
     """Mock for OVHApiHandler for test_link_rspython_users_and_obs_users"""
-    with patch("osam.tasks.OVHApiHandler") as MockOVHApiHandler:
-        mock_instance = MockOVHApiHandler.return_value
+    with patch("osam.tasks.OVHApiHandler") as mock_ovh_api_handler:
+        mock_instance = mock_ovh_api_handler.return_value
         mock_instance.get_all_users.return_value = TEST_OVH_USERS_LIST
         mock_instance.create_user.return_value = NEW_OVH_USER_WHEN_CREATING
         mock_instance.delete_user.return_value = None
-        yield MockOVHApiHandler
+        yield mock_ovh_api_handler
