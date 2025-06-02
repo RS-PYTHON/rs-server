@@ -243,7 +243,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         if obs_user["description"] == expected_description:
             print(f"Removal of the OVH user {obs_user['username']} with id {obs_user['id']}")
             # TODO: If everything is ok, uncomment the following code in production
-            #get_ovh_handler().delete_user(obs_user["id"])
+            # get_ovh_handler().delete_user(obs_user["id"])
 
 
 def parse_role(role):
