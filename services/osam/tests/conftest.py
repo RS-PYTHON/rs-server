@@ -15,14 +15,18 @@
 """Fixtures and tests configuration for OSAM unit tests."""
 
 import os
+import os.path as osp
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from osam.utils.keycloak_handler import KeycloakHandler
 
-os.environ["BUCKET_CONFIG_FILE_PATH"] = (
-    "/Users/ovidiu/work/operational-services/object_storage_access_manager/tests/resources/expiration_bucket.csv"
-)
+RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
+
+os.environ["BUCKET_CONFIG_FILE_PATH"] = str(CONFIG_CSV.absolute())
+
 
 # Test list for Keycloak users:
 #   - one user already linked to an existing obs_user
