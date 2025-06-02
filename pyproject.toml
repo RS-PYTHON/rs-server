@@ -36,6 +36,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 osam = {path = "object_storage_access_manager", develop = true}
+pytest = "^8.3.5"
 
 [tool.poetry.group.dev]
 optional = true
