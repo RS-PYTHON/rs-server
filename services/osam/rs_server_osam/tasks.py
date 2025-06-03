@@ -320,7 +320,6 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
               - "write_download": List of write+download access paths.
     """
     # maybe we should use the user id instead of the username ?
-    print(f"USER = {user_info}")
     # Step 1: Parse roles
     read_roles = []
     write_roles = []

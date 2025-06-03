@@ -90,7 +90,7 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     logger.debug("Endpoint for getting the user rights")
     if user not in app.extra["users_info"]:
         return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
-    logger.debug(f"DATA = {app.extra['users_info']}")
+    logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
     output = build_s3_rights(app.extra["users_info"][user])
     return JSONResponse(status_code=HTTP_200_OK, content=output)
 
