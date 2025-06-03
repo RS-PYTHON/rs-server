@@ -233,12 +233,12 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     if OBS_DESCRIPTION_START not in obs_user["description"]:
         print(f"The ovh user {obs_user['username']} is not created by osam service. Skipping....")
         return
-    keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)    
+    keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
     print(f"user: {obs_user}")
     print(f"keycloak_user_id = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
-        print(f"keycloak_user = {keycloak_user}")        
+        print(f"keycloak_user = {keycloak_user}")
         if keycloak_user["username"] == keycloak_user_id:
             does_user_exist = True
 
