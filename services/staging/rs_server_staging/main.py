@@ -547,15 +547,6 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
-if common_settings.LOCAL_MODE:
-
-    @router.post("/staging/dask/auth", include_in_schema=False)
-    async def dask_auth(local_dask_username: str, local_dask_password: str):
-        """Set dask cluster authentication, only in local mode."""
-        os.environ["LOCAL_DASK_USERNAME"] = local_dask_username
-        os.environ["LOCAL_DASK_PASSWORD"] = local_dask_password
-
-
 # Configure OpenTelemetry
 init_opentelemetry.init_traces(app, "rs.server.staging")
 

@@ -189,6 +189,8 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
                 feature_template["id"] = odata_dict[eodag_key]
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
+        elif stac_key in feature_template["properties"]:
+            feature_template["properties"].pop(stac_key, None)
     # to pass pydantic validation, make sure we don't have a single timerange value
     check_and_fix_timerange(feature_template)
     return feature_template

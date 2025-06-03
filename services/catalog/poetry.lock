@@ -1714,14 +1714,14 @@ files = [
 
 [[package]]
 name = "moto"
-version = "5.1.4"
+version = "5.1.5"
 description = "A library that allows you to easily mock out tests based on AWS infrastructure"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "moto-5.1.4-py3-none-any.whl", hash = "sha256:9a19d7a64c3f03824389cfbd478b64c82bd4d8da21b242a34259360d66cd108b"},
-    {file = "moto-5.1.4.tar.gz", hash = "sha256:b339c3514f2986ebefa465671b688bdbf51796705702214b1bad46490b68507a"},
+    {file = "moto-5.1.5-py3-none-any.whl", hash = "sha256:866ae85eb5efe11a78f991127531878fd7f49177eb4a6680f47060430eb8932d"},
+    {file = "moto-5.1.5.tar.gz", hash = "sha256:42b362ea9a16181e8e7b615ac212c294b882f020e9ae02f01230f167926df84e"},
 ]
 
 [package.dependencies]
@@ -2841,14 +2841,14 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-docker"
-version = "3.2.1"
+version = "3.2.2"
 description = "Simple pytest fixtures for Docker and Docker Compose based tests"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "pytest_docker-3.2.1-py3-none-any.whl", hash = "sha256:ad1be411336959bee768b965c1c4949657e743eec9cf9e7a921fadf83ad97526"},
-    {file = "pytest_docker-3.2.1.tar.gz", hash = "sha256:fc2cd9d1d317ac0854c140738182a60331fbcee8c0ef655b790e8f40a96e226f"},
+    {file = "pytest_docker-3.2.2-py3-none-any.whl", hash = "sha256:2926033d48a10de611070fce17f6e67b9e81af2d8ccc59debbbf39872b8ebef9"},
+    {file = "pytest_docker-3.2.2.tar.gz", hash = "sha256:58ce79f3173209634bfff8ccaed2ce5593463d5272325c912e1b52a53154f452"},
 ]
 
 [package.dependencies]
@@ -2911,14 +2911,14 @@ testing = ["pytest-asyncio (==0.24.*)", "pytest-cov (==5.*)"]
 
 [[package]]
 name = "pytest-mock"
-version = "3.14.0"
+version = "3.14.1"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "pytest-mock-3.14.0.tar.gz", hash = "sha256:2719255a1efeceadbc056d6bf3df3d1c5015530fb40cf347c0f9afac88410bd0"},
-    {file = "pytest_mock-3.14.0-py3-none-any.whl", hash = "sha256:0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f"},
+    {file = "pytest_mock-3.14.1-py3-none-any.whl", hash = "sha256:178aefcd11307d874b4cd3100344e7e2d888d9791a6a1d9bfe90fbc1b74fd1d0"},
+    {file = "pytest_mock-3.14.1.tar.gz", hash = "sha256:159e9edac4c451ce77a5cdb9fc5d1100708d2dd4ba3c3df572f14097351af80e"},
 ]
 
 [package.dependencies]

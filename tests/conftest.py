@@ -276,7 +276,7 @@ def a_session_fixture(id_, at_date, satellite_idf):
         "Satellite": satellite_idf,
         "StationUnitId": "01",
         "DownlinkOrbit": 53186,
-        "AcquisitionId": "53186_1",
+        "AcquisitionId": "53186_A1",
         "AntennaId": "MSP21",
         "FrontEndId": "01",
         "Retransfer": False,

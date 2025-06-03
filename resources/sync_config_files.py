@@ -20,6 +20,7 @@ Copy them to rs-demo, rs-helm and rs-server-deployment repositories.
 import collections.abc
 import copy
 import json
+import logging
 import numbers
 import os
 import re
@@ -30,13 +31,12 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from rs_server_common.utils.logging import Logging
 from yaml.representer import SafeRepresenter
 
 # Avoid yaml references, see: https://stackoverflow.com/a/30682604
 yaml.Dumper.ignore_aliases = lambda *_: True  # type: ignore
 
-logger = Logging.default(Path(__file__).name)
+logger = logging.getLogger(__name__)
 
 #
 # Class definition
@@ -541,8 +541,10 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
             output_config: current output yaml block
             station: is the current yaml block implementing an adgs station, or cadip station, or ...
         """
-        if not isinstance(input_config, dict) or not isinstance(output_config, dict):
-            raise RuntimeError(f"Invalid arguments: {input_config} / {output_config}")
+        if not isinstance(input_config, dict):
+            raise RuntimeError(f"Invalid input_config: {input_config}")
+        if not isinstance(output_config, dict):
+            raise RuntimeError(f"Invalid output_config: {output_config}")
 
         # Check station name from parent key
         station = copy.deepcopy(station)  # save the instance so the previous recursive calls are not impacted
