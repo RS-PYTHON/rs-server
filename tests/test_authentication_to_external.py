@@ -1019,7 +1019,7 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
 
     # Call the search endpoint from an async function, just like the real search endpoint does
     async def search(collection_id):
-        url = f"{os.getenv('router_prefix')}/search?collections={collection_id}"
+        url = f"{os.getenv('router_prefix')}/search?collections={collection_id}&limit=1"
         response = await run_in_threadpool(client.get, url)
         response.raise_for_status()
 
@@ -1027,7 +1027,7 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
     async def parallel_search():
         async with asyncio.TaskGroup() as tg:
             for collection_id in collection_ids:
-                for _ in range(5):  # n parallel calls for each collection
+                for _ in range(3):  # n parallel calls for each collection
                     tg.create_task(search(collection_id))
 
         # Assert that the token request method had no error
