@@ -30,7 +30,7 @@ class OVHApiHandler:
         Initializes the OVH API client and retrieves the service name dynamically.
         """
         self.ovh_client = self.__open_ovh_connection()
-        self.ovh_service_name = self.ovh_client.get("/cloud/project")[0]
+        self.ovh_service_name = os.environ.get("OVH_SERVICE", self.ovh_client.get("/cloud/project")[0])
 
     def __open_ovh_connection(self) -> ovh.Client:
         """
