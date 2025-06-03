@@ -13,9 +13,8 @@
 # limitations under the License.
 """OVH Handler module"""
 import os
-
 import ovh
-
+import time
 
 class OVHApiHandler:
     """
@@ -30,7 +29,14 @@ class OVHApiHandler:
         Initializes the OVH API client and retrieves the service name dynamically.
         """
         self.ovh_client = self.__open_ovh_connection()
-        self.ovh_service_name = os.environ.get("OVH_SERVICE", self.ovh_client.get("/cloud/project")[0])
+        self.ovh_service_name = os.getenv("OVH_SERVICE")
+        if not self.ovh_service_name:
+            if not self.ovh_client.get("/cloud/project"):
+                raise RuntimeError("No cloud projects found in OVH account.")
+            else:
+                # get the first one
+                self.ovh_service_name = self.ovh_client.get("/cloud/project")[0]
+        print(f"self.ovh_service_name: {self.ovh_service_name}")
 
     def __open_ovh_connection(self) -> ovh.Client:
         """
@@ -80,7 +86,12 @@ class OVHApiHandler:
         """
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
 
-    def create_user(self, description: str | None = None, role=None, roles=None) -> dict:
+    def create_user(self,
+                    description: str | None = None,
+                    role=None,
+                    roles=None,
+                    timeout_seconds=60,
+                    poll_interval=2,) -> dict:
         """
         Creates a new user in the OVH cloud project.
 
@@ -92,12 +103,31 @@ class OVHApiHandler:
         Returns:
             dict: The created user object as returned by the OVH API.
         """
-        return self.ovh_client.post(
+        print(f" ENDPOINT CREATE USER: /cloud/project/{self.ovh_service_name}/user")
+        user = self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
             role=role,
             roles=roles,
         )
+        user_id = user["id"]
+        # Step 2: Wait for status to become 'ok'
+        start_time = time.time()
+        print(f"{start_time}: Waiting for the user's status to be ok")        
+        while time.time() - start_time < timeout_seconds:
+            user_status = self.ovh_client.get(
+                f"/cloud/project/{self.ovh_service_name}/user/{user_id}"
+            )
+            status = user_status.get("status")
+            if status == "ok":
+                print(f"{time.time()}: Exit from waiting, with {user_status.get('status')}")
+                return user
+            time.sleep(poll_interval)
+        print(f"Exit from waiting on timeout")
+        raise TimeoutError(
+            f"Timeout: OVH user '{user_id}' status did not become 'ok' within {timeout_seconds} seconds"
+        )
+        
 
     def delete_user(self, user_id: str):
         """

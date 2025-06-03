@@ -33,6 +33,7 @@ from osam.utils.tools import (
 from rs_server_common.s3_storage_handler import s3_storage_config
 
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
+OBS_DESCRIPTION_START = "## linked to keycloak user "
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
@@ -229,11 +230,16 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
-
-    keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
+    if OBS_DESCRIPTION_START not in obs_user["description"]:
+        print(f"The ovh user {obs_user['username']} is not created by osam service. Skipping....")
+        return
+    keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)    
+    print(f"user: {obs_user}")
+    print(f"keycloak_user_id = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
-        if keycloak_user["id"] == keycloak_user_id:
+        print(f"keycloak_user = {keycloak_user}")        
+        if keycloak_user["username"] == keycloak_user_id:
             does_user_exist = True
 
     if not does_user_exist:
