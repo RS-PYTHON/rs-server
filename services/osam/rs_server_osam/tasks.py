@@ -238,7 +238,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     print(f"keycloak_user_id = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
-        print(f"keycloak_user = {keycloak_user}")
+        print(f"keycloak_user = {keycloak_user['username']}")
         if keycloak_user["username"] == keycloak_user_id:
             does_user_exist = True
 
