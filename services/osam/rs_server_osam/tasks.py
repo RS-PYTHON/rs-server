@@ -35,6 +35,7 @@ from rs_server_common.s3_storage_handler import s3_storage_config
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
+OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 
 configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
 configmap_data = configmap_singleton.get_s3_bucket_configuration(
@@ -208,7 +209,7 @@ def create_obs_user_account_for_keycloak_user(
         None
     """
     new_user_description = create_description_from_template(keycloak_user["username"], template=DESCRIPTION_TEMPLATE)
-    new_user = get_ovh_handler().create_user(description=new_user_description)
+    new_user = get_ovh_handler().create_user(description=new_user_description, role=OVH_ROLE_FOR_NEW_USERS)
     get_keycloak_handler().set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
 
 

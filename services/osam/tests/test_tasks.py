@@ -40,6 +40,7 @@ def test_link_rspython_users_and_obs_users(mock_keycloak_handler, mock_ovh_handl
     updated_keycloak_user.setdefault("attributes", {})["obs-user"] = "obs2"  # type: ignore
     mock_ovh_handler.return_value.create_user.assert_called_once_with(
         description="## linked to keycloak user test_user_2",
+        role="objectstore_operator",
     )
     mock_keycloak_handler.return_value.set_obs_user_in_keycloak_user.assert_called_once_with(
         updated_keycloak_user,
