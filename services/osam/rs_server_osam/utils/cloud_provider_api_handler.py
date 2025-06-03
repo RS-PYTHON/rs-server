@@ -117,12 +117,15 @@ class OVHApiHandler:
         user_id = user["id"]
         # Step 2: Wait for status to become 'ok'
         start_time = time.time()
-        print(f"{start_time}: Waiting for the user's status to be ok")
+        print("Waiting for the user's status to be ok", flush=True)
         while time.time() - start_time < timeout_seconds:
             user_status = self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
             status = user_status.get("status")
             if status == "ok":
-                print(f"Exit from waiting, with {user_status.get('status')} in {time.time() - start_time} seconds")
+                print(
+                    f"Exit from waiting, with status = {user_status.get('status')} "
+                    f"in {time.time() - start_time} seconds",
+                )
                 return user
             time.sleep(poll_interval)
 
