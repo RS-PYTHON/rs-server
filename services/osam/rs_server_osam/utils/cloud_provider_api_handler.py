@@ -107,7 +107,7 @@ class OVHApiHandler:
         Returns:
             dict: The created user object as returned by the OVH API.
         """
-        print(f" ENDPOINT CREATE USER: /cloud/project/{self.ovh_service_name}/user")
+        print(f"OVH endpoint to be called: /cloud/project/{self.ovh_service_name}/user")
         user = self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
@@ -122,10 +122,10 @@ class OVHApiHandler:
             user_status = self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
             status = user_status.get("status")
             if status == "ok":
-                print(f"{time.time()}: Exit from waiting, with {user_status.get('status')}")
+                print(f"Exit from waiting, with {user_status.get('status')} in {time.time() - start_time} seconds")
                 return user
             time.sleep(poll_interval)
-        print(f"Timeout: OVH user '{user_id}' status did not become 'ok' within {timeout_seconds} seconds")
+
         raise TimeoutError(f"Timeout: OVH user '{user_id}' status did not become 'ok' within {timeout_seconds} seconds")
 
     def delete_user(self, user_id: str):
