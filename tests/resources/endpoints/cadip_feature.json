@@ -12,7 +12,7 @@
         "cadip:num_channels": 2,
         "cadip:station_unit_id": "01",
         "sat:absolute_orbit": 53186,
-        "cadip:acquisition_id": 531861,
+        "cadip:acquisition_id": "53186_A1",
         "cadip:antenna_id": "MSP21",
         "cadip:front_end_id": "01",
         "cadip:retransfer": false,
@@ -80,7 +80,7 @@
         }
     ],
     "stac_extensions": [
-        "https://home.rs-python.eu/cadip-stac-extension/v1.1.0/schema.json",
+        "https://home.rs-python.eu/cadip-stac-extension/v1.2.0/schema.json",
         "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
     ],

@@ -157,7 +157,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
                 self.s3_handler.delete_file_from_s3(bucket_name, file_key)
 
-    def adapt_object_links(self, my_object: dict, user: str) -> dict:
+    def adapt_object_links(self, my_object: dict, user: str | None) -> dict:
         """adapt all the links from a collection so the user can use them correctly
 
         Args:
@@ -177,7 +177,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
         return my_object
 
-    def adapt_links(self, content: dict, user: str, collection_id: str, object_name: str) -> dict:
+    def adapt_links(self, content: dict, user: str | None, collection_id: str | None, object_name: str) -> dict:
         """adapt all the links that are outside from the collection section
 
         Args:
@@ -673,6 +673,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
         content = json.loads(dec_content)
         content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "features")
+        content = self.adapt_links(content, None, None, "features")
         for collection_id in self.request_ids["collection_ids"]:
             content = self.adapt_links(content, self.request_ids["owner_id"], collection_id, "features")
 
@@ -983,11 +984,11 @@ field is not permitted also.",
                 self.request_ids["collection_ids"][0],
                 "features",
             )
-        elif request.scope["path"] == "/search":
-            pass
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, self.request_ids["owner_id"])
             content = self.adapt_object_links(content, self.request_ids["owner_id"])
+        else:
+            logger.debug(f"No link adaptation performed for {request.scope}")
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)

@@ -437,7 +437,7 @@ async def get_cadip_collection_item_details(
     - **Session metadata**: Contains important temporal information (e.g., `datetime`, `start_datetime`, and
     `end_datetime`),
       the platform (`platform`), and session-specific details such as `cadip:id`, `cadip:num_channels`,
-      `cadip:station_unit_id`, `cadip:antenna_id`, and more.
+      `cadip:station_id`, `cadip:station_unit_id`, `cadip:antenna_id`, and more.
     - **Satellite information**: Includes satellite attributes such as `sat:absolute_orbit`, `cadip:acquisition_id`, and
     status fields like `cadip:antenna_status_ok`, `cadip:front_end_status_ok`, and `cadip:downlink_status_ok`.
     - **Assets**: A collection of asset objects associated with the session. Each asset contains:

@@ -55,6 +55,9 @@ template:
       platforms:
         - null
         - "$.Satellite"
+      StationId:
+        - null
+        - "$.StationId"
       StationUnitId:
         - null
         - "$.StationUnitId"
@@ -131,6 +134,7 @@ template:
             - NumChannels eq {NumChannels}
             - AcquisitionId eq '{AcquisitionId}'
             - AntennaId eq '{AntennaId}'
+            - StationId eq '{StationId}'
             - StationUnitId eq '{StationUnitId}'
             - FrontEndId eq {FrontEndId}
             - PlannedDataStart eq {PlannedDataStart}
@@ -152,6 +156,7 @@ template:
         platform: Satellite
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId

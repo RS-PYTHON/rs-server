@@ -171,8 +171,8 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
 
 def add_user_prefix(  # pylint: disable=too-many-return-statements
     path: str,
-    user: str,
-    collection_id: str,
+    user: str | None,
+    collection_id: str | None,
     feature_id: str = "",
 ) -> str:
     """
