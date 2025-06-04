@@ -249,9 +249,9 @@ def test_match_roles(roles, expected):
                 ),
             },
         ),
-        ## Testcase compliant with rspy604 example, note that duplicates are not showed.
-        ## Also, as per priority list, if a user have permission to write_download in rspython-ops-catalog/paul/s1-l1/
-        ## it also have read, read_download permission, even if not mentioned in that list.
+        # Testcase compliant with rspy604 example, note that duplicates are not showed.
+        # Also, as per priority list, if a user have permission to write_download in rspython-ops-catalog/paul/s1-l1/
+        # it also have read, read_download permission, even if not mentioned in that list.
         (
             {"keycloak_roles": ["rs_catalog_paul:s1-l1_write"]},
             {
