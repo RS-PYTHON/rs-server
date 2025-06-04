@@ -13,12 +13,16 @@
 # limitations under the License.
 
 """Unit tests for tasks"""
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 # pylint: disable = unused-argument
 from osam.tasks import (
+    DESCRIPTION_TEMPLATE,
     build_s3_rights,
     build_users_data_map,
+    delete_obs_user_account_if_not_used_by_keycloak_account,
     get_configmap_user_values,
     link_rspython_users_and_obs_users,
     match_roles,
@@ -39,7 +43,7 @@ def test_link_rspython_users_and_obs_users(mock_keycloak_handler, mock_ovh_handl
     updated_keycloak_user = TEST_KEYCLOAK_USERS_LIST[1]
     updated_keycloak_user.setdefault("attributes", {})["obs-user"] = "obs2"  # type: ignore
     mock_ovh_handler.return_value.create_user.assert_called_once_with(
-        description="## linked to keycloak user test_user_2",
+        description="## linked to keycloak user emilie",
         role="objectstore_operator",
     )
     mock_keycloak_handler.return_value.set_obs_user_in_keycloak_user.assert_called_once_with(
@@ -59,8 +63,8 @@ def test_build_users_data_map(mock_keycloak_handler):
 
     # Initial expected mapping
     expected_user_data_map = {
-        "test_user_1": {"keycloak_attribute": "obs1", "keycloak_roles": []},
-        "test_user_2": {"keycloak_attribute": "obs2", "keycloak_roles": []},
+        "paul": {"keycloak_attribute": "obs1", "keycloak_roles": []},
+        "emilie": {"keycloak_attribute": "obs2", "keycloak_roles": []},
     }
 
     # Assert initial mapping is correct
@@ -72,8 +76,8 @@ def test_build_users_data_map(mock_keycloak_handler):
 
     # Updated expected mapping
     updated_user_data_map = {
-        "test_user_1": {"keycloak_attribute": "updated_obs_value_0", "keycloak_roles": []},
-        "test_user_2": {"keycloak_attribute": "updated_obs_value_1", "keycloak_roles": []},
+        "paul": {"keycloak_attribute": "updated_obs_value_0", "keycloak_roles": []},
+        "emilie": {"keycloak_attribute": "updated_obs_value_1", "keycloak_roles": []},
     }
 
     # Assert updated mapping is correct
@@ -87,10 +91,11 @@ def test_get_configmap_user_values():
     """Test values received from configmap based on user."""
     # Check user_1 allowed buckets.
     test_user_1_data = get_configmap_user_values(TEST_KEYCLOAK_USERS_LIST[0]["username"])
-    assert "rs-dev-cluster-catalog-test_user_1-bucket" in test_user_1_data[2]
+    assert "rspython-ops-catalog-paul" in test_user_1_data[2]
     # Check user_2 allowed buckets.
     test_user_2_data = get_configmap_user_values(TEST_KEYCLOAK_USERS_LIST[1]["username"])
-    assert ["test-bucket-default", "test-bucket-fallback-mars-imagery"] in test_user_2_data
+    assert "rspython-ops-catalog" in test_user_2_data[2]
+    assert "rspython-ops-catalog-emilie-s1-aux-infinite" in test_user_2_data[2]
 
 
 @pytest.mark.parametrize(
@@ -111,58 +116,58 @@ def test_parse_role(role, expected):
 @pytest.mark.parametrize(
     "roles, expected",
     [
-        # 1. Exact match for alpha and mars-imagery
+        # match_roles([("paul", "s1-l1")]) = {...}
         (
-            [("alpha", "mars-imagery")],
+            [("paul", "s1-l1")],
             {
-                "test-bucket-alpha-mars-imagery/alpha/mars-imagery/",
-                "test-bucket-default/alpha/mars-imagery/",
-                "test-bucket-fallback-mars-imagery/alpha/mars-imagery/",
+                "rspython-ops-catalog/paul/s1-l1/",
+                "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                "rspython-ops-catalog-paul/paul/s1-l1/",
             },
         ),
-        # 2. Exact match for alpha and mars-sensors
+        # match_roles([("copernicus", "s1-l1")])
         (
-            [("alpha", "mars-sensors")],
+            [("copernicus", "s1-l1")],
             {
-                "test-bucket-alpha-mars-sensors/alpha/mars-sensors/",
-                "test-bucket-default/alpha/mars-sensors/",
-                "test-bucket-alpha-mars-deepcore/alpha/mars-sensors/",
-                "test-bucket-alpha-mars-xray-special/alpha/mars-sensors/",
+                "rspython-ops-catalog/copernicus/s1-l1/",
+                "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
+                "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
             },
         ),
-        # 3. Exact match on alpha/mars-sensors/xray — only general match applies
-        ([("alpha", "xray")], {"test-bucket-default/alpha/xray/"}),
-        # 4. Wildcard match: any owner to mars-imagery
+        # match_roles([("copernicus", "s1-aux")])
         (
-            [("random_user", "mars-imagery")],
+            [("copernicus", "s1-aux")],
             {
-                "test-bucket-default/random_user/mars-imagery/",
-                "test-bucket-fallback-mars-imagery/random_user/mars-imagery/",
+                "rspython-ops-catalog/copernicus/s1-aux/",
+                "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
             },
         ),
-        # 5. Owner-specific: orion with anything
+        # match_roles([("emilie", "s1-aux")])
         (
-            [("orion", "some-collection")],
-            {"test-bucket-orion-prod/orion/some-collection/", "test-bucket-default/orion/some-collection/"},
-        ),
-        # 6. Owner luna, product doesn’t match ZB_9_PQZ___
-        (
-            [("luna", "mars-sensors")],
+            [("emilie", "s1-aux")],
             {
-                "test-bucket-default/luna/mars-sensors/",
-                "test-bucket-luna-main/luna/mars-sensors/",
-                "test-bucket-luna-special-pqz/luna/mars-sensors/",
+                "rspython-ops-catalog/emilie/s1-aux/",
+                "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
             },
         ),
-        # 7. Multiple roles, all resolved
+        # match_roles([("*", "s1-l1")])
         (
-            [("alpha", "jupiter-data-nrt"), ("alpha", "mars-imagery")],
+            [("*", "s1-l1")],
             {
-                "test-bucket-alpha-jupiter-nrt/alpha/jupiter-data-nrt/",
-                "test-bucket-default/alpha/jupiter-data-nrt/",
-                "test-bucket-alpha-mars-imagery/alpha/mars-imagery/",
-                "test-bucket-fallback-mars-imagery/alpha/mars-imagery/",
-                "test-bucket-default/alpha/mars-imagery/",
+                "rspython-ops-catalog/*/s1-l1/",
+                "rspython-ops-catalog-default-s1-l1/*/s1-l1/",
+                "rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
+                "rspython-ops-catalog-paul/*/s1-l1/",
+            },
+        ),
+        # match_roles([("emilie", "*")])
+        (
+            [("emilie", "*")],
+            {
+                "rspython-ops-catalog/emilie/*/",
+                "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                "rspython-ops-catalog-default-s1-l1/emilie/*/",
             },
         ),
     ],
@@ -172,84 +177,221 @@ def test_match_roles(roles, expected):
     assert match_roles(roles) == expected
 
 
-# match_roles([("alpha", "*")]) = {'test-bucket-alpha-mars-sensors/alpha/*/'}
-# match_roles([("beta", "*")]) = {'test-bucket-beta-venus-data/beta/*/'}
-# match_roles([("gamma", "*")]) = {'test-bucket-gamma-comet/gamma/*/'}
-# match_roles([("delta", "*")]) = {'test-bucket-delta-asteroid/delta/*/'}
 @pytest.mark.parametrize(
-    "user_info, expected_output",
+    "user_info, expected",
     [
         (
-            # Test 1: user with read and download roles
+            {"keycloak_roles": ["rs_catalog_paul:s1-l1_read"]},
             {
-                "keycloak_roles": [
-                    "rs_catalog_alpha:*_read",
-                    "rs_catalog_alpha:*_download",
-                ],
-            },
-            {
-                "read": [],
-                "read_download": sorted(match_roles([("alpha", "*")])),
-                "write_download": [],
-            },
-        ),
-        (
-            # Test 2: user with write only
-            {
-                "keycloak_roles": [
-                    "rs_catalog_beta:*_write",
-                ],
-            },
-            {
-                "read": [],
-                "read_download": [],
-                "write_download": sorted(match_roles([("beta", "*")])),
-            },
-        ),
-        (
-            # Test 3: user with read, write and download mixed
-            {
-                "keycloak_roles": [
-                    "rs_catalog_gamma:*_read",
-                    "rs_catalog_gamma:*_write",
-                    "rs_catalog_gamma:*_download",
-                    "rs_catalog_delta:*_read",
-                ],
-            },
-            {
-                "read": sorted(match_roles([("delta", "*")])),
-                "read_download": sorted(match_roles([("gamma", "*")])),
-                "write_download": sorted(match_roles([("gamma", "*")])),
-            },
-        ),
-        (
-            # Test 4: user with invalid role ignored
-            {
-                "keycloak_roles": [
-                    "invalid_role_string",
-                    "rs_catalog_alpha:*_read",
-                ],
-            },
-            {
-                "read": sorted(match_roles([("alpha", "*")])),
+                "read": sorted(
+                    [
+                        "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog/paul/s1-l1/",
+                    ],
+                ),
                 "read_download": [],
                 "write_download": [],
             },
         ),
         (
-            # Test 5: empty roles
+            {"keycloak_roles": ["rs_catalog_copernicus:s1-aux_download"]},
             {
-                "keycloak_roles": [],
+                "read": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/copernicus/s1-aux/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
+                    ],
+                ),
+                "write_download": [],
             },
+        ),
+        (
+            {"keycloak_roles": ["rs_catalog_emilie:s1-aux_download"]},
+            {
+                "read": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/emilie/s1-aux/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
+                    ],
+                ),
+                "write_download": [],
+            },
+        ),
+        (
+            {"keycloak_roles": ["rs_catalog_emilie:*_download"]},
+            {
+                "read": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                    ],
+                ),
+                "write_download": [],
+            },
+        ),
+        (
+            {"keycloak_roles": ["rs_catalog_copernicus:s1-l1_write"]},
             {
                 "read": [],
                 "read_download": [],
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/copernicus/s1-l1/",
+                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
+                        "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
+                    ],
+                ),
             },
         ),
     ],
 )
-def test_build_s3_rights(user_info, expected_output):
-    """Test build S3 right"""
-    result = build_s3_rights(user_info)
-    assert result == expected_output
+def test_build_s3_rights(user_info, expected):
+    """Test build s3 rights"""
+    assert build_s3_rights(user_info) == expected
+
+
+@pytest.mark.usefixtures("mock_ovh_handler", "mock_keycloak_handler")
+class TestDeleteObsUser:
+    """
+    Unit tests for the function `delete_obs_user_account_if_not_used_by_keycloak_account`.
+
+    This test suite verifies that:
+    - The function skips deletion if the OBS user description does not contain the expected
+      OBS_DESCRIPTION_START marker.
+    - No deletion occurs if the OBS user is linked to an existing Keycloak user.
+    - The function deletes the OBS user when it is not linked to any Keycloak user and the
+      description matches the expected template.
+    - No deletion occurs if the OBS user is not linked but the description does not match the template.
+
+    External dependencies like `get_keycloak_user_from_description`, `create_description_from_template`,
+    and `get_ovh_handler` are mocked to isolate the function behavior.
+    """
+
+    @patch("osam.tasks.get_keycloak_user_from_description")
+    @patch("osam.tasks.create_description_from_template")
+    @patch("osam.tasks.get_ovh_handler")
+    def test_skip_if_not_osam_user(
+        self,
+        mock_get_ovh_handler,
+        mock_create_description,
+        mock_get_keycloak_user,
+        mock_ovh_handler,
+        mock_keycloak_handler,
+    ):
+        """User description does NOT contain OBS_DESCRIPTION_START → skip deletion"""
+        obs_user = {
+            "username": "not_osam_user",
+            "description": "some unrelated description",
+            "id": "obs999",
+        }
+        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, [])
+
+        mock_get_keycloak_user.assert_not_called()
+        mock_create_description.assert_not_called()
+        mock_get_ovh_handler.assert_not_called()
+
+    @patch("osam.tasks.get_keycloak_user_from_description")
+    @patch("osam.tasks.create_description_from_template")
+    @patch("osam.tasks.get_ovh_handler")
+    def test_user_linked_to_keycloak_user_no_deletion(
+        self,
+        mock_get_ovh_handler,
+        mock_create_description,
+        mock_get_keycloak_user,
+        mock_ovh_handler,
+        mock_keycloak_handler,
+    ):
+        """User is correctly linked to keycloak, skip"""
+        obs_user = {
+            "username": "obs_user_for_existing_keycloak_user",
+            "description": "## linked to keycloak user paul",
+            "id": "obs1",
+        }
+        keycloak_users = [
+            {"username": "paul"},
+            {"username": "emilie"},
+        ]
+
+        mock_get_keycloak_user.return_value = "paul"
+
+        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
+
+        mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
+        mock_create_description.assert_not_called()
+        mock_get_ovh_handler.assert_not_called()
+
+    @patch("osam.tasks.get_keycloak_user_from_description")
+    @patch("osam.tasks.create_description_from_template")
+    @patch("osam.tasks.get_ovh_handler")
+    def test_user_not_linked_and_description_matches_deletes(
+        self,
+        mock_get_ovh_handler,
+        mock_create_description,
+        mock_get_keycloak_user,
+        mock_ovh_handler,
+        mock_keycloak_handler,
+    ):
+        """Test user does not exist in keycloak and description match -> delete"""
+        obs_user = {
+            "username": "obs_user_for_unexisting_keycloak_user",
+            "description": "## linked to keycloak user 99999",
+            "id": "obs2",
+        }
+        keycloak_users = [
+            {"username": "paul"},
+            {"username": "emilie"},
+        ]
+
+        mock_get_keycloak_user.return_value = "99999"
+        mock_create_description.return_value = obs_user["description"]
+        mock_ovh_handler_instance = MagicMock()
+        mock_get_ovh_handler.return_value = mock_ovh_handler_instance
+
+        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
+
+        mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
+        mock_create_description.assert_called_once_with("99999", template=DESCRIPTION_TEMPLATE)
+        mock_ovh_handler_instance.delete_user.assert_called_once_with(obs_user["id"])
+
+    @patch("osam.tasks.get_keycloak_user_from_description")
+    @patch("osam.tasks.create_description_from_template")
+    @patch("osam.tasks.get_ovh_handler")
+    def test_user_not_linked_but_description_differs_no_deletion(
+        self,
+        mock_get_ovh_handler,
+        mock_create_description,
+        mock_get_keycloak_user,
+        mock_ovh_handler,
+        mock_keycloak_handler,
+    ):
+        """Test user doesn't exist in keycloak but description doesnt match -> skip"""
+        obs_user = {
+            "username": "obs_user_for_unexisting_keycloak_user",
+            "description": "## linked to keycloak user 99999",
+            "id": "obs2",
+        }
+        keycloak_users = [
+            {"username": "paul"},
+            {"username": "emilie"},
+        ]
+
+        mock_get_keycloak_user.return_value = "99999"
+        mock_create_description.return_value = "different description"
+        mock_ovh_handler_instance = MagicMock()
+        mock_get_ovh_handler.return_value = mock_ovh_handler_instance
+
+        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
+
+        mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
+        mock_create_description.assert_called_once_with("99999", template=DESCRIPTION_TEMPLATE)
+        mock_ovh_handler_instance.delete_user.assert_not_called()

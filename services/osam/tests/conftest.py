@@ -32,8 +32,8 @@ os.environ["BUCKET_CONFIG_FILE_PATH"] = str(CONFIG_CSV.absolute())
 #   - one user already linked to an existing obs_user
 #   - one user not linked to an obs_user
 TEST_KEYCLOAK_USERS_LIST = [
-    {"id": "00001", "username": "test_user_1", "enabled": True, "attributes": {"obs-user": "obs1"}},
-    {"id": "00002", "username": "test_user_2", "enabled": True},
+    {"id": "00001", "username": "paul", "enabled": True, "attributes": {"obs-user": "obs1"}},
+    {"id": "00002", "username": "emilie", "enabled": True},
 ]
 
 # Test list for OVH users:
