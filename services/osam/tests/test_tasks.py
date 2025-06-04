@@ -249,11 +249,36 @@ def test_match_roles(roles, expected):
                 ),
             },
         ),
+        ## Testcase compliant with rspy604 example, note that duplicates are not showed.
+        ## Also, as per priority list, if a user have permission to write_download in rspython-ops-catalog/paul/s1-l1/
+        ## it also have read, read_download permission, even if not mentioned in that list.
+        (
+            {"keycloak_roles": ["rs_catalog_paul:s1-l1_write"]},
+            {
+                "read": [],
+                "read_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/paul/s1-l1/",
+                    ],
+                ),
+            },
+        ),
     ],
 )
 def test_build_s3_rights(user_info, expected):
     """Test build s3 rights"""
     assert build_s3_rights(user_info) == expected
+
+
+@pytest.mark.usefixtures("mock_ovh_handler", "mock_keycloak_handler")
+class TestCreateObsUser:  # pylint: disable =too-few-public-methods
+    """Will be added soon"""
+
+    def __init__(self):
+        return
 
 
 @pytest.mark.usefixtures("mock_ovh_handler", "mock_keycloak_handler")
