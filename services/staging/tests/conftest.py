@@ -46,9 +46,9 @@ init_app_cluster_mode()
 for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
     os.environ[envvar] = ""
 from rs_server_common import settings as common_settings
-from rs_server_staging.asset_info import AssetInfo
 from rs_server_staging.main import app  # pylint: disable=import-error
-from rs_server_staging.rspy_models import Feature
+from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.rspy_models import Feature
 
 # Restore the local mode by default
 os.environ["RSPY_LOCAL_MODE"] = "1"
@@ -57,14 +57,56 @@ reload(common_settings)
 from rs_server_common.authentication.authentication_to_external import (  # pylint: disable=import-error
     ExternalAuthenticationConfig,
 )
-from rs_server_staging.processors import (  # pylint: disable=import-error
-    RefreshTokenData,
-    Staging,
-)
+from rs_server_staging.processors.authentication import RefreshTokenData
+from rs_server_staging.processors.processor_staging import Staging
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "expiration_bucket.csv")
 TEST_DETAIL = "Test detail"
+
+
+EXPECTED_JOBS_TEST = [
+    {
+        "jobID": "job_1",
+        "status": "running",
+        "type": "process",
+        "progress": 0.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+    {
+        "jobID": "job_2",
+        "status": "running",
+        "type": "process",
+        "progress": 55.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+    {
+        "jobID": "job_3",
+        "status": "running",
+        "type": "process",
+        "progress": 15.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 3, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 3, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+    {
+        "jobID": "job_4",
+        "status": "successful",
+        "type": "process",
+        "progress": 100.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 4, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 4, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+]
 
 
 @pytest.fixture(name="set_db_env_var")
