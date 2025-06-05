@@ -84,6 +84,7 @@ async def accounts_update():
     # app.extra["endpoint_trigger"].set()
     try:
         link_rspython_users_and_obs_users()
+        app.extra["users_info"] = build_users_data_map()
         return JSONResponse(status_code=HTTP_200_OK, content="Keycloak and OVH accounts updated")
     except RuntimeError as rt:
         return HTTPException(
