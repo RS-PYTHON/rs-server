@@ -64,6 +64,9 @@ from rs_server_catalog.utils import (
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
+from rs_server_common.s3_storage_handler.s3_storage_config import (
+    get_bucket_name_from_config,
+)
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
@@ -91,7 +94,6 @@ from starlette.status import (
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
-CATALOG_BUCKET = os.environ["RSPY_CATALOG_BUCKET"]
 DEFAULT_GEOM = {
     "type": "Polygon",
     "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
@@ -145,10 +147,15 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         if not self.s3_handler:
             return
         for asset in content.get("assets", {}):
+            # Retrieve bucket name from config using what's in content
+            item_owner = content["properties"].get("owner", "*")
+            item_collection = content.get("collection", "*").removeprefix(f"{item_owner}_")
+            item_eopf_type = content["properties"].get("eopf:type", "*")
+            bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
             # For catalog bucket, data is already stored into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
-                self.s3_handler.delete_file_from_s3(CATALOG_BUCKET, file_key)
+                self.s3_handler.delete_file_from_s3(bucket_name, file_key)
 
     def adapt_object_links(self, my_object: dict, user: str | None) -> dict:
         """adapt all the links from a collection so the user can use them correctly
@@ -279,7 +286,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 status_code=HTTP_400_BAD_REQUEST,
             ) from rte
 
-    def s3_bucket_handling(self, files_s3_key: list[str], item: dict, request: Request) -> None:
+    def s3_bucket_handling(self, bucket_name: str, files_s3_key: list[str], item: dict, request: Request) -> None:
         """Handle the transfer and deletion of files in S3 buckets.
 
         Args:
@@ -303,11 +310,11 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 files_s3_key[idx] = s3_key.replace(f"s3://{temp_bucket_name}", "")
 
             err_message = f"Failed to transfer file(s) from '{temp_bucket_name}' bucket to \
-'{CATALOG_BUCKET}' catalog bucket!"
+'{bucket_name}' catalog bucket!"
             config = TransferFromS3ToS3Config(
                 files_s3_key,
                 temp_bucket_name,
-                CATALOG_BUCKET,
+                bucket_name,
                 copy_only=True,
                 max_retries=3,
             )
@@ -374,6 +381,9 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         collection_id = collection_ids[0]
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
+        item_eopf_type = content["properties"].get("eopf:type", "*")
+        bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
+
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
@@ -403,7 +413,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = s3_filename.split("/")
-                old_bucket_arr[2] = CATALOG_BUCKET
+                old_bucket_arr[2] = bucket_name
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
                 if not self.check_s3_key(item, asset, s3_key):
@@ -417,7 +427,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     # copy the key only if it isn't already in the final catalog bucket
                     if not int(
                         os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
-                    ) and not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):
+                    ) and not self.s3_handler.check_s3_key_on_bucket(bucket_name, "/".join(old_bucket_arr[3:])):
                         files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
@@ -438,7 +448,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 content["stac_extensions"].append(new_stac_extension)
 
         # 4 - bucket handling
-        self.s3_bucket_handling(files_s3_key, item, request)
+        self.s3_bucket_handling(bucket_name, files_s3_key, item, request)
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -452,11 +462,16 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         path_splitted = path.split("/")
         asset_id = path_splitted[-1]
         item_id = path_splitted[-3]
+        # Retrieve bucket name from config using what's in content
+        item_owner = content["properties"].get("owner", "*")
+        item_collection = content.get("collection", "*").removeprefix(f"{item_owner}_")
+        item_eopf_type = content["properties"].get("eopf:type", "*")
+        bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
         try:
             s3_path = (
                 content["assets"][asset_id]["alternate"]["s3"]["href"]
                 .replace(
-                    f"s3://{CATALOG_BUCKET}",
+                    f"s3://{bucket_name}",
                     "",
                 )
                 .lstrip("/")
@@ -472,7 +487,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             )
             response = s3_handler.s3_client.generate_presigned_url(
                 "get_object",
-                Params={"Bucket": CATALOG_BUCKET, "Key": s3_path},
+                Params={"Bucket": bucket_name, "Key": s3_path},
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:

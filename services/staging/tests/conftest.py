@@ -47,6 +47,8 @@ for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_P
     os.environ[envvar] = ""
 from rs_server_common import settings as common_settings
 from rs_server_staging.main import app  # pylint: disable=import-error
+from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.rspy_models import Feature
 
 # Restore the local mode by default
 os.environ["RSPY_LOCAL_MODE"] = "1"
@@ -55,12 +57,56 @@ reload(common_settings)
 from rs_server_common.authentication.authentication_to_external import (  # pylint: disable=import-error
     ExternalAuthenticationConfig,
 )
-from rs_server_staging.processors import (  # pylint: disable=import-error
-    RefreshTokenData,
-    Staging,
-)
+from rs_server_staging.processors.authentication import RefreshTokenData
+from rs_server_staging.processors.processor_staging import Staging
 
+RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "expiration_bucket.csv")
 TEST_DETAIL = "Test detail"
+
+
+EXPECTED_JOBS_TEST = [
+    {
+        "jobID": "job_1",
+        "status": "running",
+        "type": "process",
+        "progress": 0.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+    {
+        "jobID": "job_2",
+        "status": "running",
+        "type": "process",
+        "progress": 55.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+    {
+        "jobID": "job_3",
+        "status": "running",
+        "type": "process",
+        "progress": 15.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 3, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 3, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+    {
+        "jobID": "job_4",
+        "status": "successful",
+        "type": "process",
+        "progress": 100.0,
+        "message": "Test detail",
+        "created": datetime(2024, 1, 4, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 4, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
+    },
+]
 
 
 @pytest.fixture(name="set_db_env_var")
@@ -108,7 +154,7 @@ def client_(mocker):
 @pytest.fixture(name="geoapi_cfg")
 def geoapi_cfg_() -> Path:
     """Return pygeoapi config file path"""
-    return Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
+    return RESOURCES_FOLDER / "test_config.yml"
 
 
 @pytest.fixture(name="predefined_config")
@@ -177,12 +223,62 @@ def feature(f_id: str) -> dict:
     }
 
 
+def detailed_feature(f_id: str, owner: str, eopf_type: str = "") -> dict:
+    """Create a new empty Feature with more details"""
+    test_feature = Feature(
+        type="Feature",
+        properties={"owner": owner},
+        id=f_id,
+        stac_version="1.0.0",
+        assets={f"asset_{f_id}": {"href": f"https://fake-data/{f_id}"}},
+        stac_extensions=[],
+    )
+    if eopf_type:
+        test_feature.properties["eopf:type"] = eopf_type
+    return test_feature
+
+
 @pytest.fixture(name="staging_inputs")
 def staging_inputs():
     """Fixture to mock the staging execution inputs"""
     return {
         "collection": "test_collection",
         "items": {"value": {"type": "FeatureCollection", "features": [feature("1"), feature("2")]}},
+    }
+
+
+@pytest.fixture(name="staging_input_for_config_tests_1")
+def staging_input_for_config_tests_1():
+    """Fixture to mock the staging execution inputs for the first set of tests
+    checking that config settings are correctly used.
+    """
+    return {
+        "collection": "s1-l1",
+        "items": {
+            "value": {
+                "type": "FeatureCollection",
+                "features": [detailed_feature("TC001", "copernicus"), detailed_feature("TC002", "ANY")],
+            },
+        },
+    }
+
+
+@pytest.fixture(name="staging_input_for_config_tests_2")
+def staging_input_for_config_tests_2():
+    """Fixture to mock the staging execution inputs for the first set of tests
+    checking that config settings are correctly used.
+    """
+    return {
+        "collection": "s1-aux",
+        "items": {
+            "value": {
+                "type": "FeatureCollection",
+                "features": [
+                    detailed_feature("TC003", "copernicus", "XXX"),
+                    detailed_feature("TC004", "copernicus", "orbsct"),
+                ],
+            },
+        },
     }
 
 
@@ -222,9 +318,7 @@ def staging(mocker, config):
 
     mocker.patch.dict(
         os.environ,
-        {
-            "RSPY_CATALOG_BUCKET": "fake_bucket",
-        },
+        {"BUCKET_CONFIG_FILE_PATH": S3_EXPIRATION_BUCKET_CSV_FILE},
     )
 
     # Instantiate the Staging class with the mocked dependencies
@@ -239,8 +333,8 @@ def staging(mocker, config):
     staging_instance.stream_list = [mocker.Mock(id=1), mocker.Mock(id=2)]
     # mock assets_info
     staging_instance.assets_info = [
-        ("https://cadip/some_asset_1", "some_asset_1"),
-        ("https://cadip/some_asset_2", "some_asset_2"),
+        AssetInfo("https://cadip/some_asset_1", "some_asset_1", "fake_bucket"),
+        AssetInfo("https://cadip/some_asset_2", "some_asset_2", "fake_bucket"),
     ]
     yield staging_instance
 

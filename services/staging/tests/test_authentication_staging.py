@@ -23,7 +23,8 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_test,
 )
 from rs_server_staging.main import app, must_be_authenticated
-from rs_server_staging.processors import Staging
+from rs_server_staging.processors.processor_staging import Staging
+from rs_server_staging.utils.asset_info import AssetInfo
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
@@ -110,10 +111,13 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     station_id = "station_id"
     role = f"RS_PROCESSES_STAGING_DOWNLOAD_{station_id}"
     error_auth = f"Loading station token service failed: 401: Missing {role.upper()} authorization role"
-    mocker.patch.object(staging_instance, "assets_info", new="some_asset")
+    mocker.patch.object(staging_instance, "assets_info", new=[AssetInfo("some_asset", "fake_s3_file", "fake_bucket")])
     mock_load = mocker.Mock()
     mock_load.station_id = station_id
-    mocker.patch("rs_server_staging.processors.load_external_auth_config_by_domain", return_value=mock_load)
+    mocker.patch(
+        "rs_server_staging.processors.processor_staging.load_external_auth_config_by_domain",
+        return_value=mock_load,
+    )
     mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
     mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
     mock_request = mocker.Mock()

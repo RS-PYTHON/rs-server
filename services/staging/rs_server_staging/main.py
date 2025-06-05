@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """rs server staging main module."""
+
 import copy
 
 # pylint: disable=E0401
@@ -46,11 +47,15 @@ from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging import Base
-from rs_server_staging.processors import processors
+from rs_server_staging.processors.processor_staging import processors
 from rs_server_staging.staging_endpoints_validation import (
     validate_request,
     validate_response,
 )
+
+# flake8: noqa: F401
+# pylint: disable=W0611
+from rs_server_staging.utils.rspy_models import ProcessMetadataModel
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import (
     HTTPException as StarletteHTTPException,  # pylint: disable=C0411
@@ -58,8 +63,8 @@ from starlette.exceptions import (
 from starlette.middleware.cors import CORSMiddleware  # pylint: disable=C0411
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse  # pylint: disable=C0411
-from starlette.status import (  # pylint: disable=C0411
-    HTTP_200_OK,
+from starlette.status import HTTP_200_OK  # pylint: disable=C0411
+from starlette.status import (
     HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -67,10 +72,6 @@ from starlette.status import (  # pylint: disable=C0411
 
 # DON'T REMOVE (needed for SQLAlchemy)
 from . import jobs_table  # pylint: disable=unused-import
-
-# flake8: noqa: F401
-# pylint: disable=W0611
-from .rspy_models import ProcessMetadataModel
 
 REFRESH_TOKENS_TIMEOUT = 40
 
