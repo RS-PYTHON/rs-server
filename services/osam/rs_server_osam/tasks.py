@@ -183,7 +183,7 @@ def create_obs_user_account_for_keycloak_user(
     Returns:
         None
     """
-    new_user_description = create_description_from_template(keycloak_user["id"], template=DESCRIPTION_TEMPLATE)
+    new_user_description = create_description_from_template(keycloak_user["username"], template=DESCRIPTION_TEMPLATE)
     new_user = get_ovh_handler().create_user(description=new_user_description, role=OVH_ROLE_FOR_NEW_USERS)
     get_keycloak_handler().set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
 
@@ -213,7 +213,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     does_user_exist = False
     for keycloak_user in keycloak_users:
         logger.debug(f"keycloak_user = {keycloak_user['username']}")
-        if keycloak_user["id"] == keycloak_user_id:
+        if keycloak_user["username"] == keycloak_user_id:
             does_user_exist = True
 
     if not does_user_exist:
