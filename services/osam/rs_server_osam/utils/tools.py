@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Various and diverse tools functions"""
-
-DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
+"""A collection of varied and versatile utility functions"""
 
 
-def create_description_from_template(keycloak_user: str, template: str = DEFAULT_DESCRIPTION_TEMPLATE) -> str:
+def create_description_from_template(keycloak_user: str, template: str) -> str:
     """Applies the given Keycloak user name in the description, using the given template.
     The template must have a '%keycloak-user%' placeholder.
 
@@ -32,7 +30,7 @@ def create_description_from_template(keycloak_user: str, template: str = DEFAULT
     return template.replace(user_placeholder, keycloak_user)
 
 
-def get_keycloak_user_from_description(description: str, template: str = DEFAULT_DESCRIPTION_TEMPLATE) -> str:
+def get_keycloak_user_from_description(description: str, template: str) -> str:
     """Returns the Keycloak user name included in the given description using its template.
     The template must have a '%keycloak-user%' placeholder.
 
