@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """OVH Handler module"""
+import logging
 import os
 import time
 
 import ovh
+from rs_server_common.utils.logging import Logging
+
+logger = Logging.default(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class OVHApiHandler:
@@ -38,7 +43,7 @@ class OVHApiHandler:
                 raise RuntimeError("No cloud projects found in OVH account.")
             # get the first one
             self.ovh_service_name = self.ovh_client.get("/cloud/project")[0]
-        print(f"self.ovh_service_name: {self.ovh_service_name}")
+        logger.debug(f"self.ovh_service_name: {self.ovh_service_name}")
 
     def __open_ovh_connection(self) -> ovh.Client:
         """
@@ -107,7 +112,7 @@ class OVHApiHandler:
         Returns:
             dict: The created user object as returned by the OVH API.
         """
-        print(f"OVH endpoint to be called: /cloud/project/{self.ovh_service_name}/user")
+        logger.debug(f"OVH endpoint to be called: /cloud/project/{self.ovh_service_name}/user")
         user = self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
@@ -117,12 +122,12 @@ class OVHApiHandler:
         user_id = user["id"]
         # Step 2: Wait for status to become 'ok'
         start_time = time.time()
-        print("Waiting for the user's status to be ok", flush=True)
+        logger.info("Waiting for the user's status to be ok", flush=True)
         while time.time() - start_time < timeout_seconds:
             user_status = self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
             status = user_status.get("status")
             if status == "ok":
-                print(
+                logger.info(
                     f"Exit from waiting, with status = {user_status.get('status')} "
                     f"in {time.time() - start_time} seconds",
                 )
