@@ -15,8 +15,8 @@
 """Main tasks executed by OSAM service."""
 
 import json
+import logging
 import os
-from fnmatch import fnmatch
 from functools import wraps
 
 from opentelemetry import trace
@@ -25,18 +25,25 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProces
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
 from osam.utils.tools import (
+    DEFAULT_CSV_PATH,
     create_description_from_template,
+    get_allowed_buckets,
     get_keycloak_user_from_description,
+    match_roles,
+    parse_role,
 )
 from rs_server_common.s3_storage_handler import s3_storage_config
+from rs_server_common.utils.logging import Logging
 
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
-DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
+
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 
-configmap_singleton = s3_storage_config.S3StorageConfigurationSingleton()
-configmap_data = configmap_singleton.get_s3_bucket_configuration(
+logger = Logging.default(__name__)
+logger.setLevel(logging.DEBUG)
+
+configmap_data = s3_storage_config.S3StorageConfigurationSingleton().get_s3_bucket_configuration(
     os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
 )
 # Setup tracer
@@ -82,11 +89,6 @@ def traced_function(name=None):
     return decorator
 
 
-def get_allowed_buckets(user: str, csv_rows: list[list[str]]) -> list[str]:
-    """Get the allowed buckets for user from the csv configmap"""
-    return [rule[-1] for rule in csv_rows if rule[0] == user or rule[0] == "*"]
-
-
 @traced_function()
 def get_keycloak_configmap_values():
     """
@@ -100,36 +102,12 @@ def get_keycloak_configmap_values():
     """
     kc_users = get_keycloak_handler().get_keycloak_users()
     user_allowed_buckets = {}
-    print(f"CONFIGMAP: {configmap_data}")
     for user in kc_users:
         allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
-        print(f"User {user['username']} allowed buckets: {allowed_buckets}")
+        logger.debug(f"User {user['username']} allowed buckets: {allowed_buckets}")
         user_allowed_buckets[user["username"]] = allowed_buckets
     # ps ps
     return kc_users, user_allowed_buckets
-
-
-def get_configmap_user_values(user):
-    """
-    Retrieves collection, eopf_type, and bucket access values for a given user
-    based on rules defined in the `configmap_data`.
-
-    The function filters `configmap_data` entries where the first element
-    (the user specifier) matches the provided `user` or the wildcard `"*"`.
-    It then extracts and groups the second, third, and last values from the matching rules.
-
-    Args:
-        user (str): The username to look up in the configmap rules.
-
-    Returns:
-        tuple[list, list, list]: Three lists corresponding to:
-            - collections (list): Values from the second element in matched rules.
-            - eopf_type (list): Values from the third element in matched rules.
-            - bucket (list): Values from the last element in matched rules.
-    """
-    records = [rule for rule in configmap_data if rule[0] == user or rule[0] == "*"]
-    collections, eopf_type, bucket = zip(*[(r[1], r[2], r[-1]) for r in records]) if records else ([], [], [])
-    return list(collections), list(eopf_type), list(bucket)
 
 
 def build_users_data_map():
@@ -187,8 +165,8 @@ def link_rspython_users_and_obs_users():
             # If the cloud provider user is not linked with a keycloak account, remove it.
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Exception: {e}")
-        print("Continuing anyway")
+        logger.exception(f"Exception: {e}")
+        logger.info("Continuing anyway")
 
 
 @traced_function()
@@ -228,14 +206,14 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         None
     """
     if DESCRIPTION_TEMPLATE.replace("%keycloak-user%", "") not in obs_user["description"]:
-        print(f"The ovh user {obs_user['username']} is not created by osam service. Skipping....")
+        logger.info(f"The ovh user {obs_user['username']} is not created by osam service. Skipping....")
         return
     keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
-    print(f"user: {obs_user}")
-    print(f"keycloak_user_id = {keycloak_user_id}")
+    logger.debug(f"user: {obs_user}")
+    logger.debug(f"keycloak_user_id = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
-        print(f"keycloak_user = {keycloak_user['username']}")
+        logger.debug(f"keycloak_user = {keycloak_user['username']}")
         if keycloak_user["username"] == keycloak_user_id:
             does_user_exist = True
 
@@ -245,64 +223,8 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         # the template, get_keycloak_user_from_description returns the full description
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
-            print(f"Removal of the OVH user {obs_user['username']} with id {obs_user['id']}")
+            logger.info(f"Removal of the OVH user {obs_user['username']} with id {obs_user['id']}")
             get_ovh_handler().delete_user(obs_user["id"])
-
-
-def parse_role(role):
-    """
-    Parses a Keycloak role string into owner, collection, and operation components.
-
-    This function expects the role to follow the format: `<prefix>_<owner>:<collection>_<operation>`.
-    It extracts and returns the owner, collection name, and operation (e.g., read, write, download).
-
-    Args:
-        role (str): Role string to be parsed.
-
-    Returns:
-        tuple[str, str, str] | None: A tuple (owner, collection, operation) if parsing is successful;
-                                     otherwise, returns None on format error or exception.
-    """
-    try:
-        lhs, rhs = role.split(":")
-        # Split the left part from the last underscore to get owner
-        process_owner_split = lhs.rsplit("_", 1)
-        if len(process_owner_split) != 2:
-            return None
-        owner = process_owner_split[1]
-
-        # Right side is collection_operation
-        if "_" not in rhs:
-            return None
-        collection, op = rhs.rsplit("_", 1)
-        return owner.strip(), collection.strip(), op.lower().strip()
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error parsing role '{role}': {e}")
-        return None
-
-
-def match_roles(roles):
-    """
-    Matches parsed roles against a configuration map to determine S3 bucket access paths.
-
-    Args:
-        roles (list[tuple[str, str]]): List of tuples representing (owner, collection) pairs
-                                       from parsed user roles.
-
-    Returns:
-        set[str]: Set of S3 access paths that match the given roles based on wildcards and
-                  configmap entries.
-    """
-    matched = set()
-    for role_owner, role_collection in roles:
-        for cfg_owner, cfg_collection, _, _, bucket in configmap_data:
-            owner_match = role_owner == "*" or cfg_owner == "*" or fnmatch(cfg_owner.strip(), role_owner)
-            collection_match = (
-                role_collection == "*" or cfg_collection == "*" or fnmatch(cfg_collection.strip(), role_collection)
-            )
-            if owner_match and collection_match:
-                matched.add(f"{bucket.strip()}/{role_owner.strip()}/{role_collection.strip()}/")
-    return matched
 
 
 def build_s3_rights(user_info):  # pylint: disable=too-many-locals
@@ -357,5 +279,5 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
         "write_download": sorted(write_download),
     }
 
-    print(json.dumps(output, indent=2))
+    logger.info(json.dumps(output, indent=2))
     return output

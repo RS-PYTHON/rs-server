@@ -23,8 +23,10 @@ from osam.tasks import (
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
-    get_configmap_user_values,
     link_rspython_users_and_obs_users,
+)
+from osam.utils.tools import (
+    get_configmap_user_values,
     match_roles,
     parse_role,
 )
