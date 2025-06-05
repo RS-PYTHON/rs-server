@@ -290,7 +290,7 @@ class TestDeleteObsUser:
 
     This test suite verifies that:
     - The function skips deletion if the OBS user description does not contain the expected
-      OBS_DESCRIPTION_START marker.
+      DESCRIPTION_TEMPLATE marker, without %keycloak-user% placehold.
     - No deletion occurs if the OBS user is linked to an existing Keycloak user.
     - The function deletes the OBS user when it is not linked to any Keycloak user and the
       description matches the expected template.
@@ -311,13 +311,13 @@ class TestDeleteObsUser:
         mock_ovh_handler,
         mock_keycloak_handler,
     ):
-        """User description does NOT contain OBS_DESCRIPTION_START → skip deletion"""
+        """User description does NOT contain DESCRIPTION_TEMPLATE (without %keycloak-user%) → skip deletion"""
         obs_user = {
             "username": "not_osam_user",
             "description": "some unrelated description",
             "id": "obs999",
         }
-        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, [])
 
         mock_get_keycloak_user.assert_not_called()
@@ -348,7 +348,7 @@ class TestDeleteObsUser:
 
         mock_get_keycloak_user.return_value = "paul"
 
-        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
@@ -382,7 +382,7 @@ class TestDeleteObsUser:
         mock_ovh_handler_instance = MagicMock()
         mock_get_ovh_handler.return_value = mock_ovh_handler_instance
 
-        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
@@ -416,7 +416,7 @@ class TestDeleteObsUser:
         mock_ovh_handler_instance = MagicMock()
         mock_get_ovh_handler.return_value = mock_ovh_handler_instance
 
-        with patch("osam.tasks.OBS_DESCRIPTION_START", "## linked to keycloak user"):
+        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
