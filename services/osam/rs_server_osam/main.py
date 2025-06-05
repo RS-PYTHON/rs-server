@@ -17,56 +17,47 @@
 import asyncio  # for handling asynchronous tasks
 import logging
 import os
-import time
 from contextlib import asynccontextmanager
+from typing import Any
 
-# from dask.distributed import LocalCluster
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException
+from osam.tasks import (
+    build_s3_rights,
+    build_users_data_map,
+    link_rspython_users_and_obs_users,
+)
+from rs_server_common.utils import init_opentelemetry
+from rs_server_common.utils.logging import Logging
+from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
 from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
-from object_storage_access_manager.osam import opentelemetry
-
-DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
+DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
 router = APIRouter(tags=["OSAM service"])
 
-logger = logging.getLogger("my_logger")
+logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
-
-
-def env_bool(var: str, default: bool) -> bool:
-    """
-    Return True if an environemnt variable is set to 1, true or yes (case insensitive).
-    Return False if set to 0, false or no (case insensitive).
-    Return the default value if not set or set to a different value.
-    """
-    val = os.getenv(var, str(default)).lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return True
-    if val in ("n", "no", "f", "false", "off", "0"):
-        return False
-    return default
 
 
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
     logger.info("Starting up the application...")
-    fastapi_app.extra["local_mode"] = env_bool("RSPY_LOCAL_MODE", default=False)
-    logger.info("Starting get attributes from keycloack thread")
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
     # the following event may be called from the future endpoint requested in rspy 606
-    fastapi_app.extra["keycloack_event"] = asyncio.Event()
+    fastapi_app.extra["endpoint_trigger"] = asyncio.Event()
     # Run the refresh loop in the background
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
-        manage_keycloack_attributes(timeout=DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES),
+        main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
     )
-
+    fastapi_app.extra["users_info"] = dict[str, Any]
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -84,9 +75,57 @@ async def app_lifespan(fastapi_app: FastAPI):
     logger.info("Application gracefully stopped...")
 
 
-async def manage_keycloack_attributes(timeout: int = 60):
-    """Background thread to refresh tokens when needed."""
-    logger.info("Starting the background thread to refresh tokens")
+@router.post("/storage/accounts/update")
+async def accounts_update():
+    """Used as a trigger to link the keycloak users to the obs users
+    It also creates the s3 access rights for each user
+    """
+    logger.debug("Endpoint for triggering the users synchronization process called")
+    # app.extra["endpoint_trigger"].set()
+    try:
+        link_rspython_users_and_obs_users()
+        app.extra["users_info"] = build_users_data_map()
+        return JSONResponse(status_code=HTTP_200_OK, content="Keycloak and OVH accounts updated")
+    except RuntimeError as rt:
+        return HTTPException(
+            HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Failed to update the keycloack and ovh accounts. Reason: {rt}",
+        )
+
+
+@router.get("/storage/account/{user}/rights")
+async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
+    """Used as a trigger to link the keycloak users to the obs users
+    It also creates the s3 access rights for each user
+    """
+    logger.debug("Endpoint for getting the user rights")
+    if user not in app.extra["users_info"]:
+        return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+    logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
+    output = build_s3_rights(app.extra["users_info"][user])
+    return JSONResponse(status_code=HTTP_200_OK, content=output)
+
+
+async def main_osam_task(timeout: int = 60):
+    """
+    Asynchronous background task that periodically links RS-Python users to observation users.
+
+    This function continuously waits for either a shutdown signal or an external trigger (`endpoint_trigger`)
+    to perform synchronization of Keycloak user attributes using `link_rspython_users_and_obs_users()`.
+    The loop exits gracefully on shutdown signal.
+
+    Args:
+        timeout (int, optional): Number of seconds to wait before checking for shutdown or trigger events.
+                                 Defaults to 60 seconds.
+
+    Returns:
+        None
+
+    Raises:
+        RuntimeError: This function does not explicitly raise `RuntimeError`, but any internal failure
+                      is logged, and the task continues unless a shutdown signal is received.
+    """
+    logger.info("Starting the main background thread ")
     original_timeout = timeout
     while True:
         try:
@@ -96,32 +135,30 @@ async def manage_keycloack_attributes(timeout: int = 60):
             await asyncio.wait(
                 {
                     asyncio.create_task(app.extra["shutdown_event"].wait()),
-                    asyncio.create_task(app.extra["keycloack_event"].wait()),
+                    asyncio.create_task(app.extra["endpoint_trigger"].wait()),
                 },
                 timeout=original_timeout,  # Wait up to timeout seconds before waking up
                 return_when=asyncio.FIRST_COMPLETED,
             )
 
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
-                logger.info("Finishing the background thread to refresh tokens")
+                logger.info("Finishing the main background thread  and exit")
                 break
-            if app.extra["keycloack_event"].is_set():  # If shutting down, exit loop
-                logger.debug("Releasing keycloack_event")
-                app.extra["keycloack_event"].release()
+            if app.extra["endpoint_trigger"].is_set():  # If triggered, prepare for the next one
+                logger.debug("Releasing endpoint_trigger")
+                app.extra["endpoint_trigger"].clear()
 
             logger.debug("Starting the process to get the keycloack attributes ")
-            # logic here
-            # get the keycloack users
-            # foreach user apply the logic requested in rspy 601
-            time.sleep(5)
-            logger.debug("Slept 5 seconds")
+
+            link_rspython_users_and_obs_users()
+            app.extra["users_info"] = build_users_data_map()
 
             logger.debug("Getting the keycloack attributes finished")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Handle cancellation properly even for asyncio.CancelledError (for example when FastAPI shuts down)
             logger.exception(f"Handle cancellation: {e}")
-            break
+            # let's continue
     logger.info("Exiting from the getting keycloack attributes thread !")
     return
 
@@ -135,4 +172,4 @@ async def ping():
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan  # type: ignore
-opentelemetry.init_traces(app, "osam.service")
+init_opentelemetry.init_traces(app, "osam.service")

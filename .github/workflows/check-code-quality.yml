@@ -204,3 +204,28 @@ jobs:
           "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
           >> $GITHUB_STEP_SUMMARY
         shell: bash
+
+  run-all-pytests:
+    runs-on: ubuntu-latest
+    name: Run pytest # pytest unit and integration tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+
+      - name: Run pytest
+        run: |
+          set -x
+          poetry run pytest $(find . -name tests) \
+            -ra --disable-pytest-warnings \
+            --color=yes \
+            --durations=0 \
+            --durations-min=0.05
+        shell: bash
+
+      - name: Save reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-all-pytests
+          path: |
+            ./junit-xml-report.xml
+          retention-days: 1
