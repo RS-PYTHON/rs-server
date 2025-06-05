@@ -30,7 +30,11 @@ from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND  # pylint: disable=C0411
+from starlette.status import (  # pylint: disable=C0411
+    HTTP_200_OK,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
 
@@ -77,7 +81,15 @@ async def accounts_update():
     It also creates the s3 access rights for each user
     """
     logger.debug("Endpoint for triggering the users synchronization process called")
-    app.extra["endpoint_trigger"].set()
+    # app.extra["endpoint_trigger"].set()
+    try:
+        link_rspython_users_and_obs_users()
+        return JSONResponse(status_code=HTTP_200_OK, content="Keycloak and OVH accounts updated")
+    except RuntimeError as rt:
+        return HTTPException(
+            HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Failed to update the keycloack and ovh accounts. Reason: {rt}",
+        )
 
 
 @router.get("/storage/account/{user}/rights")
