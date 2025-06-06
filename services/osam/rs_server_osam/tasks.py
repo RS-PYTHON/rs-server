@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+from datetime import datetime
 from functools import wraps
 
 from opentelemetry import trace
@@ -280,3 +281,21 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
 
     logger.info(json.dumps(output, indent=2))
     return output
+
+
+def build_full_s3_rights(user_s3_rights: dict):
+    """
+    Update the S3 access rights structure for a user based on their Keycloak roles.
+    """
+    bloc_list_read = {}
+    bloc_list_read_download = {}
+    bloc_list_write_download = {
+        "Action": ["s3:GetObject", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+        "Effect": "Allow",
+        "Resource": ["arn:aws:s3:::ONE_LINE_FROM_THE_LIST", "arn:aws:s3:::ONE_LINE_FROM_THE_LIST/*"],
+        "Sid": "ROContainer",
+    }
+    return {
+        "Version": str(datetime.now()),
+        "Statement": [bloc_list_read, bloc_list_read_download, bloc_list_write_download],
+    }
