@@ -24,6 +24,34 @@ Changed
 
 None
 
+[0.2a14] - Sprint 24 - 2025-06-04
+================================
+
+## Added
+
+- RSPY-468: Configure rs-catalog from a configMap
+- RSPY-488: Configure rs-staging from a configMap
+- RSPY-601: OSAM : Develop POD skeleton for “object storage access manager”
+- RSPY-603: OSAM: Link rs-python users and OBS users (/storage/accounts/update)
+- RSPY-604: OSAM: Build S3 access right lists ( /storage/account/{account_name}/rights )
+- RSPY-657: Update to latest stable version of Wazuh
+- RSPY-658: Retrieve NeuVector logs in Wazuh
+- RSPY-671: Update to Poetry 2
+- RSPY-672: Split and move the DPR processing flow
+- RSPY-674: Test the dynamic start of flows from a single one
+- RSPY-676: CADIP: Use of StationId to distinguish INS, KSE and PAR stations
+- RSPY-682: Sprint 24 corrections of issues
+
+## Fixed
+
+- RSPY-436: Inconsistent staging URLs [0 pt]
+- RSPY-508: LOG format not compliant with ICD COPRS-ICD-ADST-001919935 [3 pt]
+- RSPY-512: CADIP validation errors in STAC Browser [0 pt]
+- RSPY-681: AUXIP: STAC rs-client search with limit=1 paginates over all results [1 pt]
+- RSPY-687: "Trace to logs" Grafana feature is disabled [2 pt]
+- RSPY-689: [PREFECT] Too many prefect flow run down the platform [1 pt]
+- RSPY-693: Wrong links in the catalog: "http://localhost:8003/search" [1 pt]
+
 [0.2a13] - Sprint 23 - 2025-05-07
 ================================
 
