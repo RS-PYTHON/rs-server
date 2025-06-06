@@ -1,9 +1,9 @@
 [project]
-name = "osam"
+name = "rs-osam"
 version = "0.1.0"
 
 [tool.poetry]
-name = "osam"
+name = "rs-osam"
 version = "0.0.0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 license = "Apache-2.0"
@@ -66,9 +66,16 @@ pytest-mock = "^3.14.0"
 responses = "^0.25.3"
 
 
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = true
+metadata = false
+
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 
 [tool.black]
