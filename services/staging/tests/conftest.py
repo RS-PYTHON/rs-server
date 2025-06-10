@@ -55,7 +55,7 @@ os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
 
 from rs_server_common.authentication.authentication_to_external import (  # pylint: disable=import-error
-    ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_staging.processors.authentication import RefreshTokenData
 from rs_server_staging.processors.processor_staging import Staging
@@ -356,7 +356,7 @@ def event_loop():
 @pytest.fixture(name="config")
 def authentication_config():
     """Return an example of external authentication configuration"""
-    return ExternalAuthenticationConfig(
+    return StationExternalAuthenticationConfig(
         station_id="cadip",
         domain="https://127.0.0.1:5000",
         service_name="cadip",

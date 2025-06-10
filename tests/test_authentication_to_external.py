@@ -33,7 +33,8 @@ from rs_server_adgs import adgs_retriever, adgs_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import authentication_to_external
 from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
+    S3ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
     create_external_auth_config,
     load_external_auth_config,
     load_external_auth_config_by_domain,
@@ -77,7 +78,7 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
     a mock external authentication configuration and HTTPXMock for simulating HTTP requests.
 
     Args:
-        get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture to get an StationExternalAuthenticationConfig object.
     """
 
     ext_auth_config = get_external_auth_config
@@ -192,7 +193,7 @@ def test_prepare_headers(get_external_auth_config):
     authentication configuration, with or without the authorization header.
 
     Args:
-        get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture to get an StationExternalAuthenticationConfig object.
     """
     ext_auth_config = get_external_auth_config
     # Test the prepare_headers function with the authorization header
@@ -217,7 +218,7 @@ def test_prepare_data(get_external_auth_config, call_refresh):
     based on the external authentication configuration loaded from the file.
 
     Args:
-        get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture to get an StationExternalAuthenticationConfig object.
     """
     ext_auth_config = get_external_auth_config
     # Expected data with the scope
@@ -296,7 +297,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
 
     Args:
         mocker: Mocking framework.
-        get_external_auth_config: Fixture providing an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture providing an StationExternalAuthenticationConfig object.
 
     Assertions:
         - The result is not None.
@@ -428,7 +429,7 @@ def test_load_external_auth_config_by_station_service_no_matching_service(mocker
     Args:
         mocker: Mocking framework.
         station_id: The ID of the station being tested.
-        get_external_auth_config: Fixture providing an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture providing an StationExternalAuthenticationConfig object.
 
     Assertions:
         - Result is `None` if no matching service is found.
@@ -525,7 +526,7 @@ def test_load_external_authentication_by_domain_config_valid(mocker, get_externa
 
     Args:
         mocker: Mocking framework.
-        get_external_auth_config: Fixture providing an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture providing an StationExternalAuthenticationConfig object.
 
     Assertions:
         - The result is not `None`.
@@ -556,6 +557,50 @@ def test_load_external_authentication_by_domain_config_valid(mocker, get_externa
     )
     result = load_external_auth_config_by_domain(ext_auth_config.domain)
     assert result is not None
+    assert result.station_id == ext_auth_config.station_id
+    assert result.service_name == ext_auth_config.service_name
+    assert (
+        result.domain
+        == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("station_id", ["cdse"])
+def test_load_s3_external_authentication_by_domain_config_valid(mocker, get_s3_external_auth_config):
+    """
+    Test successful loading of external authentication configuration by domain.
+    Variation of the previous test to ensure it is also working when loading an external S3 auth config.
+
+    Args:
+        mocker: Mocking framework.
+        get_external_auth_config: Fixture providing an S3ExternalAuthenticationConfig object.
+
+    Assertions:
+        - The result is not `None`.
+        - The returned configuration matches the mocked values for domain, station_id, and service_name.
+    """
+    # Mock the YAML content to simulate a valid configuration
+    ext_auth_config = get_s3_external_auth_config
+    mock_yaml_content = f"""
+    external_data_sources:
+      {ext_auth_config.station_id}:
+        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local
+        service:
+          name: {ext_auth_config.service_name}
+          url: "http://test_url:6000"
+        authentication:
+          auth_type: s3
+          access_key: test_access_key
+          access_token: test_access_token
+    """
+    mocker.patch(
+        "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
+        yaml.safe_load(mock_yaml_content),
+    )
+    result = load_external_auth_config_by_domain(ext_auth_config.domain)
+    assert result is not None
+    assert isinstance(result, S3ExternalAuthenticationConfig)
     assert result.station_id == ext_auth_config.station_id
     assert result.service_name == ext_auth_config.service_name
     assert (
@@ -650,7 +695,7 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
 
     Args:
         mocker: Mocking framework.
-        get_external_auth_config: Fixture providing an ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture providing an StationExternalAuthenticationConfig object.
 
     Assertions:
         - Result is `None` if no matching domain is found.
@@ -699,11 +744,11 @@ def test_create_external_auth_config(get_external_auth_config):
     using mock YAML content that simulates both matching and non-matching service configurations.
 
     Args:
-        get_external_auth_config: Fixture that returns a valid ExternalAuthenticationConfig object.
+        get_external_auth_config: Fixture that returns a valid StationExternalAuthenticationConfig object.
 
     The test validates:
     - The returned result is not None.
-    - The result is an instance of ExternalAuthenticationConfig.
+    - The result is an instance of StationExternalAuthenticationConfig.
     - All fields of the configuration (e.g., station_id, domain, service details, authentication details)
       match the expected values.
     """
@@ -732,7 +777,7 @@ def test_create_external_auth_config(get_external_auth_config):
     result = create_external_auth_config(ext_auth_config.station_id, station_dict, service_dict)
 
     assert result is not None
-    assert isinstance(result, ExternalAuthenticationConfig)
+    assert isinstance(result, StationExternalAuthenticationConfig)
     assert result.station_id == ext_auth_config.station_id
     assert result.domain == ext_auth_config.domain
     assert result.service_name == ext_auth_config.service_name
@@ -746,6 +791,53 @@ def test_create_external_auth_config(get_external_auth_config):
     assert result.client_secret == ext_auth_config.client_secret
     assert result.scope == ext_auth_config.scope
     assert result.authorization == ext_auth_config.authorization
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("station_id", ["cdse"])
+def test_create_s3_external_auth_config(get_s3_external_auth_config):
+    """
+    Unit test for the create_external_auth_config function.
+
+    This test verifies that a valid S3 external authentication configuration is successfully created
+    using mock YAML content that simulates both matching and non-matching service configurations.
+
+    Args:
+        get_external_auth_config: Fixture that returns a valid S3nExternalAuthenticationConfig object.
+
+    The test validates:
+    - The returned result is not None.
+    - The result is an instance of S3ExternalAuthenticationConfig.
+    - All fields of the configuration (e.g., station_id, domain, service details, authentication details)
+      match the expected values.
+    """
+    # Mock the YAML content to simulate a valid configuration
+    ext_auth_config = get_s3_external_auth_config
+    # Mock the YAML content where the service does not match
+    station_dict = {
+        "domain": ext_auth_config.domain,
+        "authentication": {
+            "auth_type": ext_auth_config.auth_type,
+            "access_key": ext_auth_config.access_key,
+            "secret_key": ext_auth_config.secret_key,
+        },
+    }
+    service_dict = {
+        "name": ext_auth_config.service_name,
+        "url": ext_auth_config.service_url,
+    }
+
+    result = create_external_auth_config(ext_auth_config.station_id, station_dict, service_dict)
+
+    assert result is not None
+    assert isinstance(result, S3ExternalAuthenticationConfig)
+    assert result.station_id == ext_auth_config.station_id
+    assert result.domain == ext_auth_config.domain
+    assert result.service_name == ext_auth_config.service_name
+    assert result.service_url == ext_auth_config.service_url
+    assert result.auth_type == ext_auth_config.auth_type
+    assert result.access_key == ext_auth_config.access_key
+    assert result.secret_key == ext_auth_config.secret_key
 
 
 @pytest.mark.unit
@@ -771,7 +863,7 @@ def test_create_external_auth_config_missing_keys(mocker):
     result = create_external_auth_config("adgs", station_dict, service_dict)
 
     assert result is None
-    mock_logger.assert_called_once_with("Error loading configuration, couldn't find a key: 'domain'")
+    mock_logger.assert_called_once_with("Error loading configuration, couldn't find a key: 'name'")
 
 
 @pytest.mark.unit
