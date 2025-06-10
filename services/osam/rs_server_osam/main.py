@@ -26,11 +26,7 @@ from osam.tasks import (
     build_users_data_map,
     link_rspython_users_and_obs_users,
 )
-from rs_server_common.middlewares import (
-    AuthenticationMiddleware,
-    HandleExceptionsMiddleware,
-    apply_middlewares,
-)
+from rs_server_common.authentication import oauth2
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request  # pylint: disable=C0411
@@ -49,12 +45,6 @@ router = APIRouter(tags=["OSAM service"])
 
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
-
-
-def must_be_authenticated(route_path: str) -> bool:
-    """Return true if a user must be authenticated to use this endpoint route path."""
-    no_auth = (route_path in "/_mgmt/ping") or (route_path in ["/api", "/api.html", "/health"])
-    return not no_auth
 
 
 @asynccontextmanager
@@ -117,10 +107,10 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     return JSONResponse(status_code=HTTP_200_OK, content=output)
 
 
-@router.get("storage/account/credentials")
+@router.get("/storage/account/credentials")
 async def get_credentials(request: Request):  # pylint: disable=unused-argument
     """Will be added soon."""
-    print(request)
+    auth_info = await oauth2.get_user_info(request)
 
 
 async def main_osam_task(timeout: int = 60):
@@ -188,8 +178,5 @@ async def ping():
 
 
 app.include_router(router)
-app.add_middleware(HandleExceptionsMiddleware)
-app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
-app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
