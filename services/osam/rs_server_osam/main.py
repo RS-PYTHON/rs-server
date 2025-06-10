@@ -124,6 +124,7 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
 async def get_credentials(request: Request):  # pylint: disable=unused-argument
     """Will be added soon."""
     auth_info = await oauth2.get_user_info(request)
+    user = auth_info.user_login
 
 
 async def main_osam_task(timeout: int = 60):
@@ -192,7 +193,8 @@ async def ping():
 
 app.include_router(router)
 app.add_middleware(HandleExceptionsMiddleware)
-app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
+# app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
+app.add_middleware(SessionMiddleware, secret_key="")
 app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
