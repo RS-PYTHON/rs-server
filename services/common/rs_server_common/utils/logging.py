@@ -107,6 +107,12 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record):
+
+        # Set default OpenTelemetry values if missing
+        for key in "otelTraceID", "otelSpanID", "otelServiceName", "otelTraceSampled":
+            if key not in record.__dict__:
+                record.__dict__[key] = None
+
         level_format = self._FORMATS.get(record.levelno)
         formatter = logging.Formatter(level_format, self._DATETIME)
         return formatter.format(record)
