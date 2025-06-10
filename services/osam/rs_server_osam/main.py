@@ -27,8 +27,14 @@ from osam.tasks import (
     link_rspython_users_and_obs_users,
 )
 from rs_server_common.authentication import oauth2
+from rs_server_common.middlewares import (
+    AuthenticationMiddleware,
+    HandleExceptionsMiddleware,
+    apply_middlewares,
+)
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
+from starlette.middleware.sessions import SessionMiddleware  # test if still needed
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
 from starlette.status import (  # pylint: disable=C0411
@@ -38,6 +44,13 @@ from starlette.status import (  # pylint: disable=C0411
 )
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
+
+
+def must_be_authenticated(route_path: str) -> bool:
+    """Return true if a user must be authenticated to use this endpoint route path."""
+    no_auth = (route_path in "/_mgmt/ping") or (route_path in ["/api", "/api.html", "/health"])
+    return not no_auth
+
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
@@ -178,5 +191,8 @@ async def ping():
 
 
 app.include_router(router)
+app.add_middleware(HandleExceptionsMiddleware)
+app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
+app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
