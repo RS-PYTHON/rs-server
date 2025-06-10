@@ -35,7 +35,7 @@ packages = [
 # All the dependencies for release are set in the sub-projects
 [tool.poetry.dependencies]
 python = "^3.11"
-osam = {path = "object_storage_access_manager", develop = true}
+rs-osam = {path = "object_storage_access_manager", develop = true}
 rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pytest = "^8.3.5"
