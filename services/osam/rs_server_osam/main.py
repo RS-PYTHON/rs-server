@@ -117,6 +117,12 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     return JSONResponse(status_code=HTTP_200_OK, content=output)
 
 
+@router.get("storage/account/credentials")
+async def get_credentials(request: Request):  # pylint: disable=unused-argument
+    """Will be added soon."""
+    print(request)
+
+
 async def main_osam_task(timeout: int = 60):
     """
     Asynchronous background task that periodically links RS-Python users to observation users.
