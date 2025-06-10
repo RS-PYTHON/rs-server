@@ -226,6 +226,10 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             get_ovh_handler().delete_user(obs_user["id"])
 
 
+def get_user_s3_credentials(user: str):
+    obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
+
+
 def build_s3_rights(user_info):  # pylint: disable=too-many-locals
     """
     Builds the S3 access rights structure for a user based on their Keycloak roles.

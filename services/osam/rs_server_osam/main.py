@@ -24,6 +24,7 @@ from fastapi import APIRouter, FastAPI, HTTPException
 from osam.tasks import (
     build_s3_rights,
     build_users_data_map,
+    get_user_s3_credentials,
     link_rspython_users_and_obs_users,
 )
 from rs_server_common.authentication import oauth2
@@ -124,7 +125,7 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
 async def get_credentials(request: Request):  # pylint: disable=unused-argument
     """Will be added soon."""
     auth_info = await oauth2.get_user_info(request)
-    user = auth_info.user_login
+    get_user_s3_credentials(auth_info.user_login)
 
 
 async def main_osam_task(timeout: int = 60):
