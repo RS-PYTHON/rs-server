@@ -15,6 +15,7 @@
 """
 ExternalAuthenticationConfig implementation.
 """
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -53,6 +54,10 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     service_name: str
     service_url: str
     auth_type: str
+
+
+@dataclass
+class StationExternalAuthenticationConfig(ExternalAuthenticationConfig):
     token_url: str
     grant_type: str
     username: str
@@ -64,11 +69,18 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     trusted_domains: list[str] | None = None
 
 
+@dataclass
+class S3ExternalAuthenticationConfig(ExternalAuthenticationConfig):
+    access_key: str
+    secret_key: str
+    trusted_domains: list[str] | None = None
+
+
 def create_external_auth_config(
     station_id: str,
     station_dict: dict[str, Any],
     service_dict: dict[str, Any],
-) -> ExternalAuthenticationConfig | None:
+) -> StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig | None:
     """
     Create an ExternalAuthenticationConfig object based on the provided station and service dictionaries.
 
@@ -84,7 +96,19 @@ def create_external_auth_config(
         KeyError: If any required keys are missing in the configuration dictionaries.
     """
     try:
-        return ExternalAuthenticationConfig(
+        if service_dict["name"] == "s3":
+            return S3ExternalAuthenticationConfig(
+                station_id=station_id,
+                domain=station_dict["domain"],
+                service_name=service_dict["name"],
+                service_url=service_dict["url"],
+                auth_type=station_dict.get("authentication", {}).get("auth_type"),
+                trusted_domains=station_dict.get("trusteddomains", None),
+                access_key=station_dict.get("authentication", {}).get("access_key"),
+                secret_key=station_dict.get("authentication", {}).get("secret_key"),
+            )
+
+        return StationExternalAuthenticationConfig(
             station_id=station_id,
             domain=station_dict["domain"],
             service_name=service_dict["name"],

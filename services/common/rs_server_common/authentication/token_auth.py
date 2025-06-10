@@ -26,7 +26,7 @@ import requests
 from fastapi import HTTPException
 from requests.auth import AuthBase
 from rs_server_common.authentication.external_authentication_config import (
-    ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
@@ -98,11 +98,11 @@ class TokenAuth(AuthBase):
         return "RSPY Token handler"
 
 
-def prepare_data(external_auth_config: ExternalAuthenticationConfig, call_refresh: bool) -> dict[str, str]:
+def prepare_data(external_auth_config: StationExternalAuthenticationConfig, call_refresh: bool) -> dict[str, str]:
     """Prepare data for token requests based on authentication configuration.
 
     Args:
-        external_auth_config (ExternalAuthenticationConfig): Configuration object containing authentication details.
+        external_auth_config (StationExternalAuthenticationConfig): Configuration object containing authentication details.
 
     Returns:
         Dict[str, str]: Dictionary containing the prepared data for the request.
@@ -124,11 +124,11 @@ def prepare_data(external_auth_config: ExternalAuthenticationConfig, call_refres
     return data_to_send
 
 
-def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> dict[str, str]:
+def prepare_headers(external_auth_config: StationExternalAuthenticationConfig) -> dict[str, str]:
     """Prepare HTTP headers for token requests.
 
     Args:
-        external_auth_config (ExternalAuthenticationConfig): Configuration object containing authentication details.
+        external_auth_config (StationExternalAuthenticationConfig): Configuration object containing authentication details.
 
     Returns:
         Dict[str, str]: Dictionary containing the prepared headers.
@@ -140,14 +140,14 @@ def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> dict[
     return headers
 
 
-def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
+def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationConfig):
     """
     Check if the token variable contains the mandatory attributes
 
     Args:
         token_dict (Any):
-        config (ExternalAuthenticationConfig):
-          external_auth_config (ExternalAuthenticationConfig): The configuration object loaded
+        config (StationExternalAuthenticationConfig):
+          external_auth_config (StationExternalAuthenticationConfig): The configuration object loaded
         from the rs-server.yaml file.
         token_dict (Dict): dictionary containing information about the current token
         information of the current token used to request data on the current station
@@ -193,7 +193,7 @@ def validate_token_format(token: str) -> None:
         )
 
 
-def __request_token(external_auth_config: ExternalAuthenticationConfig, data_to_send: dict[str, str]):
+def __request_token(external_auth_config: StationExternalAuthenticationConfig, data_to_send: dict[str, str]):
     """
     Subfunction of get_station_token. Request either access or refresh token.
     """
@@ -221,7 +221,7 @@ def __request_token(external_auth_config: ExternalAuthenticationConfig, data_to_
     return response.json()
 
 
-def get_station_token(external_auth_config: ExternalAuthenticationConfig, original_token_dict: dict) -> dict:
+def get_station_token(external_auth_config: StationExternalAuthenticationConfig, original_token_dict: dict) -> dict:
     """
     Retrieve and validate an authentication token for a specific station and service.
     Thee are two main use cases:
@@ -233,7 +233,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
           the authorisation server
 
     Args:
-        external_auth_config (ExternalAuthenticationConfig): The configuration object loaded
+        external_auth_config (StationExternalAuthenticationConfig): The configuration object loaded
         from the rs-server.yaml file.
         token_var (dask.distributed.Variable): variable shared between all workers containing
         information of the current token used to request data on the current station

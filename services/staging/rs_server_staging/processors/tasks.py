@@ -18,7 +18,7 @@ import logging
 import os
 
 from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3_MAX_RETRIES,
@@ -30,7 +30,7 @@ from rs_server_staging.utils.asset_info import AssetInfo
 
 def streaming_task(  # pylint: disable=R0913, R0917
     asset_info: AssetInfo,
-    config: ExternalAuthenticationConfig,
+    config: StationExternalAuthenticationConfig,
     auth: str,
 ):
     """
@@ -45,7 +45,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
         asset_info (AssetInfo): Object containing the essential informations about the product
             to download, such as its URL, the destination bucket name and the destination path/key
             in the S3 bucket where the file will be uploaded.
-        config (ExternalAuthenticationConfig): Authentification configuration containing the list of
+        config (StationExternalAuthenticationConfig): Authentification configuration containing the list of
         auth: The station token. This has to be refreshed from the caller
     Returns:
         str: The S3 file path where the file was uploaded.
