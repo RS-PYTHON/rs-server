@@ -147,3 +147,30 @@ class OVHApiHandler:
             Any: Response from the OVH API upon successful deletion.
         """
         return self.ovh_client.delete(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
+
+    def get_user_s3_access_key(self, user_id: str) -> str:
+        """
+        Retrieves the S3 access key for a given user.
+
+        Args:
+            user_id: The ID of the user.
+
+        Returns:
+            str: The S3 access key.
+        """
+        url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials"
+        return self.ovh_client.get(url)[0]["access"]  # tbd, what if more?
+
+    def get_user_s3_secret_key(self, user_id: str, access_key: str) -> str:
+        """
+        Retrieves the S3 secret key for a given user and access key.
+
+        Args:
+            user_id: The ID of the user.
+            access_key: The S3 access key associated with the secret key to retrieve.
+
+        Returns:
+            str: The S3 secret key.
+        """
+        url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials/{access_key}/secret"
+        return self.ovh_client.post(url)

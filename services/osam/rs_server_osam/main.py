@@ -28,11 +28,7 @@ from osam.tasks import (
     link_rspython_users_and_obs_users,
 )
 from rs_server_common.authentication import oauth2
-from rs_server_common.middlewares import (
-    AuthenticationMiddleware,
-    HandleExceptionsMiddleware,
-    apply_middlewares,
-)
+from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from starlette.middleware.sessions import SessionMiddleware  # test if still needed
@@ -125,7 +121,7 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
 async def get_credentials(request: Request):  # pylint: disable=unused-argument
     """Will be added soon."""
     auth_info = await oauth2.get_user_info(request)
-    get_user_s3_credentials(auth_info.user_login)
+    return get_user_s3_credentials(auth_info.user_login)
 
 
 async def main_osam_task(timeout: int = 60):
@@ -194,8 +190,7 @@ async def ping():
 
 app.include_router(router)
 app.add_middleware(HandleExceptionsMiddleware)
-# app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
-app.add_middleware(SessionMiddleware, secret_key="")
+app.add_middleware(SessionMiddleware, secret_key="")  # tbd
 app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
