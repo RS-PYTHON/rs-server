@@ -24,6 +24,7 @@ from osam.tasks import (
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
     link_rspython_users_and_obs_users,
+    get_user_s3_credentials
 )
 from osam.utils.tools import (
     get_configmap_user_values,
@@ -422,3 +423,39 @@ class TestDeleteObsUser:
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
         mock_create_description.assert_called_once_with("99999", template=DESCRIPTION_TEMPLATE)
         mock_ovh_handler_instance.delete_user.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "access_key_present, expected_result",
+    [
+        (True, {"access_key": "ak123", "secret_key": "sk123"}),
+        (False, {"detail": "No s3 credentials associated with obs_test"}),
+    ]
+)
+@patch("osam.tasks.get_ovh_handler")
+@patch("osam.tasks.get_keycloak_handler")
+def test_get_user_s3_credentials(
+    mock_get_keycloak_handler,
+    mock_get_ovh_handler,
+    access_key_present,
+    expected_result
+):
+    obs_user = {"id": "obs-user-id", "username": "obs_test"}
+
+    # Mock Keycloak handler to return the OBS user
+    mock_keycloak_instance = MagicMock()
+    mock_keycloak_instance.get_obs_user_from_keycloak_username.return_value = obs_user
+    mock_get_keycloak_handler.return_value = mock_keycloak_instance
+
+    # Mock OVH handler depending on test case
+    mock_ovh_instance = MagicMock()
+    if access_key_present:
+        mock_ovh_instance.get_user_s3_access_key.return_value = "ak123"
+        mock_ovh_instance.get_user_s3_secret_key.return_value = "sk123"
+    else:
+        mock_ovh_instance.get_user_s3_access_key.return_value = None
+
+    mock_get_ovh_handler.return_value = mock_ovh_instance
+
+    # Check result
+    assert get_user_s3_credentials("obs_test") == expected_result
