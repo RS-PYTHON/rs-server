@@ -14,10 +14,12 @@
 
 """Main tasks executed by OSAM service."""
 
+import copy
 import json
 import logging
 import os
-from datetime import datetime
+from collections.abc import Sequence
+from datetime import datetime, timezone
 from functools import wraps
 
 from opentelemetry import trace
@@ -39,6 +41,42 @@ from rs_server_common.utils.logging import Logging
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
+STRKEY_ACCESS_RIGHT_READ_LIST = "read"
+STRKEY_ACCESS_RIGHT_READ_DWN_LIST = "read_download"
+STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST = "write_download"
+
+# Templates for s3 access rights final lists
+S3_ACCESS_RIGHTS_TEMPLATE = {"Version": "%date%", "Statement": list[dict[str, Sequence[str]]]}
+
+BLOCK_LIST_READ_TEMPLATE = {
+    "Action": ["s3:GetObject", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+    "Effect": "Allow",
+    "Resource": ["arn:aws:s3:::%placeholder%", "arn:aws:s3:::%placeholder%*"],
+    "Sid": "ROContainer",
+}
+
+BLOCk_LIST_READ_DOWNLOAD_TEMPLATE = {
+    "Action": ["s3:GetObject", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+    "Effect": "Allow",
+    "Resource": ["arn:aws:s3:::%placeholder%", "arn:aws:s3:::%placeholder%*"],
+    "Sid": "ROContainer",
+}
+
+BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
+    "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:ListMultipartUploadParts",
+        "s3:ListBucketMultipartUploads",
+        "s3:AbortMultipartUpload",
+        "s3:GetBucketLocation",
+    ],
+    "Effect": "Allow",
+    "Resource": ["arn:aws:s3:::%placeholder%", "arn:aws:s3:::%placeholder%*"],
+    "Sid": "RWContainer",
+}
 
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
@@ -227,6 +265,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             get_ovh_handler().delete_user(obs_user["id"])
 
 
+@traced_function()
 def build_s3_rights(user_info):  # pylint: disable=too-many-locals
     """
     Builds the S3 access rights structure for a user based on their Keycloak roles.
@@ -274,28 +313,40 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
 
     # Step 4: Output
     output = {
-        "read": sorted(read_only),
-        "read_download": sorted(read_download),
-        "write_download": sorted(write_download),
+        STRKEY_ACCESS_RIGHT_READ_LIST: sorted(read_only),
+        STRKEY_ACCESS_RIGHT_READ_DWN_LIST: sorted(read_download),
+        STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST: sorted(write_download),
     }
 
     logger.info(json.dumps(output, indent=2))
     return output
 
 
-def build_full_s3_rights(user_s3_rights: dict):
+def update_s3_rights_lists(s3_rights):
     """
-    Update the S3 access rights structure for a user based on their Keycloak roles.
+    Updates the S3 access rights structure for a user based on their Keycloak roles.
     """
-    bloc_list_read = {}
-    bloc_list_read_download = {}
-    bloc_list_write_download = {
-        "Action": ["s3:GetObject", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
-        "Effect": "Allow",
-        "Resource": ["arn:aws:s3:::ONE_LINE_FROM_THE_LIST", "arn:aws:s3:::ONE_LINE_FROM_THE_LIST/*"],
-        "Sid": "ROContainer",
-    }
-    return {
-        "Version": str(datetime.now()),
-        "Statement": [bloc_list_read, bloc_list_read_download, bloc_list_write_download],
-    }
+    # fields from the s3 access rights lists
+    access_rights_list_keys = [
+        (STRKEY_ACCESS_RIGHT_READ_LIST, BLOCK_LIST_READ_TEMPLATE),
+        (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCk_LIST_READ_DOWNLOAD_TEMPLATE),
+        (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE),
+    ]
+    statements = []
+    for key, block in access_rights_list_keys:
+        if s3_rights.get(key):
+            template = copy.deepcopy(block)
+            resources = []
+            for path in s3_rights[key]:
+                for line in template["Resource"]:
+                    resources.append(f"{line.replace('%placeholder%', path)}")
+
+            template["Resource"] = resources
+            statements.append(template)
+
+    # Fill in main access policy template
+    final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
+    final_policy["Version"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    final_policy["Statement"] = statements
+    logger.info(json.dumps(final_policy, indent=2))
+    return final_policy
