@@ -119,7 +119,8 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
 
 @router.get("/storage/account/credentials")
 async def get_credentials(request: Request):  # pylint: disable=unused-argument
-    """Will be added soon."""
+    """Endpoint used to get user credentials from cloud provider.
+    Request MUST contain oauth2 cookie in header"""
     auth_info = await oauth2.get_user_info(request)
     return get_user_s3_credentials(auth_info.user_login)
 

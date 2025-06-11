@@ -435,6 +435,24 @@ class TestDeleteObsUser:
 @patch("osam.tasks.get_ovh_handler")
 @patch("osam.tasks.get_keycloak_handler")
 def test_get_user_s3_credentials(mock_get_keycloak_handler, mock_get_ovh_handler, access_key_present, expected_result):
+    """
+    Test the get_user_s3_credentials function with and without available S3 credentials.
+
+    This test verifies the behavior of the function under two scenarios:
+    1. When S3 credentials (access key and secret key) are present for a user.
+    2. When S3 credentials are not available for the user.
+
+    The Keycloak and OVH handler dependencies are mocked to isolate the test from external systems.
+
+    Args:
+        mock_get_keycloak_handler: Mocked Keycloak handler used to simulate fetching the OBS user.
+        mock_get_ovh_handler: Mocked OVH handler used to simulate fetching S3 credentials.
+        access_key_present (bool): Flag indicating whether S3 credentials should be present in the test case.
+        expected_result (dict): The expected result of calling get_user_s3_credentials based on the scenario.
+
+    Asserts:
+        The result of get_user_s3_credentials("obs_test") matches the expected_result.
+    """
     obs_user = {"id": "obs-user-id", "username": "obs_test"}
 
     # Mock Keycloak handler to return the OBS user
