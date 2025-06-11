@@ -34,7 +34,7 @@ RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develo
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    osam-*.whl
+    rs_osam-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
