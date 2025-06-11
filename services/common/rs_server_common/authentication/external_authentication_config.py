@@ -38,15 +38,6 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
         service_name (str): The name of the external service.
         service_url (str): The URL of the external service.
         auth_type (str): The type of authentication used (e.g., 'token', 'basic').
-        token_url (str): The URL to request the authentication token.
-        grant_type (str): The grant type used for obtaining the token. Currently, only 'password' is available.
-        username (str): The username used for authentication.
-        password (str): The password used for authentication.
-        client_id (str): The client ID used for authentication.
-        client_secret (str): The client secret used for authentication.
-        scope (Optional[str]): The scope of access requested in the authentication token (if applicable).
-        authorization (Optional[str]): Additional authorization header (if required).
-        trusted_domains (Optional[str]): The list of allowed hosts for http redirection
     """
 
     station_id: str
@@ -58,6 +49,26 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
 
 @dataclass
 class StationExternalAuthenticationConfig(ExternalAuthenticationConfig):
+    """
+    Configuration class for storing external authentication details for stations.
+
+    Attributes:
+        station_id (str): The unique identifier for the station requesting the token.
+        domain (str): The domain for the external service.
+        service_name (str): The name of the external service.
+        service_url (str): The URL of the external service.
+        auth_type (str): The type of authentication used (e.g., 'token', 'basic').
+        token_url (str): The URL to request the authentication token.
+        grant_type (str): The grant type used for obtaining the token. Currently, only 'password' is available.
+        username (str): The username used for authentication.
+        password (str): The password used for authentication.
+        client_id (str): The client ID used for authentication.
+        client_secret (str): The client secret used for authentication.
+        scope (Optional[str]): The scope of access requested in the authentication token (if applicable).
+        authorization (Optional[str]): Additional authorization header (if required).
+        trusted_domains (Optional[str]): The list of allowed hosts for http redirection
+    """
+
     token_url: str
     grant_type: str
     username: str
@@ -71,6 +82,20 @@ class StationExternalAuthenticationConfig(ExternalAuthenticationConfig):
 
 @dataclass
 class S3ExternalAuthenticationConfig(ExternalAuthenticationConfig):
+    """
+    Configuration class for storing external authentication details for S3 buckets.
+
+    Attributes:
+        station_id (str): The unique identifier for the station requesting the token.
+        domain (str): The domain for the external service.
+        service_name (str): The name of the external service.
+        service_url (str): The URL of the external service.
+        auth_type (str): The type of authentication used (e.g., 'token', 'basic').
+        access_key (str): Access key to the S3 storage
+        secret_key (str): Secret key to the S3 storage
+        trusted_domains (Optional[str]): The list of allowed hosts for http redirection
+    """
+
     access_key: str
     secret_key: str
     trusted_domains: list[str] | None = None

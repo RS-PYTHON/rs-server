@@ -468,7 +468,9 @@ class Staging(
             # Add the user_collection as main directory, as soon as the authentication will be
             # implemented in this staging process
             s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
-            self.assets_info.append(AssetInfo(asset_content.href, s3_obj_path, s3_bucket_name))
+            self.assets_info.append(
+                AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name),
+            )
             # update the s3 path, this will be checked in the rs-server-catalog in the
             # publishing phase
             asset_content.href = f"s3://rtmpop/{s3_obj_path}"
@@ -512,12 +514,12 @@ class Staging(
 
             for s3_obj in self.assets_info:
                 try:
-                    s3_handler.delete_file_from_s3(s3_obj.get_s3_bucket(), s3_obj.get_s3_file())
+                    s3_handler.delete_file_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
                 except RuntimeError as error:
                     self.logger.warning(
                         "Failed to delete from the bucket key s3://%s/%s : %s",
-                        s3_obj.get_s3_bucket(),
-                        s3_obj.get_s3_file(),
+                        s3_obj.s3_bucket,
+                        s3_obj.s3_file,
                         error,
                     )
                     continue
@@ -923,7 +925,7 @@ class Staging(
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
-        domains = list({urlparse(asset.get_product_url()).hostname for asset in self.assets_info})
+        domains = list({urlparse(asset.product_url).hostname for asset in self.assets_info})
         self.logger.info(f"Staging from domain(s) {domains}")
         if len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")

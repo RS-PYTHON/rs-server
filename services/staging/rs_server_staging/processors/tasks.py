@@ -18,6 +18,7 @@ import logging
 import os
 
 from rs_server_common.authentication.authentication_to_external import (
+    S3ExternalAuthenticationConfig,
     StationExternalAuthenticationConfig,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
@@ -30,7 +31,7 @@ from rs_server_staging.utils.asset_info import AssetInfo
 
 def streaming_task(  # pylint: disable=R0913, R0917
     asset_info: AssetInfo,
-    config: StationExternalAuthenticationConfig,
+    config: StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig,
     auth: str,
 ):
     """
@@ -45,7 +46,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
         asset_info (AssetInfo): Object containing the essential informations about the product
             to download, such as its URL, the destination bucket name and the destination path/key
             in the S3 bucket where the file will be uploaded.
-        config (StationExternalAuthenticationConfig): Authentification configuration containing the list of
+        config (StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig): Authentification
+            configuration containing the list of trusted domains
         auth: The station token. This has to be refreshed from the caller
     Returns:
         str: The S3 file path where the file was uploaded.
@@ -65,9 +67,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("The streaming task started")
 
-    product_url = asset_info.get_product_url()
-    s3_file = asset_info.get_s3_file()
-    bucket = asset_info.get_s3_bucket()
+    product_url = asset_info.product_url
+    s3_file = asset_info.s3_file
+    bucket = asset_info.s3_bucket
     # time.sleep(5)
     # get the retry timeout
     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))

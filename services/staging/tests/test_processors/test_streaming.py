@@ -300,18 +300,18 @@ class TestPrepareStreaming:
         # Assert that each asset_info has the correct bucket name
         assert len(staging_instance.assets_info) == 4
         assert (
-            staging_instance.assets_info[0].get_product_url() == "https://fake-data/TC001"
-            and staging_instance.assets_info[0].get_s3_bucket() == "rspython-ops-catalog-copernicus-s1-l1"
+            staging_instance.assets_info[0].product_url == "https://fake-data/TC001"
+            and staging_instance.assets_info[0].s3_bucket == "rspython-ops-catalog-copernicus-s1-l1"
         )
         assert (
-            staging_instance.assets_info[1].get_product_url() == "https://fake-data/TC002"
-            and staging_instance.assets_info[1].get_s3_bucket() == "rspython-ops-catalog-all-production"
+            staging_instance.assets_info[1].product_url == "https://fake-data/TC002"
+            and staging_instance.assets_info[1].s3_bucket == "rspython-ops-catalog-all-production"
         )
         assert (
-            staging_instance.assets_info[2].get_product_url() == "https://fake-data/TC003"
-            and staging_instance.assets_info[2].get_s3_bucket() == "rspython-ops-catalog-copernicus-s1-aux"
+            staging_instance.assets_info[2].product_url == "https://fake-data/TC003"
+            and staging_instance.assets_info[2].s3_bucket
         )
         assert (
-            staging_instance.assets_info[3].get_product_url() == "https://fake-data/TC004"
-            and staging_instance.assets_info[3].get_s3_bucket() == "rspython-ops-catalog-copernicus-s1-aux-infinite"
+            staging_instance.assets_info[3].product_url == "https://fake-data/TC004"
+            and staging_instance.assets_info[3].s3_bucket == "rspython-ops-catalog-copernicus-s1-aux-infinite"
         )
