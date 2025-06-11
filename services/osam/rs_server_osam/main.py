@@ -22,7 +22,6 @@ from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from osam.tasks import (
-    build_full_s3_rights,
     build_s3_rights,
     build_users_data_map,
     link_rspython_users_and_obs_users,
