@@ -131,6 +131,8 @@ class OVHApiHandler:
                     f"Exit from waiting, with status = {user_status.get('status')} "
                     f"in {time.time() - start_time} seconds",
                 )
+                # Create a new S3™ compatible storage credentials for an user
+                self.ovh_client.post(f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials")
                 return user
             time.sleep(poll_interval)
 
@@ -161,7 +163,7 @@ class OVHApiHandler:
         url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials"
         try:
             ovh_response = self.ovh_client.get(url)[0]["access"]
-        except (IndexError, KeyError):
+        except IndexError:
             logger.error(f"List index out of range when fetching S3 credentials for user_id: {user_id}", exc_info=True)
             return None
         return ovh_response
