@@ -148,7 +148,7 @@ class OVHApiHandler:
         """
         return self.ovh_client.delete(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
 
-    def get_user_s3_access_key(self, user_id: str) -> str:
+    def get_user_s3_access_key(self, user_id: str) -> str | None:
         """
         Retrieves the S3 access key for a given user.
 
@@ -159,7 +159,12 @@ class OVHApiHandler:
             str: The S3 access key.
         """
         url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials"
-        return self.ovh_client.get(url)[0]["access"]  # tbd, what if more?
+        try:
+            ovh_response = self.ovh_client.get(url)[0]["access"]
+        except (IndexError, KeyError):
+            logger.error(f"List index out of range when fetching S3 credentials for user_id: {user_id}", exc_info=True)
+            return None
+        return ovh_response
 
     def get_user_s3_secret_key(self, user_id: str, access_key: str) -> str:
         """
@@ -173,4 +178,4 @@ class OVHApiHandler:
             str: The S3 secret key.
         """
         url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials/{access_key}/secret"
-        return self.ovh_client.post(url)
+        return self.ovh_client.post(url)["secret"]

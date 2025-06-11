@@ -237,9 +237,10 @@ def get_user_s3_credentials(user: str):
         dict: A dictionary containing the 'access_key' and 'secret_key' for the user's S3 storage.
     """
     obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
-    access_key = get_ovh_handler().get_user_s3_access_key(obs_user)
-    secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
-    return {"access_key": access_key, "secret_key": secret_key}
+    if access_key := get_ovh_handler().get_user_s3_access_key(obs_user):
+        secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
+        return {"access_key": access_key, "secret_key": secret_key}
+    return {"detail": f"No s3 credentials associated with {user}"}
 
 
 def build_s3_rights(user_info):  # pylint: disable=too-many-locals
