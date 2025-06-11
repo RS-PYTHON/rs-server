@@ -23,8 +23,8 @@ from osam.tasks import (
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
+    get_user_s3_credentials,
     link_rspython_users_and_obs_users,
-    get_user_s3_credentials
 )
 from osam.utils.tools import (
     get_configmap_user_values,
@@ -430,16 +430,11 @@ class TestDeleteObsUser:
     [
         (True, {"access_key": "ak123", "secret_key": "sk123"}),
         (False, {"detail": "No s3 credentials associated with obs_test"}),
-    ]
+    ],
 )
 @patch("osam.tasks.get_ovh_handler")
 @patch("osam.tasks.get_keycloak_handler")
-def test_get_user_s3_credentials(
-    mock_get_keycloak_handler,
-    mock_get_ovh_handler,
-    access_key_present,
-    expected_result
-):
+def test_get_user_s3_credentials(mock_get_keycloak_handler, mock_get_ovh_handler, access_key_present, expected_result):
     obs_user = {"id": "obs-user-id", "username": "obs_test"}
 
     # Mock Keycloak handler to return the OBS user
