@@ -24,6 +24,7 @@ from osam.tasks import (
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
+    get_user_s3_credentials,
     link_rspython_users_and_obs_users,
     update_s3_rights_lists,
 )
@@ -628,3 +629,51 @@ class TestDeleteObsUser:
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
         mock_create_description.assert_called_once_with("99999", template=DESCRIPTION_TEMPLATE)
         mock_ovh_handler_instance.delete_user.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "obs_user_present, access_key_present, raise_exception, expected_result",
+    [
+        # 1. Success: credentials returned
+        (True, True, False, {"access_key": "ak123", "secret_key": "sk123"}),
+        # 2. OBS user found but no access key
+        (True, False, False, {"detail": "Error reading user obs_test from OVH."}),
+        # 3. OBS user not found
+        (False, False, False, {"detail": "No s3 credentials associated with obs_test"}),
+        # 4. Exception raised during processing
+        (True, True, True, {"detail": "No s3 credentials associated with obs_test"}),
+    ],
+)
+@patch("osam.tasks.get_ovh_handler")
+@patch("osam.tasks.get_keycloak_handler")
+def test_get_user_s3_credentials(
+    mock_get_keycloak_handler,
+    mock_get_ovh_handler,
+    obs_user_present,
+    access_key_present,
+    raise_exception,
+    expected_result,
+):
+    """Test cases for get_s3_credentials"""
+    user = "obs_test"
+
+    # Setup mock Keycloak handler
+    mock_keycloak_instance = MagicMock()
+    mock_keycloak_instance.get_obs_user_from_keycloak_username.return_value = (
+        {"id": "obs-user-id", "username": user} if obs_user_present else None
+    )
+    mock_get_keycloak_handler.return_value = mock_keycloak_instance
+
+    # Setup mock OVH handler
+    mock_ovh_instance = MagicMock()
+    if obs_user_present and not raise_exception:
+        mock_ovh_instance.get_user_s3_access_key.return_value = "ak123" if access_key_present else None
+        if access_key_present:
+            mock_ovh_instance.get_user_s3_secret_key.return_value = "sk123"
+    elif raise_exception:
+        mock_ovh_instance.get_user_s3_access_key.side_effect = Exception("Simulated failure")
+
+    mock_get_ovh_handler.return_value = mock_ovh_instance
+
+    result = get_user_s3_credentials(user)
+    assert result == expected_result

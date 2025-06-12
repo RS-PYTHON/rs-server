@@ -18,7 +18,11 @@ import logging
 import os
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
-from keycloak.exceptions import KeycloakPutError
+from keycloak.exceptions import (
+    KeycloakAuthenticationError,
+    KeycloakConnectionError,
+    KeycloakPutError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,43 @@ class KeycloakHandler:
             return keycloak_user["attributes"]["obs-user"]
         except KeyError:
             return None
+
+    def get_obs_user_from_keycloak_username(self, username: str) -> str | None:
+        """
+        Fetches the 'obs-user' attribute from Keycloak for the given username.
+
+        Returns:
+            str or None: The 'obs-user' value if available, otherwise None.
+
+        Raises:
+            KeycloakConnectionError, KeycloakAuthenticationError: For critical Keycloak issues.
+        """
+        try:
+            user_id = self.keycloak_admin.get_user_id(username)
+            user = self.keycloak_admin.get_user(user_id)  # type: ignore
+            attributes = user.get("attributes", {}) if user else {}
+
+            obs_user = attributes.get("obs-user")
+            if isinstance(obs_user, list) and obs_user:
+                return obs_user[0]
+            if isinstance(obs_user, str):
+                return obs_user
+
+            logger.warning(
+                f"Unexpected or missing 'obs-user' for '{username}' (ID: {user_id}). "
+                f"Type: {type(obs_user)} Value: {obs_user}",
+            )
+        except (KeycloakConnectionError, KeycloakAuthenticationError) as e:
+            logger.error(f"Keycloak critical error for '{username}': {e}")
+            raise
+        except KeycloakError as e:
+            logger.error(f"Keycloak error retrieving user '{username}': {e}")
+            raise
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Unexpected error for user '{username}': {e}")
+            raise
+
+        return None
 
     def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str):
         """Sets the attribute 'obs-user' in the given Keycloak user.
