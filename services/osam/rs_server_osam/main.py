@@ -124,26 +124,29 @@ async def accounts_update():
 
 @router.get("/storage/account/{user}/rights")
 async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
-    """Builds the s3 rights list"""
+    """
+    Retrieves and constructs the S3 access rights policy for a specified user.
+
+    This endpoint:
+      - Looks up the user's Keycloak roles from the in-memory user store.
+      - Parses the roles to determine S3 access permissions (read, read+download, write+download).
+      - Generates a full S3 access policy document using predefined templates.
+
+    Args:
+        request (Request): FastAPI request object (currently unused).
+        user (str): Username of the account for which to retrieve access rights.
+
+    Returns:
+        JSONResponse: A JSON response containing the constructed AWS S3 access policy document.
+
+    Raises:
+        HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
+    """
     logger.debug("Endpoint for getting the user rights")
     if user not in app.extra["users_info"]:
         return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
     s3_rights = build_s3_rights(app.extra["users_info"][user])
-    # s3_rights = {   'read': [   'rspython-ops-catalog-antoine-production/*/s1-l1/',
-    #             'rspython-ops-catalog-antoine-s3-hkm/*/s1-l1/',
-    #             'rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/',
-    #             'rspython-ops-catalog-default-s1-l1/*/s1-l1/',
-    #             'rspython-ops-catalog-jules-production/*/s1-l1/',
-    #             'rspython-ops-catalog/*/s1-l1/'],
-    # 'read_download': [   'rspython-ops-catalog-default-s1-l1/agrosu/*/',
-    #                      'rspython-ops-catalog-default-s1-l1/osam/s1-l1/',
-    #                      'rspython-ops-catalog-emilie-s1-aux-infinite/agrosu/*/',
-    #                      'rspython-ops-catalog/agrosu/*/',
-    #                      'rspython-ops-catalog/osam/s1-l1/'],
-    # 'write_download': [   'rspython-ops-catalog-default-s1-l1/osam/s1-l1/',
-    #                       'rspython-ops-catalog/osam/s1-l1/']
-    #                       }
     output = update_s3_rights_lists(s3_rights)
     return JSONResponse(status_code=HTTP_200_OK, content=output)
 

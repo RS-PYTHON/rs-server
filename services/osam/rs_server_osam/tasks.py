@@ -322,10 +322,25 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
     return output
 
 
+@traced_function()
 def update_s3_rights_lists(s3_rights):
     """
-    Updates the S3 access rights structure for a user based on their Keycloak roles.
+    Updates the S3 access policy document for a user based on their Keycloak-derived access rights.
+
+    This function builds a valid S3 bucket policy by filling in pre-defined policy templates
+    (`BLOCK_LIST_READ_TEMPLATE`, `BLOCk_LIST_READ_DOWNLOAD_TEMPLATE`, `BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE`)
+    using the access rights categorized into "read", "read_download", and "write_download" lists.
+
+    Args:
+        s3_rights (dict): Dictionary of S3 access rights with keys:
+            - STRKEY_ACCESS_RIGHT_READ_LIST
+            - STRKEY_ACCESS_RIGHT_READ_DWN_LIST
+            - STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST
+
+    Returns:
+        dict: A complete S3 policy document with updated statements reflecting the user's access rights.
     """
+
     # fields from the s3 access rights lists
     access_rights_list_keys = [
         (STRKEY_ACCESS_RIGHT_READ_LIST, BLOCK_LIST_READ_TEMPLATE),
