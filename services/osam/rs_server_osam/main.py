@@ -191,7 +191,7 @@ async def ping():
 
 app.include_router(router)
 app.add_middleware(HandleExceptionsMiddleware)
-app.add_middleware(SessionMiddleware, secret_key="")  # tbd
+app.add_middleware(SessionMiddleware, secret_key=os.environ.get("RSPY_COOKIE_SECRET", ""))
 app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
