@@ -522,7 +522,7 @@ class TestStagingMainExecution:
 
         # Mock dependencies
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
-        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=False)
+        mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=None)
 
         # Set stream_list with one feature (to trigger task preparation)
         mock_feature = mocker.Mock()
@@ -540,7 +540,7 @@ class TestStagingMainExecution:
 
         # Mock dependencies
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
-        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
+        mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
 
         # Set the assets_info to an empty list (no features to process)
         staging_instance.assets_info = []
@@ -562,7 +562,7 @@ class TestStagingMainExecution:
         mock_logger = mocker.patch.object(staging_instance, "logger")
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         # Simulate successful task preparation
-        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
+        mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
         staging_instance.assets_info = [AssetInfo("some_asset", "fake_s3_path", "fake_bucket")]
 
         # Mock token retrieval
@@ -618,7 +618,7 @@ class TestStagingMainExecution:
         mock_logger = mocker.patch.object(staging_instance, "logger")
         mocker.patch.object(staging_instance, "log_job_execution")
         # Simulate successful task preparation
-        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
+        mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
 
         # Mock token retrieval
         mocker.patch(

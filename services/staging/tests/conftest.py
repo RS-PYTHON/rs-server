@@ -137,6 +137,19 @@ def set_db_env_var_fixture(monkeypatch):
     yield  # restore the environment
 
 
+@pytest.fixture(name="set_config_file_env_var")
+def set_config_file_env_var_fixture(monkeypatch):
+    """
+    Fixture to set environment variable for expiration_bucket.csv config file used
+    to retrieve bucket name when staging item.
+
+    Args:
+        monkeypatch: Pytest utility for temporarily modifying environment variables.
+    """
+    monkeypatch.setenv("BUCKET_CONFIG_FILE_PATH", S3_EXPIRATION_BUCKET_CSV_FILE)
+    yield
+
+
 @pytest.fixture(name="staging_client")
 def client_(mocker):
     """init fastapi client app."""
@@ -283,7 +296,7 @@ def staging_input_for_config_tests_2():
 
 
 @pytest.fixture(name="staging_instance")
-def staging(mocker, config):
+def staging(mocker, config, set_config_file_env_var):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_request = mocker.Mock()
@@ -315,11 +328,6 @@ def staging(mocker, config):
     mock_station_token_list_lock = mocker.Mock()
     mock_station_token_list_lock.__enter__ = mocker.Mock(return_value=mock_station_token_list_lock)
     mock_station_token_list_lock.__exit__ = mocker.Mock(return_value=None)
-
-    mocker.patch.dict(
-        os.environ,
-        {"BUCKET_CONFIG_FILE_PATH": S3_EXPIRATION_BUCKET_CSV_FILE},
-    )
 
     # Instantiate the Staging class with the mocked dependencies
     staging_instance = Staging(

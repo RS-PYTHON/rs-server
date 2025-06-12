@@ -45,9 +45,6 @@ from rs_server_common.authentication.authentication_to_external import (
     load_external_auth_config_by_domain,
 )
 from rs_server_common.authentication.token_auth import TokenAuth
-from rs_server_common.s3_storage_handler.s3_storage_config import (
-    get_bucket_name_from_config,
-)
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
@@ -57,7 +54,7 @@ from rs_server_staging.processors.authentication import (
     RefreshTokenData,
     update_station_token,
 )
-from rs_server_staging.processors.tasks import streaming_task
+from rs_server_staging.processors.tasks import prepare_streaming_tasks, streaming_task
 from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
 from starlette.requests import Request
@@ -390,7 +387,7 @@ class Staging(
             # for debugging only
             for item in item_collection.get("features"):
                 self.logger.debug(f"Session {item.get('id')} has {len(item.get('assets'))} assets")
-            # end of TODO
+
             self.create_streaming_list(features, item_collection)
             return True
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
@@ -445,37 +442,6 @@ class Staging(
             raise RuntimeError(
                 "The 'features' field is missing in the response from the catalog service.",
             ) from ke
-
-    def prepare_streaming_tasks(self, catalog_collection: str, feature: Feature):
-        """Prepare tasks for the given feature to the Dask cluster.
-
-        Args:
-            catalog_collection (str): Name of the catalog collection.
-            feature: The feature containing assets to download.
-
-        Returns:
-            True if the info has been constructed, False otherwise
-        """
-        # Get infos from feature to retrieve S3 bucket name from configuration
-        owner = feature.properties.get("owner", "*")
-        eopf_type = feature.properties.get("eopf:type", "*")
-        s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
-
-        for asset_name, asset_content in feature.assets.items():
-            if not asset_content.href or not asset_name:
-                self.logger.error("Missing href or title in asset dictionary")
-                return False
-            # Add the user_collection as main directory, as soon as the authentication will be
-            # implemented in this staging process
-            s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
-            self.assets_info.append(
-                AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name),
-            )
-            # update the s3 path, this will be checked in the rs-server-catalog in the
-            # publishing phase
-            asset_content.href = f"s3://rtmpop/{s3_obj_path}"
-            feature.assets[asset_name] = asset_content
-        return True
 
     def delete_files_from_bucket(self):
         """
@@ -845,7 +811,6 @@ class Staging(
         if len(workers) == 0:
             self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
             self.cluster.scale(1)
-        # end of TODO
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
@@ -917,8 +882,10 @@ class Staging(
         # Step 1: Validate and prepare streaming tasks
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
-            if not self.prepare_streaming_tasks(catalog_collection, feature):
+            new_assets_info = prepare_streaming_tasks(catalog_collection, feature)
+            if new_assets_info is None:
                 return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
+            self.assets_info += new_assets_info
 
         if not self.assets_info:
             self.logger.info("There are no assets to stage. Exiting....")

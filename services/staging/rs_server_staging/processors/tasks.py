@@ -21,12 +21,19 @@ from rs_server_common.authentication.authentication_to_external import (
     S3ExternalAuthenticationConfig,
     StationExternalAuthenticationConfig,
 )
+from rs_server_common.s3_storage_handler.s3_storage_config import (
+    get_bucket_name_from_config,
+)
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3_MAX_RETRIES,
     S3_RETRY_TIMEOUT,
     S3StorageHandler,
 )
+from rs_server_common.utils.logging import Logging
 from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.rspy_models import Feature
+
+logger = Logging.default(__name__)
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
@@ -117,3 +124,37 @@ def streaming_task(  # pylint: disable=R0913, R0917
             ) from e
     logger_dask.info(f"The streaming task finished. Returning name of the streamed file {s3_file}")
     return s3_file
+
+
+def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[AssetInfo]:
+    """Prepare tasks for the given feature to the Dask cluster.
+
+    Args:
+        catalog_collection (str): Name of the catalog collection.
+        feature: The feature containing assets to download.
+
+    Returns:
+        True if the info has been constructed, False otherwise
+    """
+    # Get infos from feature to retrieve S3 bucket name from configuration
+    owner = feature.properties.get("owner", "*")
+    eopf_type = feature.properties.get("eopf:type", "*")
+    s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
+
+    assets_info: list[AssetInfo] = []
+
+    for asset_name, asset_content in feature.assets.items():
+        if not asset_content.href or not asset_name:
+            logger.error("Missing href or title in asset dictionary")
+            return None
+        # Add the user_collection as main directory, as soon as the authentication will be
+        # implemented in this staging process
+        s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
+        assets_info.append(
+            AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name),
+        )
+        # update the s3 path, this will be checked in the rs-server-catalog in the
+        # publishing phase
+        asset_content.href = f"s3://rtmpop/{s3_obj_path}"
+        feature.assets[asset_name] = asset_content
+    return assets_info
