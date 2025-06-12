@@ -226,6 +226,28 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             get_ovh_handler().delete_user(obs_user["id"])
 
 
+def get_user_s3_credentials(user: str):
+    """
+    Retrieves the S3 access and secret keys for a given user.
+
+    Args:
+        user (str): The username for whom to retrieve S3 credentials.
+
+    Returns:
+        dict: A dictionary containing the 'access_key' and 'secret_key' for the user's S3 storage.
+    """
+    try:
+        obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
+        if obs_user:
+            if access_key := get_ovh_handler().get_user_s3_access_key(obs_user):
+                secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
+                return {"access_key": access_key, "secret_key": secret_key}
+            return {"detail": f"Error reading user {user} from OVH."}
+    except Exception as exc:  # pylint: disable = broad-exception-caught
+        logger.error(f"Error while getting s3 credentials for OVH user id {obs_user}. {exc}")
+    return {"detail": f"No s3 credentials associated with {user}"}
+
+
 def build_s3_rights(user_info):  # pylint: disable=too-many-locals
     """
     Builds the S3 access rights structure for a user based on their Keycloak roles.

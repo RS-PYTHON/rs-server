@@ -24,10 +24,14 @@ from fastapi import APIRouter, FastAPI, HTTPException
 from osam.tasks import (
     build_s3_rights,
     build_users_data_map,
+    get_user_s3_credentials,
     link_rspython_users_and_obs_users,
 )
+from rs_server_common.authentication import oauth2
+from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
+from starlette.middleware.sessions import SessionMiddleware  # test if still needed
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
 from starlette.status import (  # pylint: disable=C0411
@@ -37,6 +41,13 @@ from starlette.status import (  # pylint: disable=C0411
 )
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
+
+
+def must_be_authenticated(route_path: str) -> bool:
+    """Return true if a user must be authenticated to use this endpoint route path."""
+    no_auth = (route_path in "/_mgmt/ping") or (route_path in ["/api", "/api.html", "/health"])
+    return not no_auth
+
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
@@ -106,6 +117,14 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     return JSONResponse(status_code=HTTP_200_OK, content=output)
 
 
+@router.get("/storage/account/credentials")
+async def get_credentials(request: Request):
+    """Endpoint used to get user credentials from cloud provider.
+    Request MUST contain oauth2 cookie in header"""
+    auth_info = await oauth2.get_user_info(request)
+    return get_user_s3_credentials(auth_info.user_login)
+
+
 async def main_osam_task(timeout: int = 60):
     """
     Asynchronous background task that periodically links RS-Python users to observation users.
@@ -171,5 +190,8 @@ async def ping():
 
 
 app.include_router(router)
+app.add_middleware(HandleExceptionsMiddleware)
+app.add_middleware(SessionMiddleware, secret_key=os.environ.get("RSPY_COOKIE_SECRET", ""))
+app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
