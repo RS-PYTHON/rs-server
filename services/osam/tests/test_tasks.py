@@ -474,11 +474,10 @@ def test_build_s3_rights(user_info, expected):
         ),
     ],
 )
-def test_update_s3_rights_lists(s3_rights, expected, mocker):
+@patch("osam.tasks.datetime")
+def test_update_s3_rights_lists(mock_datetime, s3_rights, expected):
     """Test build s3 rights"""
-    fake_now = datetime(2025, 1, 1)
-    mock_datetime = mocker.patch("osam.tasks.datetime")
-    mock_datetime.now.return_value = fake_now
+    mock_datetime.now.return_value = datetime(2025, 1, 1)
     assert update_s3_rights_lists(s3_rights) == expected
 
 
