@@ -16,10 +16,13 @@
 
 import logging
 import os
+from urllib.parse import urlparse
 
 from rs_server_common.authentication.authentication_to_external import (
     S3ExternalAuthenticationConfig,
+    ServiceNotFound,
     StationExternalAuthenticationConfig,
+    load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_bucket_name_from_config,
@@ -30,8 +33,13 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.asset_info import (
+    AssetInfo,
+    IncompleteAssetError,
+    IncompleteFeatureError,
+)
 from rs_server_staging.utils.rspy_models import Feature
+from stac_pydantic.shared import Asset
 
 logger = Logging.default(__name__)
 
@@ -150,11 +158,113 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[A
         # Add the user_collection as main directory, as soon as the authentication will be
         # implemented in this staging process
         s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
-        assets_info.append(
-            AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name),
-        )
+
+        origin_service = urlparse(asset_content.href).scheme
+        if origin_service == "s3":
+            asset_info = create_asset_info_with_s3_auth(feature, asset_name, asset_content, s3_obj_path, s3_bucket_name)
+        else:
+            asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
+
+        assets_info.append(asset_info)
         # update the s3 path, this will be checked in the rs-server-catalog in the
         # publishing phase
         asset_content.href = f"s3://rtmpop/{s3_obj_path}"
         feature.assets[asset_name] = asset_content
     return assets_info
+
+
+def create_asset_info_with_s3_auth(
+    feature: Feature,
+    asset_name: str,
+    asset_content: dict,
+    s3_file: str,
+    s3_bucket: str,
+) -> AssetInfo:
+    """Specific to assets being staged from an external S3 bucket.
+    This function returns an AssetInfo with credentials for the S3 bucket.
+
+    Args:
+        feature (Feature): The feature containing asset to download.
+        asset_name (str): Name of the asset to find credentials for.
+        asset_content (dict): STAC description of the asset.
+        s3_file (str): S3 file path where the file will be uploaded.
+        s3_bucket (str): S3 bucket where the file will be uploaded.
+
+    Returns:
+        AssetInfo with credentials for the external S3 bucket.
+
+    Raises:
+        IncompleteAssetError: If the asset misses a necessary field.
+        IncompleteFeatureError: If the feature misses a necessary field.
+        RuntimeError: When no credentials were found for any reason.
+    """
+    if "storage:refs" not in asset_content.keys():
+        raise IncompleteAssetError(f"Missing field 'storage:refs' in asset {asset_name}.")
+    if "storage:schemes" not in feature.properties.keys():
+        raise IncompleteFeatureError(f"Missing field 'storage:schemes' in feature {feature.id}.")
+
+    storage_refs = asset_content["storage:refs"]
+    storage_schemes: dict = feature.properties.get("storage:schemes")
+    s3_access_key = ""
+    s3_secret_key = ""
+
+    # Find the first storage ref of the asset that is linked to a storage scheme in the feature
+    # for which credentials exist
+    for ref in storage_refs:
+        if ref not in storage_schemes.keys():
+            logger.warning(f"No storage scheme found for storage ref '{ref}' in feature {feature.id}.")
+        else:
+            s3_access_key, s3_secret_key = find_credentials_for_external_s3_storage(storage_schemes.get(ref), ref)
+            if s3_access_key and s3_secret_key:
+                logger.info(f"Found credentials to storage ref {ref} for asset {asset_name}.")
+                break
+
+    if not s3_access_key or not s3_secret_key:
+        raise RuntimeError(
+            f"Could not find credentials for any of the external S3 buckets from this list: {storage_refs}.",
+        )
+
+    return AssetInfo(
+        product_url=asset_content.href,
+        s3_file=s3_file,
+        s3_bucket=s3_bucket,
+        origin_service="s3",
+        external_s3_access_key=s3_access_key,
+        external_s3_secret_key=s3_secret_key,
+    )
+
+
+def find_credentials_for_external_s3_storage(storage_scheme: dict, storage_scheme_name: str) -> tuple[str, str]:
+    """Uses the platform field of the storage scheme to get credentials from configuration if they exist.
+
+    Args:
+        storage_scheme (dict): storage_scheme from the feature.
+        storage_scheme_name (str): Name of the storage scheme.
+
+    Returns:
+        Access key and secret key or empty strings if no credentials were found.
+    """
+    domain = storage_scheme.get("platform", "")
+
+    if not domain:
+        logger.warning(
+            f"Could not retrieve external S3 credentials, storage scheme {storage_scheme_name} doesn't have field 'platform'.",
+        )
+        return "", ""
+    domain = urlparse(domain).hostname
+
+    try:
+        authentication_config = load_external_auth_config_by_domain(domain)
+    except ServiceNotFound:
+        logger.warning(
+            f"Did not find S3 authentication configuration for domain {domain}: configuration does not exist.",
+        )
+        return "", ""
+
+    if not isinstance(authentication_config, S3ExternalAuthenticationConfig):
+        logger.warning(f"Did not find S3 authentication configuration for domain {domain}: wrong configuration format.")
+        return "", ""
+
+    logger.info(f"Credentials found for storage scheme {storage_scheme_name} (domain: {domain}).")
+
+    return authentication_config.access_key, authentication_config.secret_key

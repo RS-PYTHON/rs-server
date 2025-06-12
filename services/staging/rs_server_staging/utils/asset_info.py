@@ -38,3 +38,11 @@ class AssetInfo:  # pylint: disable=too-many-instance-attributes
     origin_service: str = "http"
     external_s3_access_key: str = ""
     external_s3_secret_key: str = ""
+
+
+class IncompleteAssetError(Exception):
+    """Exception thrown when an asset is incomplete."""
+
+
+class IncompleteFeatureError(Exception):
+    """Exception thrown when a feature is incomplete."""
