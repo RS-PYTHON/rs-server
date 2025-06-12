@@ -592,7 +592,7 @@ def test_load_s3_external_authentication_by_domain_config_valid(mocker, get_s3_e
         authentication:
           auth_type: s3
           access_key: test_access_key
-          access_token: test_access_token
+          secret_key: test_secret_key
     """
     mocker.patch(
         "rs_server_common.authentication.authentication_to_external.CONFIGURATION",

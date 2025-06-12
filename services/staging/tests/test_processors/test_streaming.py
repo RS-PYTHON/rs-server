@@ -18,9 +18,14 @@
 import os
 
 import pytest
+import yaml
 from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_staging.processors.processor_staging import Staging
-from rs_server_staging.processors.tasks import prepare_streaming_tasks, streaming_task
+from rs_server_staging.processors.tasks import (
+    find_credentials_for_external_s3_storage,
+    prepare_streaming_tasks,
+    streaming_task,
+)
 from rs_server_staging.utils.asset_info import AssetInfo
 
 # pylint: disable=unused-argument
@@ -302,3 +307,109 @@ class TestPrepareStreaming:
             results[3].product_url == "https://fake-data/TC004"
             and results[3].s3_bucket == "rspython-ops-catalog-copernicus-s1-aux-infinite"
         )
+
+    def test_find_credentials_for_external_s3_storage_successful(self, mocker):
+        """Test that credentials are correctly retrieved when they exist."""
+        mock_yaml_content = """
+        external_data_sources:
+          s3external:
+            domain: some.domain.test
+            service:
+              name: s3
+              url: "http://some.domain.test"
+            authentication:
+              auth_type: s3
+              access_key: correct_access
+              secret_key: correct_secret
+          genericstation:
+            domain: generic.station.test
+            service:
+              name: adgs
+              url: "http://test_url:6000"
+            authentication:
+              auth_type: oauth2
+              token_url: http://test_url:6000/oauth2/token
+              grant_type: password
+              username: test
+              password: test
+              client_id: client_id
+              client_secret: client_secret
+              authorization: Basic test
+        """
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
+            yaml.safe_load(mock_yaml_content),
+        )
+
+        test_storage_scheme_name = "external-s3"
+        test_storage_scheme = {
+            "type": "custom-s3",
+            "title": "External S3",
+            "platform": "https://some.domain.test",
+            "description": "Test storage scheme",
+            "requester_pays": True,
+        }
+
+        assert find_credentials_for_external_s3_storage(test_storage_scheme, test_storage_scheme_name) == (
+            "correct_access",
+            "correct_secret",
+        )
+
+    def test_find_credentials_for_external_s3_storage_failed(self, mocker):
+        """Test that function returns empty strings for each error case."""
+        mock_yaml_content = """
+        external_data_sources:
+          genericstation:
+            domain: generic.station.test
+            service:
+              name: adgs
+              url: "http://test_url:6000"
+            authentication:
+              auth_type: oauth2
+              token_url: http://test_url:6000/oauth2/token
+              grant_type: password
+              username: test
+              password: test
+              client_id: client_id
+              client_secret: client_secret
+              authorization: Basic test
+        """
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
+            yaml.safe_load(mock_yaml_content),
+        )
+
+        test_storage_scheme_name = "external-s3"
+        missing_field_test_storage_scheme = {
+            "type": "custom-s3",
+            "title": "External S3",
+            "description": "Test storage scheme",
+            "requester_pays": True,
+        }
+        unknown_platform_test_storage_scheme = {
+            "type": "custom-s3",
+            "title": "External S3",
+            "platform": "https://not.related.domain",
+            "description": "Test storage scheme",
+            "requester_pays": True,
+        }
+        wrong_platform_test_storage_scheme = {
+            "type": "custom-s3",
+            "title": "External S3",
+            "platform": "https://generic.station.test",
+            "description": "Test storage scheme",
+            "requester_pays": True,
+        }
+
+        assert find_credentials_for_external_s3_storage(
+            missing_field_test_storage_scheme,
+            test_storage_scheme_name,
+        ) == ("", "")
+        assert find_credentials_for_external_s3_storage(
+            unknown_platform_test_storage_scheme,
+            test_storage_scheme_name,
+        ) == ("", "")
+        assert find_credentials_for_external_s3_storage(
+            wrong_platform_test_storage_scheme,
+            test_storage_scheme_name,
+        ) == ("", "")
