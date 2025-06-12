@@ -426,49 +426,48 @@ class TestDeleteObsUser:
 
 
 @pytest.mark.parametrize(
-    "access_key_present, expected_result",
+    "obs_user_present, access_key_present, raise_exception, expected_result",
     [
-        (True, {"access_key": "ak123", "secret_key": "sk123"}),
-        (False, {"detail": "No s3 credentials associated with obs_test"}),
+        # 1. Success: credentials returned
+        (True, True, False, {"access_key": "ak123", "secret_key": "sk123"}),
+        # 2. OBS user found but no access key
+        (True, False, False, {"detail": "Error reading user obs_test from OVH."}),
+        # 3. OBS user not found
+        (False, False, False, {"detail": "No s3 credentials associated with obs_test"}),
+        # 4. Exception raised during processing
+        (True, True, True, {"detail": "No s3 credentials associated with obs_test"}),
     ],
 )
 @patch("osam.tasks.get_ovh_handler")
 @patch("osam.tasks.get_keycloak_handler")
-def test_get_user_s3_credentials(mock_get_keycloak_handler, mock_get_ovh_handler, access_key_present, expected_result):
-    """
-    Test the get_user_s3_credentials function with and without available S3 credentials.
+def test_get_user_s3_credentials(
+    mock_get_keycloak_handler,
+    mock_get_ovh_handler,
+    obs_user_present,
+    access_key_present,
+    raise_exception,
+    expected_result,
+):
+    """Test cases for get_s3_credentials"""
+    user = "obs_test"
 
-    This test verifies the behavior of the function under two scenarios:
-    1. When S3 credentials (access key and secret key) are present for a user.
-    2. When S3 credentials are not available for the user.
-
-    The Keycloak and OVH handler dependencies are mocked to isolate the test from external systems.
-
-    Args:
-        mock_get_keycloak_handler: Mocked Keycloak handler used to simulate fetching the OBS user.
-        mock_get_ovh_handler: Mocked OVH handler used to simulate fetching S3 credentials.
-        access_key_present (bool): Flag indicating whether S3 credentials should be present in the test case.
-        expected_result (dict): The expected result of calling get_user_s3_credentials based on the scenario.
-
-    Asserts:
-        The result of get_user_s3_credentials("obs_test") matches the expected_result.
-    """
-    obs_user = {"id": "obs-user-id", "username": "obs_test"}
-
-    # Mock Keycloak handler to return the OBS user
+    # Setup mock Keycloak handler
     mock_keycloak_instance = MagicMock()
-    mock_keycloak_instance.get_obs_user_from_keycloak_username.return_value = obs_user
+    mock_keycloak_instance.get_obs_user_from_keycloak_username.return_value = (
+        {"id": "obs-user-id", "username": user} if obs_user_present else None
+    )
     mock_get_keycloak_handler.return_value = mock_keycloak_instance
 
-    # Mock OVH handler depending on test case
+    # Setup mock OVH handler
     mock_ovh_instance = MagicMock()
-    if access_key_present:
-        mock_ovh_instance.get_user_s3_access_key.return_value = "ak123"
-        mock_ovh_instance.get_user_s3_secret_key.return_value = "sk123"
-    else:
-        mock_ovh_instance.get_user_s3_access_key.return_value = None
+    if obs_user_present and not raise_exception:
+        mock_ovh_instance.get_user_s3_access_key.return_value = "ak123" if access_key_present else None
+        if access_key_present:
+            mock_ovh_instance.get_user_s3_secret_key.return_value = "sk123"
+    elif raise_exception:
+        mock_ovh_instance.get_user_s3_access_key.side_effect = Exception("Simulated failure")
 
     mock_get_ovh_handler.return_value = mock_ovh_instance
 
-    # Check result
-    assert get_user_s3_credentials("obs_test") == expected_result
+    result = get_user_s3_credentials(user)
+    assert result == expected_result

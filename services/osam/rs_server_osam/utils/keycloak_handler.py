@@ -122,12 +122,14 @@ class KeycloakHandler:
                 f"Type: {type(obs_user)} Value: {obs_user}",
             )
         except (KeycloakConnectionError, KeycloakAuthenticationError) as e:
-            logger.critical(f"Keycloak critical error for '{username}': {e}")
+            logger.error(f"Keycloak critical error for '{username}': {e}")
             raise
         except KeycloakError as e:
             logger.error(f"Keycloak error retrieving user '{username}': {e}")
+            raise
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(f"Unexpected error for user '{username}': {e}")
+            logger.error(f"Unexpected error for user '{username}': {e}")
+            raise
 
         return None
 
