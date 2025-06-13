@@ -161,7 +161,13 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[A
 
         origin_service = urlparse(asset_content.href).scheme
         if origin_service == "s3":
-            asset_info = create_asset_info_with_s3_auth(feature, asset_name, asset_content, s3_obj_path, s3_bucket_name)
+            asset_info = create_asset_info_with_s3_auth(
+                feature,
+                asset_name,
+                asset_content.model_dump(),
+                s3_obj_path,
+                s3_bucket_name,
+            )
         else:
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
@@ -208,7 +214,7 @@ def create_asset_info_with_s3_auth(
     s3_access_key = ""
     s3_secret_key = ""
 
-    # Find the first storage ref of the asset that is linked to a storage scheme in the feature
+    # Find the first storage ref of the asset that is linked to a storage scheme in the feature,
     # for which credentials exist
     for ref in storage_refs:
         if ref not in storage_schemes.keys():
@@ -225,7 +231,7 @@ def create_asset_info_with_s3_auth(
         )
 
     return AssetInfo(
-        product_url=asset_content.href,
+        product_url=asset_content["href"],
         s3_file=s3_file,
         s3_bucket=s3_bucket,
         origin_service="s3",

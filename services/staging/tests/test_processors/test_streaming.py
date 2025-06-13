@@ -22,11 +22,18 @@ import yaml
 from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_staging.processors.processor_staging import Staging
 from rs_server_staging.processors.tasks import (
+    create_asset_info_with_s3_auth,
     find_credentials_for_external_s3_storage,
     prepare_streaming_tasks,
     streaming_task,
 )
-from rs_server_staging.utils.asset_info import AssetInfo
+from rs_server_staging.utils.asset_info import (
+    AssetInfo,
+    IncompleteAssetError,
+    IncompleteFeatureError,
+)
+from rs_server_staging.utils.rspy_models import Feature
+from stac_pydantic.shared import Asset
 
 # pylint: disable=unused-argument
 
@@ -158,6 +165,62 @@ class TestStreaming:
 
 class TestPrepareStreaming:
     """Class that groups tests for methods that prepare inputs for streaming process."""
+
+    ## All constants are used for unit tests below, they are here to reduce replication
+    # Example of YAML content for credentials for regular station
+    TEST_YAML_STATION_CREDENTIALS = """
+        genericstation:
+            domain: generic.station.test
+            service:
+                name: adgs
+                url: "http://test_url:6000"
+            authentication:
+                auth_type: oauth2
+                token_url: http://test_url:6000/oauth2/token
+                grant_type: password
+                username: test
+                password: test
+                client_id: client_id
+                client_secret: client_secret
+                authorization: Basic test
+    """
+    # Example of YAML content for credentials for external s3
+    TEST_YAML_S3_CREDENTIALS = """
+        s3external:
+            domain: some.domain.test
+            service:
+                name: s3
+                url: "http://some.domain.test"
+            authentication:
+                auth_type: s3
+                access_key: correct_access
+                secret_key: correct_secret
+    """
+    # Storage scheme matching credentials in TEST_YAML_S3_CREDENTIALS
+    TEST_STORAGE_SCHEME_EXISTS = {
+        "type": "custom-s3",
+        "title": "External S3",
+        "platform": "https://some.domain.test",
+        "description": "Test storage scheme with existing credentials",
+        "requester_pays": False,
+    }
+    # Storage scheme with no matching credentials
+    TEST_STORAGE_SCHEME_DOESNT_EXISTS = {
+        "type": "custom-s3",
+        "title": "External S3",
+        "platform": "https://unknown.domain.test",
+        "description": "Test storage scheme with no existing credentials",
+        "requester_pays": False,
+    }
+    # Asset dictionary with storage refs to match with TEST_STORAGE_SCHEME_EXISTS and TEST_STORAGE_SCHEME_DOESNT_EXISTS
+    TEST_ASSET_WITH_STORAGE_REFS = {
+        "href": "s3://testdata/anyasset.tiff",
+        "file:size": 1,
+        "file:checksum": "12345",
+        "file:local_path": "path/anydata.tiff",
+        "auth:refs": ["s3"],
+        "storage:refs": ["notexisting-s3", "existing-s3"],
+    }
 
     def test_create_streaming_list_all_downloaded(self, mocker, staging_instance: Staging):
         """Test create_streaming_list when all features are already downloaded."""
@@ -308,72 +371,134 @@ class TestPrepareStreaming:
             and results[3].s3_bucket == "rspython-ops-catalog-copernicus-s1-aux-infinite"
         )
 
+    def test_create_asset_info_with_s3_auth_successful(self, mocker):
+        """Test test_create_asset_info_with_s3_auth when everything is ok"""
+        # Patch credentials retrieval
+        mock_yaml_content = mock_yaml_content = "external_data_sources:\n" + self.TEST_YAML_S3_CREDENTIALS
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
+            yaml.safe_load(mock_yaml_content),
+        )
+
+        # Input asset with correct s3 source
+        test_asset_name = "test_asset"
+        test_asset = self.TEST_ASSET_WITH_STORAGE_REFS
+
+        # Input feature with correct storage schemes (other fields reduced to minimum to keep it simple)
+        storage_schemes = {
+            "notexisting-s3": self.TEST_STORAGE_SCHEME_DOESNT_EXISTS,
+            "existing-s3": self.TEST_STORAGE_SCHEME_EXISTS,
+        }
+        test_feature = Feature(
+            type="Feature",
+            properties={"storage:schemes": storage_schemes},
+            id="123456",
+            stac_version="1.0.0",
+            assets={test_asset_name: test_asset},
+            stac_extensions=[],
+        )
+
+        # Other inputs
+        test_s3_file = "test_s3_file"
+        test_s3_bucket = "test_s3_bucket"
+
+        # Expected asset_info
+        expected_result = AssetInfo(
+            product_url="s3://testdata/anyasset.tiff",
+            s3_file=test_s3_file,
+            s3_bucket=test_s3_bucket,
+            origin_service="s3",
+            external_s3_access_key="correct_access",
+            external_s3_secret_key="correct_secret",
+        )
+
+        assert (
+            create_asset_info_with_s3_auth(
+                feature=test_feature,
+                asset_name=test_asset_name,
+                asset_content=test_asset,
+                s3_file=test_s3_file,
+                s3_bucket=test_s3_bucket,
+            )
+            == expected_result
+        )
+
+    def test_create_asset_info_with_s3_auth_failed(self, mocker):
+        """Test all error cases of test_create_asset_info_with_s3_auth: incomplete asset, incomplete feature, no credentials found"""
+        # Patch credentials retrieval (we use unexisting ones to test error case when no correct credential is found)
+        mock_yaml_content = mock_yaml_content = "external_data_sources:\n" + self.TEST_YAML_STATION_CREDENTIALS
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
+            yaml.safe_load(mock_yaml_content),
+        )
+        # Other inputs
+        test_s3_file = "test_s3_file"
+        test_s3_bucket = "test_s3_bucket"
+        test_asset_name = "test_asset"
+        # Feature with missing field
+        test_feature_missing_field = Feature(
+            type="Feature",
+            properties={},
+            id="123456",
+            stac_version="1.0.0",
+            assets={test_asset_name: self.TEST_ASSET_WITH_STORAGE_REFS},
+            stac_extensions=[],
+        )
+        # Correct feature
+        storage_schemes = {
+            "notexisting-s3": self.TEST_STORAGE_SCHEME_DOESNT_EXISTS,
+            "existing-s3": self.TEST_STORAGE_SCHEME_EXISTS,
+        }
+        test_feature = Feature(
+            type="Feature",
+            properties={"storage:schemes": storage_schemes},
+            id="123456",
+            stac_version="1.0.0",
+            assets={test_asset_name: self.TEST_ASSET_WITH_STORAGE_REFS},
+            stac_extensions=[],
+        )
+
+        # Test cases of asset or feature without needed field
+        with pytest.raises(IncompleteAssetError):
+            create_asset_info_with_s3_auth(None, "", {}, test_s3_file, test_s3_bucket)
+        with pytest.raises(IncompleteFeatureError):
+            create_asset_info_with_s3_auth(
+                test_feature_missing_field,
+                test_asset_name,
+                self.TEST_ASSET_WITH_STORAGE_REFS,
+                test_s3_file,
+                test_s3_bucket,
+            )
+
+        # Test case when everything is correct but no credentials are found
+        with pytest.raises(RuntimeError):
+            create_asset_info_with_s3_auth(
+                test_feature,
+                test_asset_name,
+                self.TEST_ASSET_WITH_STORAGE_REFS,
+                test_s3_file,
+                test_s3_bucket,
+            )
+
     def test_find_credentials_for_external_s3_storage_successful(self, mocker):
         """Test that credentials are correctly retrieved when they exist."""
-        mock_yaml_content = """
-        external_data_sources:
-          s3external:
-            domain: some.domain.test
-            service:
-              name: s3
-              url: "http://some.domain.test"
-            authentication:
-              auth_type: s3
-              access_key: correct_access
-              secret_key: correct_secret
-          genericstation:
-            domain: generic.station.test
-            service:
-              name: adgs
-              url: "http://test_url:6000"
-            authentication:
-              auth_type: oauth2
-              token_url: http://test_url:6000/oauth2/token
-              grant_type: password
-              username: test
-              password: test
-              client_id: client_id
-              client_secret: client_secret
-              authorization: Basic test
-        """
+        mock_yaml_content = (
+            "external_data_sources:\n" + self.TEST_YAML_S3_CREDENTIALS + self.TEST_YAML_STATION_CREDENTIALS
+        )
         mocker.patch(
             "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
             yaml.safe_load(mock_yaml_content),
         )
 
         test_storage_scheme_name = "external-s3"
-        test_storage_scheme = {
-            "type": "custom-s3",
-            "title": "External S3",
-            "platform": "https://some.domain.test",
-            "description": "Test storage scheme",
-            "requester_pays": True,
-        }
-
-        assert find_credentials_for_external_s3_storage(test_storage_scheme, test_storage_scheme_name) == (
+        assert find_credentials_for_external_s3_storage(self.TEST_STORAGE_SCHEME_EXISTS, test_storage_scheme_name) == (
             "correct_access",
             "correct_secret",
         )
 
     def test_find_credentials_for_external_s3_storage_failed(self, mocker):
         """Test that function returns empty strings for each error case."""
-        mock_yaml_content = """
-        external_data_sources:
-          genericstation:
-            domain: generic.station.test
-            service:
-              name: adgs
-              url: "http://test_url:6000"
-            authentication:
-              auth_type: oauth2
-              token_url: http://test_url:6000/oauth2/token
-              grant_type: password
-              username: test
-              password: test
-              client_id: client_id
-              client_secret: client_secret
-              authorization: Basic test
-        """
+        mock_yaml_content = mock_yaml_content = "external_data_sources:\n" + self.TEST_YAML_STATION_CREDENTIALS
         mocker.patch(
             "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
             yaml.safe_load(mock_yaml_content),
@@ -386,13 +511,7 @@ class TestPrepareStreaming:
             "description": "Test storage scheme",
             "requester_pays": True,
         }
-        unknown_platform_test_storage_scheme = {
-            "type": "custom-s3",
-            "title": "External S3",
-            "platform": "https://not.related.domain",
-            "description": "Test storage scheme",
-            "requester_pays": True,
-        }
+        unknown_platform_test_storage_scheme = self.TEST_STORAGE_SCHEME_DOESNT_EXISTS
         wrong_platform_test_storage_scheme = {
             "type": "custom-s3",
             "title": "External S3",
