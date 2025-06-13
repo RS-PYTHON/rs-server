@@ -310,6 +310,51 @@ class TestPrepareStreaming:
         assert feature.assets["asset1"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset1"
         assert feature.assets["asset2"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset2"
 
+    def test_prepare_streaming_tasks_with_s3_asset_all_valid(self, mocker, set_config_file_env_var):
+        """Test prepare_streaming_tasks when all assets are valid and one asset needs to be staged from external s3."""
+        # Patch credentials retrieval (for s3 asset)
+        mock_yaml_content = mock_yaml_content = "external_data_sources:\n" + self.TEST_YAML_S3_CREDENTIALS
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.CONFIGURATION",
+            yaml.safe_load(mock_yaml_content),
+        )
+
+        # Prepare asset with S3 source
+        s3_asset = Asset(href="s3://testdata/anyasset.tiff")
+        setattr(s3_asset, "storage:refs", ["notexisting-s3", "existing-s3"])
+
+        catalog_collection = "test_collection"
+        feature = mocker.Mock()
+        feature.id = "feature_id"
+        feature.assets = {"asset1": mocker.Mock(href="https://example.com/asset1"), "asset2": s3_asset}
+
+        # Add expected storage schemes to Feature
+        storage_schemes = {
+            "notexisting-s3": self.TEST_STORAGE_SCHEME_DOESNT_EXISTS,
+            "existing-s3": self.TEST_STORAGE_SCHEME_EXISTS,
+        }
+        feature.properties = {"storage:schemes": storage_schemes}
+
+        result = prepare_streaming_tasks(catalog_collection, feature)
+
+        expected_assets_info = [
+            AssetInfo(
+                "https://example.com/asset1",
+                f"{catalog_collection}/{feature.id}/asset1",
+                "rspython-ops-catalog-all-production",
+            ),
+            AssetInfo(
+                "s3://testdata/anyasset.tiff",
+                f"{catalog_collection}/{feature.id}/asset2",
+                "rspython-ops-catalog-all-production",
+                "s3",
+                "correct_access",
+                "correct_secret",
+            ),
+        ]
+        # Assert that the method returns expected assets info
+        assert result == expected_assets_info
+
     def test_prepare_streaming_tasks_one_invalid(self, mocker, set_config_file_env_var):
         """Test prepare_streaming_tasks when all assets are valid."""
         catalog_collection = "test_collection"
