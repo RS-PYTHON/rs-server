@@ -15,6 +15,7 @@
 """osam main module."""
 
 import asyncio  # for handling asynchronous tasks
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -159,7 +160,7 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
     s3_rights = build_s3_rights(app.extra["users_info"][user])
     output = update_s3_rights_lists(s3_rights)
-    return JSONResponse(status_code=HTTP_200_OK, content=output)
+    return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 
 @router.get("/storage/account/credentials")
