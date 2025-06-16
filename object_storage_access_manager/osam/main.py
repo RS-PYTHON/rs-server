@@ -75,6 +75,8 @@ async def app_lifespan(fastapi_app: FastAPI):
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
         main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
     )
+    # Trigger the background task to sync the keycloak users with ovh users
+    app.extra["endpoint_trigger"].set()
     fastapi_app.extra["users_info"] = dict[str, Any]
     # Yield control back to the application (this is where the app will run)
     yield
