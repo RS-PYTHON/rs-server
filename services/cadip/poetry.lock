@@ -808,14 +808,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.4.2"
+version = "3.4.3"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main", "dev"]
 files = [
-    {file = "eodag-3.4.2-py3-none-any.whl", hash = "sha256:0d71f124a22e2367612728dde8b6b6dfe5ccafea8ce136d9e0d258cc0ab22dd9"},
-    {file = "eodag-3.4.2.tar.gz", hash = "sha256:6caebdc903c7ac25bfbe35796336ac60811bf5fe8875245e72decbc79fde5804"},
+    {file = "eodag-3.4.3-py3-none-any.whl", hash = "sha256:de3d89f37ccc7952e684bf4ce84a6ef25f1ddd2bc460e099eac88f551f9543db"},
+    {file = "eodag-3.4.3.tar.gz", hash = "sha256:a7898b8439c8855cb6bfe39725375b9e411c0d17740f7a493e842a7645ae4047"},
 ]
 
 [package.dependencies]
@@ -2549,19 +2549,20 @@ testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
 name = "pytest-cov"
-version = "6.1.1"
+version = "6.2.1"
 description = "Pytest plugin for measuring coverage."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest_cov-6.1.1-py3-none-any.whl", hash = "sha256:bddf29ed2d0ab6f4df17b4c55b0a657287db8684af9c42ea546b21b1041b3dde"},
-    {file = "pytest_cov-6.1.1.tar.gz", hash = "sha256:46935f7aaefba760e716c2ebfbe1c216240b9592966e7da99ea8292d4d3e2a0a"},
+    {file = "pytest_cov-6.2.1-py3-none-any.whl", hash = "sha256:f5bc4c23f42f1cdd23c70b1dab1bbaef4fc505ba950d53e0081d0730dd7e86d5"},
+    {file = "pytest_cov-6.2.1.tar.gz", hash = "sha256:25cc6cc0a5358204b8108ecedc51a9b57b34cc6b8c967cc2c01a4e00d8a67da2"},
 ]
 
 [package.dependencies]
 coverage = {version = ">=7.5", extras = ["toml"]}
-pytest = ">=4.6"
+pluggy = ">=1.2"
+pytest = ">=6.2.5"
 
 [package.extras]
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
@@ -2949,7 +2950,7 @@ authlib = "^1.5.0"
 boto3 = ">=1.38.34"
 botocore = ">=1.38.34"
 cachetools = ">=5.5.2"
-eodag = "==v3.4.2"
+eodag = "==v3.4.3"
 fastapi = "^0.115.12"
 filelock = "^3.16.1"
 geojson-pydantic = "1.2.0"
@@ -3640,4 +3641,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "fdd664a6528bd2decb24ef8e64d1294f7dcf1798fc1b029a61550d504572d19f"
+content-hash = "d7bff4dcd2efa76475ce747c38c11aba3044f679c4db9a3caeafebabe7feea99"

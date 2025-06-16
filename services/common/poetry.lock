@@ -775,14 +775,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.4.2"
+version = "3.4.3"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "eodag-3.4.2-py3-none-any.whl", hash = "sha256:0d71f124a22e2367612728dde8b6b6dfe5ccafea8ce136d9e0d258cc0ab22dd9"},
-    {file = "eodag-3.4.2.tar.gz", hash = "sha256:6caebdc903c7ac25bfbe35796336ac60811bf5fe8875245e72decbc79fde5804"},
+    {file = "eodag-3.4.3-py3-none-any.whl", hash = "sha256:de3d89f37ccc7952e684bf4ce84a6ef25f1ddd2bc460e099eac88f551f9543db"},
+    {file = "eodag-3.4.3.tar.gz", hash = "sha256:a7898b8439c8855cb6bfe39725375b9e411c0d17740f7a493e842a7645ae4047"},
 ]
 
 [package.dependencies]
@@ -902,14 +902,14 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flask-cors"
-version = "6.0.0"
+version = "6.0.1"
 description = "A Flask extension simplifying CORS support"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["dev"]
 files = [
-    {file = "flask_cors-6.0.0-py3-none-any.whl", hash = "sha256:6332073356452343a8ccddbfec7befdc3fdd040141fe776ec9b94c262f058657"},
-    {file = "flask_cors-6.0.0.tar.gz", hash = "sha256:4592c1570246bf7beee96b74bc0adbbfcb1b0318f6ba05c412e8909eceec3393"},
+    {file = "flask_cors-6.0.1-py3-none-any.whl", hash = "sha256:c7b2cbfb1a31aa0d2e5341eea03a6805349f7a61647daee1a15c46bbe981494c"},
+    {file = "flask_cors-6.0.1.tar.gz", hash = "sha256:d81bcb31f07b0985be7f48406247e9243aced229b7747219160a0559edd678db"},
 ]
 
 [package.dependencies]
@@ -1650,14 +1650,14 @@ files = [
 
 [[package]]
 name = "moto"
-version = "5.1.5"
+version = "5.1.6"
 description = "A library that allows you to easily mock out tests based on AWS infrastructure"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "moto-5.1.5-py3-none-any.whl", hash = "sha256:866ae85eb5efe11a78f991127531878fd7f49177eb4a6680f47060430eb8932d"},
-    {file = "moto-5.1.5.tar.gz", hash = "sha256:42b362ea9a16181e8e7b615ac212c294b882f020e9ae02f01230f167926df84e"},
+    {file = "moto-5.1.6-py3-none-any.whl", hash = "sha256:e4a3092bc8fe9139caa77cd34cdcbad804de4d9671e2270ea3b4d53f5c645047"},
+    {file = "moto-5.1.6.tar.gz", hash = "sha256:baf7afa9d4a92f07277b29cf466d0738f25db2ed2ee12afcb1dc3f2c540beebd"},
 ]
 
 [package.dependencies]
@@ -2596,19 +2596,20 @@ testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
 name = "pytest-cov"
-version = "6.1.1"
+version = "6.2.1"
 description = "Pytest plugin for measuring coverage."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest_cov-6.1.1-py3-none-any.whl", hash = "sha256:bddf29ed2d0ab6f4df17b4c55b0a657287db8684af9c42ea546b21b1041b3dde"},
-    {file = "pytest_cov-6.1.1.tar.gz", hash = "sha256:46935f7aaefba760e716c2ebfbe1c216240b9592966e7da99ea8292d4d3e2a0a"},
+    {file = "pytest_cov-6.2.1-py3-none-any.whl", hash = "sha256:f5bc4c23f42f1cdd23c70b1dab1bbaef4fc505ba950d53e0081d0730dd7e86d5"},
+    {file = "pytest_cov-6.2.1.tar.gz", hash = "sha256:25cc6cc0a5358204b8108ecedc51a9b57b34cc6b8c967cc2c01a4e00d8a67da2"},
 ]
 
 [package.dependencies]
 coverage = {version = ">=7.5", extras = ["toml"]}
-pytest = ">=4.6"
+pluggy = ">=1.2"
+pytest = ">=6.2.5"
 
 [package.extras]
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
@@ -3691,4 +3692,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "546d4bee5b8df41d6532f76cbdd0abdff18c77d45f033f488aed4c7fd338bb5c"
+content-hash = "ec7bb87f75b23d54f0ff87863516dae8a459e84f3688c77ce111c8a28c0d877f"
