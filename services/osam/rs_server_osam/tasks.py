@@ -243,9 +243,9 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
-    if not DESCRIPTION_TEMPLATE:
+    if not DESCRIPTION_TEMPLATE or not DESCRIPTION_TEMPLATE.replace("%keycloak-user%", ""):
         logger.info(
-            f"The OBS_DESCRIPTION_TEMPLATE env var is empty, failed tocheck if the user {obs_user['username']} "
+            f"The OBS_DESCRIPTION_TEMPLATE env var is empty, failed to check if the user {obs_user['username']} "
             "was created by the osam service. Skipping....",
         )
         return
