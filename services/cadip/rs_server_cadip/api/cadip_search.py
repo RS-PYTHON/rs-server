@@ -18,12 +18,12 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
-import json
 import threading
 import traceback
 
 # pylint: disable=redefined-builtin
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Annotated, Literal
 
 import requests
@@ -37,8 +37,10 @@ from fastapi.responses import RedirectResponse
 from pydantic import validate_call
 from rs_server_cadip import cadip_retriever, cadip_tags
 from rs_server_cadip.cadip_utils import (
-    CADIP_CONFIG,
     cadip_map_mission,
+    cadip_odata_to_stac_template,
+    cadip_session_odata_to_stac_template,
+    cadip_session_stac_mapper,
     cadip_stac_mapper,
     link_assets_to_session,
     prepare_collection,
@@ -66,6 +68,7 @@ from rs_server_common.stac_api_common import (
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
+    run_threads,
     validate_inputs_format,
     validate_sort_input,
     validate_str_list,
@@ -115,20 +118,14 @@ class MockPgstacCadip(MockPgstac):
     @handle_exceptions
     def process_search(  # type: ignore
         self,
-        collection: dict,
+        station: str,
         odata_params: dict,
+        collection_provider: Callable[[dict], str | None],
         limit: int,
         page: int,
     ) -> stac_pydantic.ItemCollection:
-        """Search cadip sessions the given collection and OData parameters."""
-        return process_session_search(
-            self.request,
-            collection.get("station", "cadip"),
-            odata_params,
-            self.sortby,
-            limit,
-            page,
-        )
+        """Search cadip sessions for the given station and OData parameters."""
+        return process_session_search(station, odata_params, collection_provider, self.sortby, limit, page)
 
     @handle_exceptions
     def process_asset_search(
@@ -189,20 +186,19 @@ class MockPgstacCadip(MockPgstac):
             grouped_sessions[session.collection].append(session)
 
         # Update input session assets with their associated files, in separate threads
-        file_threads = [
-            threading.Thread(
-                target=self.process_asset_search,
-                args=(
-                    self.select_config(collection_id)["station"],
-                    session_features,
-                ),
-            )
-            for collection_id, session_features in grouped_sessions.items()
-        ]
-        for thread in file_threads:
-            thread.start()
-        for thread in file_threads:
-            thread.join()
+        run_threads(
+            [
+                threading.Thread(
+                    target=self.process_asset_search,
+                    args=(
+                        self.select_config(collection_id)["station"],
+                        session_features,
+                    ),
+                )
+                for collection_id, session_features in grouped_sessions.items()
+                if collection_id
+            ],
+        )
 
         # Convert back the stac object into dict.
         # We implemented some custom Item formating, so we do a back and forth conversion
@@ -470,9 +466,9 @@ async def get_cadip_collection_item_details(
 
 @validate_call(config={"arbitrary_types_allowed": True})
 def process_session_search(  # type: ignore # pylint: disable=too-many-arguments, too-many-locals, unused-argument
-    request: Request,
     station: str,
     queryables,
+    collection_provider: Callable[[dict], str | None],
     sortby: str,
     limit: Annotated[
         int | None,
@@ -486,9 +482,10 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     (*start_date* and *stop_date* correctly defined).
 
     Args:
-        request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         queryables (dict): Lists of queryables applicable to search op.
+        collection_provider (Callable[[dict], str | None]): Function that determines STAC collection
+                                                            for a given OData entity
         limit (int, optional): Maximum number of products to return. Greater than 0, defaults to 100.
         sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
@@ -542,23 +539,14 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
             log_http_exception(logger, status.HTTP_500_INTERNAL_SERVER_ERROR, e)
 
         products = validate_products(products)
-        feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
-        stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
-        with (
-            open(feature_template_path, encoding="utf-8") as template,
-            open(stac_mapper_path, encoding="utf-8") as stac_map,
-        ):
-            feature_template = json.loads(template.read())
-            stac_mapper = json.loads(stac_map.read())
-            collection = create_stac_collection(products, feature_template, stac_mapper)
-            return prepare_collection(collection)
+        collection = create_stac_collection(
+            products,
+            cadip_session_odata_to_stac_template(),
+            cadip_session_stac_mapper(),
+            collection_provider,
+        )
+        return prepare_collection(collection)
 
-    except json.JSONDecodeError as exception:
-        logger.error(exception)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"JSON Map Error: {exception}",
-        ) from exception
     except ValueError as exception:
         logger.error(exception)
         raise HTTPException(
@@ -623,10 +611,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             page=kwargs.get("page", 1),
         )
 
-        feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
-        with open(feature_template_path, encoding="utf-8") as template:
-            feature_template = json.loads(template.read())
-            cadip_item_collection = create_stac_collection(products, feature_template, cadip_stac_mapper())
+        cadip_item_collection = create_stac_collection(products, cadip_odata_to_stac_template(), cadip_stac_mapper())
         logger.info("Succesfully listed and processed products from CADIP station")
         if kwargs.get("map_to_session", False):
             return [product.properties for product in products]

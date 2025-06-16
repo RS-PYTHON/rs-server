@@ -14,7 +14,11 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import traceback
+from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from threading import Thread
 from typing import Any
 
 from eodag import EOProduct
@@ -83,7 +87,7 @@ def validate_str_list(parameter: str) -> list | str:
 def validate_inputs_format(
     date_time: str,
     raise_errors: bool = True,
-) -> Any:
+) -> tuple[datetime | None, datetime | None, datetime | None]:
     """
     Validate the format and content of a time interval string.
 
@@ -136,7 +140,7 @@ def validate_inputs_format(
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
             return None, None, None
 
-    def to_dt(dates) -> list[Any]:
+    def to_dt(dates) -> list[datetime | None]:
         """Converts a list of date strings to datetime objects or None if the conversion fails."""
         return [datetime.fromisoformat(date) if is_valid_date(date) else None for date in dates]
 
@@ -164,7 +168,12 @@ def validate_inputs_format(
     return fixed_date_dt, start_date_dt, stop_date_dt
 
 
-def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict) -> dict:
+def odata_to_stac(
+    feature_template: dict,
+    odata_dict: dict,
+    odata_stac_mapper: dict,
+    collection_provider: Callable[[dict], str | None] | None = None,
+) -> dict:
     """
     Maps OData values to a given STAC template.
 
@@ -172,6 +181,8 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
         feature_template (dict): The STAC feature template to be populated.
         odata_dict (dict): The dictionary containing OData values.
         odata_stac_mapper (dict): The mapping dictionary for converting OData keys to STAC properties.
+        collection_provider (Callable[[dict], str | None]): optional function that determines STAC collection
+                                                            for a given OData entity
 
     Returns:
         dict: The populated STAC feature template.
@@ -193,6 +204,9 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
             feature_template["properties"].pop(stac_key, None)
     # to pass pydantic validation, make sure we don't have a single timerange value
     check_and_fix_timerange(feature_template)
+    # determine item collection
+    if collection_provider:
+        feature_template["collection"] = collection_provider(odata_dict)
     return feature_template
 
 
@@ -231,3 +245,41 @@ def validate_sort_input(sortby: str):
 def strftime_millis(date: datetime):
     """Format datetime with milliseconds precision"""
     return date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+def run_threads(threads: Iterable[Thread]) -> None:
+    """Start all threads, then join them."""
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+
+def run_in_threads(
+    func: Callable[..., Any],
+    args_list: Sequence[tuple],
+    max_workers: int | None = None,
+) -> list[Any]:
+    """
+    Executes a function in parallel using threads, and returns the list of non-None results.
+
+    Each thread runs `func` with the corresponding arguments provided in `args_list`.
+
+    Args:
+        func (Callable[..., Any]): The function to be executed concurrently.
+        args_list (Sequence[tuple]): A sequence of argument tuples for each thread.
+        max_workers (int | None): The maximum number of threads to use.
+
+    Returns:
+        list[Any]: A list of results, one per thread, excluding any result that is None, in the same order as args_list.
+    """
+    results: list[Any] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for future in [executor.submit(func, *args) for args in args_list]:
+            try:
+                if (result := future.result()) is not None:
+                    results.append(result)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error(traceback.format_exc())
+                results.append(e)
+    return results

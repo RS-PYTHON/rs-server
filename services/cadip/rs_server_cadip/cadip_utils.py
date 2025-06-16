@@ -53,9 +53,33 @@ def read_conf():
 
 
 @lru_cache
+def cadip_odata_to_stac_template():
+    """Used each time to read the ODataToSTAC_template json template."""
+    with open(CADIP_CONFIG / "ODataToSTAC_template.json", encoding="utf-8") as mapper:
+        config = json.loads(mapper.read())
+    return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
+
+
+@lru_cache
+def cadip_session_odata_to_stac_template():
+    """Used each time to read the cadip_session_ODataToSTAC_template json template."""
+    with open(CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json", encoding="utf-8") as mapper:
+        config = json.loads(mapper.read())
+    return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
+
+
+@lru_cache
 def cadip_stac_mapper():
-    """Used each time to read the cadip_stac_mapper config yaml."""
+    """Used each time to read the cadip_stac_mapper json config."""
     with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
+        config = json.loads(mapper.read())
+    return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
+
+
+@lru_cache
+def cadip_session_stac_mapper():
+    """Used each time to read the cadip_sessions_stac_mapper json config."""
+    with open(CADIP_CONFIG / "cadip_sessions_stac_mapper.json", encoding="utf-8") as mapper:
         config = json.loads(mapper.read())
     return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
 
@@ -70,12 +94,11 @@ def select_config(configuration_id: str) -> dict | None:
 
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
-    stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
-    with open(stac_mapper_path, encoding="utf-8") as stac_map:
-        stac_mapper = json.loads(stac_map.read())
-        return {
-            stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items() if value is not None
-        }
+    return {
+        cadip_session_stac_mapper().get(stac_key, stac_key): value
+        for stac_key, value in stac_params.items()
+        if value is not None
+    }
 
 
 def rename_keys(product: dict) -> dict:
@@ -151,7 +174,7 @@ def validate_products(products: eodag.EOProduct):
     return valid_eo_products
 
 
-def cadip_map_mission(platform: str, constellation: str):
+def cadip_map_mission(platform: str, constellation: str) -> str | None:
     """
     Map STAC platform and constellation into OData Satellite.
 
@@ -159,8 +182,8 @@ def cadip_map_mission(platform: str, constellation: str):
     Input: constellation = sentinel-1   Output: A, B, C
     """
     data: dict = map_stac_platform()
-    satellite: None | str = None
-    satellites: None | str = None
+    satellite: str | None = None
+    satellites: str | None = None
     try:
         if platform:
             config = next(sat[platform] for sat in data["satellites"] if platform in sat)

@@ -18,10 +18,9 @@
 import copy
 import json
 import re
-import threading
-import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
@@ -34,6 +33,7 @@ from typing import (
     Literal,
     Optional,
     Self,
+    TypeAlias,
 )
 
 import stac_pydantic
@@ -52,6 +52,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     extract_eo_product,
     odata_to_stac,
+    run_in_threads,
     validate_inputs_format,
 )
 from stac_fastapi.api.models import Limit
@@ -68,8 +69,12 @@ def log_http_exception(*args, **kwargs) -> HTTPException:
     return utils2.log_http_exception(logger, *args, **kwargs)
 
 
+DEFAULT_STAC_VERSION = "1.0.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
+
+DATE_INTERVAL_KEYS = ["PublicationDate"]
+COMMA_SEPARATED_LISTS_KEYS = ["platformSerialIdentifier", "platformShortName", "Satellite", "productType"]
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
@@ -108,6 +113,7 @@ LimitType = Annotated[
     ),
 ]
 PageType = Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")]
+ServiceRole: TypeAlias = Literal["auxip", "cadip"]
 
 
 class Queryables(BaseModel):
@@ -149,13 +155,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     request: Request = Request(scope={"type": "http"})
     readwrite: Literal["r", "w"] | None = None
 
-    service: Literal["auxip", "cadip"] | None = None
+    service: ServiceRole | None = None
 
     # auxip or cadip function
-    all_collections: Callable = lambda: None
-    select_config: Callable = lambda: None
-    stac_to_odata: Callable = lambda: None
-    map_mission: Callable = lambda: None
+    all_collections: Callable[[], list[dict]] = lambda: []
+    select_config: Callable[[str], dict] = lambda _id: {}
+    stac_to_odata: Callable[[dict], dict] = lambda _d: {}
+    map_mission: Callable[[Any | None, Any | None], str | tuple | None] = lambda _p, _c: None
     temporal_mapping: dict[str, str] | None = None
 
     # Is the service auxip or cadip ?
@@ -205,8 +211,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # TODO: factorize this code for all query parameters.
         if self.auxip:
             can_query = True
-            if collection_id:
-                value = self.select_config(collection_id).get("query", {}).get("productType", "")
+            if collection_id and (collection := self.select_config(collection_id)):
+                value = collection.get("query", {}).get("productType", "")
                 if value and ("," not in value):
                     can_query = False
             if can_query:
@@ -217,9 +223,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Idem for satellite or platform
         can_query = True
-        if collection_id:
+        if collection_id and (collection := self.select_config(collection_id)):
+            query_dict = collection.get("query") or {}
             for field in "platformSerialIdentifier", "platformShortName", "Satellite":
-                value = (self.select_config(collection_id).get("query") or {}).get(field) or ""
+                value = query_dict.get(field) or ""
                 if value and ("," not in value):
                     can_query = False
                     break
@@ -262,7 +269,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
 
             # Convert into stac object (to ensure validity) then back to dict
-            collection.setdefault("stac_version", "1.0.0")
+            collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
             return create_collection(collection).model_dump()
 
         # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
@@ -345,7 +352,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     params[key] = values
 
         # Collections to search
-        collection_ids = [collection.strip() for collection in params.pop("collections", [])]
+        collection_ids: list[str] = [collection.strip() for collection in params.pop("collections", [])]
 
         # IDs to search
         ids = params.pop("ids", None)
@@ -535,9 +542,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
         # ... still saved with stac keys for now
         if self.auxip:
-            stac_params["constellation"], stac_params["platform"] = mission
+            stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
         if self.cadip:
-            stac_params["platform"] = mission
+            stac_params["platform"] = mission  # type: ignore
 
         # Discard these search parameters
         params.pop("bbox", None)
@@ -559,25 +566,187 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         #
         # Step 2: do the search
 
+        # Convert search params from STAC keys to OData keys
+        odata_params: dict = self.stac_to_odata(stac_params)
+        logger.debug(f"STAC/OData parameters mapping: {stac_params} => {odata_params}")
+
         # Only keep the authorized collections
-        allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
-        allowed_ids = {collection["id"] for collection in allowed}
-        if not collection_ids:
-            collection_ids = list(allowed_ids)
-        else:
-            collection_ids = list(allowed_ids.intersection(collection_ids))
+        allowed: list[dict] = filter_allowed_collections(self.all_collections(), self.service, self.request)
+        allowed_ids: set[str] = {collection["id"] for collection in allowed}
+        all_results: list[Sequence[Item] | Exception] = (
+            self.search_collections_by_station(list(allowed_ids.intersection(collection_ids)), odata_params, True)
+            if collection_ids
+            else self.search_collections_by_station(list(allowed_ids), odata_params, False)
+        )
 
-        # Search all collections in parallel threads
-        all_results: list[Sequence[Item] | Exception] = []
-        threads = [
-            threading.Thread(target=self.process_collection, args=(collection_id, stac_params, all_results))
-            for collection_id in collection_ids
+        # Return results as a dict
+        return self.build_response_payload(self.aggregate_items_from_results(all_results))
+
+    def search_collections_by_station(
+        self,
+        collection_ids: list[str],
+        odata_params: dict,
+        aggregate_search_params: bool = True,
+    ) -> list[Sequence[Item] | Exception]:
+        """
+        Performs a search for items across multiple stations, grouped by their collection configurations.
+
+        This method groups collections by their associated station, optionally merges and aggregates
+        OData search parameters per station, and executes the searches in parallel threads.
+        If multiple collections belong to the same station, and `aggregate_search_params` is True,
+        their queries are merged to reduce the number of calls.
+
+        Args:
+            collection_ids (list[str]): List of collection identifiers to search within.
+            odata_params (dict): User-defined OData search parameters to apply to all stations.
+            aggregate_search_params (bool, optional): If True, merge search parameters for collections
+                of the same station. Defaults to True.
+
+        Returns:
+            list[Sequence[Item] | Exception]: A list of either successful item results or raised exceptions,
+            one per station.
+        """
+        # Group collections by station
+        collections_by_station: dict[str, list[dict]] = defaultdict(list)
+        for collection in (self.select_config(collection_id) for collection_id in collection_ids):
+            collections_by_station[collection["station"]].append(collection)
+
+        odata_params_by_station: dict[str, dict] = {}
+        for station, station_collections in collections_by_station.items():
+            if aggregate_search_params:
+                # Aggregates all search params for this station to make a single call
+                odata_merged = odata_params.copy()
+                empty_selection = False
+                for collection in station_collections:
+                    # Some OData search params are hardcoded in the collection configuration
+                    odata_hardcoded = collection.get("query") or {}
+
+                    # Merge the user input params with the hardcoded params (which have higher priority)
+                    odata_merged, empty_selection = self.merge_odata_params(odata_hardcoded, odata_merged)
+                    if empty_selection:
+                        logger.warning("Key conflict resolution lead to empty selection, skipping search to {station}")
+                        break
+                if not empty_selection:
+                    odata_params_by_station[station] = odata_merged
+            else:
+                # Do the same search for all stations
+                odata_params_by_station[station] = odata_params
+
+        # Search all stations in parallel threads
+        return run_in_threads(
+            self.perform_search_in_station,
+            (
+                (
+                    station,
+                    station_odata_params,
+                    lambda odata_entity, station=station: self.determine_collection(
+                        odata_entity,
+                        collections_by_station[station],
+                    ),
+                    self.filter_items_without_collection,
+                )
+                for station, station_odata_params in odata_params_by_station.items()
+            ),
+        )
+
+    def determine_collection(self, odata_entity: dict, collections: list[dict]) -> str | None:
+        """
+        Determines the matching collection ID for a given OData entity.
+
+        This method iterates over a list of collection configurations and checks
+        which one the OData entity satisfies based on the collection's query criteria.
+        Returns the first matching collection ID or None if no match is found.
+
+        Args:
+            odata_entity (dict): The OData entity to evaluate.
+            collections (list[dict]): A list of collection configurations,
+            each potentially containing query criteria.
+
+        Returns:
+            str | None: The ID of the first matching collection, or None if no match is found.
+        """
+        for collection in collections:
+            if self.is_entity_matching_all_criteria(odata_entity, collection.get("query") or {}):
+                return collection["id"]
+        return None
+
+    def is_entity_matching_all_criteria(self, odata_entity: dict, query: dict) -> bool:
+        """
+        Evaluates whether an OData entity matches all criteria defined in a query.
+
+        The query may contain various types of filters including:
+        - Fixed dates or date intervals (keys in DATE_INTERVAL_KEYS)
+        - Comma-separated list values (keys in COMMA_SEPARATED_LISTS_KEYS)
+        - Exact value matches
+
+        The function logs whether each criterion was matched or not, and returns False
+        as soon as a mismatch is detected. If all criteria are matched, it returns True.
+
+        Args:
+            odata_entity (dict): The OData entity to validate.
+            query (dict): A dictionary of filter criteria.
+
+        Returns:
+            bool: True if all criteria are matched by the entity, False otherwise.
+        """
+
+        def match(odata_entity: dict, crit_type: str, key: str, value: str):
+            logger.debug(f"Entity {odata_entity} matches {crit_type} criteria {key}={value}")
+
+        def nomatch(odata_entity: dict, crit_type: str, key: str, value: str):
+            logger.debug(f"Entity {odata_entity} does not match {crit_type} criteria {key}={value}")
+            return False
+
+        for crit_key, crit_val in query.items():
+            if crit_key not in ("top", "skip", "orderby"):
+                value = odata_entity.get(crit_key, None)
+                if crit_key in DATE_INTERVAL_KEYS:
+                    date = dt.fromisoformat(value) if value else None
+                    fixed, start, stop = validate_inputs_format(crit_val, raise_errors=False)
+                    if fixed and date != fixed:
+                        return nomatch(odata_entity, "fixed date", crit_key, crit_val)
+                    if start and stop and not start <= date <= stop:
+                        return nomatch(odata_entity, "closed interval", crit_key, crit_val)
+                    if (start and date < start) or (stop and date > stop):
+                        return nomatch(odata_entity, "open interval", crit_key, crit_val)
+                    match(odata_entity, "date", crit_key, crit_val)
+                elif crit_key in COMMA_SEPARATED_LISTS_KEYS:
+                    iterable = crit_val if isinstance(crit_val, list) else crit_val.split(",")
+                    if value not in {v.strip() for v in iterable}:
+                        return nomatch(odata_entity, "list", crit_key, crit_val)
+                    match(odata_entity, "list", crit_key, crit_val)
+                elif crit_val != odata_entity.get(crit_key, None):
+                    return nomatch(odata_entity, "generic", crit_key, crit_val)
+                else:
+                    match(odata_entity, "generic", crit_key, crit_val)
+        return True
+
+    def filter_items_without_collection(self, items: list[Item]) -> None:
+        """
+        Removes items from the list that do not have a 'collection' field.
+
+        Args:
+            items (list[Item]): The list of items to filter (modified in place).
+        """
+        items[:] = [
+            item for item in items if item.collection or not logger.warning(f"Filter item without collection: {item}")
         ]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
 
+    def aggregate_items_from_results(self, all_results) -> ItemCollection:
+        """
+        Aggregates items from a list of results, filtering out exceptions and ensuring unique items by ID.
+
+        If all results are exceptions (i.e., no valid items), the first exception is raised.
+
+        Args:
+            all_results (Iterable[Sequence[Item] | Exception]): A list of either sequences of items or exceptions.
+
+        Returns:
+            ItemCollection: A collection containing all unique items combined into a STAC ItemCollection.
+
+        Raises:
+            Exception: The first exception encountered if no valid items are present.
+        """
         # Get items and exceptions from result
         all_items = {}
         all_exceptions = []
@@ -593,7 +762,22 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             raise all_exceptions[0]
 
         # Return results as a dict
-        data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
+        return ItemCollection(features=list(all_items.values()), type="FeatureCollection")
+
+    def build_response_payload(self, data: ItemCollection) -> dict[str, Any]:
+        """
+        Builds the search response payload by handling pagination and CADIP asset processing.
+
+        This method adapts the response structure based on the request path (e.g., `/search`)
+        and applies additional processing for CADIP-specific data when needed.
+
+        Args:
+            data (ItemCollection): The item collection returned from aggregate_items_from_results.
+
+        Returns:
+            dict[str, Any]: A dictionary-formatted payload ready for response, potentially including pagination links
+            and enriched asset information for CADIP sessions.
+        """
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
             dict_data: dict[str, Any] = self.paginate(data)
@@ -625,117 +809,175 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             type=paginated_item_collection.type,
         ).model_dump()
 
-    def process_collection(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-        self,
-        collection_id: str,
-        stac_params: dict,
-        return_values: list[Sequence[Item] | Exception],
-    ):
-        """Method used to process a collection and perform search."""
-        features = None
+    def merge_odata_params(self, odata_hardcoded: dict, odata_params: dict) -> tuple[dict, bool]:
+        """
+        Merges hardcoded and user-provided OData parameters with conflict resolution logic.
+
+        Hardcoded parameters take precedence in the merge. If a parameter exists in both sources,
+        conflicts are resolved based on the parameter type:
+        - For date intervals (e.g., "PublicationDate"), the intersection is computed.
+        - For comma-separated lists (e.g., "platformShortName", "productType"), the common values are retained.
+
+        Args:
+            odata_hardcoded (dict): Hardcoded parameters defined in the collection configuration.
+            odata_params (dict): OData parameters provided by the user.
+
+        Returns:
+            tuple[dict, bool]: A tuple containing the merged OData parameters and a boolean flag indicating
+            whether the result of the merge leads to an empty selection (e.g., no intersecting values).
+        """
+        # Merge the user input params with the hardcoded params (which have higher priority)
+        odata_merged = {**odata_params, **odata_hardcoded}
         empty_selection = False
-        # Convert search params from STAC keys to OData keys
-        odata_params = self.stac_to_odata(stac_params)
-        logger.debug(f"STAC/OData parameters mapping: {stac_params} => {odata_params}")
-        try:
-            # Some OData search params are hardcoded in the collection configuration.
-            collection = self.select_config(collection_id)
-            odata_hardcoded = collection.get("query") or {}
 
-            # Merge the user input params with the hardcoded params (which have higher priority)
-            odata_merged = {**odata_params, **odata_hardcoded}
+        # Handle conflicts, i.e. for each key that is defined in both params
+        for key in sorted(set(odata_params) & set(odata_hardcoded)):
+            key_empty_selection = False
+            # Date intervals
+            if key in DATE_INTERVAL_KEYS:
+                odata_merged[key], key_empty_selection = self.resolve_date_interval_conflict(
+                    odata_params[key],
+                    odata_hardcoded[key],
+                )
+            # Comma-separated lists
+            elif key in COMMA_SEPARATED_LISTS_KEYS:
+                odata_merged[key], key_empty_selection = self.resolve_comma_separated_list_conflict(
+                    odata_params[key],
+                    odata_hardcoded[key],
+                )
+            else:
+                logger.warning(f"No conflict resolution performed for key {key}")
+            if key_empty_selection:
+                empty_selection = True
 
-            # Handle conflicts, i.e. for each key that is defined in both params
-            for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
-                # Date intervals
-                if key in ("PublicationDate"):
+        return odata_merged, empty_selection
 
-                    # Read both start and stop dates
-                    _, start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
-                    _, start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
+    def resolve_date_interval_conflict(self, value1: str, value2: str) -> tuple[str, bool]:
+        """
+        Resolves a conflict between two date interval strings by computing their intersection.
 
-                    # Calculate the intersection
-                    start = max(start1, start2)
-                    stop = min(stop1, stop2)
+        Args:
+            value1 (str): The first date interval in ISO 8601 format.
+            value2 (str): The second date interval in ISO 8601 format.
 
-                    # If no intersection, then the selection is empty, else save the intersection
-                    if start >= stop:
-                        empty_selection = True
-                        break  # try next collection
-                    odata_merged[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
-                # Comma-separated lists
-                if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
+        Returns:
+            tuple[str, bool]: A tuple containing the intersected date interval as a string,
+                and a boolean indicating whether the selection is empty (True if no overlap).
+        """
+        logger.debug(f"Resolving date interval conflict resolution between {value1} and {value2}")
 
-                    # Read both values
-                    value1 = odata_params[key]
-                    value2 = odata_hardcoded[key]
-                    intersection = None
+        # Read both start and stop dates
+        _, start1, stop1 = validate_inputs_format(value1, raise_errors=True)
+        _, start2, stop2 = validate_inputs_format(value2, raise_errors=True)
 
-                    # If one is empty or None, this means "keep everything".
-                    # So keep the intersection = the other list.
-                    if not value1:
-                        intersection = value2
-                    elif not value2:
-                        intersection = value1
+        # Calculate the intersection
+        start = max(start1, start2)
+        stop = min(stop1, stop2)
 
-                    # Else, split by comma and keep the intersection.
-                    # If no intersection, then the selection is empty.
-                    else:
-                        for i, value in enumerate((value1, value2)):
-                            iterable = value if isinstance(value, list) else value.split(",")
-                            s = {v.strip() for v in iterable}
-                            intersection = intersection.intersection(s) if i else s  # type: ignore
-                        if intersection:
-                            intersection = ", ".join(intersection)
-                        if not intersection:
-                            empty_selection = True
-                            break  # try next collection
+        return f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}", start >= stop
 
-                    # Save the intersection
-                    odata_merged[key] = intersection
-            if empty_selection:
-                return
+    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any) -> tuple[Any, bool]:
+        """
+        Resolves a conflict between two comma-separated lists by computing their intersection.
 
-            # limit and page values used by the search function
-            search_limit = self.limit
-            search_page = self.page
+        Args:
+            value1 (Any): The first list, or a comma-separated string representing it.
+            value2 (Any): The second list, or a comma-separated string representing it.
 
-            # Don't forward limit value for /search endpoints
-            # just use maximum to gather all possible results, page is always 1
-            if "/search" in self.request.url.path:
-                search_limit = self.limit * self.page
-                search_page = 1
+        Returns:
+            tuple[Any, bool]: A tuple containing the intersected list as a comma-separated string,
+            and a boolean indicating whether the result is empty (True if no intersection).
+        """
+        logger.debug(f"Resolving comma-separated list conflict resolution between {value1} and {value2}")
 
-            # Do the search for this collection
-            logger.debug(f"Searching with OData parameters {odata_merged}")
-            features = (self.process_search(collection, odata_merged, search_limit, search_page)).features
+        intersection = None
 
-            # If search return maximum number of elements, increase page and process next elements
-            if len(features) == SEARCH_LIMIT:
-                while True:
-                    search_page += 1
-                    next_features = (self.process_search(collection, odata_merged, search_limit, search_page)).features
-                    features.extend(next_features)  # type: ignore
-                    # Extend current features.
-                    # Break the loop when result is less the maximum possible, meaning there is no next page.
-                    if len(next_features) < SEARCH_LIMIT:
-                        break
-                search_page = 1
+        # If one is empty or None, this means "keep everything".
+        # So keep the intersection = the other list.
+        if not value1:
+            intersection = value2
+        elif not value2:
+            intersection = value1
 
-            # Add the collection information
-            for item in features:
-                item.collection = collection_id
-            return_values.append(features)
+        # Else, split by comma and keep the intersection.
+        # If no intersection, then the selection is empty.
+        else:
+            for i, value in enumerate((value1, value2)):
+                iterable = value if isinstance(value, list) else value.split(",")
+                s = {v.strip() for v in iterable}
+                intersection = intersection.intersection(s) if i else s  # type: ignore
+            intersection = ", ".join(intersection) if intersection else None
+            logger.debug(f"comma-separated list conflict resolution result: {intersection}")
 
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error(traceback.format_exc())
-            return_values.append(exception)
+        return intersection, not intersection
+
+    def perform_search_in_station(
+        self,
+        station: str,
+        odata_params: dict,
+        collection_provider: Callable[[dict], str | None],
+        postprocess: Callable[[list[Item]], None],
+    ) -> list[Item]:
+        """
+        Performs a paginated search for items from a given station.
+
+        This method handles pagination automatically by fetching subsequent pages
+        if the number of results equals the search limit.
+        Applies a postprocessing function to the final list of items before returning.
+
+        Args:
+            station (str): The station to search in.
+            odata_params (dict): The OData query parameters to use for filtering the results.
+            collection_provider (Callable[[dict], str | None]): Function that determines STAC collection
+                                                                for a given OData entity
+            postprocess (Callable[[list[Item]], None]): Function to modify the list of items.
+
+        Returns:
+            Sequence[Item]: A list of STAC items matching the search criteria, postprocessed.
+        """
+        # limit and page values used by the search function
+        search_limit = self.limit
+        search_page = self.page
+
+        # Don't forward limit value for /search endpoints
+        # just use maximum to gather all possible results, page is always 1
+        if "/search" in self.request.url.path:
+            search_limit = self.limit * self.page
+            search_page = 1
+
+        # Do the search for this station
+        logger.debug(f"Searching to {station} station with OData parameters {odata_params}")
+        features = self.process_search(station, odata_params, collection_provider, search_limit, search_page).features
+
+        # If search return maximum number of elements, increase page and process next elements
+        if len(features) == SEARCH_LIMIT:
+            while True:
+                search_page += 1
+                next_features = self.process_search(
+                    station,
+                    odata_params,
+                    collection_provider,
+                    search_limit,
+                    search_page,
+                ).features
+                features.extend(next_features)  # type: ignore
+                # Extend current features.
+                # Break the loop when result is less the maximum possible, meaning there is no next page.
+                if len(next_features) < SEARCH_LIMIT:
+                    break
+            search_page = 1
+
+        logger.debug(f"Items found before post-processing: {len(features)}")
+        postprocess(features)
+        logger.debug(f"Items kept after post-processing: {len(features)}")
+        return features
 
     @abstractmethod
     def process_search(
         self,
-        collection: dict,
+        station: str,
         odata_params: dict,
+        collection_provider: Callable[[dict], str | None],
         limit: int,
         page: int,
     ) -> ItemCollection:
@@ -800,11 +1042,11 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     return utils2.decorate_sync_async(wrapping_logic, func)
 
 
-def filter_allowed_collections(all_collections, role, request):
+def filter_allowed_collections(all_collections: list[dict], role: ServiceRole | None, request: Request) -> list[dict]:
     """Filters collections based on user roles and permissions.
 
     This function returns only the collections that a user is allowed to read based on their
-    assigned roles in KeyCloak. If the application is running in local mode, all collections
+    assigned roles in Keycloak. If the application is running in local mode, all collections
     are returned without filtering.
 
     Parameters:
@@ -816,9 +1058,8 @@ def filter_allowed_collections(all_collections, role, request):
                            available through `request.state.auth_roles`.
 
     Returns:
-        dict: A JSON object containing the type, links, and a list of filtered collections
-              that the user is allowed to access. The structure of the returned object is
-              as follows:
+        list[dict]: list of filtered collections that the user is allowed to access.
+              The structure of the returned objects is as follows:
               - type (str): The type of the STAC object, which is always "Object".
               - links (list): A list of links associated with the STAC object (currently empty).
               - collections (list[dict]): A list of filtered collections, where each collection
@@ -853,9 +1094,9 @@ def filter_allowed_collections(all_collections, role, request):
     logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
 
     # Foreach allowed collection, create links and append to response.
-    stac_collections = []
+    stac_collections: list[dict] = []
     for config in filtered_collections:
-        config.setdefault("stac_version", "1.0.0")
+        config.setdefault("stac_version", DEFAULT_STAC_VERSION)
         try:
             collection: stac_pydantic.Collection = create_collection(config)
             stac_collections.append(collection.model_dump())
@@ -894,6 +1135,7 @@ def create_stac_collection(
     products: list[Any],
     feature_template: dict,
     stac_mapper: dict,
+    collection_provider: Callable[[dict], str | None] | None = None,
 ) -> ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
@@ -902,6 +1144,8 @@ def create_stac_collection(
         products (List[EOProduct]): A list of EOProducts to create STAC features for.
         feature_template (dict): The template for generating STAC features.
         stac_mapper (dict): The mapping dictionary for converting EOProduct data to STAC properties.
+        collection_provider (Callable[[dict], str | None]): optional function that determines STAC collection
+                                                            for a given OData entity
 
     Returns:
         dict: The STAC feature collection containing features for each EOProduct.
@@ -910,7 +1154,7 @@ def create_stac_collection(
 
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
-        feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
+        feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper, collection_provider)
         try:
             item = Item(**feature_tmp)
             item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore

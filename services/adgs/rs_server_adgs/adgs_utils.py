@@ -41,6 +41,22 @@ def read_conf():
     return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
 
 
+@lru_cache
+def auxip_odata_to_stac_template():
+    """Used each time to read the ODataToSTAC_template json template."""
+    with open(ADGS_CONFIG / "ODataToSTAC_template.json", encoding="utf-8") as mapper:
+        config = json.loads(mapper.read())
+    return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
+
+
+@lru_cache
+def auxip_stac_mapper():
+    """Used each time to read the adgs_stac_mapper config yaml."""
+    with open(ADGS_CONFIG / "adgs_stac_mapper.json", encoding="utf-8") as stac_map:
+        config = json.loads(stac_map.read())
+    return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
+
+
 def select_config(configuration_id: str) -> dict | None:
     """Used to select a specific configuration from yaml file, returns None if not found."""
     return next(
@@ -51,14 +67,11 @@ def select_config(configuration_id: str) -> dict | None:
 
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
-    stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
-    with open(stac_mapper_path, encoding="utf-8") as stac_map:
-        stac_mapper = json.loads(stac_map.read())
-        return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
+    return {auxip_stac_mapper().get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
 
 
 def serialize_adgs_asset(feature_collection, products):
-    """Used to update adgs asset with propper href and format {asset_name: asset_body}."""
+    """Used to update adgs asset with proper href and format {asset_name: asset_body}."""
     for feature in feature_collection.features:
         auxip_id = feature.properties.dict()["auxip:id"]
         # Find matching product by id and update feature href
@@ -75,12 +88,12 @@ def serialize_adgs_asset(feature_collection, products):
 
 
 def get_adgs_queryables() -> dict[str, QueryableField]:
-    """Function to list all available queryables for ADGS session search."""
+    """Function to list all available queryables for ADGS file search."""
     return {
         "PublicationDate": QueryableField(
             title="PublicationDate",
             type="Interval",
-            description="Session Publication Date",
+            description="File Publication Date",
             format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
         ),
         "processingDate": QueryableField(
@@ -110,7 +123,7 @@ def get_adgs_queryables() -> dict[str, QueryableField]:
     }
 
 
-def auxip_map_mission(platform: str, constellation: str):
+def auxip_map_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
     """
     Custom function for ADGS, to read constellation mapper and return propper
     values for platform and serial.

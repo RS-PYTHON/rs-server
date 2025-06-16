@@ -18,9 +18,9 @@ This module provides functionality to retrieve a list of products from the ADGS 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
-import json
 import os.path as osp
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -33,6 +33,8 @@ from fastapi.responses import RedirectResponse
 from rs_server_adgs import adgs_retriever, adgs_tags
 from rs_server_adgs.adgs_utils import (
     auxip_map_mission,
+    auxip_odata_to_stac_template,
+    auxip_stac_mapper,
     prepare_collection,
     read_conf,
     select_config,
@@ -96,24 +98,19 @@ class MockPgstacAdgs(MockPgstac):
     @handle_exceptions
     def process_search(
         self,
-        collection: dict,
+        station: str,
         odata_params: dict,
+        collection_provider: Callable[[dict], str | None],
         limit: int,
         page: int,
     ) -> stac_pydantic.ItemCollection:
-        """Search adgs products for the given collection and OData parameters."""
+        """Search adgs products for the given station and OData parameters."""
         # Update odata names that shadow eodag builtins (productype)
 
         odata_params["Name"] = names[0] if isinstance(names := odata_params.get("Name"), list) else names
         odata_params["attr_ptype"] = odata_params.pop("productType", None)
 
-        return process_product_search(
-            collection.get("station", "adgs"),
-            odata_params,
-            limit,
-            self.sortby,
-            page,
-        )
+        return process_product_search(station, odata_params, collection_provider, limit, self.sortby, page)
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -319,10 +316,11 @@ async def get_adgs_collection_specific_item(
 
 
 def process_product_search(  # pylint: disable=too-many-locals
-    station,
-    queryables,
-    limit,
-    sortby,
+    station: str,
+    queryables: dict,
+    collection_provider: Callable[[dict], str | None],
+    limit: int,
+    sortby: str,
     page: int = 1,
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
@@ -332,6 +330,8 @@ def process_product_search(  # pylint: disable=too-many-locals
     Args:
         station (str): Auxip station identifier.
         queryables (dict): Query parameters for filtering results.
+        collection_provider (Callable[[dict], str | None]): Function that determines STAC collection
+                                                            for a given OData entity
         limit (int): Maximum number of products to return.
         sortby (str): Sorting field with +/- prefix for ascending/descending order.
         page (int, optional): Page number for pagination. Defaults to 1.
@@ -354,16 +354,13 @@ def process_product_search(  # pylint: disable=too-many-locals
             page=page,
             **kwargs,
         )
-        feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
-        stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
-        with (
-            open(feature_template_path, encoding="utf-8") as template,
-            open(stac_mapper_path, encoding="utf-8") as stac_map,
-        ):
-            feature_template = json.loads(template.read())
-            stac_mapper = json.loads(stac_map.read())
-            collection = create_stac_collection(products, feature_template, stac_mapper)
-            return prepare_collection(serialize_adgs_asset(collection, products))
+        collection = create_stac_collection(
+            products,
+            auxip_odata_to_stac_template(),
+            auxip_stac_mapper(),
+            collection_provider,
+        )
+        return prepare_collection(serialize_adgs_asset(collection, products))
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
@@ -377,7 +374,6 @@ def process_product_search(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Station ADGS connection error: {exception}",
         ) from exception
-
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
         if isinstance(exception, HTTPException):
