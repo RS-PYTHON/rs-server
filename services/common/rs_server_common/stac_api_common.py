@@ -142,24 +142,24 @@ class QueryableField(BaseModel):
 @dataclass
 class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     """
-    Mock a pgstac database for the services (adgs, cadip, ...) that use stac_fastapi but don't need a database.
+    Mock a pgstac database for the services (auxip, cadip, ...) that use stac_fastapi but don't need a database.
     """
 
     # Set by stac-fastapi
     request: Request = Request(scope={"type": "http"})
     readwrite: Literal["r", "w"] | None = None
 
-    service: Literal["adgs", "cadip"] | None = None
+    service: Literal["auxip", "cadip"] | None = None
 
-    # adgs or cadip function
+    # auxip or cadip function
     all_collections: Callable = lambda: None
     select_config: Callable = lambda: None
     stac_to_odata: Callable = lambda: None
     map_mission: Callable = lambda: None
     temporal_mapping: dict[str, str] | None = None
 
-    # Is the service adgs or cadip ?
-    adgs: bool = False
+    # Is the service auxip or cadip ?
+    auxip: bool = False
     cadip: bool = False
 
     # Current page
@@ -169,7 +169,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     limit: int = 0
 
     def __post_init__(self):
-        self.adgs = self.service in ("adgs", "auxip")
+        self.auxip = self.service == "auxip"
         self.cadip = self.service == "cadip"
 
     @classmethod
@@ -203,7 +203,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # If the collection has a product type field hard-coded with a single value,
         # the user cannot query on it.
         # TODO: factorize this code for all query parameters.
-        if self.adgs:
+        if self.auxip:
             can_query = True
             if collection_id:
                 value = self.select_config(collection_id).get("query", {}).get("productType", "")
@@ -415,7 +415,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if datetime:
             try:
                 validate_inputs_format(datetime, raise_errors=True)
-                if self.adgs:
+                if self.auxip:
                     stac_params["created"] = datetime
                 elif self.cadip:
                     stac_params["published"] = datetime
@@ -534,7 +534,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # map stac platform/constellation values to odata values...
         mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
         # ... still saved with stac keys for now
-        if self.adgs:
+        if self.auxip:
             stac_params["constellation"], stac_params["platform"] = mission
         if self.cadip:
             stac_params["platform"] = mission

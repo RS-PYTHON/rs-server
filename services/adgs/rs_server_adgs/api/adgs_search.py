@@ -82,7 +82,7 @@ class MockPgstacAdgs(MockPgstac):
         super().__init__(
             request=request,
             readwrite=readwrite,
-            service="adgs",
+            service="auxip",
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,
