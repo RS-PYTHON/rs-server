@@ -3867,7 +3867,11 @@ files = [
 
 [[package]]
 name = "rs-osam"
+<<<<<<< Updated upstream
 version = "0.2a14.post2.dev0"
+=======
+version = "0.2a14.post4.dev0"
+>>>>>>> Stashed changes
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = "^3.11"
