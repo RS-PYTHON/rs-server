@@ -192,8 +192,10 @@ def link_rspython_users_and_obs_users():
     keycloak_users = get_keycloak_handler().get_keycloak_users()
     try:
         # Iterate keycloak users and create an cloud provider account if missing
+        logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
         for user in keycloak_users:
             if not get_keycloak_handler().get_obs_user_from_keycloak_user(user):
+                logger.info(f"Creating a new ovh account linked to keycloak user '{user}'")
                 create_obs_user_account_for_keycloak_user(user)
 
         # Get the updated keycloak users and cloud provider users
@@ -271,7 +273,6 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             get_ovh_handler().delete_user(obs_user["id"])
 
 
-<<<<<<< Updated upstream
 def get_user_s3_credentials(user: str):
     """
     Retrieves the S3 access and secret keys for a given user.
@@ -294,8 +295,6 @@ def get_user_s3_credentials(user: str):
     return {"detail": f"No s3 credentials associated with {user}"}
 
 
-=======
->>>>>>> Stashed changes
 @traced_function()
 def build_s3_rights(user_info):  # pylint: disable=too-many-locals
     """
@@ -353,7 +352,6 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
     return output
 
 
-<<<<<<< Updated upstream
 @traced_function()
 def update_s3_rights_lists(s3_rights):
     """
@@ -373,12 +371,6 @@ def update_s3_rights_lists(s3_rights):
         dict: A complete S3 policy document with updated statements reflecting the user's access rights.
     """
 
-=======
-def update_s3_rights_lists(s3_rights):
-    """
-    Updates the S3 access rights structure for a user based on their Keycloak roles.
-    """
->>>>>>> Stashed changes
     # fields from the s3 access rights lists
     access_rights_list_keys = [
         (STRKEY_ACCESS_RIGHT_READ_LIST, BLOCK_LIST_READ_TEMPLATE),

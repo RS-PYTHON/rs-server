@@ -46,7 +46,6 @@ from starlette.status import (  # pylint: disable=C0411
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
 # Default timeout of the synchronization logic (2 minutes)
 DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))
-<<<<<<< Updated upstream
 
 
 def must_be_authenticated(route_path: str) -> bool:
@@ -54,8 +53,6 @@ def must_be_authenticated(route_path: str) -> bool:
     no_auth = (route_path in "/_mgmt/ping") or (route_path in ["/api", "/api.html", "/health"])
     return not no_auth
 
-=======
->>>>>>> Stashed changes
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
@@ -141,7 +138,6 @@ async def accounts_update():
 
 @router.get("/storage/account/{user}/rights")
 async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
-<<<<<<< Updated upstream
     """
     Retrieves and constructs the S3 access rights policy for a specified user.
 
@@ -160,15 +156,11 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     Raises:
         HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
     """
-=======
-    """Builds the s3 rights list"""
->>>>>>> Stashed changes
     logger.debug("Endpoint for getting the user rights")
     if user not in app.extra["users_info"]:
         return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
     s3_rights = build_s3_rights(app.extra["users_info"][user])
-<<<<<<< Updated upstream
     output = update_s3_rights_lists(s3_rights)
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
@@ -179,24 +171,6 @@ async def get_credentials(request: Request):
     Request MUST contain oauth2 cookie in header"""
     auth_info = await oauth2.get_user_info(request)
     return get_user_s3_credentials(auth_info.user_login)
-=======
-    # s3_rights = {   'read': [   'rspython-ops-catalog-antoine-production/*/s1-l1/',
-    #             'rspython-ops-catalog-antoine-s3-hkm/*/s1-l1/',
-    #             'rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/',
-    #             'rspython-ops-catalog-default-s1-l1/*/s1-l1/',
-    #             'rspython-ops-catalog-jules-production/*/s1-l1/',
-    #             'rspython-ops-catalog/*/s1-l1/'],
-    # 'read_download': [   'rspython-ops-catalog-default-s1-l1/agrosu/*/',
-    #                      'rspython-ops-catalog-default-s1-l1/osam/s1-l1/',
-    #                      'rspython-ops-catalog-emilie-s1-aux-infinite/agrosu/*/',
-    #                      'rspython-ops-catalog/agrosu/*/',
-    #                      'rspython-ops-catalog/osam/s1-l1/'],
-    # 'write_download': [   'rspython-ops-catalog-default-s1-l1/osam/s1-l1/',
-    #                       'rspython-ops-catalog/osam/s1-l1/']
-    #                       }
-    output = update_s3_rights_lists(s3_rights)
-    return JSONResponse(status_code=HTTP_200_OK, content=output)
->>>>>>> Stashed changes
 
 
 async def main_osam_task(timeout: int = 60):
