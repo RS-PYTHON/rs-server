@@ -15,6 +15,7 @@
 """osam main module."""
 
 import asyncio  # for handling asynchronous tasks
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -26,6 +27,7 @@ from osam.tasks import (
     build_users_data_map,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
+    update_s3_rights_lists,
 )
 from rs_server_common.authentication import oauth2
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
@@ -40,7 +42,10 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
-DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 3600))
+# The default synchronization time of the keycloak users with the ovh users (twice per day)
+DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
+# Default timeout of the synchronization logic (2 minutes)
+DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))
 
 
 def must_be_authenticated(route_path: str) -> bool:
@@ -62,12 +67,16 @@ async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
     logger.info("Starting up the application...")
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
-    # the following event may be called from the future endpoint requested in rspy 606
+    # the trigger for running the logic in the background task
     fastapi_app.extra["endpoint_trigger"] = asyncio.Event()
+    # event to signal completion of the background task
+    fastapi_app.extra["task_completion"] = asyncio.Event()
     # Run the refresh loop in the background
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
         main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
     )
+    # Trigger the background task to sync the keycloak users with ovh users
+    app.extra["endpoint_trigger"].set()
     fastapi_app.extra["users_info"] = dict[str, Any]
     # Yield control back to the application (this is where the app will run)
     yield
@@ -88,33 +97,72 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 @router.post("/storage/accounts/update")
 async def accounts_update():
-    """Used as a trigger to link the keycloak users to the obs users
-    It also creates the s3 access rights for each user
     """
-    logger.debug("Endpoint for triggering the users synchronization process called")
-    # app.extra["endpoint_trigger"].set()
+    Triggers the synchronization of Keycloak and OVH (OBS) account information.
+
+    This endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
+    logic between Keycloak and the Object Storage Access Manager (OSAM). It waits for a completion signal
+    from the background task and returns a success or failure response based on the outcome.
+
+    Returns:
+        JSONResponse: A success message if the background task completes in time.
+
+    Raises:
+        HTTPException (500): If the background task times out or a runtime error occurs.
+    """
     try:
-        link_rspython_users_and_obs_users()
-        app.extra["users_info"] = build_users_data_map()
+        # Clear any previous completion signal
+        app.extra["task_completion"].clear()
+        # Trigger the background task
+        app.extra["endpoint_trigger"].set()
+        # Wait for the background task to signal completion with a timeout
+        try:
+            await asyncio.wait_for(
+                app.extra["task_completion"].wait(),
+                timeout=DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT,
+            )
+        except TimeoutError:
+            logger.error(f"Background task timed out after {DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT} seconds")
+            return HTTPException(
+                HTTP_500_INTERNAL_SERVER_ERROR,
+                "Failed to update accounts: Background task timed out after 30 seconds",
+            )
         return JSONResponse(status_code=HTTP_200_OK, content="Keycloak and OVH accounts updated")
     except RuntimeError as rt:
+        logger.error(f"Failed to update accounts: {rt}")
         return HTTPException(
             HTTP_500_INTERNAL_SERVER_ERROR,
-            f"Failed to update the keycloack and ovh accounts. Reason: {rt}",
+            f"Failed to update the keycloak and ovh accounts. Reason: {rt}",
         )
 
 
 @router.get("/storage/account/{user}/rights")
 async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
-    """Used as a trigger to link the keycloak users to the obs users
-    It also creates the s3 access rights for each user
+    """
+    Retrieves and constructs the S3 access rights policy for a specified user.
+
+    This endpoint:
+      - Looks up the user's Keycloak roles from the in-memory user store.
+      - Parses the roles to determine S3 access permissions (read, read+download, write+download).
+      - Generates a full S3 access policy document using predefined templates.
+
+    Args:
+        request (Request): FastAPI request object (currently unused).
+        user (str): Username of the account for which to retrieve access rights.
+
+    Returns:
+        JSONResponse: A JSON response containing the constructed AWS S3 access policy document.
+
+    Raises:
+        HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
     """
     logger.debug("Endpoint for getting the user rights")
     if user not in app.extra["users_info"]:
         return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
-    output = build_s3_rights(app.extra["users_info"][user])
-    return JSONResponse(status_code=HTTP_200_OK, content=output)
+    s3_rights = build_s3_rights(app.extra["users_info"][user])
+    output = update_s3_rights_lists(s3_rights)
+    return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 
 @router.get("/storage/account/credentials")
@@ -171,6 +219,9 @@ async def main_osam_task(timeout: int = 60):
 
             link_rspython_users_and_obs_users()
             app.extra["users_info"] = build_users_data_map()
+
+            # Signal completion to the endpoint
+            app.extra["task_completion"].set()
 
             logger.debug("Getting the keycloack attributes finished")
 

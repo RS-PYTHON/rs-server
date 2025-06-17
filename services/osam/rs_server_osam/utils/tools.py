@@ -21,6 +21,25 @@ from rs_server_common.s3_storage_handler import s3_storage_config
 from rs_server_common.utils.logging import Logging
 
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
+KEYCLOAK_USER_PLACEHOLDER = "%keycloak-user%"
+DEFAULT_DESCRIPTION_TEMPLATE = f"## linked to keycloak user {KEYCLOAK_USER_PLACEHOLDER}"
+DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
+# safeguards for the OBS_DESCRIPTION_TEMPLATE environment variable, in case it is incorrectly set
+# or loaded. These checks help prevent potential mistakes of loading the value of this var which may lead
+# to the posibility of accidentally deleting all users from OVH.
+if not DESCRIPTION_TEMPLATE:
+    raise RuntimeError(f"The OBS_DESCRIPTION_TEMPLATE env var is empty. Example: {DEFAULT_DESCRIPTION_TEMPLATE}")
+if KEYCLOAK_USER_PLACEHOLDER == DESCRIPTION_TEMPLATE:
+    raise RuntimeError(
+        f"Incorect value of OBS_DESCRIPTION_TEMPLATE. It shouldn't be just {DESCRIPTION_TEMPLATE}. "
+        f"Example: {DEFAULT_DESCRIPTION_TEMPLATE}",
+    )
+if KEYCLOAK_USER_PLACEHOLDER not in DESCRIPTION_TEMPLATE:
+    raise RuntimeError(
+        f"The placeholder for keycloak user '{KEYCLOAK_USER_PLACEHOLDER}' is "
+        "missing from the OBS_DESCRIPTION_TEMPLATE environment variable",
+    )
+LIST_CHECK_OVH_DESCRIPTION = DESCRIPTION_TEMPLATE.split(KEYCLOAK_USER_PLACEHOLDER)
 
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
@@ -41,8 +60,7 @@ def create_description_from_template(keycloak_user: str, template: str) -> str:
     Returns:
         str: Description with correct user name.
     """
-    user_placeholder = "%keycloak-user%"
-    return template.replace(user_placeholder, keycloak_user)
+    return template.replace(KEYCLOAK_USER_PLACEHOLDER, keycloak_user)
 
 
 def get_keycloak_user_from_description(description: str, template: str) -> str:
@@ -56,10 +74,8 @@ def get_keycloak_user_from_description(description: str, template: str) -> str:
     Returns:
         str: Keycloak user name.
     """
-    user_placeholder = "%keycloak-user%"
-
     # We use split to handle any case when the placeholder is in the middle of the description
-    templates = template.split(user_placeholder)
+    templates = template.split(KEYCLOAK_USER_PLACEHOLDER)
     for t in templates:
         description = description.replace(t, "")
 

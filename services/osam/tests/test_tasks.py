@@ -13,20 +13,22 @@
 # limitations under the License.
 
 """Unit tests for tasks"""
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 # pylint: disable = unused-argument
 from osam.tasks import (
-    DESCRIPTION_TEMPLATE,
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
+    update_s3_rights_lists,
 )
 from osam.utils.tools import (
+    DESCRIPTION_TEMPLATE,
     get_configmap_user_values,
     match_roles,
     parse_role,
@@ -274,6 +276,211 @@ def test_match_roles(roles, expected):
 def test_build_s3_rights(user_info, expected):
     """Test build s3 rights"""
     assert build_s3_rights(user_info) == expected
+
+
+@pytest.mark.parametrize(
+    "s3_rights, expected",
+    [
+        (
+            {
+                "read": [
+                    "rspython-ops-catalog-paul/paul/s1-l1/",
+                    "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                    "rspython-ops-catalog/paul/s1-l1/",
+                ],
+                "read_download": [],
+                "write_download": [],
+            },
+            {
+                "Statement": [
+                    {
+                        "Action": [
+                            "s3:ListBucket",
+                            "s3:ListMultipartUploadParts",
+                            "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-paul/paul/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
+                        ],
+                        "Sid": "ROContainer",
+                    },
+                ],
+                "Version": "2025-01-01",
+            },
+        ),
+        (
+            {
+                "read": [],
+                "read_download": [
+                    "rspython-ops-catalog/copernicus/s1-aux/",
+                    "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                    "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
+                ],
+                "write_download": [],
+            },
+            {
+                "Statement": [
+                    {
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:ListBucket",
+                            "s3:ListMultipartUploadParts",
+                            "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-aux/",
+                            "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-aux/*",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/*",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/*",
+                        ],
+                        "Sid": "ROContainer",
+                    },
+                ],
+                "Version": "2025-01-01",
+            },
+        ),
+        (
+            {
+                "read": [],
+                "read_download": [],
+                "write_download": [
+                    "rspython-ops-catalog/copernicus/s1-l1/",
+                    "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
+                    "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
+                ],
+            },
+            {
+                "Statement": [
+                    {
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:PutObject",
+                            "s3:DeleteObject",
+                            "s3:ListBucket",
+                            "s3:ListMultipartUploadParts",
+                            "s3:ListBucketMultipartUploads",
+                            "s3:AbortMultipartUpload",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/*",
+                        ],
+                        "Sid": "RWContainer",
+                    },
+                ],
+                "Version": "2025-01-01",
+            },
+        ),
+        (
+            {
+                "read": [
+                    "rspython-ops-catalog/*/s1-l1/",
+                    "rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
+                    "rspython-ops-catalog-default-s1-l1/*/s1-l1/",
+                ],
+                "read_download": [
+                    "rspython-ops-catalog/paul/s1-l1/",
+                    "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                    "rspython-ops-catalog/emilie/*/",
+                    "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                    "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                ],
+                "write_download": [
+                    "rspython-ops-catalog/paul/s1-l1/",
+                    "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                ],
+            },
+            {
+                "Statement": [
+                    {
+                        "Action": [
+                            "s3:ListBucket",
+                            "s3:ListMultipartUploadParts",
+                            "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog/*/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog/*/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/*/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/*/s1-l1/*",
+                        ],
+                        "Sid": "ROContainer",
+                    },
+                    {
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:ListBucket",
+                            "s3:ListMultipartUploadParts",
+                            "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog/emilie/*/",
+                            "arn:aws:s3:::rspython-ops-catalog/emilie/*/*",
+                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/emilie/*/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/emilie/*/*",
+                        ],
+                        "Sid": "ROContainer",
+                    },
+                    {
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:PutObject",
+                            "s3:DeleteObject",
+                            "s3:ListBucket",
+                            "s3:ListMultipartUploadParts",
+                            "s3:ListBucketMultipartUploads",
+                            "s3:AbortMultipartUpload",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Effect": "Allow",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
+                        ],
+                        "Sid": "RWContainer",
+                    },
+                ],
+                "Version": "2025-01-01",
+            },
+        ),
+    ],
+)
+@patch("osam.tasks.datetime")
+def test_update_s3_rights_lists(mock_datetime, s3_rights, expected):
+    """Test build s3 rights"""
+    mock_datetime.now.return_value = datetime(2025, 1, 1)
+    assert update_s3_rights_lists(s3_rights) == expected
 
 
 @pytest.mark.usefixtures("mock_ovh_handler", "mock_keycloak_handler")
