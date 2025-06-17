@@ -20,7 +20,6 @@ import pytest
 
 # pylint: disable = unused-argument
 from osam.tasks import (
-    DESCRIPTION_TEMPLATE,
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
@@ -29,6 +28,7 @@ from osam.tasks import (
     update_s3_rights_lists,
 )
 from osam.utils.tools import (
+    DESCRIPTION_TEMPLATE,
     get_configmap_user_values,
     match_roles,
     parse_role,
