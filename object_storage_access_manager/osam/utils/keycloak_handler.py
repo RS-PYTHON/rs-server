@@ -69,7 +69,16 @@ class KeycloakHandler:
         Returns:
             list[dict]: List of RoleRepresentation as dicts
         """
-        return self.keycloak_admin.get_realm_roles_of_user(user_id)
+        all_roles = {}
+
+        for group in self.keycloak_admin.get_user_groups(user_id) or []:
+            for role in self.keycloak_admin.get_group_realm_roles(group["id"]):
+                all_roles[role["name"]] = role
+
+        for role in self.keycloak_admin.get_realm_roles_of_user(user_id):
+            all_roles[role["name"]] = role
+
+        return list(all_roles.values())
 
     def get_keycloak_users(self) -> list[dict]:
         """Returns the list of all Keycloak users

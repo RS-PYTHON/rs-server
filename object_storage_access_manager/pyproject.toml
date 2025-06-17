@@ -1,7 +1,3 @@
-[project]
-name = "rs-osam"
-version = "0.1.0"
-
 [tool.poetry]
 name = "rs-osam"
 version = "0.0.0"
