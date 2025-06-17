@@ -295,10 +295,10 @@ def test_build_s3_rights(user_info, expected):
                 "Statement": [
                     {
                         "Action": [
-                            "s3:GetObject",
                             "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
                         ],
                         "Effect": "Allow",
                         "Resource": [
@@ -333,6 +333,7 @@ def test_build_s3_rights(user_info, expected):
                             "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
                         ],
                         "Effect": "Allow",
                         "Resource": [
@@ -410,10 +411,10 @@ def test_build_s3_rights(user_info, expected):
                 "Statement": [
                     {
                         "Action": [
-                            "s3:GetObject",
                             "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
                         ],
                         "Effect": "Allow",
                         "Resource": [
@@ -432,6 +433,7 @@ def test_build_s3_rights(user_info, expected):
                             "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
+                            "s3:GetBucketLocation",
                         ],
                         "Effect": "Allow",
                         "Resource": [
