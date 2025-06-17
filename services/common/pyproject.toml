@@ -57,6 +57,7 @@ opentelemetry-distro = "^0.55b1" # then run 'poetry run opentelemetry-bootstrap 
 opentelemetry-instrumentation-aws-lambda = "^0.55b1"
 opentelemetry-test-utils = "^0.55b1"
 opentelemetry-exporter-otlp = "^1.34.1"
+protobuf = ">=5.29.5"
 python-logging-loki = "^0.3.1"
 authlib = "^1.5.0"
 python-keycloak = ">=5.3.1,<6.0"
