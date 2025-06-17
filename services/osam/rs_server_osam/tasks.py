@@ -49,14 +49,20 @@ STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST = "write_download"
 S3_ACCESS_RIGHTS_TEMPLATE = {"Version": "%date%", "Statement": list[dict[str, Sequence[str]]]}
 
 BLOCK_LIST_READ_TEMPLATE = {
-    "Action": ["s3:GetObject", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+    "Action": ["s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads", "s3:GetBucketLocation"],
     "Effect": "Allow",
     "Resource": ["arn:aws:s3:::%placeholder%", "arn:aws:s3:::%placeholder%*"],
     "Sid": "ROContainer",
 }
 
 BLOCk_LIST_READ_DOWNLOAD_TEMPLATE = {
-    "Action": ["s3:GetObject", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+    "Action": [
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:ListMultipartUploadParts",
+        "s3:ListBucketMultipartUploads",
+        "s3:GetBucketLocation",
+    ],
     "Effect": "Allow",
     "Resource": ["arn:aws:s3:::%placeholder%", "arn:aws:s3:::%placeholder%*"],
     "Sid": "ROContainer",
