@@ -172,7 +172,7 @@ class TestLandingPagesEndpoints:
         "endpoint, roles",
         [
             ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
-            ("/auxip/collections", ["rs_adgs_landing_page", "rs_adgs_authTest_read"]),
+            ("/auxip/collections", ["rs_adgs_landing_page", "rs_auxip_authTest_read"]),
         ],
     )
     def test_cluster_landing_page_with_roles(self, client, mocker, endpoint, roles):
