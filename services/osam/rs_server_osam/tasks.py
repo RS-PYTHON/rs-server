@@ -262,7 +262,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
             logger.info(f"Removal of the OVH user {obs_user['username']} with id {obs_user['id']}")
-            # get_ovh_handler().delete_user(obs_user["id"])
+            get_ovh_handler().delete_user(obs_user["id"])
 
 
 def get_user_s3_credentials(user: str):
