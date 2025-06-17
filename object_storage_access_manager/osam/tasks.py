@@ -29,6 +29,8 @@ from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
 from osam.utils.tools import (
     DEFAULT_CSV_PATH,
+    DESCRIPTION_TEMPLATE,
+    LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
     get_allowed_buckets,
     get_keycloak_user_from_description,
@@ -38,8 +40,6 @@ from osam.utils.tools import (
 from rs_server_common.s3_storage_handler import s3_storage_config
 from rs_server_common.utils.logging import Logging
 
-DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
-DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"
 STRKEY_ACCESS_RIGHT_READ_DWN_LIST = "read_download"
@@ -245,18 +245,10 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
-    if not DESCRIPTION_TEMPLATE or not DESCRIPTION_TEMPLATE.replace("%keycloak-user%", ""):
-        logger.info(
-            f"The OBS_DESCRIPTION_TEMPLATE env var is empty, failed to check if the user {obs_user['username']} "
-            "was created by the osam service. Skipping....",
-        )
-        return
-    if DESCRIPTION_TEMPLATE.replace("%keycloak-user%", "") not in obs_user["description"]:
+    if not all(val in obs_user["description"] for val in LIST_CHECK_OVH_DESCRIPTION):
         logger.info(f"The ovh user {obs_user['username']} is not created by osam service. Skipping....")
         return
     keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
-    logger.debug(f"user: {obs_user}")
-    logger.debug(f"keycloak_user_id = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
         logger.debug(f"keycloak_user = {keycloak_user['username']}")
@@ -270,7 +262,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
         if obs_user["description"] == expected_description:
             logger.info(f"Removal of the OVH user {obs_user['username']} with id {obs_user['id']}")
-            get_ovh_handler().delete_user(obs_user["id"])
+            # get_ovh_handler().delete_user(obs_user["id"])
 
 
 def get_user_s3_credentials(user: str):
