@@ -38,7 +38,7 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.115.12"
+fastapi = "^0.115.13"
 starlette = ">=0.46.2,<0.47"
 uvicorn = ">=0.34.3,<0.35"
 requests = "^2.32.4"
