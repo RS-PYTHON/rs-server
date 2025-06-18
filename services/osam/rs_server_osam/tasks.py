@@ -278,7 +278,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         # get_keycloak_user_from_description, but when the original description doesn't match
         # the template, get_keycloak_user_from_description returns the full description
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
-        logger.debug(f"Expected description = {expected_description}")
+        logger.debug(f"Expected description: '{expected_description}'")
         if obs_user["description"] == expected_description:
             logger.info(
                 f"Removal of the OVH user '{obs_user['username']}' with id {obs_user['id']} linked with a "
@@ -288,7 +288,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         else:
             logger.info(
                 f"The OVH user '{obs_user['username']}' with description '{obs_user['description']}' was not "
-                f"created by using the current template {DESCRIPTION_TEMPLATE}",
+                f"created by using the current template '{DESCRIPTION_TEMPLATE}'. Skipping....",
             )
 
 
