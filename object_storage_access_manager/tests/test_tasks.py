@@ -516,8 +516,6 @@ class TestDeleteObsUser:
         mock_get_ovh_handler,
         mock_create_description,
         mock_get_keycloak_user,
-        mock_ovh_handler,
-        mock_keycloak_handler,
     ):
         """User description does NOT contain DESCRIPTION_TEMPLATE (without %keycloak-user%) → skip deletion"""
         obs_user = {
@@ -533,6 +531,37 @@ class TestDeleteObsUser:
         mock_get_ovh_handler.assert_not_called()
 
     @patch("osam.tasks.get_keycloak_user_from_description")
+    @patch("osam.tasks.get_ovh_handler")
+    def test_skip_if_user_created_from_another_platform(
+        self,
+        mock_get_ovh_handler,
+        mock_get_keycloak_user,
+    ):
+        """User description contains DESCRIPTION_TEMPLATE but contains more info → skip deletion"""
+        keycloak_users = [
+            {"username": "emilie"},
+        ]
+
+        mock_get_keycloak_user.return_value = "paul"
+        obs_user = {
+            "username": "user_created_from_another_platform",
+            "description": "## linked to keycloak user paul from platform XYZ",
+            "id": "obs999",
+        }
+        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
+
+        mock_get_ovh_handler.assert_not_called()
+
+        with patch(
+            "osam.tasks.DESCRIPTION_TEMPLATE",
+            "## linked to keycloak user %keycloak-user% from platform ANOTHER",
+        ):
+            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
+
+        mock_get_ovh_handler.assert_not_called()
+
+    @patch("osam.tasks.get_keycloak_user_from_description")
     @patch("osam.tasks.create_description_from_template")
     @patch("osam.tasks.get_ovh_handler")
     def test_user_linked_to_keycloak_user_no_deletion(
@@ -540,8 +569,6 @@ class TestDeleteObsUser:
         mock_get_ovh_handler,
         mock_create_description,
         mock_get_keycloak_user,
-        mock_ovh_handler,
-        mock_keycloak_handler,
     ):
         """User is correctly linked to keycloak, skip"""
         obs_user = {
@@ -571,8 +598,6 @@ class TestDeleteObsUser:
         mock_get_ovh_handler,
         mock_create_description,
         mock_get_keycloak_user,
-        mock_ovh_handler,
-        mock_keycloak_handler,
     ):
         """Test user does not exist in keycloak and description match -> delete"""
         obs_user = {
@@ -605,8 +630,6 @@ class TestDeleteObsUser:
         mock_get_ovh_handler,
         mock_create_description,
         mock_get_keycloak_user,
-        mock_ovh_handler,
-        mock_keycloak_handler,
     ):
         """Test user doesn't exist in keycloak but description doesnt match -> skip"""
         obs_user = {

@@ -252,23 +252,44 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
         None
     """
     if not all(val in obs_user["description"] for val in LIST_CHECK_OVH_DESCRIPTION):
-        logger.info(f"The ovh user {obs_user['username']} is not created by osam service. Skipping....")
+        logger.info(f"The ovh user '{obs_user['username']}' is not created by osam service. Skipping....")
         return
+    logger.info(f"Getting the keycloak username from ovh description '{obs_user['description']}'")
+    logger.debug(f"DESCRIPTION_TEMPLATE = {DESCRIPTION_TEMPLATE}")
     keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
+    if not keycloak_user_id:
+        logger.info(
+            f"Failed to find keycloak username in the description ({obs_user['description']}) for ovh user "
+            f"{obs_user['username']}. Skipping....",
+        )
+        return
+    logger.debug(f"keycloak username = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
-        logger.debug(f"keycloak_user = {keycloak_user['username']}")
         if keycloak_user["username"] == keycloak_user_id:
             does_user_exist = True
+            logger.debug(
+                f"The keycloak user '{keycloak_user['username']}' does exist in keycloak, skipping the deletion in ovh",
+            )
+            break
 
     if not does_user_exist:
         # NOTE: this may seem strange considering that we retrieve the keycloak_user_id from
         # get_keycloak_user_from_description, but when the original description doesn't match
         # the template, get_keycloak_user_from_description returns the full description
         expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
+        logger.debug(f"Expected description = {expected_description}")
         if obs_user["description"] == expected_description:
-            logger.info(f"Removal of the OVH user {obs_user['username']} with id {obs_user['id']}")
+            logger.info(
+                f"Removal of the OVH user '{obs_user['username']}' with id {obs_user['id']} linked with a "
+                f"removed keycloak user '{keycloak_user_id}'",
+            )
             get_ovh_handler().delete_user(obs_user["id"])
+        else:
+            logger.info(
+                f"The OVH user '{obs_user['username']}' with description '{obs_user['description']}' was not "
+                f"created by using the current template {DESCRIPTION_TEMPLATE}",
+            )
 
 
 def get_user_s3_credentials(user: str):
