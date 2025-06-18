@@ -75,7 +75,7 @@ def get_keycloak_user_from_description(description: str, template: str) -> str |
     logger.debug(f"prefix from template = {prefix}")
     logger.debug(f"ovh description = {description}")
     if description.startswith(prefix.strip()):
-        username = description[len(prefix) :].split(" ", 1)[0]
+        username = description[len(prefix) :].split(" ", 1)[0]  # noqa
         return username.strip()
     return None
 
