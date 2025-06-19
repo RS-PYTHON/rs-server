@@ -504,7 +504,7 @@ class Staging(
     def publish_processed_features(self, catalog_collection: str, refresh_token: RefreshTokenData) -> bool:
         """Handles publishing features and cleanup in case of failure."""
         # Publish all the features once processed
-        published_featurs_ids: list[str] = []
+        published_features_ids: list[str] = []
         for feature in self.stream_list:
             if not self.publish_rspy_feature(catalog_collection, feature):
                 # cleanup
@@ -517,11 +517,11 @@ class Staging(
                 # delete the files
                 self.delete_files_from_bucket()
                 # delete the published items
-                self.unpublish_rspy_features(catalog_collection, published_featurs_ids)
+                self.unpublish_rspy_features(catalog_collection, published_features_ids)
                 refresh_token.unsubscribe(self.logger)
                 self.logger.error(f"The item {feature.id} couldn't be published in the catalog")
                 return False
-            published_featurs_ids.append(feature.id)
+            published_features_ids.append(feature.id)
         return True
 
     def manage_dask_tasks(self, client: Client, catalog_collection: str, refresh_token: RefreshTokenData):
@@ -555,7 +555,8 @@ class Staging(
                 None,
                 "Submitting task to dask cluster failed. Dask cluster client object is not created",
             )
-            refresh_token.unsubscribe(self.logger)
+            if refresh_token:
+                refresh_token.unsubscribe(self.logger)
             return
 
         # prevent submitting more tasks than necessary.
@@ -566,25 +567,37 @@ class Staging(
         # convert to iterator for dynamic updates
         data_iter = iter(self.assets_info)
         try:
-            # if "access_token" not in refresh_token.token_dict will raise a KeyError and
-            # caught by Exception
-            # the access_token dictionary was refreshed just before starting
-            # this thread. no need to do it for the initial batch
-            access_token = TokenAuth(refresh_token.get_access_token())
-            # initial dataset
-            initial_batch_tasks = {
-                client.submit(
-                    streaming_task,
-                    next(data_iter),
-                    refresh_token.config,
-                    access_token,
-                )
-                for _ in range(max_parallel_tasks)
-            }
+            if not refresh_token:
+                initial_batch_tasks = {
+                    client.submit(
+                        streaming_task,
+                        next(data_iter),
+                        None,
+                        None,
+                    )
+                    for _ in range(max_parallel_tasks)
+                }
+            else:
+                # if "access_token" not in refresh_token.token_dict will raise a KeyError and
+                # caught by Exception
+                # the access_token dictionary was refreshed just before starting
+                # this thread. no need to do it for the initial batch
+                access_token = TokenAuth(refresh_token.get_access_token())
+                # initial dataset
+                initial_batch_tasks = {
+                    client.submit(
+                        streaming_task,
+                        next(data_iter),
+                        refresh_token.config,
+                        access_token,
+                    )
+                    for _ in range(max_parallel_tasks)
+                }
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
             self.log_job_execution(JobStatus.failed, None, f"Submitting task to dask cluster failed. Reason: {e}")
-            refresh_token.unsubscribe(self.logger)
+            if refresh_token:
+                refresh_token.unsubscribe(self.logger)
             return
         # counter to be used for percentage
         completed_tasks = 0
@@ -603,19 +616,29 @@ class Staging(
                 # Submit a new task if available and no errors occurred
                 try:
                     new_task = next(data_iter)
-                    # refresh the token if needed
-                    if not update_station_token(refresh_token, self.logger):
-                        raise RuntimeError("Could not retrieve or refresh the station token")
-                    access_token = TokenAuth(refresh_token.get_access_token())
-                    # submit the task
-                    tasks.add(
-                        client.submit(
-                            streaming_task,
-                            new_task,
-                            refresh_token.config,
-                            access_token,
-                        ),
-                    )
+                    if not refresh_token:
+                        tasks.add(
+                            client.submit(
+                                streaming_task,
+                                new_task,
+                                None,
+                                None,
+                            ),
+                        )
+                    else:
+                        # refresh the token if needed
+                        if not update_station_token(refresh_token, self.logger):
+                            raise RuntimeError("Could not retrieve or refresh the station token")
+                        access_token = TokenAuth(refresh_token.get_access_token())
+                        # submit the task
+                        tasks.add(
+                            client.submit(
+                                streaming_task,
+                                new_task,
+                                refresh_token.config,
+                                access_token,
+                            ),
+                        )
 
                 except StopIteration:
                     pass  # No more data to process
@@ -627,7 +650,8 @@ class Staging(
                 # Update status for the job
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
-                refresh_token.unsubscribe(self.logger)
+                if refresh_token:
+                    refresh_token.unsubscribe(self.logger)
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
 
@@ -637,7 +661,8 @@ class Staging(
         # Update status once all features are processed
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         # Update the subscribers for token refreshment
-        refresh_token.unsubscribe(self.logger)
+        if refresh_token:
+            refresh_token.unsubscribe(self.logger)
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(
@@ -892,11 +917,17 @@ class Staging(
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
-        domains = list({urlparse(asset.product_url).hostname for asset in self.assets_info})
+        domains = list(
+            {urlparse(asset.product_url).hostname for asset in self.assets_info if asset.origin_service != "s3"},
+        )
         self.logger.info(f"Staging from domain(s) {domains}")
-        if len(domains) > 1:
+        if not domains:
+            # If we got 0 domain, it means we only have assets from external s3 buckets
+            domain = ""
+        elif len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
-        domain = domains[0]
+        else:
+            domain = domains[0]
 
         # Step 3: Connect to dask cluster BEFORE retrieving the token, because an unnecessary request would be sent
         # to the external station if the connection to the dask cluster fails
@@ -908,8 +939,12 @@ class Staging(
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
-            refresh_token = self.get_refresh_token(domain)
-            self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
+            # If there is no domain, it means we are going to stage from an external s3 only, for which we don't need a token
+            if domain:
+                refresh_token = self.get_refresh_token(domain)
+                self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
+            else:
+                refresh_token = None
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")
             return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {re}")

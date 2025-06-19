@@ -19,6 +19,9 @@ import os
 
 import pytest
 import yaml
+from rs_server_common.authentication.authentication_to_external import (
+    S3ExternalAuthenticationConfig,
+)
 from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_staging.processors.processor_staging import Staging
 from rs_server_staging.processors.tasks import (
@@ -63,7 +66,7 @@ class TestStreaming:
 
         # Mock S3StorageHandler instance
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.s3_streaming_upload.side_effect = s3_key
+        mock_s3_handler.s3_streaming_from_http.side_effect = s3_key
         mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
 
         assert (
@@ -77,7 +80,7 @@ class TestStreaming:
 
         # Ensure token was accessed
 
-        mock_s3_handler.s3_streaming_upload.assert_called_once()
+        mock_s3_handler.s3_streaming_from_http.assert_called_once()
 
     def test_streaming_task_incorrect_env(self, mocker, config):
         """Test an error when creating S3 handler due to missing env variables"""
@@ -117,7 +120,7 @@ class TestStreaming:
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
         # Mock streaming upload to raise RuntimeError
-        mock_s3_handler.s3_streaming_upload.side_effect = RuntimeError("Streaming failed")
+        mock_s3_handler.s3_streaming_from_http.side_effect = RuntimeError("Streaming failed")
         with pytest.raises(
             ValueError,
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
@@ -146,7 +149,7 @@ class TestStreaming:
 
         # Mock streaming upload to fail multiple times
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.s3_streaming_upload.side_effect = ConnectionError("Streaming failed")
+        mock_s3_handler.s3_streaming_from_http.side_effect = ConnectionError("Streaming failed")
         mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
 
         with pytest.raises(
@@ -160,7 +163,7 @@ class TestStreaming:
             )
 
         # Ensure retries happened
-        assert mock_s3_handler.s3_streaming_upload.call_count == s3_max_retries_env_var
+        assert mock_s3_handler.s3_streaming_from_http.call_count == s3_max_retries_env_var
 
 
 class TestPrepareStreaming:
@@ -348,6 +351,7 @@ class TestPrepareStreaming:
                 f"{catalog_collection}/{feature.id}/asset2",
                 "rspython-ops-catalog-all-production",
                 "s3",
+                "http://some.domain.test",
                 "correct_access",
                 "correct_secret",
             ),
@@ -453,6 +457,7 @@ class TestPrepareStreaming:
             s3_file=test_s3_file,
             s3_bucket=test_s3_bucket,
             origin_service="s3",
+            external_s3_endpoint_url="http://some.domain.test",
             external_s3_access_key="correct_access",
             external_s3_secret_key="correct_secret",
         )
@@ -536,9 +541,18 @@ class TestPrepareStreaming:
         )
 
         test_storage_scheme_name = "external-s3"
-        assert find_credentials_for_external_s3_storage(self.TEST_STORAGE_SCHEME_EXISTS, test_storage_scheme_name) == (
+        expected_configuration = S3ExternalAuthenticationConfig(
+            "s3external",
+            "some.domain.test",
+            "s3",
+            "http://some.domain.test",
+            "s3",
             "correct_access",
             "correct_secret",
+        )
+        assert (
+            find_credentials_for_external_s3_storage(self.TEST_STORAGE_SCHEME_EXISTS, test_storage_scheme_name)
+            == expected_configuration
         )
 
     def test_find_credentials_for_external_s3_storage_failed(self, mocker):
@@ -565,15 +579,15 @@ class TestPrepareStreaming:
             "requester_pays": True,
         }
 
-        assert find_credentials_for_external_s3_storage(
+        assert not find_credentials_for_external_s3_storage(
             missing_field_test_storage_scheme,
             test_storage_scheme_name,
-        ) == ("", "")
-        assert find_credentials_for_external_s3_storage(
+        )
+        assert not find_credentials_for_external_s3_storage(
             unknown_platform_test_storage_scheme,
             test_storage_scheme_name,
-        ) == ("", "")
-        assert find_credentials_for_external_s3_storage(
+        )
+        assert not find_credentials_for_external_s3_storage(
             wrong_platform_test_storage_scheme,
             test_storage_scheme_name,
-        ) == ("", "")
+        )
