@@ -65,6 +65,7 @@ from rs_server_common.stac_api_common import (
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
+    split_multiple_values,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -598,7 +599,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     if session_id:
-        queryables["SessionId"] = [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
+        queryables["SessionId"] = split_multiple_values(session_id)
 
     if limit < 1:  # type: ignore
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")

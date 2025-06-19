@@ -733,7 +733,7 @@ cadip_session:
       - $.DownlinkOrbit
       AcquisitionId:
       - null
-      - "$.AcquisitionId"
+      - $.AcquisitionId
       AntennaId:
       - null
       - $.AntennaId
@@ -919,7 +919,7 @@ ins_session:
       - $.DownlinkOrbit
       AcquisitionId:
       - null
-      - "$.AcquisitionId"
+      - $.AcquisitionId
       AntennaId:
       - null
       - $.AntennaId
@@ -1105,7 +1105,7 @@ mps_session:
       - $.DownlinkOrbit
       AcquisitionId:
       - null
-      - "$.AcquisitionId"
+      - $.AcquisitionId
       AntennaId:
       - null
       - $.AntennaId
@@ -1291,7 +1291,7 @@ mti_session:
       - $.DownlinkOrbit
       AcquisitionId:
       - null
-      - "$.AcquisitionId"
+      - $.AcquisitionId
       AntennaId:
       - null
       - $.AntennaId
@@ -1477,7 +1477,7 @@ nsg_session:
       - $.DownlinkOrbit
       AcquisitionId:
       - null
-      - "$.AcquisitionId"
+      - $.AcquisitionId
       AntennaId:
       - null
       - $.AntennaId
@@ -1663,7 +1663,7 @@ sgs_session:
       - $.DownlinkOrbit
       AcquisitionId:
       - null
-      - "$.AcquisitionId"
+      - $.AcquisitionId
       AntennaId:
       - null
       - $.AntennaId

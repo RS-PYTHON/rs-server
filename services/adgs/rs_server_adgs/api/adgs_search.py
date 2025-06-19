@@ -56,6 +56,7 @@ from rs_server_common.stac_api_common import (
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
+    split_multiple_values,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
@@ -108,7 +109,12 @@ class MockPgstacAdgs(MockPgstac):
         # Update odata names that shadow eodag builtins (productype)
 
         odata_params["Name"] = names[0] if isinstance(names := odata_params.get("Name"), list) else names
-        odata_params["attr_ptype"] = odata_params.pop("productType", None)
+        if product_type := odata_params.pop("productType", None):
+            odata_params["attr_ptype"] = split_multiple_values(product_type)
+
+        for key in ("platformSerialIdentifier", "platformShortName"):
+            if value := odata_params.pop(key, None):
+                odata_params[key] = split_multiple_values(value)
 
         return process_product_search(station, odata_params, collection_provider, limit, self.sortby, page)
 

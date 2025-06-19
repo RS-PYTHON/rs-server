@@ -1250,3 +1250,21 @@ def check_bbox_input(input_value: str | None) -> BBox | None:
         except Exception as e:
             raise log_http_exception(status.HTTP_400_BAD_REQUEST, str(e)) from e
     return None
+
+
+def split_multiple_values(input_value: str) -> list[str] | str:
+    """
+    Splits a comma-separated string into a list of trimmed strings.
+
+    If the input string contains commas, it is split on each comma and each resulting
+    substring is stripped of leading and trailing whitespace. If no comma is found,
+    the original string is returned unchanged.
+
+    Args:
+        input_value (str): The input string to process.
+
+    Returns:
+        list[str] | str: A list of trimmed strings if the input contains commas,
+                         otherwise the original string.
+    """
+    return [s.strip() for s in input_value.split(",")] if "," in input_value else input_value

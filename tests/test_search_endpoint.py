@@ -1708,9 +1708,9 @@ def test_search_parameters(
                     "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
                     "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-                    "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
+                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
-                    "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
+                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:
@@ -1792,18 +1792,31 @@ def test_search_parameters(
                     # Format the odata request with all possible parameters
                     if adgs:
                         constellation = constellation.upper()
-                    if "," in satellite:
-                        sats = ", ".join([f"'{sat}'" for sat in satellite.split(", ")])
-                        satellite = f"({sats})"
-                    else:
-                        satellite = f"'{satellite}'"
+
+                    def handle_multiple_values(value: str) -> str:
+                        if value is None:
+                            return None
+                        if "," in value:
+                            values = ", ".join([f"'{val}'" for val in value.split(", ")])
+                            return f"({values})"
+                        return f"'{value}'"
+
+                    def in_or_eq(value: str) -> str:
+                        return None if value is None else "in" if "," in value else "eq"
+
+                    product_type = handle_multiple_values(product_type)
+                    constellation = handle_multiple_values(constellation)
+                    satellite = handle_multiple_values(satellite)
+
                     odata = odata.format(
                         date_min=date_min,
                         date_max=date_max,
                         product_type=product_type,
+                        product_type_op=in_or_eq(product_type),
                         constellation=constellation,
+                        constellation_op=in_or_eq(constellation),
                         satellite=satellite,
-                        satellite_op="in" if "," in satellite else "eq",
+                        satellite_op=in_or_eq(satellite),
                     )
 
                     # Mock the reponse
