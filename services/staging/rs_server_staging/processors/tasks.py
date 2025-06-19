@@ -39,7 +39,6 @@ from rs_server_staging.utils.asset_info import (
     IncompleteFeatureError,
 )
 from rs_server_staging.utils.rspy_models import Feature
-from stac_pydantic.shared import Asset
 
 logger = Logging.default(__name__)
 
@@ -102,7 +101,19 @@ def streaming_task(  # pylint: disable=R0913, R0917
                 os.environ["S3_REGION"],
             )
 
-            s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
+            if not auth:
+                s3_handler.s3_streaming_from_s3(
+                    product_url,
+                    asset_info.external_s3_endpoint_url,
+                    asset_info.external_s3_access_key,
+                    asset_info.external_s3_secret_key,
+                    bucket,
+                    s3_file,
+                    asset_info.trusted_domains,
+                )
+            else:
+                s3_handler.s3_streaming_from_http(product_url, config.trusted_domains, auth, bucket, s3_file)
+
             s3_handler.disconnect_s3()
             break
         except ConnectionError as e:
@@ -211,8 +222,7 @@ def create_asset_info_with_s3_auth(
 
     storage_refs = asset_content["storage:refs"]
     storage_schemes: dict = feature.properties.get("storage:schemes")
-    s3_access_key = ""
-    s3_secret_key = ""
+    s3_authentication_config = None
 
     # Find the first storage ref of the asset that is linked to a storage scheme in the feature,
     # for which credentials exist
@@ -220,12 +230,12 @@ def create_asset_info_with_s3_auth(
         if ref not in storage_schemes.keys():
             logger.warning(f"No storage scheme found for storage ref '{ref}' in feature {feature.id}.")
         else:
-            s3_access_key, s3_secret_key = find_credentials_for_external_s3_storage(storage_schemes.get(ref), ref)
-            if s3_access_key and s3_secret_key:
+            s3_authentication_config = find_credentials_for_external_s3_storage(storage_schemes.get(ref), ref)
+            if s3_authentication_config:
                 logger.info(f"Found credentials to storage ref {ref} for asset {asset_name}.")
                 break
 
-    if not s3_access_key or not s3_secret_key:
+    if not s3_authentication_config:
         raise RuntimeError(
             f"Could not find credentials for any of the external S3 buckets from this list: {storage_refs}.",
         )
@@ -235,12 +245,17 @@ def create_asset_info_with_s3_auth(
         s3_file=s3_file,
         s3_bucket=s3_bucket,
         origin_service="s3",
-        external_s3_access_key=s3_access_key,
-        external_s3_secret_key=s3_secret_key,
+        external_s3_endpoint_url=s3_authentication_config.service_url,
+        external_s3_access_key=s3_authentication_config.access_key,
+        external_s3_secret_key=s3_authentication_config.secret_key,
+        trusted_domains=s3_authentication_config.trusted_domains,
     )
 
 
-def find_credentials_for_external_s3_storage(storage_scheme: dict, storage_scheme_name: str) -> tuple[str, str]:
+def find_credentials_for_external_s3_storage(
+    storage_scheme: dict,
+    storage_scheme_name: str,
+) -> S3ExternalAuthenticationConfig:
     """Uses the platform field of the storage scheme to get credentials from configuration if they exist.
 
     Args:
@@ -256,7 +271,7 @@ def find_credentials_for_external_s3_storage(storage_scheme: dict, storage_schem
         logger.warning(
             f"Could not retrieve external S3 credentials, storage scheme {storage_scheme_name} doesn't have field 'platform'.",
         )
-        return "", ""
+        return None
     domain = urlparse(domain).hostname
 
     try:
@@ -265,12 +280,12 @@ def find_credentials_for_external_s3_storage(storage_scheme: dict, storage_schem
         logger.warning(
             f"Did not find S3 authentication configuration for domain {domain}: configuration does not exist.",
         )
-        return "", ""
+        return None
 
     if not isinstance(authentication_config, S3ExternalAuthenticationConfig):
         logger.warning(f"Did not find S3 authentication configuration for domain {domain}: wrong configuration format.")
-        return "", ""
+        return None
 
     logger.info(f"Credentials found for storage scheme {storage_scheme_name} (domain: {domain}).")
 
-    return authentication_config.access_key, authentication_config.secret_key
+    return authentication_config
