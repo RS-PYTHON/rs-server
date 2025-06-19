@@ -23,7 +23,6 @@ from rs_server_common.utils.logging import Logging
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 KEYCLOAK_USER_PLACEHOLDER = "%keycloak-user%"
 DEFAULT_DESCRIPTION_TEMPLATE = f"## linked to keycloak user {KEYCLOAK_USER_PLACEHOLDER}"
-os.environ["OBS_DESCRIPTION_TEMPLATE"] = DEFAULT_DESCRIPTION_TEMPLATE
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
 # safeguards for the OBS_DESCRIPTION_TEMPLATE environment variable, in case it is incorrectly set
 # or loaded. These checks help prevent potential mistakes of loading the value of this var which may lead
