@@ -182,7 +182,7 @@ def main_osam_task(timeout: int = 60):
         try:
             # Wait for either the trigger action (from endpoint) or the timeout before starting the refresh process
             # for getting attributes from keycloack
-            triggered = app.extra["endpoint_trigger"].wait(timeout=timeout)
+            triggered = app.extra["users_sync_trigger"].wait(timeout=timeout)
 
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
                 logger.info("Shutting down background thread and exit")
