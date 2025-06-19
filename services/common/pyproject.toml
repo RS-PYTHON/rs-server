@@ -46,7 +46,7 @@ eodag = "==v3.4.3"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
 pydantic = ">=2.9.2,<2.12.0" # see https://github.com/pyupio/safety/issues/673
-markdown = "^3.6"
+markdown = "^3.8.1"
 python-dotenv = "^1.0.0"
 filelock = "^3.16.1"
 uvicorn = ">=0.34.3,<0.35"
@@ -70,6 +70,7 @@ stac-pydantic = "^3.1.4"
 geojson-pydantic = "1.2.0" # to avoid regressions with 2.0.0
 stac-fastapi-types = "5.2.0" # to avoid regressions with 5.2.1
 requests = "^2.32.4"
+urllib3 = ">=2.5.0"
 
 [tool.poetry.group.dev]
 optional = true
