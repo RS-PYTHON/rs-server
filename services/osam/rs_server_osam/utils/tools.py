@@ -64,8 +64,6 @@ def get_keycloak_user_from_description(description: str, template: str) -> str |
     Args:
         description (str): Description containing a Keycloak user name.
         template (str, optionnal): Template to use. Default is '## linked to keycloak user %keycloak-user%'.
-    '## linked to keycloak user %keycloak-user%'
-    '## linked to keycloak user osam from platform CS'
 
     Returns:
         str: Keycloak user name.
