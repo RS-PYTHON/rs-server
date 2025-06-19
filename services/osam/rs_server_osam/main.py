@@ -115,8 +115,8 @@ async def accounts_update():
     app.extra["users_sync_trigger"].set()
     return JSONResponse(
         status_code=HTTP_200_OK,
-        content="Started the algorythm for updating the Keycloak and OVH accounts. "
-        "It may take a while depending of the number of the accounts to be updated.",
+        content="The algorithm for updating the Keycloak and OVH accounts has been initiated. "
+        "The process duration may vary depending on the number of accounts to be updated.",
     )
 
 
