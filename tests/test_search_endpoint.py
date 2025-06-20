@@ -31,6 +31,7 @@ from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
+from rs_server_common.utils.utils2 import read_response_error
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -108,7 +109,7 @@ class TestConstellationMapping:
             ("sentinel-2b", "sentinel-2", "S2B"),
             ("sentinel-1a", "sentinel-1", "S1A"),
             ("sentinel-5p", "sentinel-5P", "S5P"),
-            (None, "sentinel-1", "S1A, S1B, S1C"),
+            (None, "sentinel-1", "S1A, S1B, S1C, S1D"),
             (None, "sentinel-2", "S2A, S2B, S2C"),
             (None, "sentinel-5P", "S5P"),
         ],
@@ -871,14 +872,17 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid bbox (brackets, wrong coordinates count)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json()["detail"] in (
+        error: str = read_response_error(response)
+        assert error, response.json()
+        assert error.replace("400: ", "") in (
             "could not convert string to float: '[100.0'",
+            "invalid bbox: [100.0, 0.0, 105.0, 1.0]",
             "BBox '0' must have 4 or 6 values.",
             "BBox '0,0' must have 4 or 6 values.",
             "BBox '0,0,0' must have 4 or 6 values.",
             "BBox '0,0,0,1,1' must have 4 or 6 values.",
             "BBox '0,0,0,1,1,1,1' must have 4 or 6 values.",
-        ), response.json()["detail"]
+        ), error
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -903,14 +907,17 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid bbox (brackets, wrong coordinates count)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json()["description"] in (
+        error = read_response_error(response)
+        assert error, response.json()
+        assert error.replace("400: ", "") in (
             "could not convert string to float: '[100.0'",
+            "invalid bbox: [100.0, 0.0, 105.0, 1.0]",
             "BBox '0' must have 4 or 6 values.",
             "BBox '0,0' must have 4 or 6 values.",
             "BBox '0,0,0' must have 4 or 6 values.",
             "BBox '0,0,0,1,1' must have 4 or 6 values.",
             "BBox '0,0,0,1,1,1,1' must have 4 or 6 values.",
-        ), response.json()["description"]
+        ), error
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -1515,7 +1522,7 @@ def test_search_parameters(
         raise NotImplementedError
 
     # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
-    collection = service_utils.read_conf()["collections"][0]
+    collection: dict = service_utils.read_conf()["collections"][0]
     collection = deepcopy(collection)  # copy the cached response before we modify it
     collection.pop("id")
     collection.pop("query")
@@ -1684,7 +1691,7 @@ def test_search_parameters(
             # if the reponse is not mocked.
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
-            #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
+            #  - sortBy (RSPY-131)
 
             if adgs:
                 uid = user_ids.split(",", maxsplit=1)[0]
@@ -1701,9 +1708,9 @@ def test_search_parameters(
                     "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
                     "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-                    "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
+                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
-                    "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
+                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:
@@ -1716,7 +1723,6 @@ def test_search_parameters(
                     "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
-
                 odata_query = (
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
@@ -1786,18 +1792,31 @@ def test_search_parameters(
                     # Format the odata request with all possible parameters
                     if adgs:
                         constellation = constellation.upper()
-                    if "," in satellite:
-                        sats = ", ".join([f"'{sat}'" for sat in satellite.split(", ")])
-                        satellite = f"({sats})"
-                    else:
-                        satellite = f"'{satellite}'"
+
+                    def handle_multiple_values(value: str) -> str:
+                        if value is None:
+                            return None
+                        if "," in value:
+                            values = ", ".join([f"'{val}'" for val in value.split(", ")])
+                            return f"({values})"
+                        return f"'{value}'"
+
+                    def in_or_eq(value: str) -> str:
+                        return None if value is None else "in" if "," in value else "eq"
+
+                    product_type = handle_multiple_values(product_type)
+                    constellation = handle_multiple_values(constellation)
+                    satellite = handle_multiple_values(satellite)
+
                     odata = odata.format(
                         date_min=date_min,
                         date_max=date_max,
                         product_type=product_type,
+                        product_type_op=in_or_eq(product_type),
                         constellation=constellation,
+                        constellation_op=in_or_eq(constellation),
                         satellite=satellite,
-                        satellite_op="in" if "," in satellite else "eq",
+                        satellite_op=in_or_eq(satellite),
                     )
 
                     # Mock the reponse
@@ -1834,7 +1853,7 @@ def test_search_parameters(
                     raise NotImplementedError
 
                 # Check that the search function was called and returned the expected result
-                assert response.is_success
+                assert response.is_success, f"Response:{response}\nMock registered responses:{rsps.registered()}"
                 features = response.json()["features"]
                 if expect_result and adgs:
                     # 2 calls, one for sessions, one for files
@@ -1894,8 +1913,8 @@ def test_search_all_collections(
         response = client.get(url)
 
         # We have mocked the same response for all n collections,
-        # so we should have n calls to the search function a single result.
+        # so we should have a single result and a single call since RSPY-706
         assert response.is_success
         features = response.json()["features"]
-        assert spy_search.call_count == collection_count
+        assert spy_search.call_count == 1
         assert len(spy_search.spy_return) == len(features) == 1

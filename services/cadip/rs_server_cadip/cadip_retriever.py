@@ -64,4 +64,4 @@ def init_cadip_provider(station: str) -> EodagProvider:
         return EodagProvider(ext_auth_config, eodag_config, station)
 
     except Exception as exception:
-        raise CreateProviderFailed("Failed to setup eodag") from exception
+        raise CreateProviderFailed(f"Failed to setup eodag for CADIP station {station}") from exception
