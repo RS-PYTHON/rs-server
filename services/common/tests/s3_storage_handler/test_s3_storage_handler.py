@@ -1120,8 +1120,9 @@ def test_s3_streaming_upload():
 
 @pytest.mark.unit
 def test_upload_from_s3_to_s3():
-    """Unit test for a streaming between two s3 buckets with different endpoints, with the source one needing credentials.
-    Sets up an "external" s3 bucket on port 5001 with a test file and an "internal" empty s3 bucket on port 5000 to be the destination of the streaming.
+    """Unit test for a streaming between two s3 buckets with different endpoints, with the source one needing
+    credentials. Sets up an "external" s3 bucket on port 5001 with a test file and an "internal" empty s3 bucket
+    on port 5000 to be the destination of the streaming.
     Then tests that the file is correctly streamed.
     """
     secrets, _, _, _ = streaming_setup_test_env()
@@ -1229,8 +1230,8 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
         assert False, "s3_handler.get_keys_from_s3 raised exception!"
 
     assert not failed
-    # with open(os.path.join(local_path, s3_key), encoding="utf-8") as f:
-    #     assert body == f.read()
+    with open(os.path.join(local_path, s3_key), encoding="utf-8") as f:
+        assert body == f.read()
 
     shutil.rmtree(local_path)
 

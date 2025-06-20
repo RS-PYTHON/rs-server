@@ -269,7 +269,8 @@ def find_credentials_for_external_s3_storage(
 
     if not domain:
         logger.warning(
-            f"Could not retrieve external S3 credentials, storage scheme {storage_scheme_name} doesn't have field 'platform'.",
+            f"Could not retrieve external S3 credentials, storage scheme {storage_scheme_name} "
+            "doesn't have field 'platform'.",
         )
         return None
     domain = urlparse(domain).hostname

@@ -102,7 +102,8 @@ def prepare_data(external_auth_config: StationExternalAuthenticationConfig, call
     """Prepare data for token requests based on authentication configuration.
 
     Args:
-        external_auth_config (StationExternalAuthenticationConfig): Configuration object containing authentication details.
+        external_auth_config (StationExternalAuthenticationConfig): Configuration object containing
+            authentication details.
 
     Returns:
         Dict[str, str]: Dictionary containing the prepared data for the request.
@@ -128,7 +129,8 @@ def prepare_headers(external_auth_config: StationExternalAuthenticationConfig) -
     """Prepare HTTP headers for token requests.
 
     Args:
-        external_auth_config (StationExternalAuthenticationConfig): Configuration object containing authentication details.
+        external_auth_config (StationExternalAuthenticationConfig): Configuration object containing
+            authentication details.
 
     Returns:
         Dict[str, str]: Dictionary containing the prepared headers.

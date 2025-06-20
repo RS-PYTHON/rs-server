@@ -939,7 +939,8 @@ class Staging(
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
-            # If there is no domain, it means we are going to stage from an external s3 only, for which we don't need a token
+            # If there is no domain, it means we are going to stage from an external s3 only,
+            # for which we don't need a token
             if domain:
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")

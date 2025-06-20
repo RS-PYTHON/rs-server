@@ -169,7 +169,7 @@ class TestStreaming:
 class TestPrepareStreaming:
     """Class that groups tests for methods that prepare inputs for streaming process."""
 
-    ## All constants are used for unit tests below, they are here to reduce replication
+    # === All constants are used for unit tests below, they are here to reduce replication
     # Example of YAML content for credentials for regular station
     TEST_YAML_STATION_CREDENTIALS = """
         genericstation:
@@ -402,7 +402,7 @@ class TestPrepareStreaming:
         )
 
         # Assert that results doesn't contain None (None is returned when preparation fails)
-        assert not None in results
+        assert None not in results
 
         # Assert that each asset_info has the correct bucket name
         assert len(results) == 4
@@ -474,7 +474,9 @@ class TestPrepareStreaming:
         )
 
     def test_create_asset_info_with_s3_auth_failed(self, mocker):
-        """Test all error cases of test_create_asset_info_with_s3_auth: incomplete asset, incomplete feature, no credentials found"""
+        """Test all error cases of test_create_asset_info_with_s3_auth: incomplete asset,
+        incomplete feature, no credentials found
+        """
         # Patch credentials retrieval (we use unexisting ones to test error case when no correct credential is found)
         mock_yaml_content = mock_yaml_content = "external_data_sources:\n" + self.TEST_YAML_STATION_CREDENTIALS
         mocker.patch(

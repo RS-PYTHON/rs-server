@@ -16,7 +16,7 @@
 
 # Ignore not-at-top level import errors
 
-# pylint: disable=C0413, ungrouped-imports
+# pylint: disable=C0413, ungrouped-imports, unused-argument
 # flake8: noqa: F402
 
 import asyncio
