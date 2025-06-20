@@ -15,6 +15,7 @@
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
+import getpass
 import os
 import threading
 import time
@@ -460,14 +461,16 @@ class Staging(
         owner = feature.properties.get("owner", "*")
         eopf_type = feature.properties.get("eopf:type", "*")
         s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
-
+        # In localmode use getpass.getuser() to get PC username
+        # In clustermode, extract username from oauth2 cookie.
+        staging_user = getpass.getuser() if common_settings.LOCAL_MODE else "Will_be_added"
         for asset_name, asset_content in feature.assets.items():
             if not asset_content.href or not asset_name:
                 self.logger.error("Missing href or title in asset dictionary")
                 return False
             # Add the user_collection as main directory, as soon as the authentication will be
             # implemented in this staging process
-            s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
+            s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
             self.assets_info.append(AssetInfo(asset_content.href, s3_obj_path, s3_bucket_name))
             # update the s3 path, this will be checked in the rs-server-catalog in the
             # publishing phase
