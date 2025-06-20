@@ -18,6 +18,7 @@ import asyncio  # for handling asynchronous tasks
 import json
 import logging
 import os
+import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -39,7 +40,6 @@ from starlette.responses import JSONResponse
 from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 # The default synchronization time of the keycloak users with the ovh users (twice per day)
@@ -66,32 +66,34 @@ logger.setLevel(logging.DEBUG)
 async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
     logger.info("Starting up the application...")
-    fastapi_app.extra["shutdown_event"] = asyncio.Event()
+    fastapi_app.extra["shutdown_event"] = threading.Event()
     # the trigger for running the logic in the background task
-    fastapi_app.extra["endpoint_trigger"] = asyncio.Event()
-    # event to signal completion of the background task
-    fastapi_app.extra["task_completion"] = asyncio.Event()
-    # Run the refresh loop in the background
-    fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
-        main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
-    )
-    # Trigger the background task to sync the keycloak users with ovh users
-    app.extra["endpoint_trigger"].set()
+    fastapi_app.extra["users_sync_trigger"] = threading.Event()
+    # save info for future requests of endpoint /storage/account/{user}/rights
     fastapi_app.extra["users_info"] = dict[str, Any]
+    # start the background task in a thread using asyncio.to_thread
+    fastapi_app.extra["refresh_task"] = asyncio.create_task(
+        asyncio.to_thread(main_osam_task, DEFAULT_OSAM_FREQUENCY_SYNC),
+    )
+    # trigger the first run -> this was disabled by a request from ops
+    # app.extra["users_sync_trigger"].set()
+
     # Yield control back to the application (this is where the app will run)
     yield
 
-    # Shutdown logic (cleanup)
+    # shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    # Cancel the refresh task and wait for it to exit cleanly
+    # cancel the refresh task and wait for it to exit cleanly
     fastapi_app.extra["shutdown_event"].set()
+    # make the main_osam_task to exit from the wait sleeping
+    fastapi_app.extra["users_sync_trigger"].set()
+
     refresh_task = fastapi_app.extra.get("refresh_task")
     if refresh_task:
-        refresh_task.cancel()
         try:
             await refresh_task  # Ensure the task exits
-        except asyncio.CancelledError:
-            pass  # Ignore the cancellation exception
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Exception during shutdown of background thread: {e}")
     logger.info("Application gracefully stopped...")
 
 
@@ -101,39 +103,21 @@ async def accounts_update():
     Triggers the synchronization of Keycloak and OVH (OBS) account information.
 
     This endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
-    logic between Keycloak and the Object Storage Access Manager (OSAM). It waits for a completion signal
-    from the background task and returns a success or failure response based on the outcome.
+    logic between Keycloak and the Object Storage Access Manager (OSAM). It doesn't wait for a completion signal
+    from the background task and returns a success response.
 
     Returns:
-        JSONResponse: A success message if the background task completes in time.
+        JSONResponse: Always a success message saying that the sync algorythm of the accounts started.
 
-    Raises:
-        HTTPException (500): If the background task times out or a runtime error occurs.
     """
-    try:
-        # Clear any previous completion signal
-        app.extra["task_completion"].clear()
-        # Trigger the background task
-        app.extra["endpoint_trigger"].set()
-        # Wait for the background task to signal completion with a timeout
-        try:
-            await asyncio.wait_for(
-                app.extra["task_completion"].wait(),
-                timeout=DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT,
-            )
-        except TimeoutError:
-            logger.error(f"Background task timed out after {DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT} seconds")
-            return HTTPException(
-                HTTP_500_INTERNAL_SERVER_ERROR,
-                "Failed to update accounts: Background task timed out after 30 seconds",
-            )
-        return JSONResponse(status_code=HTTP_200_OK, content="Keycloak and OVH accounts updated")
-    except RuntimeError as rt:
-        logger.error(f"Failed to update accounts: {rt}")
-        return HTTPException(
-            HTTP_500_INTERNAL_SERVER_ERROR,
-            f"Failed to update the keycloak and ovh accounts. Reason: {rt}",
-        )
+    # Trigger the background task. This was also requested by the operations team: the endpoint should return
+    # immediately to the user without waiting for the algorithm to complete.
+    app.extra["users_sync_trigger"].set()
+    return JSONResponse(
+        status_code=HTTP_200_OK,
+        content="The algorithm for updating the Keycloak and OVH accounts has been initiated. "
+        "The process duration may vary depending on the number of accounts to be updated.",
+    )
 
 
 @router.get("/storage/account/{user}/rights")
@@ -173,11 +157,11 @@ async def get_credentials(request: Request):
     return get_user_s3_credentials(auth_info.user_login)
 
 
-async def main_osam_task(timeout: int = 60):
+def main_osam_task(timeout: int = 60):
     """
     Asynchronous background task that periodically links RS-Python users to observation users.
 
-    This function continuously waits for either a shutdown signal or an external trigger (`endpoint_trigger`)
+    This function continuously waits for either a shutdown signal or an external trigger (`users_sync_trigger`)
     to perform synchronization of Keycloak user attributes using `link_rspython_users_and_obs_users()`.
     The loop exits gracefully on shutdown signal.
 
@@ -193,35 +177,25 @@ async def main_osam_task(timeout: int = 60):
                       is logged, and the task continues unless a shutdown signal is received.
     """
     logger.info("Starting the main background thread ")
-    original_timeout = timeout
+
     while True:
         try:
-            # Wait for either the shutdown event or the timeout before starting the refresh process
+            # Wait for either the trigger action (from endpoint) or the timeout before starting the refresh process
             # for getting attributes from keycloack
-
-            await asyncio.wait(
-                {
-                    asyncio.create_task(app.extra["shutdown_event"].wait()),
-                    asyncio.create_task(app.extra["endpoint_trigger"].wait()),
-                },
-                timeout=original_timeout,  # Wait up to timeout seconds before waking up
-                return_when=asyncio.FIRST_COMPLETED,
-            )
+            triggered = app.extra["users_sync_trigger"].wait(timeout=timeout)
 
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
-                logger.info("Finishing the main background thread  and exit")
+                logger.info("Shutting down background thread and exit")
                 break
-            if app.extra["endpoint_trigger"].is_set():  # If triggered, prepare for the next one
-                logger.debug("Releasing endpoint_trigger")
-                app.extra["endpoint_trigger"].clear()
+
+            if triggered:  # If triggered, prepare for the next one
+                logger.debug("Releasing users_sync_trigger")
+                app.extra["users_sync_trigger"].clear()
 
             logger.debug("Starting the process to get the keycloack attributes ")
 
             link_rspython_users_and_obs_users()
             app.extra["users_info"] = build_users_data_map()
-
-            # Signal completion to the endpoint
-            app.extra["task_completion"].set()
 
             logger.debug("Getting the keycloack attributes finished")
 
@@ -230,7 +204,6 @@ async def main_osam_task(timeout: int = 60):
             logger.exception(f"Handle cancellation: {e}")
             # let's continue
     logger.info("Exiting from the getting keycloack attributes thread !")
-    return
 
 
 # Health check route
