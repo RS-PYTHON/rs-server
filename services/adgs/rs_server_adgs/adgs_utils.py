@@ -172,7 +172,8 @@ def adgs_reverse_map_mission(
     if not (constellation or platform):
         return None, None
 
-    constellation = constellation.lower()  # type: ignore
+    if constellation:
+        constellation = constellation.lower()  # type: ignore
 
     for satellite in map_stac_platform()["satellites"]:
         for key, info in satellite.items():
