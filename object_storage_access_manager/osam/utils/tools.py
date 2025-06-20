@@ -65,7 +65,7 @@ def get_keycloak_user_from_description(description: str, template: str) -> str |
         template (str, optionnal): Template to use. Default is '## linked to keycloak user %keycloak-user%'.
 
     Returns:
-        str: Keycloak user name.
+        str | None: Keycloak user name or None if the conditions are not fulfilled
     """
     prefix = template.split(KEYCLOAK_USER_PLACEHOLDER)[0]
     description = description.strip()
