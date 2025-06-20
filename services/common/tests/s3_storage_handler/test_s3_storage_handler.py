@@ -1118,6 +1118,40 @@ def test_s3_streaming_upload():
     server.stop()
 
 
+@pytest.mark.unit
+def test_upload_from_s3_to_s3():
+    """Unit test for a streaming between two s3 buckets with different endpoints, with the source one needing credentials.
+    Sets up an "external" s3 bucket on port 5001 with a test file and an "internal" empty s3 bucket on port 5000 to be the destination of the streaming.
+    Then tests that the file is correctly streamed.
+    """
+    secrets, _, _, _ = streaming_setup_test_env()
+    # Setting up external s3_bucket
+    external_server, source_s3_url, source_secrets, test_file_body = streaming_setup_external_s3()
+    # Start the moto server and create S3 handler for destination bucket
+    server, s3_handler, bucket, s3_key = streaming_setup_s3_handler_and_bucket(secrets)
+
+    try:
+        s3_handler.s3_streaming_from_s3(
+            source_s3_url,
+            source_secrets["s3endpoint"],
+            source_secrets["accesskey"],
+            source_secrets["secretkey"],
+            bucket,
+            s3_key,
+            [],
+        )
+    except Exception:  # pylint: disable=broad-exception-caught
+        external_server.stop()
+        server.stop()
+        assert False, "s3_handler.upload_from_s3_to_s3 raised exception !"
+
+    # Check that the file was uploaded successfully
+    streaming_verify_s3_file(s3_handler, bucket, s3_key, test_file_body)
+
+    external_server.stop()
+    server.stop()
+
+
 def streaming_setup_test_env():
     """Set up test environment variables, stream URL, and mock HTTP response."""
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
@@ -1131,17 +1165,31 @@ def streaming_setup_test_env():
     return secrets, stream_url, auth, body
 
 
-def upload_from_s3_to_s3_setup_test_env():
-    """Set up test environment variables, stream URL, and mock HTTP response."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
-    stream_url = "s3://rs-dev-cluster-temp/prefect-share/users/jgaucher/l0/config/logging_config.yaml"
-    auth = {"access_key": "6f84a41a4c314b0baed37bd0ad59db47", "secret_key": "4979a9fb97bb46aa87f6c5f69e714bec"}
-    body = "some byte-array data to test the streaming of a file from http to a s3 bucket\n"
+def streaming_setup_external_s3():
+    """Set up an s3 bucket on endpoint 5001 containing a test file."""
+    source_secrets = {
+        "s3endpoint": "http://localhost:5001",
+        "accesskey": "testaccess",
+        "secretkey": "testsecret",
+        "region": "",
+    }
 
-    # Add a mock HTTP GET response for the stream URL
-    # responses.add(responses.GET, stream_url, body=body, status=200)
+    external_server = ThreadedMotoServer(port=5001)
+    external_server.start()
 
-    return secrets, stream_url, auth, body
+    external_s3_handler = S3StorageHandler(
+        source_secrets["accesskey"],
+        source_secrets["secretkey"],
+        source_secrets["s3endpoint"],
+        source_secrets["region"],
+    )
+    bucket = "sourcebucket"
+    external_s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "file.tst"
+    file_body = "some byte-array data to test the streaming of a file from s3 bucket to a s3 bucket\n"
+    external_s3_handler.s3_client.put_object(Body=file_body, Bucket=bucket, Key=s3_key)
+
+    return external_server, f"s3://{bucket}/{s3_key}", source_secrets, file_body
 
 
 def streaming_setup_s3_handler_and_bucket(secrets):

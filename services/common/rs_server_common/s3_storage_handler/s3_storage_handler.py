@@ -978,7 +978,7 @@ retried for %s times. Aborting",
             raise ValueError(
                 f"Wrong source URL for S3 to S3 streaming (expected URL starting with 's3://', got '{source_url}').",
             )
-        source_url = source_url.lstrip("s3://")
+        source_url = source_url.removeprefix("s3://")
         source_params = {"Bucket": source_url.split("/", 1)[0], "Key": source_url.split("/", 1)[1]}
 
         # Connect to external s3 to generate URL
