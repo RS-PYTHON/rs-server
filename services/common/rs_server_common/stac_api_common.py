@@ -17,6 +17,7 @@
 """Module to share common functionalities for validating / creating stac items"""
 import copy
 import json
+import os
 import re
 import urllib.parse
 from abc import ABC, abstractmethod
@@ -694,7 +695,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             logger.debug(f"Entity {odata_entity} matches {crit_type} criteria {key}={value}")
 
         def nomatch(odata_entity: dict, crit_type: str, key: str, value: str):
-            logger.debug(f"Entity {odata_entity} does not match {crit_type} criteria {key}={value}")
+            if os.getenv("PYTHONDEBUG", "False").lower() in ("1", "true", "yes"):
+                logger.debug(f"Entity {odata_entity} does not match {crit_type} criteria {key}={value}")
             return False
 
         for crit_key, crit_val in query.items():
