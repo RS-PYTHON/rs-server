@@ -109,7 +109,7 @@ class TestConstellationMapping:
             ("sentinel-2b", "sentinel-2", "S2B"),
             ("sentinel-1a", "sentinel-1", "S1A"),
             ("sentinel-5p", "sentinel-5P", "S5P"),
-            (None, "sentinel-1", "S1A, S1B, S1C"),
+            (None, "sentinel-1", "S1A, S1B, S1C, S1D"),
             (None, "sentinel-2", "S2A, S2B, S2C"),
             (None, "sentinel-5P", "S5P"),
         ],
