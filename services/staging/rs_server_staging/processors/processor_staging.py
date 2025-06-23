@@ -928,7 +928,7 @@ class Staging(
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
             # If we got 0 domain, it means we only have assets from external s3 buckets
-            domain = ""
+            domain = "s3"
         elif len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         else:
@@ -944,9 +944,9 @@ class Staging(
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
-            # If there is no domain, it means we are going to stage from an external s3 only,
+            # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
-            if domain:
+            if domain != "s3":
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
