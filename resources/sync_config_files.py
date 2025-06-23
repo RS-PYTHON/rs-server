@@ -405,7 +405,10 @@ def copy_to_helm_or_infra(
             raise RuntimeError(f"Document index #{params.output_doc_index} not found in: {output_path!r}")
 
         # Call the sub-function on a single doc
-        copy_to_helm_or_infra_single_doc(params, output_configs[params.output_doc_index])
+        try:
+            copy_to_helm_or_infra_single_doc(params, output_configs[params.output_doc_index])
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(f"Failed to update single infra doc: {params}", e)
 
     # Get the file header from the list of input configuration files
     input_paths = {rs_server_dir / param.input_path_relative for param in all_params}
@@ -639,7 +642,10 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
                         elif isinstance(output_subvalue, numbers.Number):
                             output_value[i] = input_subvalue
 
-    update_all_values([], input_config, output_config)
+    if isinstance(input_config, dict) and isinstance(output_config, dict):
+        update_all_values([], input_config, output_config)
+    else:
+        logger.error(f"Cannot update values for {input_config} => {output_config}")
 
     # Call post-processing on output configuration
     if params.post_processing:

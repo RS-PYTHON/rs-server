@@ -153,6 +153,11 @@ class EodagProvider(Provider):
         self.client.set_preferred_provider(self.provider)
         self.client.authenticate_provider(self.provider, external_config)
 
+    def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
+        value = values[0] if isinstance(values, list) and len(values) == 1 else values
+        key = plural_key if isinstance(value, list) else singular_key
+        mapped_search_args[key] = ", ".join(f"'{p}'" for p in value) if isinstance(value, list) else f"'{value}'"
+
     def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-branches,too-many-locals
         """
         Conducts a search for products using the specified OData arguments.
@@ -184,19 +189,17 @@ class EodagProvider(Provider):
         mapped_search_args: dict[str, str | None] = {}
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
-            session_id = session_id[0] if len(session_id) == 1 else session_id
-            key = "SessionIds" if isinstance(session_id, list) else "SessionId"
-            value = ", ".join(f"'{s}'" for s in session_id) if isinstance(session_id, list) else f"'{session_id}'"
-            mapped_search_args[key] = value
+            self._handle_multiple_values(mapped_search_args, session_id, "SessionId", "SessionIds")
 
         if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
-            platform = kwargs.pop("Satellite", None)
+            if platform := kwargs.pop("Satellite", None):
+                self._handle_multiple_values(mapped_search_args, platform, "platform", "platforms")
 
-            if platform:
-                key = "platforms" if isinstance(platform, list) else "platform"
-                value = ", ".join(f"'{p}'" for p in platform) if isinstance(platform, list) else f"'{platform}'"
-                mapped_search_args[key] = value
+        for auxip_key in ("attr_ptype", "platformSerialIdentifier", "platformShortName"):
+            # Handle AUXIP parameters that can have one or several values
+            if values := kwargs.pop(auxip_key, None):
+                self._handle_multiple_values(mapped_search_args, values, auxip_key, auxip_key + "s")
 
         if date_time := kwargs.pop("PublicationDate", False):
             # Since now both for files and sessions, time interval is optional, map it if provided.

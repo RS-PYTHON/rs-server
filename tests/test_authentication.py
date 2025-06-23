@@ -216,8 +216,8 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     # The user, authenticated with oauth2, can also use an apikey created by another user.
     # In this case, the apikey authentication has higher priority and should be used.
     roles = [
-        "rs_adgs_adgs_read",
-        "rs_adgs_adgs_download",
+        "rs_auxip_adgs_read",
+        "rs_auxip_adgs_download",
         "rs_adgs_landing_page",
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
@@ -382,7 +382,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_{station}_read",
+            "rs_auxip_{station}_read",
         ],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -390,7 +390,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_{station}_read",
+            "rs_auxip_{station}_read",
         ],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -398,7 +398,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_{station}_read",
+            "rs_auxip_{station}_read",
         ],
     ],
     indirect=["fastapi_app"],

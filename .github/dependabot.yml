@@ -28,55 +28,14 @@ updates:
       - dependency-name: "dask-gateway:*"
       - dependency-name: "distributed:*"
   - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
-  - package-ecosystem: "pip"
-    directory: "/services/adgs"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
-  - package-ecosystem: "pip"
-    directory: "/services/cadip"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
-  - package-ecosystem: "pip"
-    directory: "/services/catalog"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
-  - package-ecosystem: "pip"
-    directory: "/services/common"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
-  - package-ecosystem: "pip"
-    directory: "/services/frontend"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
-  - package-ecosystem: "pip"
-    directory: "/services/staging"
+    directories:
+      - "/"
+      - "/services/adgs"
+      - "/services/cadip"
+      - "/services/catalog"
+      - "/services/common"
+      - "/services/frontend"
+      - "/services/staging"
     schedule:
       interval: "daily"
     ignore:

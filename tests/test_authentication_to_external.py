@@ -21,7 +21,10 @@ import datetime
 import json
 import os
 import re
+from copy import deepcopy
 from importlib import reload
+from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 import responses
@@ -29,6 +32,7 @@ import yaml
 from eodag.plugins.authentication.token import TokenAuth
 from fastapi import HTTPException
 from fastapi.concurrency import run_in_threadpool
+from requests import PreparedRequest
 from rs_server_adgs import adgs_retriever, adgs_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import authentication_to_external
@@ -1062,12 +1066,14 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
         suffix = "_session" if cadip else ""
         all_providers = sorted({collection["station"] + suffix for collection in collections})
 
-    def mock_station_response(request):
+    def mock_station_response(request: PreparedRequest):
         if adgs:
-            body = adgs_response
+            body: dict[str, Any] = adgs_response
         else:  # cadip
             if request.path_url.startswith("/Sessions"):
-                body = cadip_session_response
+                body = deepcopy(cadip_session_response)
+                if sat := parse_qs(urlparse(request.url or "").query).get("Satellite"):
+                    body["Satellite"] = sat[0]
             else:
                 body = cadip_file_response
         return HTTP_200_OK, r_headers, json.dumps(body)
@@ -1081,9 +1087,9 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
             content_type=content_type,
         )
 
-    all_requests = []
+    all_requests: list[PreparedRequest] = []
 
-    def mock_token_request(request):
+    def mock_token_request(request: PreparedRequest):
 
         # Save the request
         all_requests.append(request)
@@ -1138,7 +1144,9 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
     # Assert that the refresh_token was not called
     assert len(all_requests) == len(all_providers)
     for request in all_requests:
-        assert "refresh_token" not in request.body
+        body = request.body
+        if isinstance(body, (str, bytes)):
+            assert b"refresh_token" not in body if isinstance(body, bytes) else "refresh_token" not in body
     all_requests.clear()
 
     # If we call the search again, no token should be requested, because the token is still valid
@@ -1157,4 +1165,6 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
     # Assert that the refresh_token was called
     assert len(all_requests) == len(all_providers)
     for request in all_requests:
-        assert "refresh_token" in request.body
+        body = request.body
+        if isinstance(body, (str, bytes)):
+            assert b"refresh_token" in body if isinstance(body, bytes) else "refresh_token" in body
