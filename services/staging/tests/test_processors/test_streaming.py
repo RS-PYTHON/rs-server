@@ -193,7 +193,7 @@ class TestPrepareStreaming:
             domain: some.domain.test
             service:
                 name: s3
-                url: "http://some.domain.test"
+                url: "https://some.domain.test"
             authentication:
                 auth_type: s3
                 access_key: correct_access
@@ -351,7 +351,7 @@ class TestPrepareStreaming:
                 f"{catalog_collection}/{feature.id}/asset2",
                 "rspython-ops-catalog-all-production",
                 "s3",
-                "http://some.domain.test",
+                "https://some.domain.test",
                 "correct_access",
                 "correct_secret",
             ),
@@ -457,7 +457,7 @@ class TestPrepareStreaming:
             s3_file=test_s3_file,
             s3_bucket=test_s3_bucket,
             origin_service="s3",
-            external_s3_endpoint_url="http://some.domain.test",
+            external_s3_endpoint_url="https://some.domain.test",
             external_s3_access_key="correct_access",
             external_s3_secret_key="correct_secret",
         )
@@ -547,7 +547,7 @@ class TestPrepareStreaming:
             "s3external",
             "some.domain.test",
             "s3",
-            "http://some.domain.test",
+            "https://some.domain.test",
             "s3",
             "correct_access",
             "correct_secret",
