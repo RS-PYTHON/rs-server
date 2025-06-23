@@ -39,7 +39,7 @@ class AssetInfo:  # pylint: disable=too-many-instance-attributes
     external_s3_endpoint_url: str = ""
     external_s3_access_key: str = ""
     external_s3_secret_key: str = ""
-    trusted_domains: list[str] = None
+    trusted_domains: list[str] | None = None
 
 
 class IncompleteAssetError(Exception):

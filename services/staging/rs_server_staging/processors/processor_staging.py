@@ -524,7 +524,12 @@ class Staging(
             published_features_ids.append(feature.id)
         return True
 
-    def manage_dask_tasks(self, client: Client, catalog_collection: str, refresh_token: RefreshTokenData):
+    def manage_dask_tasks(
+        self,
+        client: Client,
+        catalog_collection: str,
+        refresh_token: RefreshTokenData,
+    ):  # pylint: disable=too-many-branches, too-many-statements
         """
         Manages Dask tasks for streaming data to the RS-Server.
 

@@ -452,7 +452,7 @@ class TestPrepareStreaming:
         test_s3_bucket = "test_s3_bucket"
 
         # Expected asset_info
-        expected_result = AssetInfo(
+        expected_result = AssetInfo(  # nosec B106
             product_url="s3://testdata/anyasset.tiff",
             s3_file=test_s3_file,
             s3_bucket=test_s3_bucket,

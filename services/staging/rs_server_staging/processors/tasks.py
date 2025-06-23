@@ -145,7 +145,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
     return s3_file
 
 
-def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[AssetInfo]:
+def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[AssetInfo] | None:
     """Prepare tasks for the given feature to the Dask cluster.
 
     Args:
@@ -230,10 +230,15 @@ def create_asset_info_with_s3_auth(
         if ref not in storage_schemes.keys():
             logger.warning(f"No storage scheme found for storage ref '{ref}' in feature {feature.id}.")
         else:
-            s3_authentication_config = find_credentials_for_external_s3_storage(storage_schemes.get(ref), ref)
-            if s3_authentication_config:
-                logger.info(f"Found credentials to storage ref {ref} for asset {asset_name}.")
-                break
+            if isinstance(storage_schemes.get(ref), dict):
+                s3_authentication_config = find_credentials_for_external_s3_storage(storage_schemes.get(ref), ref)
+                if s3_authentication_config:
+                    logger.info(f"Found credentials to storage ref {ref} for asset {asset_name}.")
+                    break
+            else:
+                logger.warning(
+                    f"Storage scheme found for storage ref '{ref}' in feature {feature.id}, but has type {type(storage_schemes.get(ref))} instead of dict.",
+                )
 
     if not s3_authentication_config:
         raise RuntimeError(

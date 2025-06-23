@@ -485,7 +485,7 @@ def get_s3_external_auth_config_fixture(station_id) -> StationExternalAuthentica
         StationExternalAuthenticationConfig: An instance with the configuration for the given station_id.
     """
     # Return a configured S3ExternalAuthenticationConfig object
-    return S3ExternalAuthenticationConfig(
+    return S3ExternalAuthenticationConfig(  # nosec B106
         station_id=station_id,
         domain=f"mockup-s3-{station_id}.processing.svc.cluster.local",
         service_name="s3",
