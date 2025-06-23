@@ -151,7 +151,7 @@ class Staging(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
-        self.staging_user: str | None = None
+        self.staging_user: str = "staging_user"
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
