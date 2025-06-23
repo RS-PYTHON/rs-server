@@ -230,14 +230,16 @@ def create_asset_info_with_s3_auth(
         if ref not in storage_schemes.keys():
             logger.warning(f"No storage scheme found for storage ref '{ref}' in feature {feature.id}.")
         else:
-            if isinstance(storage_schemes.get(ref), dict):
-                s3_authentication_config = find_credentials_for_external_s3_storage(storage_schemes.get(ref), ref)
+            scheme = storage_schemes.get(ref)
+            if isinstance(scheme, dict):
+                s3_authentication_config = find_credentials_for_external_s3_storage(scheme, ref)
                 if s3_authentication_config:
                     logger.info(f"Found credentials to storage ref {ref} for asset {asset_name}.")
                     break
             else:
                 logger.warning(
-                    f"Storage scheme found for storage ref '{ref}' in feature {feature.id}, but has type {type(storage_schemes.get(ref))} instead of dict.",
+                    f"Storage scheme found for storage ref '{ref}' in feature {feature.id}, "
+                    "but has type {type(storage_schemes.get(ref))} instead of dict.",
                 )
 
     if not s3_authentication_config:
