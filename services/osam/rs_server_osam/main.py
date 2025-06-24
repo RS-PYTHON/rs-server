@@ -177,12 +177,14 @@ def main_osam_task(timeout: int = 60):
                       is logged, and the task continues unless a shutdown signal is received.
     """
     logger.info("Starting the main background thread ")
-
+    logger.info(f"Timeout {timeout} for triggering the sync of keycloak and ovh accounts is disabled")
     while True:
         try:
             # Wait for either the trigger action (from endpoint) or the timeout before starting the refresh process
             # for getting attributes from keycloack
-            triggered = app.extra["users_sync_trigger"].wait(timeout=timeout)
+            # Later Edit: The timeout was disabled because of the request from ops team
+            # if this is wanted later, just add `timeout=timeout` as input param in wait()
+            triggered = app.extra["users_sync_trigger"].wait()
 
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
                 logger.info("Shutting down background thread and exit")

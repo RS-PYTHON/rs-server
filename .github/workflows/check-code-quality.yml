@@ -227,6 +227,8 @@ jobs:
         with:
           name: run-all-pytests
           path: |
+            .coverage
+            ./cov-report.xml
             ./junit-xml-report.xml
           retention-days: 1
 
