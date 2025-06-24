@@ -229,3 +229,63 @@ jobs:
           path: |
             ./junit-xml-report.xml
           retention-days: 1
+
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: [changes, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
+    #if: ${{ always() && github.actor != 'dependabot[bot]' }}
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    permissions: write-all # write pull request comments
+    # Mark the job as OK even if the sonarqube quality gate doesn't pass.
+    # We will resolve these issues later.
+    # continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download linting reports
+        uses: actions/download-artifact@v4
+        with:
+          name:
+            check-linting
+      - name: Download vulnerability reports
+        uses: actions/download-artifact@v4
+        with:
+          name:
+            check-security
+      - name: Download pytest reports
+        uses: actions/download-artifact@v4
+        with:
+          name:
+            run-all-pytests
+
+      - name: Get directory names
+        id: dir_names
+        run: |
+          echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
+          echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Run sonarqube cloud
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          args: >
+            -Dsonar.projectKey=RS-PYTHON_operational-services
+            -Dsonar.organization=RS-PYTHON            
+            -Dsonar.sources=object_storage_access_manager            
+            -Dsonar.python.version=3.11
+            -Dsonar.branch.name=${{ github.ref_name }}
+            -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
+            -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
+            -Dsonar.exclusions=
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.language=py
+            -Dsonar.python.version=${{ env.PYTHON_VERSION }}
+            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
+            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
+            -Dsonar.python.bandit.reportPaths="./bandit-report.json"
+            -Dsonar.python.coverage.reportPaths="./cov-report.xml"
+            -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
