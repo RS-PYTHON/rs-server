@@ -217,10 +217,9 @@ jobs:
           set -x
           poetry run pytest $(find . -name tests) \
             -ra --disable-pytest-warnings \
-            --error-for-skips \
             --color=yes \
             --durations=0 \
-            --durations-min=0.05 \
+            --error-for-skips \
             --cov=./object_storage_access_manager/osam \
             --cov-report=term \
             --cov-report=xml:./cov-report.xml \
