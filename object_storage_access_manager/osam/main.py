@@ -192,12 +192,12 @@ def main_osam_task(timeout: int = 60):
                 logger.debug("Releasing users_sync_trigger")
                 app.extra["users_sync_trigger"].clear()
 
-            logger.debug("Starting the process to get the keycloack attributes ")
+            logger.info("Starting the sync process between keycloak accounts and ovh accounts")
 
             link_rspython_users_and_obs_users()
             app.extra["users_info"] = build_users_data_map()
 
-            logger.debug("Getting the keycloack attributes finished")
+            logger.info("Sync process finished")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Handle cancellation properly even for asyncio.CancelledError (for example when FastAPI shuts down)
