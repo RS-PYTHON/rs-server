@@ -130,6 +130,6 @@ def get_minimal_collection_body(collection_id):
         "license": "public-domain",
         "extent": {
             "spatial": {"bbox": [[0.0, 0.0, -0.0, 0.0]]},
-            "temporal": {"interval": [["2000-00-01T00:00:00Z", "2050-00-01T00:00:00Z"]]},
+            "temporal": {"interval": [["2000-01-01T00:00:00Z", "2050-01-01T00:00:00Z"]]},
         },
     }
