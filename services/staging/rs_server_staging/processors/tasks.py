@@ -117,7 +117,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
     return s3_file
 
 
-def get_minimal_collection_body(collection_id, collection_owner):
+def get_minimal_collection_body(collection_id):
     """Used to return the all the required fields in order to create a catalog collection.
     All values (except id) can later be modified by user using a PUT request.
     """
@@ -126,7 +126,6 @@ def get_minimal_collection_body(collection_id, collection_owner):
         "type": "Collection",
         "description": f"Collection {collection_id} automatically created by staging processor",
         "stac_version": "1.0.0",
-        "owner": collection_owner,
         "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "license": "public-domain",
         "extent": {

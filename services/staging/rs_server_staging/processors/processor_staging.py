@@ -382,9 +382,9 @@ class Staging(
             if response.status_code == 404:
                 # If status is not found, create collection body and try to post it.
                 create_response = requests.post(
-                    collection_url,
+                    f"{self.catalog_url}/catalog/collections",
                     headers=self.auth_headers,
-                    data=dumps(get_minimal_collection_body(catalog_collection, self.staging_user)),
+                    data=dumps(get_minimal_collection_body(catalog_collection)),
                     timeout=5,
                 )
                 create_response.raise_for_status()
