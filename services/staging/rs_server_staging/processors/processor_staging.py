@@ -21,7 +21,7 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from json import JSONDecodeError
+from json import JSONDecodeError, dumps
 from urllib.parse import urlparse
 
 import requests
@@ -384,7 +384,7 @@ class Staging(
                 create_response = requests.post(
                     collection_url,
                     headers=self.auth_headers,
-                    params=get_minimal_collection_body(catalog_collection),
+                    data=dumps(get_minimal_collection_body(catalog_collection, self.staging_user)),
                     timeout=5,
                 )
                 create_response.raise_for_status()
@@ -408,7 +408,7 @@ class Staging(
         Returns:
             bool: True in case of success, False otherwise
         """
-        if not self.check_if_collection_exists(catalog_collection):
+        if not await self.check_if_collection_exists(catalog_collection):
             # Stop catalog check if staging is unable to create the collection
             return False
         # Set the filter containing the item ids to be inserted
