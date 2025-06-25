@@ -15,6 +15,7 @@
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
+import getpass
 import os
 import threading
 import time
@@ -39,6 +40,7 @@ from pygeoapi.process.manager.postgresql import (
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
@@ -149,6 +151,7 @@ class Staging(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
+        self.staging_user: str = "staging_user"
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
@@ -238,7 +241,9 @@ class Staging(
             else None
         )
         catalog_collection: str = data["collection"]
-
+        self.staging_user = (
+            getpass.getuser() if common_settings.LOCAL_MODE else (await oauth2.get_user_info(self.request)).user_login
+        )
         # Check for the proper input
         # Check if item collection is provided
         if not item_collection or not hasattr(item_collection, "features"):
@@ -460,14 +465,15 @@ class Staging(
         owner = feature.properties.get("owner", "*")
         eopf_type = feature.properties.get("eopf:type", "*")
         s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
-
+        # In localmode use getpass.getuser() to get PC username
+        # In clustermode, extract username from oauth2 cookie.
         for asset_name, asset_content in feature.assets.items():
             if not asset_content.href or not asset_name:
                 self.logger.error("Missing href or title in asset dictionary")
                 return False
             # Add the user_collection as main directory, as soon as the authentication will be
             # implemented in this staging process
-            s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
+            s3_obj_path = f"{self.staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
             self.assets_info.append(AssetInfo(asset_content.href, s3_obj_path, s3_bucket_name))
             # update the s3 path, this will be checked in the rs-server-catalog in the
             # publishing phase

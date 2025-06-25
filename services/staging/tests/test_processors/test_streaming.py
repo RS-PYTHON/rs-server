@@ -229,18 +229,18 @@ class TestPrepareStreaming:
         assert staging_instance.assets_info == [
             AssetInfo(
                 "https://example.com/asset1",
-                f"{catalog_collection}/{feature.id}/asset1",
+                f"staging_user/{catalog_collection}/{feature.id}/asset1",
                 "rspython-ops-catalog-all-production",
             ),
             AssetInfo(
                 "https://example.com/asset2",
-                f"{catalog_collection}/{feature.id}/asset2",
+                f"staging_user/{catalog_collection}/{feature.id}/asset2",
                 "rspython-ops-catalog-all-production",
             ),
         ]
         # Assert that asset hrefs are updated correctly
-        assert feature.assets["asset1"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset1"
-        assert feature.assets["asset2"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset2"
+        assert feature.assets["asset1"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset1"
+        assert feature.assets["asset2"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset2"
 
     def test_prepare_streaming_tasks_one_invalid(self, mocker, staging_instance: Staging):
         """Test prepare_streaming_tasks when all assets are valid."""
