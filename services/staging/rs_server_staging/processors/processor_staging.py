@@ -359,7 +359,7 @@ class Staging(
         self.db_process_manager.update_job(self.job_id, update_data)
         return self._get_execute_result()
 
-    async def check_if_collection_exists(self, catalog_collection):
+    def check_if_collection_exists(self, catalog_collection):
         """
         Checks if a catalog collection exists in the remote catalog service.
         If the collection does not exist (HTTP 404), attempts to create it.
@@ -408,7 +408,7 @@ class Staging(
         Returns:
             bool: True in case of success, False otherwise
         """
-        if not await self.check_if_collection_exists(catalog_collection):
+        if not self.check_if_collection_exists(catalog_collection):
             # Stop catalog check if staging is unable to create the collection
             return False
         # Set the filter containing the item ids to be inserted
