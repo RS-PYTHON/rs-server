@@ -297,12 +297,12 @@ class TestPrepareStreaming:
         expected_assets_info = [
             AssetInfo(
                 "https://example.com/asset1",
-                f"{catalog_collection}/{feature.id}/asset1",
+                f"staging_user/{catalog_collection}/{feature.id}/asset1",
                 "rspython-ops-catalog-all-production",
             ),
             AssetInfo(
                 "https://example.com/asset2",
-                f"{catalog_collection}/{feature.id}/asset2",
+                f"staging_user/{catalog_collection}/{feature.id}/asset2",
                 "rspython-ops-catalog-all-production",
             ),
         ]
@@ -310,8 +310,8 @@ class TestPrepareStreaming:
         assert result == expected_assets_info
 
         # Assert that asset hrefs are updated correctly
-        assert feature.assets["asset1"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset1"
-        assert feature.assets["asset2"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset2"
+        assert feature.assets["asset1"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset1"
+        assert feature.assets["asset2"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset2"
 
     def test_prepare_streaming_tasks_with_s3_asset_all_valid(self, mocker, set_config_file_env_var):
         """Test prepare_streaming_tasks when all assets are valid and one asset needs to be staged from external s3."""

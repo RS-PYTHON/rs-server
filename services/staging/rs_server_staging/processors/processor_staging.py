@@ -15,6 +15,7 @@
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
+import getpass
 import os
 import threading
 import time
@@ -39,6 +40,7 @@ from pygeoapi.process.manager.postgresql import (
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
@@ -146,6 +148,7 @@ class Staging(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
+        self.staging_user: str = "staging_user"
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
@@ -235,7 +238,9 @@ class Staging(
             else None
         )
         catalog_collection: str = data["collection"]
-
+        self.staging_user = (
+            getpass.getuser() if common_settings.LOCAL_MODE else (await oauth2.get_user_info(self.request)).user_login
+        )
         # Check for the proper input
         # Check if item collection is provided
         if not item_collection or not hasattr(item_collection, "features"):
