@@ -76,7 +76,11 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
 
             # Open the configuration file and load the YAML content
             with open(path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f)
+                contents = f.read()
+                # expandvars is used to replace missing values in template with env vars
+                # This is mainly intended for the s3 credentials
+                contents = os.path.expandvars(contents)
+                config_data = yaml.safe_load(contents)
 
             # Ensure the loaded configuration is a dictionary
             if not isinstance(config_data, dict):
