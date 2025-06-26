@@ -145,7 +145,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
     return s3_file
 
 
-def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[AssetInfo] | None:
+def prepare_streaming_tasks(catalog_collection: str, feature: Feature, staging_user: str) -> list[AssetInfo] | None:
     """Prepare tasks for the given feature to the Dask cluster.
 
     Args:
@@ -168,7 +168,7 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature) -> list[A
             return None
         # Add the user_collection as main directory, as soon as the authentication will be
         # implemented in this staging process
-        s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
+        s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
 
         origin_service = urlparse(asset_content.href).scheme
         if origin_service == "s3":

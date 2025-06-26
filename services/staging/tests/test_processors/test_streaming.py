@@ -292,7 +292,7 @@ class TestPrepareStreaming:
             "asset2": mocker.Mock(href="https://example.com/asset2"),
         }
 
-        result = prepare_streaming_tasks(catalog_collection, feature)
+        result = prepare_streaming_tasks(catalog_collection, feature, "staging_user")
 
         expected_assets_info = [
             AssetInfo(
@@ -338,17 +338,17 @@ class TestPrepareStreaming:
         }
         feature.properties = {"storage:schemes": storage_schemes}
 
-        result = prepare_streaming_tasks(catalog_collection, feature)
+        result = prepare_streaming_tasks(catalog_collection, feature, "staging_user")
 
         expected_assets_info = [
             AssetInfo(
                 "https://example.com/asset1",
-                f"{catalog_collection}/{feature.id}/asset1",
+                f"staging_user/{catalog_collection}/{feature.id}/asset1",
                 "rspython-ops-catalog-all-production",
             ),
             AssetInfo(
                 "s3://testdata/anyasset.tiff",
-                f"{catalog_collection}/{feature.id}/asset2",
+                f"staging_user/{catalog_collection}/{feature.id}/asset2",
                 "rspython-ops-catalog-all-production",
                 "s3",
                 "https://some.domain.test",
@@ -368,7 +368,7 @@ class TestPrepareStreaming:
             "asset1": mocker.Mock(href="", title="asset1_title"),
             "asset2": mocker.Mock(href="https://example.com/asset2", title="asset2_title"),
         }
-        result = prepare_streaming_tasks(catalog_collection, feature)
+        result = prepare_streaming_tasks(catalog_collection, feature, "staging_user")
 
         # Assert that the method returns None
         assert result is None
@@ -387,18 +387,22 @@ class TestPrepareStreaming:
         results += prepare_streaming_tasks(
             staging_input_for_config_tests_1["collection"],
             staging_input_for_config_tests_1["items"]["value"]["features"][0],
+            "staging_user",
         )
         results += prepare_streaming_tasks(
             staging_input_for_config_tests_1["collection"],
             staging_input_for_config_tests_1["items"]["value"]["features"][1],
+            "staging_user",
         )
         results += prepare_streaming_tasks(
             staging_input_for_config_tests_2["collection"],
             staging_input_for_config_tests_2["items"]["value"]["features"][0],
+            "staging_user",
         )
         results += prepare_streaming_tasks(
             staging_input_for_config_tests_2["collection"],
             staging_input_for_config_tests_2["items"]["value"]["features"][1],
+            "staging_user",
         )
 
         # Assert that results doesn't contain None (None is returned when preparation fails)

@@ -238,6 +238,8 @@ class Staging(
             else None
         )
         catalog_collection: str = data["collection"]
+        # In localmode use getpass.getuser() to get PC username
+        # In clustermode, extract username from oauth2 cookie.
         self.staging_user = (
             getpass.getuser() if common_settings.LOCAL_MODE else (await oauth2.get_user_info(self.request)).user_login
         )
@@ -917,7 +919,7 @@ class Staging(
         # Step 1: Validate and prepare streaming tasks
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
-            new_assets_info = prepare_streaming_tasks(catalog_collection, feature)
+            new_assets_info = prepare_streaming_tasks(catalog_collection, feature, self.staging_user)
             if new_assets_info is None:
                 return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
             self.assets_info += new_assets_info
