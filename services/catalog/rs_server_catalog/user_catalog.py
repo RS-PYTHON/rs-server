@@ -443,6 +443,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         for new_stac_extension in [
             "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         ]:
             if new_stac_extension not in content["stac_extensions"]:
                 content["stac_extensions"].append(new_stac_extension)
@@ -1441,6 +1442,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                             "scopes": {},
                         },
                     },
+                },
+                "s3": {
+                    "type": "s3",
+                    "description": "S3",
                 },
             },
         )
