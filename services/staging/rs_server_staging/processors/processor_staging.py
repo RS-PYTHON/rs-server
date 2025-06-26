@@ -66,6 +66,7 @@ from rs_server_staging.processors.tasks import (
 from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
 from starlette.requests import Request
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 
 class Staging(
@@ -376,10 +377,10 @@ class Staging(
             # Check if collection exists in catalog
             response = requests.get(collection_url, headers=self.auth_headers, timeout=5)
 
-            if response.status_code == 200:
+            if response.status_code == HTTP_200_OK:
                 return True  # Collection exists
 
-            if response.status_code == 404:
+            if response.status_code == HTTP_404_NOT_FOUND:
                 # If status is not found, create collection body and try to post it.
                 create_response = requests.post(
                     f"{self.catalog_url}/catalog/collections",
@@ -388,7 +389,7 @@ class Staging(
                     timeout=5,
                 )
                 create_response.raise_for_status()
-                return create_response.status_code == 201
+                return create_response.status_code == HTTP_201_CREATED
 
             response.raise_for_status()
 
