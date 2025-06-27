@@ -115,21 +115,3 @@ def streaming_task(  # pylint: disable=R0913, R0917
             ) from e
     logger_dask.info(f"The streaming task finished. Returning name of the streamed file {s3_file}")
     return s3_file
-
-
-def get_minimal_collection_body(collection_id):
-    """Used to return the all the required fields in order to create a catalog collection.
-    All values (except id) can later be modified by user using a PUT request.
-    """
-    return {
-        "id": collection_id,
-        "type": "Collection",
-        "description": f"Collection {collection_id} automatically created by staging processor",
-        "stac_version": "1.0.0",
-        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-        "license": "public-domain",
-        "extent": {
-            "spatial": {"bbox": [[0.0, 0.0, -0.0, 0.0]]},
-            "temporal": {"interval": [["2000-01-01T00:00:00Z", "2050-01-01T00:00:00Z"]]},
-        },
-    }

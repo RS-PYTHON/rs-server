@@ -59,12 +59,10 @@ from rs_server_staging.processors.authentication import (
     RefreshTokenData,
     update_station_token,
 )
-from rs_server_staging.processors.tasks import (
-    get_minimal_collection_body,
-    streaming_task,
-)
+from rs_server_staging.processors.tasks import streaming_task
 from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
+from rs_server_staging.utils.tools import get_minimal_collection_body
 from starlette.requests import Request
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
