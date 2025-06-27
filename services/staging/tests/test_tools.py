@@ -23,21 +23,11 @@ def test_get_minimal_collection_body():
         "type": "Collection",
         "description": "Collection abc automatically created by staging processor",
         "stac_version": "1.0.0",
-        "links": [
-            {
-                "href": "./.zattrs.json",
-                "rel": "self",
-                "type": "application/json"
-            }
-        ],
+        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "license": "public-domain",
         "extent": {
-            "spatial": {
-                "bbox": [[0.0, 0.0, -0.0, 0.0]]
-            },
-            "temporal": {
-                "interval": [["2000-01-01T00:00:00Z", "2050-01-01T00:00:00Z"]]
-            },
+            "spatial": {"bbox": [[0.0, 0.0, -0.0, 0.0]]},
+            "temporal": {"interval": [["2000-01-01T00:00:00Z", "2050-01-01T00:00:00Z"]]},
         },
     }
 
