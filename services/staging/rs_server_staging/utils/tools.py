@@ -13,6 +13,7 @@
 # limitations under the License.
 """Module with utility functions for staging processors."""
 
+
 def get_minimal_collection_body(collection_id):
     """Used to return the all the required fields in order to create a catalog collection.
     All values (except id) can later be modified by user using a PUT request.
