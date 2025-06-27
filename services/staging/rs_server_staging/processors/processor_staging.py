@@ -918,11 +918,14 @@ class Staging(
 
         # Step 1: Validate and prepare streaming tasks
         # Process each feature by initiating the streaming download of its assets to the final bucket.
-        for feature in self.stream_list:
-            new_assets_info = prepare_streaming_tasks(catalog_collection, feature, self.staging_user)
-            if new_assets_info is None:
-                return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
-            self.assets_info += new_assets_info
+        try:
+            for feature in self.stream_list:
+                new_assets_info = prepare_streaming_tasks(catalog_collection, feature, self.staging_user)
+                if new_assets_info is None:
+                    return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
+                self.assets_info += new_assets_info
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return self.log_job_execution(JobStatus.failed, 0, f"Error when preparing streaming tasks: {e}")
 
         if not self.assets_info:
             self.logger.info("There are no assets to stage. Exiting....")
