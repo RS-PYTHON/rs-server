@@ -21,7 +21,7 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from json import JSONDecodeError
+from json import JSONDecodeError, dumps
 from urllib.parse import urlparse
 
 import requests
@@ -62,7 +62,9 @@ from rs_server_staging.processors.authentication import (
 from rs_server_staging.processors.tasks import streaming_task
 from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
+from rs_server_staging.utils.tools import get_minimal_collection_body
 from starlette.requests import Request
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 
 class Staging(
@@ -356,6 +358,44 @@ class Staging(
         self.db_process_manager.update_job(self.job_id, update_data)
         return self._get_execute_result()
 
+    def check_if_collection_exists(self, catalog_collection):
+        """
+        Checks if a catalog collection exists in the remote catalog service.
+        If the collection does not exist (HTTP 404), attempts to create it.
+
+        Args:
+            catalog_collection (str): The identifier of the catalog collection to check or create.
+
+        Returns:
+            bool: True if the collection exists or was successfully created; False otherwise.
+        """
+        collection_url = f"{self.catalog_url}/catalog/collections/{catalog_collection}"
+
+        try:
+            # Check if collection exists in catalog
+            response = requests.get(collection_url, headers=self.auth_headers, timeout=5)
+
+            if response.status_code == HTTP_200_OK:
+                return True  # Collection exists
+
+            if response.status_code == HTTP_404_NOT_FOUND:
+                # If status is not found, create collection body and try to post it.
+                create_response = requests.post(
+                    f"{self.catalog_url}/catalog/collections",
+                    headers=self.auth_headers,
+                    data=dumps(get_minimal_collection_body(catalog_collection)),
+                    timeout=5,
+                )
+                create_response.raise_for_status()
+                return create_response.status_code == HTTP_201_CREATED
+
+            response.raise_for_status()
+
+        except (RequestException, JSONDecodeError, RuntimeError) as exc:
+            # If anything fails, log failure and exit.
+            self.log_job_execution(JobStatus.failed, 0, f"Failed to create catalog collection: {exc}")
+        return False
+
     async def check_catalog(self, catalog_collection: str, features: list[Feature]) -> bool:
         """
         Method used to check RSPY catalog if a feature from input_collection is already published.
@@ -367,6 +407,9 @@ class Staging(
         Returns:
             bool: True in case of success, False otherwise
         """
+        if not self.check_if_collection_exists(catalog_collection):
+            # Stop catalog check if staging is unable to create the collection
+            return False
         # Set the filter containing the item ids to be inserted
         # Get each feature id and create /catalog/search argument
         ids = [f"'{feature.id}'" for feature in features]
