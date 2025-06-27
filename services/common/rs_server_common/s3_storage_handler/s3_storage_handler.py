@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TODO Docstring to be added."""
+"""Set of functions to connect to an S3 endpoint and run various operations."""
 
 import logging
 import ntpath
@@ -42,6 +42,7 @@ S3_ERR_FORBIDDEN_ACCESS = "403"
 S3_ERR_NOT_FOUND = "404"
 HTTP_CONNECTION_TIMEOUT = 10
 HTTP_READ_TIMEOUT = 120
+PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "3600"))
 # the maximum number of attempts that are made on a single request
 # this defines the number of retries at the s3 protocol level
 # there is also another retry mechanism set on the application level
@@ -993,7 +994,7 @@ retried for %s times. Aborting",
             presigned_url = source_s3_client.generate_presigned_url(
                 "get_object",
                 Params=source_params,
-                ExpiresIn=3600,  # URL with 1 hour expiration
+                ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as error:
             self.logger.error(f"Failed to connect to external s3 endpoint {source_endpoint_url}: {error}.")
