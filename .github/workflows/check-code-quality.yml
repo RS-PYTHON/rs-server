@@ -235,6 +235,10 @@ jobs:
             ./junit-xml-report.xml
           retention-days: 1
 
+      - name: Adjust coverage paths for SonarCloud
+        run: |
+          sed -i 's|/home/runner/work/operational-services/operational-services/||g' cov-report.xml
+
   sonarcloud:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
