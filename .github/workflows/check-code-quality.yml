@@ -231,9 +231,7 @@ jobs:
             ./junit-xml-report.xml
           retention-days: 1
 
-      - name: Adjust coverage paths for SonarCloud
-        run: |
-          sed -i 's|/home/runner/work/operational-services/operational-services/||g' cov-report.xml
+
 
   sonarcloud:
     name: SonarCloud Analysis
@@ -245,6 +243,10 @@ jobs:
     # Mark the job as OK even if the sonarqube quality gate doesn't pass.
     # We will resolve these issues later.
     # continue-on-error: true
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: RS-PYTHON_operational-services
+      SONAR_HOST_URL: https://sonarcloud.io
 
     steps:
       - uses: actions/checkout@v4
@@ -266,6 +268,9 @@ jobs:
           name:
             run-all-pytests
 
+      - name: Fix coverage paths
+        run: sed -i 's|/home/runner/work/operational-services/operational-services/||g' cov-report.xml
+
       - name: Run sonarqube cloud
         uses: SonarSource/sonarcloud-github-action@v2
         with:
@@ -284,5 +289,33 @@ jobs:
             -Dsonar.python.bandit.reportPaths="./bandit-report.json"
             -Dsonar.python.coverage.reportPaths="./cov-report.xml"
             -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
+      - name: Wait for quality gate result
+        run: sleep 5
+
+      - name: Report quality gate result in the pull request comment
+        uses: phwt/sonarqube-quality-gate-action@v1
+        id: quality-gate-result
+        with:
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
+          sonar-host-url: ${{ env.SONAR_HOST_URL }}
+          sonar-token: ${{ env.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+
+      - name: Output result
+        run: |
+          echo "Project status: ${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "Quality gate result: ${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+
+      - id: check-gate
+        name: Check quality gate status
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - if: always()
+        run: >
+          echo "SonarCloud report:
+          https://sonarcloud.io/dashboard?id=${{ env.SONAR_PROJECT_KEY }}&branch=${{ github.ref_name }}"
+          >> $GITHUB_STEP_SUMMARY
