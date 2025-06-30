@@ -327,10 +327,10 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
-            # In case of the PUT request, all the new assets are transfered (see up)
-            # Any existing asset in the item (already in the catalog from a previous POST request)
-            # but not found in this request is deleted
-            # If a PATCH request is received (not yet implemented) do not delete anything
+            # For a PUT request, all new assets are transferred (as described above).
+            # Any asset that already exists in the catalog from a previous POST request
+            # but is not included in the current request will be deleted.
+            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
             if item and request.method == "PUT":
                 for asset in item["assets"]:
                     self.s3_files_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
