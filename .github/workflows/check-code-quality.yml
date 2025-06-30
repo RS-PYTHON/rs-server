@@ -250,6 +250,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full Git history to resolve branch refs and SCM issues
       - name: Download linting reports
         uses: actions/download-artifact@v4
         with:
@@ -269,9 +271,11 @@ jobs:
             run-all-pytests
 
       - name: Fix coverage paths
-        run: sed -i 's|/home/runner/work/operational-services/operational-services/||g' cov-report.xml
-
-      - name: Run sonarqube cloud
+        run: |
+          sed -i 's|/home/runner/work/operational-services/operational-services/||g' cov-report.xml
+          sed -i 's|/tmp/empty-pytest/||g' cov-report.xml
+        shell: bash
+      - name: Run SonarCloud Scanner
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           args: >
@@ -284,11 +288,11 @@ jobs:
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
-            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
-            -Dsonar.python.bandit.reportPaths="./bandit-report.json"
-            -Dsonar.python.coverage.reportPaths="./cov-report.xml"
-            -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
+            -Dsonar.python.pylint.reportPaths=./pylint-report.txt
+            -Dsonar.python.flake8.reportPaths=./flake8-report.txt
+            -Dsonar.python.bandit.reportPaths=./bandit-report.json
+            -Dsonar.python.coverage.reportPaths=./cov-report.xml
+            -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
       - name: Wait for quality gate result
         run: sleep 5
 
