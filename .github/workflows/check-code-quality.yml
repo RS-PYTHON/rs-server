@@ -272,7 +272,7 @@ jobs:
           args: >
             -Dsonar.projectKey=RS-PYTHON_operational-services
             -Dsonar.organization=rs-python
-            -Dsonar.sources=object_storage_access_manager
+            -Dsonar.sources=object_storage_access_manager/osam
             -Dsonar.tests=object_storage_access_manager/tests
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.exclusions=
