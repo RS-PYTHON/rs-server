@@ -155,7 +155,7 @@ runs:
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: trivy-results-docker.sarif
-        category: ${{ env.docker_image }}
+        category: ${{ inputs.image_basename }}${{ inputs.image_suffix }}
 
     - name: Display link to Trivy results
       run: |
