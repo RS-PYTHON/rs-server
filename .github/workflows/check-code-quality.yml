@@ -253,23 +253,18 @@ jobs:
         with:
           name:
             check-linting
+            
       - name: Download vulnerability reports
         uses: actions/download-artifact@v4
         with:
           name:
             check-security
+
       - name: Download pytest reports
         uses: actions/download-artifact@v4
         with:
           name:
             run-all-pytests
-
-      - name: Get directory names
-        id: dir_names
-        run: |
-          echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
-          echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
-        shell: bash
 
       - name: Run sonarqube cloud
         uses: SonarSource/sonarcloud-github-action@v2
