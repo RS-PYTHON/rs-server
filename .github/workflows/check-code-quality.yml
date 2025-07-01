@@ -294,7 +294,7 @@ jobs:
         run: sleep 5
 
       - name: Report quality gate result in the pull request comment
-        uses: phwt/sonarqube-quality-gate-action@v1
+        uses: sonarsource/sonarqube-quality-gate-action@v3
         id: quality-gate-result
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
