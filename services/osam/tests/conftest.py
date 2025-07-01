@@ -22,8 +22,9 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from osam.utils.keycloak_handler import KeycloakHandler
 from rs_server_common import settings as common_settings
+
+from osam.utils.keycloak_handler import KeycloakHandler
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
@@ -111,11 +112,12 @@ def client_(mocker):
     os.environ["RSPY_LOCAL_MODE"] = "1"
     reload(common_settings)
     mocker.patch(
-        "rs_server_common.s3_storage_handler.s3_storage_config.S3StorageConfigurationSingleton.get_s3_bucket_configuration",
+        "rs_server_common.s3_storage_handler.s3_storage_config.S3StorageConfigurationSingleton."
+        "get_s3_bucket_configuration",
         return_value={"mocked": "configmap_data"},
     )
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
-    from osam.main import app
+    from osam.main import app  # pylint: disable = import-outside-toplevel
 
     # Test the FastAPI application, opens the database session
     with TestClient(app) as client:

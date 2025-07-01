@@ -15,10 +15,9 @@
 """Unit tests for keycloak_handler"""
 
 import os
+
 import pytest
-
-from keycloak.exceptions import KeycloakPutError, KeycloakConnectionError
-
+from keycloak.exceptions import KeycloakConnectionError, KeycloakPutError
 from osam.utils.keycloak_handler import KeycloakHandler
 
 
@@ -85,7 +84,7 @@ def test_get_obs_user_from_keycloak_user_missing(handler):
     """
     Test extracting 'obs-user' when attribute is missing.
     """
-    user = {"attributes": {}}
+    user = {"attributes": {}} # type: ignore
 
     assert handler.get_obs_user_from_keycloak_user(user) is None
 
@@ -114,7 +113,7 @@ def test_get_obs_user_from_keycloak_username_with_str(handler):
     assert result == "obs123"
 
 
-def test_get_obs_user_from_keycloak_username_missing(mocker, handler):
+def test_get_obs_user_from_keycloak_username_missing(handler):
     """
     Test get_obs_user_from_keycloak_username when 'obs-user' is missing.
     """
@@ -126,7 +125,7 @@ def test_get_obs_user_from_keycloak_username_missing(mocker, handler):
     assert result is None
 
 
-def test_get_obs_user_from_keycloak_username_keycloak_error(mocker, handler):
+def test_get_obs_user_from_keycloak_username_keycloak_error(handler):
     """
     Test get_obs_user_from_keycloak_username raising KeycloakConnectionError.
     """

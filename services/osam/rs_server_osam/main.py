@@ -23,24 +23,22 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException
-from osam.tasks import (
-    build_s3_rights,
-    build_users_data_map,
-    get_user_s3_credentials,
-    link_rspython_users_and_obs_users,
-    update_s3_rights_lists,
-)
 from rs_server_common.authentication import oauth2
-from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
+from rs_server_common.middlewares import (HandleExceptionsMiddleware,
+                                          apply_middlewares)
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
-from starlette.middleware.sessions import SessionMiddleware  # test if still needed
+from starlette.middleware.sessions import \
+    SessionMiddleware  # test if still needed
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
-from starlette.status import (  # pylint: disable=C0411
-    HTTP_200_OK,
-    HTTP_404_NOT_FOUND,
-)
+from starlette.status import (HTTP_200_OK,  # pylint: disable=C0411
+                              HTTP_404_NOT_FOUND)
+
+from osam.tasks import (build_s3_rights, build_users_data_map,
+                        get_user_s3_credentials,
+                        link_rspython_users_and_obs_users,
+                        update_s3_rights_lists)
 
 # The default synchronization time of the keycloak users with the ovh users (twice per day)
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))

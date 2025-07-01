@@ -15,7 +15,8 @@
 import pytest
 from starlette.status import HTTP_200_OK
 
+
 @pytest.mark.asyncio
-async def test_ping_endpoint(mocker, osam_client):
+async def test_ping_endpoint(osam_client):
     """Test for live probe endpoint."""
     assert osam_client.get("/_mgmt/ping").status_code == HTTP_200_OK
