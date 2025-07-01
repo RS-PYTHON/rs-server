@@ -235,6 +235,8 @@ jobs:
     # continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
         uses: actions/download-artifact@v4
         with:
@@ -258,12 +260,13 @@ jobs:
           echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Run sonarqube
-        uses: sonarsource/sonarqube-scan-action@master
+      - name: Run SonarCloud Scanner
+        #uses: sonarsource/sonarqube-scan-action@master
+        uses: SonarSource/sonarcloud-github-action@v4
         env:
-          SONAR_CLOUD_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_PROJECT_KEY: RS-PYTHON_rs-server
+          SONAR_HOST_URL: https://sonarcloud.io
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
@@ -273,6 +276,7 @@ jobs:
           projectBaseDir: .
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
@@ -294,8 +298,8 @@ jobs:
         id: quality-gate-result
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
-          sonar-token: ${{ secrets.SONAR_CLOUD_TOKEN }}
+          sonar-host-url: ${{ env.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
 
@@ -309,12 +313,12 @@ jobs:
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
-          SONAR_CLOUD_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       # http instead of https or the url appears as *** in github, I don't know why,
       # it may be configurable. But http works as well.
       - if: always()
         run: >
           echo "SonarQube report:
-          http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
+          https://sonarcloud.io/dashboard?id=${{ env.SONAR_PROJECT_KEY }}&branch=${{ github.ref_name }}"
           >> $GITHUB_STEP_SUMMARY
