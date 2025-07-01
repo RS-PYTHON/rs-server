@@ -50,12 +50,11 @@ def test_get_all_users(handler):
     """
     Test get_all_users returns the list of users.
     """
-    handler.ovh_client.get.reset_mock()  # clear calls from __init__
 
+    handler.ovh_client.get.reset_mock()  # clear calls from __init__
     handler.ovh_client.get.return_value = [{"id": "user1"}]
 
     result = handler.get_all_users()
-
     assert result == [{"id": "user1"}]
     handler.ovh_client.get.assert_called_once_with(f"/cloud/project/{handler.ovh_service_name}/user")
 
@@ -64,12 +63,11 @@ def test_get_user(handler):
     """
     Test retrieving a specific user by ID.
     """
-    handler.ovh_client.get.reset_mock()
 
+    handler.ovh_client.get.reset_mock()
     handler.ovh_client.get.return_value = {"id": "user1", "description": "test user"}
 
     result = handler.get_user("user1")
-
     assert result["id"] == "user1"
     handler.ovh_client.get.assert_called_once_with(f"/cloud/project/{handler.ovh_service_name}/user/user1")
 
@@ -78,13 +76,13 @@ def test_create_user_status_ok(handler):
     """
     Test creating a user when status immediately becomes 'ok'.
     """
+
     # Simulate post returning user
     handler.ovh_client.post.return_value = {"id": "user1"}
     # Simulate get returning status 'ok'
     handler.ovh_client.get.return_value = {"status": "ok"}
 
     result = handler.create_user(description="Test user")
-
     assert result["id"] == "user1"
     handler.ovh_client.post.assert_any_call(
         f"/cloud/project/{handler.ovh_service_name}/user",
@@ -99,12 +97,12 @@ def test_create_user_timeout(handler, mocker):
     """
     Test create_user raises TimeoutError if status never becomes 'ok'.
     """
+
     handler.ovh_client.post.return_value = {"id": "user1"}
     handler.ovh_client.get.return_value = {"status": "creating"}
 
     # Patch time.sleep to avoid real delays
     mocker.patch("time.sleep")
-
     with pytest.raises(TimeoutError):
         handler.create_user(timeout_seconds=1, poll_interval=0.1)
 
@@ -113,10 +111,10 @@ def test_delete_user(handler):
     """
     Test deleting a user.
     """
+
     handler.ovh_client.delete.return_value = {"result": "success"}
 
     result = handler.delete_user("user1")
-
     assert result == {"result": "success"}
     handler.ovh_client.delete.assert_called_once_with(f"/cloud/project/{handler.ovh_service_name}/user/user1")
 
@@ -125,12 +123,11 @@ def test_get_user_s3_access_key_found(handler):
     """
     Test retrieving the S3 access key when present.
     """
-    handler.ovh_client.get.reset_mock()
 
+    handler.ovh_client.get.reset_mock()
     handler.ovh_client.get.return_value = [{"access": "access-key-123"}]
 
     result = handler.get_user_s3_access_key("user1")
-
     assert result == "access-key-123"
     handler.ovh_client.get.assert_called_once_with(
         f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials",
@@ -141,10 +138,10 @@ def test_get_user_s3_access_key_missing(handler):
     """
     Test get_user_s3_access_key returns None if credentials list is empty.
     """
+
     handler.ovh_client.get.return_value = []
 
     result = handler.get_user_s3_access_key("user1")
-
     assert result is None
 
 
@@ -152,10 +149,10 @@ def test_get_user_s3_secret_key(handler):
     """
     Test retrieving the S3 secret key.
     """
+
     handler.ovh_client.post.return_value = {"secret": "secret-key-abc"}
 
     result = handler.get_user_s3_secret_key("user1", "access-key-123")
-
     assert result == "secret-key-abc"
     handler.ovh_client.post.assert_called_once_with(
         f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials/access-key-123/secret",
