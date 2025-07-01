@@ -279,7 +279,7 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v2
         with:
           args: >
-            -Dsonar.projectKey=RS-PYTHON_operational-services
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=rs-python
             -Dsonar.sources=object_storage_access_manager/osam
             -Dsonar.tests=object_storage_access_manager/tests
