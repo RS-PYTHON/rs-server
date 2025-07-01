@@ -305,8 +305,8 @@ jobs:
 
       - name: Output result
         run: |
-          echo "${{ steps.quality-gate-result.outputs.project-status }}"
-          echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+          echo "Project status: ${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "Quality gate result: ${{ steps.quality-gate-result.outputs.quality-gate-result }}"
 
       - id: check-gate
         name: Check quality gate status
