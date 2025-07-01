@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Fixtures and tests configuration for OSAM unit tests."""
-
+# pylint: disable = wrong-import-order
 import os
 import os.path as osp
 from importlib import reload
@@ -22,9 +22,8 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from rs_server_common import settings as common_settings
-
 from osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_common import settings as common_settings
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
