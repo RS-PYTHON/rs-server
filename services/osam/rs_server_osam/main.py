@@ -177,12 +177,14 @@ def main_osam_task(timeout: int = 60):
                       is logged, and the task continues unless a shutdown signal is received.
     """
     logger.info("Starting the main background thread ")
-
+    logger.info(f"Timeout {timeout} for triggering the sync of keycloak and ovh accounts is disabled")
     while True:
         try:
             # Wait for either the trigger action (from endpoint) or the timeout before starting the refresh process
             # for getting attributes from keycloack
-            triggered = app.extra["users_sync_trigger"].wait(timeout=timeout)
+            # Later Edit: The timeout was disabled because of the request from ops team
+            # if this is wanted later, just add `timeout=timeout` as input param in wait()
+            triggered = app.extra["users_sync_trigger"].wait()
 
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
                 logger.info("Shutting down background thread and exit")
@@ -192,12 +194,12 @@ def main_osam_task(timeout: int = 60):
                 logger.debug("Releasing users_sync_trigger")
                 app.extra["users_sync_trigger"].clear()
 
-            logger.debug("Starting the process to get the keycloack attributes ")
+            logger.info("Starting the sync process between keycloak accounts and ovh accounts")
 
             link_rspython_users_and_obs_users()
             app.extra["users_info"] = build_users_data_map()
 
-            logger.debug("Getting the keycloack attributes finished")
+            logger.info("Sync process finished")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Handle cancellation properly even for asyncio.CancelledError (for example when FastAPI shuts down)
