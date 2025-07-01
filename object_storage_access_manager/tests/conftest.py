@@ -16,11 +16,14 @@
 
 import os
 import os.path as osp
+from importlib import reload
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from fastapi.testclient import TestClient
 from osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_common import settings as common_settings
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
@@ -99,3 +102,21 @@ def mock_ovh_handler_():
         mock_instance.create_user.return_value = NEW_OVH_USER_WHEN_CREATING
         mock_instance.delete_user.return_value = None
         yield mock_ovh_api_handler
+
+
+@pytest.fixture(name="osam_client")
+def client_(mocker):
+    """init fastapi client app."""
+    # Patch all auto-executed code when app is imported, and reload app on local mode
+    os.environ["RSPY_LOCAL_MODE"] = "1"
+    reload(common_settings)
+    mocker.patch(
+        "rs_server_common.s3_storage_handler.s3_storage_config.S3StorageConfigurationSingleton.get_s3_bucket_configuration",
+        return_value={"mocked": "configmap_data"},
+    )
+    mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+    from osam.main import app
+
+    # Test the FastAPI application, opens the database session
+    with TestClient(app) as client:
+        yield client
