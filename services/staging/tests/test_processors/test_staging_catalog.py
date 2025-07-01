@@ -57,7 +57,7 @@ class TestStagingCatalog:
         mock_response.json.return_value = {"type": "FeatureCollection", "features": []}  # Mocking the JSON response
         mock_response.raise_for_status = mocker.Mock()  # Mock raise_for_status to do nothing
         mocker.patch("requests.get", return_value=mock_response)
-
+        mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
         # Call the method under test
         result = await self._call_check_catalog(staging_instance, staging_inputs)
 
@@ -132,7 +132,7 @@ class TestStagingCatalog:
             mock_log_job_execution.assert_called_once_with(
                 JobStatus.failed,
                 0,
-                f"Failed to search catalog: {get_err_msg}",
+                f"Failed to create catalog collection: {get_err_msg}",
             )
 
         # Mock the requests.get method
@@ -146,6 +146,12 @@ class TestStagingCatalog:
             staging_instance,
             "create_streaming_list",
             side_effect=RuntimeError(err_msg),
+        )
+        # Mock that collection exists
+        mocker.patch.object(
+            staging_instance,
+            "check_if_collection_exists",
+            return_value=True,
         )
         # Call the method under test
         await self._call_check_catalog(staging_instance, staging_inputs)
