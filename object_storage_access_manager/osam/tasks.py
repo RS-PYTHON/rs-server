@@ -263,7 +263,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             f"{obs_user['username']}. Skipping....",
         )
         return
-    logger.debug(f"keycloak username = {keycloak_user_id}")
+    logger.debug(f"Keycloak username = {keycloak_user_id}")
     does_user_exist = False
     for keycloak_user in keycloak_users:
         if keycloak_user["username"] == keycloak_user_id:
