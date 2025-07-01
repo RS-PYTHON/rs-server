@@ -262,7 +262,7 @@ jobs:
 
       - name: Run SonarCloud Scanner
         #uses: sonarsource/sonarqube-scan-action@master
-        uses: SonarSource/sonarcloud-github-action@v4.1.0
+        uses: SonarSource/sonarcloud-github-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_PROJECT_KEY: RS-PYTHON_rs-server
