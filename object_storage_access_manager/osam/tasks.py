@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
-
+# pylint: disable = wrong-import-order
 import copy
 import json
 import logging
