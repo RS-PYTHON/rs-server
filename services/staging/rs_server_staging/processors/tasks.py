@@ -171,7 +171,9 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature, staging_u
         s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
 
         origin_service = urlparse(asset_content.href).scheme
+        logger.debug(f"===== ORIGIN SERVICE IS: {origin_service}")
         if origin_service == "s3":
+            logger.debug(f"===== CREATING S3 ASSET INFO FOR HREF {asset_content.href}")
             asset_info = create_asset_info_with_s3_auth(
                 feature,
                 asset_name,
@@ -180,6 +182,7 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature, staging_u
                 s3_bucket_name,
             )
         else:
+            logger.debug(f"===== CREATING REGULAR ASSET INFO FOR HREF {asset_content.href}")
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
         assets_info.append(asset_info)

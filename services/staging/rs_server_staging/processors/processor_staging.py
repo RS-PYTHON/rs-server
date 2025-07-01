@@ -931,17 +931,23 @@ class Staging(
             self.logger.info("There are no assets to stage. Exiting....")
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
+        for asset in self.assets_info:
+            self.logger.debug(f"===== ASSET {asset.product_url} HAS ORIGIN SERVICE {asset.origin_service}")
+
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
         domains = list(
             {urlparse(asset.product_url).hostname for asset in self.assets_info if asset.origin_service != "s3"},
         )
+        self.logger.debug(f"===== DOMAINS LIST = {domains}")
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
             # If we got 0 domain, it means we only have assets from external s3 buckets
+            self.logger.debug("===== NO DOMAIN; DOMAIN = S3")
             domain = "s3"
         elif len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         else:
+            self.logger.debug(f"===== DOMAIN FOUND; DOMAIN = {domains[0]}")
             domain = domains[0]
 
         # Step 3: Connect to dask cluster BEFORE retrieving the token, because an unnecessary request would be sent
