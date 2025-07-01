@@ -16,9 +16,8 @@
 
 import os
 import pytest
-import time
-
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
+
 
 @pytest.fixture(name="handler")
 def handler_fixture(mocker):
@@ -60,7 +59,6 @@ def test_get_all_users(handler):
     handler.ovh_client.get.assert_called_once_with(f"/cloud/project/{handler.ovh_service_name}/user")
 
 
-
 def test_get_user(handler):
     """
     Test retrieving a specific user by ID.
@@ -75,8 +73,7 @@ def test_get_user(handler):
     handler.ovh_client.get.assert_called_once_with(f"/cloud/project/{handler.ovh_service_name}/user/user1")
 
 
-
-def test_create_user_status_ok(handler, mocker):
+def test_create_user_status_ok(handler):
     """
     Test creating a user when status immediately becomes 'ok'.
     """
@@ -88,8 +85,12 @@ def test_create_user_status_ok(handler, mocker):
     result = handler.create_user(description="Test user")
 
     assert result["id"] == "user1"
-    handler.ovh_client.post.assert_any_call(f"/cloud/project/{handler.ovh_service_name}/user", 
-                                            description="Test user", role=None, roles=None)
+    handler.ovh_client.post.assert_any_call(
+        f"/cloud/project/{handler.ovh_service_name}/user",
+        description="Test user",
+        role=None,
+        roles=None,
+    )
     handler.ovh_client.post.assert_any_call(f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials")
 
 
@@ -130,8 +131,9 @@ def test_get_user_s3_access_key_found(handler):
     result = handler.get_user_s3_access_key("user1")
 
     assert result == "access-key-123"
-    handler.ovh_client.get.assert_called_once_with(f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials")
-
+    handler.ovh_client.get.assert_called_once_with(
+        f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials",
+    )
 
 
 def test_get_user_s3_access_key_missing(handler):
@@ -155,7 +157,7 @@ def test_get_user_s3_secret_key(handler):
 
     assert result == "secret-key-abc"
     handler.ovh_client.post.assert_called_once_with(
-        f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials/access-key-123/secret"
+        f"/cloud/project/{handler.ovh_service_name}/user/user1/s3Credentials/access-key-123/secret",
     )
 
 
