@@ -261,7 +261,7 @@ jobs:
       - name: Run sonarqube
         uses: sonarsource/sonarqube-scan-action@master
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_CLOUD_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
           SONAR_PROJECT_KEY: RS-PYTHON_rs-server
         with:
@@ -295,7 +295,7 @@ jobs:
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
           sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          sonar-token: ${{ secrets.SONAR_CLOUD_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
 
@@ -309,7 +309,7 @@ jobs:
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_CLOUD_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
 
       # http instead of https or the url appears as *** in github, I don't know why,
       # it may be configurable. But http works as well.
