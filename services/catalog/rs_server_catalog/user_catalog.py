@@ -373,6 +373,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
+        logger.debug(f"User to check for: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
