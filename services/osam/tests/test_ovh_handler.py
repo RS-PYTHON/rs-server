@@ -15,6 +15,7 @@
 """Unit tests for ovh_handler"""
 
 import os
+
 import pytest
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 

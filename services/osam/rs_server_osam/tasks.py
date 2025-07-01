@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
-
+# pylint: disable = wrong-import-order
 import copy
 import json
 import logging
@@ -24,19 +24,21 @@ from functools import wraps
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (ConsoleSpanExporter,
-                                            SimpleSpanProcessor)
-from rs_server_common.s3_storage_handler import s3_storage_config
-from rs_server_common.utils.logging import Logging
-
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
-from osam.utils.tools import (DEFAULT_CSV_PATH, DESCRIPTION_TEMPLATE,
-                              LIST_CHECK_OVH_DESCRIPTION,
-                              create_description_from_template,
-                              get_allowed_buckets,
-                              get_keycloak_user_from_description, match_roles,
-                              parse_role)
+from osam.utils.tools import (
+    DEFAULT_CSV_PATH,
+    DESCRIPTION_TEMPLATE,
+    LIST_CHECK_OVH_DESCRIPTION,
+    create_description_from_template,
+    get_allowed_buckets,
+    get_keycloak_user_from_description,
+    match_roles,
+    parse_role,
+)
+from rs_server_common.s3_storage_handler import s3_storage_config
+from rs_server_common.utils.logging import Logging
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"

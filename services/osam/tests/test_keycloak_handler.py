@@ -84,7 +84,7 @@ def test_get_obs_user_from_keycloak_user_missing(handler):
     """
     Test extracting 'obs-user' when attribute is missing.
     """
-    user = {"attributes": {}} # type: ignore
+    user = {"attributes": {}}  # type: ignore
 
     assert handler.get_obs_user_from_keycloak_user(user) is None
 
