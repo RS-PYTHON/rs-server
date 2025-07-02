@@ -258,6 +258,8 @@ jobs:
         run: |
           ls -la .
           find . -name "cov-report.xml"
+          pwd
+          ls -la /github/workspace/
 
       - name: Get directory names
         id: dir_names
