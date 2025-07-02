@@ -263,13 +263,19 @@ jobs:
       - name: Get directory names
         id: dir_names
         run: |
+          echo sources=$(find . -type d -name "rs_server*" | paste -sd ",")
           echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
+          echo tests=$(find . -type d -name "tests" | paste -sd ",")
           echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Normalize coverage paths for SonarCloud
         run: |
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
+
+      - name: List candidate source dirs
+        run: find . -name '*.py' | sed 's|/[^/]*$||' | sort -u
+
 
       - name: Run SonarCloud Scanner
         uses: SonarSource/sonarcloud-github-action@v2
