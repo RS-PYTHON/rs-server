@@ -232,7 +232,7 @@ jobs:
     permissions: write-all # write pull request comments
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_PROJECT_KEY: RS-PYTHON_operational-services
+      SONAR_PROJECT_KEY: RS-PYTHON_rs-server
       SONAR_HOST_URL: https://sonarcloud.io
     steps:
       - uses: actions/checkout@v4
@@ -256,10 +256,9 @@ jobs:
 
       - name: Debug artifact contents
         run: |
+          pwd
           ls -la .
           find . -name "cov-report.xml"
-          pwd
-          ls -la /github/workspace/
 
       - name: Get directory names
         id: dir_names
