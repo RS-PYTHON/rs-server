@@ -254,6 +254,11 @@ jobs:
           name:
             run-all-pytests
 
+      - name: Debug artifact contents
+        run: |
+          ls -la .
+          find . -name "cov-report.xml"
+
       - name: Get directory names
         id: dir_names
         run: |
@@ -283,7 +288,7 @@ jobs:
             -Dsonar.python.pylint.reportPaths=./pylint-report.txt
             -Dsonar.python.flake8.reportPaths=./flake8-report.txt
             -Dsonar.python.bandit.reportPaths=./bandit-report.json
-            -Dsonar.python.coverage.reportPaths=cov-report.xml
+            -Dsonar.python.coverage.reportPaths=./cov-report.xml
             -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
 
       - name: Wait for quality gate result
