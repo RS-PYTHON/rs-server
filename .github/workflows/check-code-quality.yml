@@ -230,9 +230,6 @@ jobs:
     needs: [changes, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
     if: ${{ needs.changes.outputs.code == 'true' }}
     permissions: write-all # write pull request comments
-    # Mark the job as OK even if the sonarqube quality gate doesn't pass.
-    # We will resolve these issues later.
-    # continue-on-error: true
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: RS-PYTHON_operational-services
@@ -313,6 +310,9 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # Mark the job as OK even if the sonarqube quality gate doesn't pass.
+        # We will resolve these issues later.
+        continue-on-error: true
 
       # http instead of https or the url appears as *** in github, I don't know why,
       # it may be configurable. But http works as well.
