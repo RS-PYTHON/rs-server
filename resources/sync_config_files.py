@@ -687,6 +687,8 @@ if __name__ == "__main__":
 
     def remove_session_stations(output_config: dict):
         """For this file, don't copy the cadip "_session" stations."""
+        if not isinstance(output_config, dict):
+            return
         for station in list(output_config.keys()):
             if station.endswith("_session"):
                 output_config.pop(station)

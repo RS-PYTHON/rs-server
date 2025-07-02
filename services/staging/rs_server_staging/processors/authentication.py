@@ -19,7 +19,7 @@ import threading
 
 from fastapi import HTTPException
 from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_common.authentication.token_auth import (
     TokenDataNotFound,
@@ -35,7 +35,7 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
     and a subscriber count to track whether the token should be refreshed.
 
     Attributes:
-        config (ExternalAuthenticationConfig): Authentication configuration for the station.
+        config (StationExternalAuthenticationConfig): Authentication configuration for the station.
         padlock (threading.Lock): Lock to synchronize token updates.
         token_dict (dict): Dictionary containing authentication token details.
         subscribers (int): Number of active subscribers tracking the token refresh status.
@@ -43,13 +43,13 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        config: ExternalAuthenticationConfig,
+        config: StationExternalAuthenticationConfig,
     ):
         """
         Initializes the `RefreshTokenData` instance with station authentication details.
 
         Args:
-            config (ExternalAuthenticationConfig): The authentication configuration for the station.
+            config (StationExternalAuthenticationConfig): The authentication configuration for the station.
         """
         # NOTE: station_id has to be unique !
         self.config = config

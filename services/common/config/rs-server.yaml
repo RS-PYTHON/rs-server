@@ -273,3 +273,11 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
+  s3test:
+    domain: s3.gra.io.cloud.ovh.net
+    service:
+      name: s3
+      url: https://s3.gra.io.cloud.ovh.net
+    authentication:
+      access_key: ${access_key}
+      secret_key: ${secret_key}
