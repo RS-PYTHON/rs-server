@@ -294,7 +294,7 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.sources=services
+            -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
             -Dsonar.exclusions=**/tests/**
             -Dsonar.sourceEncoding=UTF-8
@@ -305,6 +305,7 @@ jobs:
             -Dsonar.python.bandit.reportPaths=./bandit-report.json
             -Dsonar.python.coverage.reportPaths=./cov-report.xml
             -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
+            -Dsonar.verbose=true
 
       - name: Wait for quality gate result
         run: sleep 5
