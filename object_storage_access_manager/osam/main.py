@@ -68,7 +68,6 @@ async def app_lifespan(fastapi_app: FastAPI):
     )
     # trigger the first run -> this was disabled by a request from ops
     # app.extra["users_sync_trigger"].set()
-
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -176,7 +175,6 @@ def main_osam_task(timeout: int = 60):
             # Later Edit: The timeout was disabled because of the request from ops team
             # if this is wanted later, just add `timeout=timeout` as input param in wait()
             triggered = app.extra["users_sync_trigger"].wait()
-
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
                 logger.info("Shutting down background thread and exit")
                 break

@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module use for osam endpoints tests"""
+import os
 import threading
+from importlib import reload
 from unittest.mock import AsyncMock
 
 import pytest
+from rs_server_common import settings as common_settings
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
@@ -203,3 +206,110 @@ def test_accounts_update_triggers_sync(mocker, osam_client):
     assert response.status_code == 200
     assert "algorithm for updating" in response.text
     mock_event.set.assert_called_once()
+
+
+def test_main_osam_task_with_shutdown_event_true(mocker):
+    """
+    Verify that main_osam_task exits immediately without performing any synchronization
+    when the shutdown event is already set before entering the loop.
+
+    This ensures that:
+    - link_rspython_users_and_obs_users is not called.
+    - build_users_data_map is not called.
+    """
+    os.environ["RSPY_LOCAL_MODE"] = "1"
+    reload(common_settings)
+    mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+
+    from osam.main import (  # pylint: disable = import-outside-toplevel
+        app,
+        main_osam_task,
+    )
+
+    mock_event_sync = mocker.Mock()
+    mock_event_sync.wait.return_value = True
+    shutdown_event = mocker.Mock()
+    shutdown_event.is_set.return_value = True
+    app.extra = {
+        "users_sync_trigger": mock_event_sync,
+        "shutdown_event": shutdown_event,
+        "users_info": {},
+    }
+
+    mock_link = mocker.patch("osam.main.link_rspython_users_and_obs_users")
+    mock_build = mocker.patch("osam.main.build_users_data_map")
+    main_osam_task(timeout=0)
+    mock_link.assert_not_called()
+    mock_build.assert_not_called()
+
+
+def test_main_osam_task_runs_once_and_exits(mocker):
+    """
+    Verify that main_osam_task performs exactly one iteration of synchronization
+    and exits cleanly after the shutdown event becomes set.
+
+    This ensures that:
+    - link_rspython_users_and_obs_users is called once.
+    - build_users_data_map is called once.
+    - The loop exits after the second shutdown_event.is_set() returns True.
+    """
+    # Patch app.extra and the functions it relies on
+    os.environ["RSPY_LOCAL_MODE"] = "1"
+    reload(common_settings)
+    from osam.main import (  # pylint: disable = import-outside-toplevel
+        app,
+        main_osam_task,
+    )
+
+    mock_event_sync = mocker.Mock()
+    mock_event_sync.wait.return_value = True
+    shutdown_event = mocker.Mock()
+    shutdown_event.is_set.side_effect = [False, True]  # first call False, second call True (exit loop)
+
+    app.extra = {
+        "users_sync_trigger": mock_event_sync,
+        "shutdown_event": shutdown_event,
+        "users_info": {},
+    }
+
+    mock_link = mocker.patch("osam.main.link_rspython_users_and_obs_users")
+    mock_build = mocker.patch("osam.main.build_users_data_map")
+    main_osam_task(timeout=0)
+
+    mock_link.assert_called_once()
+    mock_build.assert_called_once()
+
+
+def test_main_osam_task_runs_with_exception(mocker):
+    """
+    Verify that main_osam_task correctly logs an exception when link_rspython_users_and_obs_users
+    raises an error during synchronization, and then exits cleanly.
+
+    This ensures that:
+    - logger.exception is called with the expected message.
+    - The loop continues and exits on shutdown_event.
+    """
+
+    os.environ["RSPY_LOCAL_MODE"] = "1"
+    reload(common_settings)
+    mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+
+    from osam.main import (  # pylint: disable = import-outside-toplevel
+        app,
+        main_osam_task,
+    )
+
+    mock_event_sync = mocker.Mock()
+    mock_event_sync.wait.return_value = True
+    shutdown_event = mocker.Mock()
+    shutdown_event.is_set.side_effect = [False, True]
+    app.extra = {
+        "users_sync_trigger": mock_event_sync,
+        "shutdown_event": shutdown_event,
+        "users_info": {},
+    }
+    mock_link = mocker.patch("osam.main.link_rspython_users_and_obs_users")
+    mock_link.side_effect = Exception
+    mock_logger_exception = mocker.patch("osam.main.logger.exception")
+    main_osam_task(timeout=0)
+    mock_logger_exception.assert_any_call("Handle cancellation: ")
