@@ -13,6 +13,7 @@
 # limitations under the License.
 """Module use for osam endpoints tests"""
 import threading
+from unittest.mock import AsyncMock
 
 import pytest
 from starlette.status import (
@@ -139,3 +140,66 @@ def test_user_rights_update_s3_rights_error(mocker, osam_client):
 #     assert must_be_authenticated("/api/v1/resource")
 #     assert must_be_authenticated("/")
 #     assert must_be_authenticated("/_mgmt/pong")
+
+
+def test_get_credentials_success(mocker, osam_client):
+    """
+    Test the /storage/account/credentials endpoint returns user credentials successfully.
+
+    This test mocks:
+      - `oauth2.get_user_info` async call to return a user object with `user_login`.
+      - `get_user_s3_credentials` to return mocked credentials.
+
+    It verifies the endpoint responds with HTTP 200 and returns the expected credentials JSON.
+    """
+    # Mock async oauth2.get_user_info to return an object with user_login attribute
+    mock_user_info = AsyncMock()
+    mock_user_info.user_login = "testuser"
+    mocker.patch("osam.main.oauth2.get_user_info", return_value=mock_user_info)
+
+    # Mock get_user_s3_credentials to return some dummy credentials
+    expected_creds = {"access_key": "AKIA...", "secret_key": "SECRET"}
+    mocker.patch("osam.main.get_user_s3_credentials", return_value=expected_creds)
+
+    response = osam_client.get("/storage/account/credentials")
+    assert response.status_code == 200
+    assert response.json() == expected_creds
+
+
+def test_get_credentials_unauthenticated(mocker, osam_client):
+    """
+    Test the /storage/account/credentials endpoint handles unauthenticated access properly.
+
+    This test mocks `oauth2.get_user_info` to raise an Exception simulating unauthorized access.
+
+    It verifies the endpoint returns a non-200 HTTP status (e.g. 401, 403, 500) and error message.
+    """
+
+    # Mock async oauth2.get_user_info to raise an exception (unauthenticated)
+    async def raise_unauthorized(*args, **kwargs):
+        raise Exception("Unauthorized")  # pylint: disable = broad-exception-raised
+
+    mocker.patch("osam.main.oauth2.get_user_info", side_effect=raise_unauthorized)
+
+    response = osam_client.get("/storage/account/credentials")
+    assert response.status_code != 200
+    assert "Unauthorized" in response.text or response.status_code in (401, 403, 500)
+
+
+def test_accounts_update_triggers_sync(mocker, osam_client):
+    """
+    Test POST /storage/accounts/update triggers the background sync task.
+
+    This test mocks the `set` method of the `users_sync_trigger` threading.Event
+    inside `app.extra` to verify it is called.
+    """
+    from osam.main import app  # pylint: disable = import-outside-toplevel
+
+    mock_event = mocker.Mock()
+    app.extra["users_sync_trigger"] = mock_event
+
+    response = osam_client.post("/storage/accounts/update")
+
+    assert response.status_code == 200
+    assert "algorithm for updating" in response.text
+    mock_event.set.assert_called_once()
