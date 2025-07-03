@@ -33,9 +33,11 @@ junit=0
 
 # For each pyproject.toml file in the current directory
 for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
+    echo "Running tests for directory: '$toml'"
 
     # Go to the parent dir = project dir
     proj_dir=$(dirname "$toml")
+    proj_rel_dir=${proj_dir#"$ROOT_DIR/"}
 
     # Test if the 'tests' directory exists
     tests_dir="$proj_dir/tests"
@@ -62,20 +64,20 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
             set -x; source "$tests_dir/.env"; set +x
         fi
 
-        # Run pytest from the root directory. Update the coverage reports.
+        # Run pytest from the root directory
         cd "$ROOT_DIR"
         cmd="\
-$(cd $proj_dir && poetry run which python) -m pytest $tests_dir \
+$(cd "$proj_dir" && poetry run which python) -m pytest $tests_dir \
 -ra \
 --disable-pytest-warnings \
 --color=yes \
 --durations=0 \
 --durations-min=0.05 \
 --error-for-skips \
---cov=$proj_dir \
+--cov=$proj_rel_dir \
 --cov-report=term \
---cov-report=xml:./cov-report.xml \
---junit-xml=./junit-xml-report-${junit}.xml \
+--cov-report=xml:$ROOT_DIR/cov-report.xml \
+--junit-xml=$ROOT_DIR/junit-xml-report-${junit}.xml \
 --cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
@@ -87,19 +89,16 @@ done
 
 # Merge the junit reports
 cd "$ROOT_DIR"
-junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
+if ls "$ROOT_DIR"/junit-xml-report-*.xml >/dev/null 2>&1; then
+    junitparser merge "$ROOT_DIR"/junit-xml-report-*.xml "$ROOT_DIR/junit-xml-report.xml"
+else
+    echo "No JUnit reports found to merge"
+    touch "$ROOT_DIR/junit-xml-report.xml" # Create an empty file to avoid SonarCloud error
+fi
 
-# There seems to be a bug in pytest cov with --cov-append.
-# The last tested project is malformed in the report file.
-# Use this workaround to run pytest on a dummy empty dir. This reformats the report file.
-dummy="/tmp/empty-pytest"
-mkdir -p $dummy
-# Use the last project configuration
-cmd="\
-$(cd $proj_dir && poetry run which python) -m pytest $dummy \
---cov=$dummy \
---cov-report=term \
---cov-report=xml:./cov-report.xml \
---cov-append \
-"
-(set -x; $cmd || true) # run command, ignore the error message that says no tests exist
+# Fix absolute paths in coverage report
+if [[ -f "$ROOT_DIR/cov-report.xml" ]]; then
+    sed -i "s|$ROOT_DIR/||g" "$ROOT_DIR/cov-report.xml"
+else
+    echo "No coverage report generated"
+fi

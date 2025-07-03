@@ -28,7 +28,6 @@ on:
 
 env:
   PYTHON_VERSION: 3.11.7
-  SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
   changes:
@@ -231,11 +230,14 @@ jobs:
     needs: [changes, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
     if: ${{ needs.changes.outputs.code == 'true' }}
     permissions: write-all # write pull request comments
-    # Mark the job as OK even if the sonarqube quality gate doesn't pass.
-    # We will resolve these issues later.
-    # continue-on-error: true
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: RS-PYTHON_rs-server
+      SONAR_HOST_URL: https://sonarcloud.io
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
         uses: actions/download-artifact@v4
         with:
@@ -259,11 +261,12 @@ jobs:
           echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Run sonarqube
-        uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: Normalize coverage paths for SonarCloud
+        run: |
+          sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
+
+      - name: Run SonarCloud Scanner
+        uses: SonarSource/sonarcloud-github-action@v2
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
@@ -273,18 +276,20 @@ jobs:
           projectBaseDir: .
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.exclusions=
+            -Dsonar.exclusions=tests,tests/**,**/tests/**
+            -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
-            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
-            -Dsonar.python.bandit.reportPaths="./bandit-report.json"
-            -Dsonar.python.coverage.reportPaths="./cov-report.xml"
-            -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
+            -Dsonar.python.pylint.reportPaths=./pylint-report.txt
+            -Dsonar.python.flake8.reportPaths=./flake8-report.txt
+            -Dsonar.python.bandit.reportPaths=./bandit-report.json
+            -Dsonar.python.coverage.reportPaths=./cov-report.xml
+            -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
 
       - name: Wait for quality gate result
         run: sleep 5
@@ -294,15 +299,15 @@ jobs:
         id: quality-gate-result
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          sonar-host-url: ${{ env.SONAR_HOST_URL }}
+          sonar-token: ${{ env.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
 
       - name: Output result
         run: |
-          echo "${{ steps.quality-gate-result.outputs.project-status }}"
-          echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+          echo "Project status: ${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "Quality gate result: ${{ steps.quality-gate-result.outputs.quality-gate-result }}"
 
       - id: check-gate
         name: Check quality gate status
@@ -310,11 +315,14 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # Mark the job as OK even if the sonarqube quality gate doesn't pass.
+        # We will resolve these issues later.
+        # continue-on-error: true
 
       # http instead of https or the url appears as *** in github, I don't know why,
       # it may be configurable. But http works as well.
       - if: always()
         run: >
           echo "SonarQube report:
-          http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
+          https://sonarcloud.io/dashboard?id=${{ env.SONAR_PROJECT_KEY }}&branch=${{ github.ref_name }}"
           >> $GITHUB_STEP_SUMMARY
