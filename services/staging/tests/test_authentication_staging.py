@@ -118,7 +118,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
         "rs_server_staging.processors.processor_staging.load_external_auth_config_by_domain",
         return_value=mock_load,
     )
-    mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
+    mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
     mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
     mock_request = mocker.Mock()
     mocker.patch.object(staging_instance, "request", new=mock_request)

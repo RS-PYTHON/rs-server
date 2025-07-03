@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TODO Docstring to be added."""
+"""Set of functions to connect to an S3 endpoint and run various operations."""
 
 import logging
 import ntpath
@@ -25,6 +25,7 @@ from urllib.parse import urlparse
 
 import boto3
 import botocore
+import botocore.exceptions
 import requests
 from rs_server_common.utils.logging import Logging
 
@@ -41,6 +42,7 @@ S3_ERR_FORBIDDEN_ACCESS = "403"
 S3_ERR_NOT_FOUND = "404"
 HTTP_CONNECTION_TIMEOUT = 10
 HTTP_READ_TIMEOUT = 120
+PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "3600"))
 # the maximum number of attempts that are made on a single request
 # this defines the number of retries at the s3 protocol level
 # there is also another retry mechanism set on the application level
@@ -857,14 +859,7 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def s3_streaming_upload(  # pylint: disable=too-many-locals
-        self,
-        stream_url: str,
-        trusted_domains: list[str],
-        auth: Any,
-        bucket: str,
-        key: str,
-    ):
+    def s3_streaming_upload(self, request: requests.Request, trusted_domains: list[str], bucket: str, key: str):
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
 
@@ -891,21 +886,15 @@ retried for %s times. Aborting",
             - Any other unexpected errors are caught and re-raised as `RuntimeError`.
         """
         if bucket is None or key is None:
-            raise RuntimeError(f"Input error for streaming the file from {stream_url} to s3://{bucket}/{key}")
+            raise RuntimeError(f"Input error for streaming the file from {request.url} to s3://{bucket}/{key}")
         timeout: tuple[int, int] = (HTTP_CONNECTION_TIMEOUT, HTTP_READ_TIMEOUT)
 
         try:
-            # Prepare the request
             session = CustomSessionRedirect(trusted_domains)
             self.logger.debug(f"trusted_domains = {trusted_domains}")
-            request = requests.Request(
-                method="GET",
-                url=stream_url,
-                auth=auth,
-            )
             prepared_request = session.prepare_request(request)
             self.connect_s3()
-            self.logger.info(f"Starting the streaming of {stream_url} to s3://{bucket}/{key}")
+            self.logger.info(f"Starting the streaming of {request.url} to s3://{bucket}/{key}")
             with session.send(prepared_request, stream=True, timeout=timeout) as response:
                 self.logger.debug(f"Request headers: {response.request.headers}")
                 response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
@@ -920,18 +909,104 @@ retried for %s times. Aborting",
                         Config=boto3.s3.transfer.TransferConfig(multipart_threshold=chunk_size * 2),
                     )
                 self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
-                return
         except (
             requests.exceptions.RequestException,
             botocore.client.ClientError,
             botocore.exceptions.BotoCoreError,
         ) as e:
-            self.logger.exception(f"Failed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}.")
-            raise ConnectionError(f"Failed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}.") from e
+            self.logger.exception(f"Failed to stream the file from {request.url} to s3://{bucket}/{key}: {e}.")
+            raise ConnectionError(f"Failed to stream the file from {request.url} to s3://{bucket}/{key}: {e}.") from e
         except Exception as e:
             self.logger.exception(
-                "General exception.\nFailed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}",
+                f"General exception.\nFailed to stream the file from {request.url} to s3://{bucket}/{key}: {e}",
             )
             raise RuntimeError(
-                "General exception.\nFailed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}",
+                f"General exception.\nFailed to stream the file from {request.url} to s3://{bucket}/{key}: {e}",
             ) from e
+
+    def s3_streaming_from_http(
+        self,
+        stream_url: str,
+        trusted_domains: list[str],
+        auth: Any,
+        bucket: str,
+        key: str,
+    ):
+        """
+        Upload a file from an http source to an S3 bucket.
+
+        Args:
+            stream_url (str): The URL of the file to be streamed and uploaded.
+            trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+            auth (Any): Authentication credentials for the HTTP request (if required).
+            bucket (str): The name of the target S3 bucket.
+            key (str): The S3 object key (file path) to store the streamed file.
+        """
+        # Prepare the request
+        request = requests.Request(
+            method="GET",
+            url=stream_url,
+            auth=auth,
+        )
+
+        # Start streaming with formatted request
+        self.s3_streaming_upload(request, trusted_domains, bucket, key)
+
+    def s3_streaming_from_s3(
+        self,
+        source_url: str,
+        source_endpoint_url: str,
+        source_access_key: str,
+        source_secret_key: str,
+        destination_bucket: str,
+        destination_key: str,
+        trusted_domains: list[str],
+    ):
+        """
+        Upload a file from an external S3 bucket to an S3 bucket.
+
+        Args:
+            stream_url (str): Source URL for the item to upload (contains bucket name and item key).
+            source_endpoint_url (str): Endpoint URL of the source S3 bucket.
+            source_access_key (str): Access key to the external S3 bucket.
+            source_secret_key (str): Secret key to the external S3 bucket.
+            destination_bucket (str): The name of the target S3 bucket.
+            destination_key (str): The S3 object key (file path) to store the streamed file.
+            trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+        """
+        # Format input values
+        if not source_url.startswith("s3://"):
+            raise ValueError(
+                f"Wrong source URL for S3 to S3 streaming (expected URL starting with 's3://', got '{source_url}').",
+            )
+        source_url = source_url.removeprefix("s3://")
+        source_params = {"Bucket": source_url.split("/", 1)[0], "Key": source_url.split("/", 1)[1]}
+
+        # Connect to external s3 to generate URL
+        try:
+            source_s3_client = boto3.client(
+                "s3",
+                endpoint_url=source_endpoint_url,
+                aws_access_key_id=source_access_key,
+                aws_secret_access_key=source_secret_key,
+                use_ssl=True,
+            )
+            presigned_url = source_s3_client.generate_presigned_url(
+                "get_object",
+                Params=source_params,
+                ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
+            )
+        except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as error:
+            self.logger.error(f"Failed to connect to external s3 endpoint {source_endpoint_url}: {error}.")
+            raise ConnectionError(
+                f"Failed to connect to external s3 endpoint {source_endpoint_url}: {error}.",
+            ) from error
+
+        # Prepare the request
+        request = requests.Request(
+            method="GET",
+            url=presigned_url,
+        )
+
+        # Start streaming with formatted request
+        self.s3_streaming_upload(request, trusted_domains, destination_bucket, destination_key)

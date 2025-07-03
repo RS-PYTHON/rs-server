@@ -15,6 +15,7 @@
 """
 ExternalAuthenticationConfig implementation.
 """
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,6 +38,26 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
         service_name (str): The name of the external service.
         service_url (str): The URL of the external service.
         auth_type (str): The type of authentication used (e.g., 'token', 'basic').
+    """
+
+    station_id: str
+    domain: str
+    service_name: str
+    service_url: str
+    auth_type: str
+
+
+@dataclass
+class StationExternalAuthenticationConfig(ExternalAuthenticationConfig):
+    """
+    Configuration class for storing external authentication details for stations.
+
+    Attributes:
+        station_id (str): The unique identifier for the station requesting the token.
+        domain (str): The domain for the external service.
+        service_name (str): The name of the external service.
+        service_url (str): The URL of the external service.
+        auth_type (str): The type of authentication used (e.g., 'token', 'basic').
         token_url (str): The URL to request the authentication token.
         grant_type (str): The grant type used for obtaining the token. Currently, only 'password' is available.
         username (str): The username used for authentication.
@@ -48,11 +69,6 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
         trusted_domains (Optional[str]): The list of allowed hosts for http redirection
     """
 
-    station_id: str
-    domain: str
-    service_name: str
-    service_url: str
-    auth_type: str
     token_url: str
     grant_type: str
     username: str
@@ -64,11 +80,32 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     trusted_domains: list[str] | None = None
 
 
+@dataclass
+class S3ExternalAuthenticationConfig(ExternalAuthenticationConfig):
+    """
+    Configuration class for storing external authentication details for S3 buckets.
+
+    Attributes:
+        station_id (str): The unique identifier for the station requesting the token.
+        domain (str): The domain for the external service.
+        service_name (str): The name of the external service.
+        service_url (str): The URL of the external service.
+        auth_type (str): The type of authentication used (e.g., 'token', 'basic').
+        access_key (str): Access key to the S3 storage
+        secret_key (str): Secret key to the S3 storage
+        trusted_domains (Optional[str]): The list of allowed hosts for http redirection
+    """
+
+    access_key: str
+    secret_key: str
+    trusted_domains: list[str] | None = None
+
+
 def create_external_auth_config(
     station_id: str,
     station_dict: dict[str, Any],
     service_dict: dict[str, Any],
-) -> ExternalAuthenticationConfig | None:
+) -> StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig | None:
     """
     Create an ExternalAuthenticationConfig object based on the provided station and service dictionaries.
 
@@ -84,7 +121,19 @@ def create_external_auth_config(
         KeyError: If any required keys are missing in the configuration dictionaries.
     """
     try:
-        return ExternalAuthenticationConfig(
+        if service_dict["name"] == "s3":
+            return S3ExternalAuthenticationConfig(
+                station_id=station_id,
+                domain=station_dict["domain"],
+                service_name=service_dict["name"],
+                service_url=service_dict["url"],
+                auth_type=station_dict.get("authentication", {}).get("auth_type"),
+                trusted_domains=station_dict.get("trusteddomains", None),
+                access_key=station_dict.get("authentication", {}).get("access_key"),
+                secret_key=station_dict.get("authentication", {}).get("secret_key"),
+            )
+
+        return StationExternalAuthenticationConfig(
             station_id=station_id,
             domain=station_dict["domain"],
             service_name=service_dict["name"],

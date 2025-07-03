@@ -25,7 +25,8 @@ import yaml
 from fastapi import HTTPException
 from rs_server_common import settings
 from rs_server_common.authentication.external_authentication_config import (
-    ExternalAuthenticationConfig,
+    S3ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
     create_external_auth_config,
 )
 from rs_server_common.utils.logging import Logging
@@ -75,7 +76,11 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
 
             # Open the configuration file and load the YAML content
             with open(path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f)
+                contents = f.read()
+                # expandvars is used to replace missing values in template with env vars
+                # This is mainly intended for the s3 credentials
+                contents = os.path.expandvars(contents)
+                config_data = yaml.safe_load(contents)
 
             # Ensure the loaded configuration is a dictionary
             if not isinstance(config_data, dict):
@@ -145,7 +150,7 @@ CONFIGURATION: dict = __read_configuration()
 def load_external_auth_config_by_station_service(
     station_id: str,
     service: str | None = None,
-) -> ExternalAuthenticationConfig | None:
+) -> StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig | None:
     """
     Load the external authentication configuration for a given station and service from a YAML file.
 
@@ -154,8 +159,9 @@ def load_external_auth_config_by_station_service(
         service (str): The name of the service ("auxip" or "cadip") to load the authentication configuration for.
 
     Returns:
-        Optional[ExternalAuthenticationConfig]: An object representing the external authentication configuration,
-        or None if the station or service is not found or if an error occurs.
+        Optional[StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig]: An object representing the
+        external authentication configuration, with a variation if it is for a regular external station or an external
+        S3 bucket, or None if the station or service is not found or if an error occurs.
 
     """
 
@@ -179,7 +185,9 @@ def load_external_auth_config_by_station_service(
     return create_external_auth_config(station_id, station_dict, service_dict)
 
 
-def load_external_auth_config_by_domain(domain: str) -> ExternalAuthenticationConfig | None:
+def load_external_auth_config_by_domain(
+    domain: str,
+) -> StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig | None:
     """
     Load the external authentication configuration based on the domain from a YAML file.
 
@@ -187,8 +195,9 @@ def load_external_auth_config_by_domain(domain: str) -> ExternalAuthenticationCo
         domain (str): The domain to search for in the authentication configuration.
 
     Returns:
-        Optional[ExternalAuthenticationConfig]: An object representing the external authentication configuration,
-        or None if no matching domain is found or if an error occurs.
+        Optional[StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig]: An object representing the
+        external authentication configuration, with a variation if it is for a regular external station or an external
+        S3 bucket, or None if the station or service is not found or if an error occurs.
     """
 
     # Iterate through the external data sources in the configuration
@@ -204,7 +213,7 @@ def load_external_auth_config(
     station_id: str | None = None,
     service: str | None = None,
     domain: str | None = None,
-) -> ExternalAuthenticationConfig:
+) -> StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig:
     """
     Load the external authentication configuration from a given station and service or from a domain.
     Args:

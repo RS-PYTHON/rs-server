@@ -46,7 +46,8 @@ from rs_server_adgs import adgs_retriever, adgs_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
+    S3ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
@@ -438,22 +439,22 @@ def expected_config_token_file_fixture() -> dict:
 
 
 @pytest.fixture(name="get_external_auth_config")
-def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig:
-    """Fixture to provide an ExternalAuthenticationConfig instance based on station_id.
+def get_external_auth_config_fixture(station_id) -> StationExternalAuthenticationConfig:
+    """Fixture to provide an StationExternalAuthenticationConfig instance based on station_id.
 
-    This fixture creates and returns an ExternalAuthenticationConfig object with
+    This fixture creates and returns an StationExternalAuthenticationConfig object with
     predefined values based on the provided station_id.
 
     Args:
         station_id (str): The identifier for the station, determining the service name.
 
     Returns:
-        ExternalAuthenticationConfig: An instance with the configuration for the given station_id.
+        StationExternalAuthenticationConfig: An instance with the configuration for the given station_id.
     """
     # Determine the service based on the station_id
     service = "auxip" if station_id == "adgs" else "cadip"
-    # Return a configured ExternalAuthenticationConfig object
-    return ExternalAuthenticationConfig(
+    # Return a configured StationExternalAuthenticationConfig object
+    return StationExternalAuthenticationConfig(
         station_id=station_id,
         domain=f"mockup-{service}-{station_id}.processing.svc.cluster.local",
         service_name=service,
@@ -467,6 +468,31 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
         client_secret=TOKEN_CLIENT_SECRET,
         scope="openid",
         authorization="Basic test",
+    )
+
+
+@pytest.fixture(name="get_s3_external_auth_config")
+def get_s3_external_auth_config_fixture(station_id) -> StationExternalAuthenticationConfig:
+    """Fixture to provide an S3ExternalAuthenticationConfig instance based on station_id.
+
+    This fixture creates and returns an S3ExternalAuthenticationConfig object with
+    predefined values based on the provided station_id.
+
+    Args:
+        station_id (str): The identifier for the station, determining the service name.
+
+    Returns:
+        StationExternalAuthenticationConfig: An instance with the configuration for the given station_id.
+    """
+    # Return a configured S3ExternalAuthenticationConfig object
+    return S3ExternalAuthenticationConfig(  # nosec B106
+        station_id=station_id,
+        domain=f"mockup-s3-{station_id}.processing.svc.cluster.local",
+        service_name="s3",
+        service_url="http://127.0.0.1:6001",
+        auth_type="s3",
+        access_key="abcdef",
+        secret_key="123456",
     )
 
 

@@ -16,7 +16,7 @@
 
 # Ignore not-at-top level import errors
 
-# pylint: disable=C0413, ungrouped-imports
+# pylint: disable=C0413, ungrouped-imports, unused-argument
 # flake8: noqa: F402
 
 import asyncio
@@ -55,7 +55,7 @@ os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
 
 from rs_server_common.authentication.authentication_to_external import (  # pylint: disable=import-error
-    ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_staging.processors.authentication import RefreshTokenData
 from rs_server_staging.processors.processor_staging import Staging
@@ -135,6 +135,19 @@ def set_db_env_var_fixture(monkeypatch):
     for key, val in envvars.items():
         monkeypatch.setenv(key, val)
     yield  # restore the environment
+
+
+@pytest.fixture(name="set_config_file_env_var")
+def set_config_file_env_var_fixture(monkeypatch):
+    """
+    Fixture to set environment variable for expiration_bucket.csv config file used
+    to retrieve bucket name when staging item.
+
+    Args:
+        monkeypatch: Pytest utility for temporarily modifying environment variables.
+    """
+    monkeypatch.setenv("BUCKET_CONFIG_FILE_PATH", S3_EXPIRATION_BUCKET_CSV_FILE)
+    yield
 
 
 @pytest.fixture(name="staging_client")
@@ -283,7 +296,7 @@ def staging_input_for_config_tests_2():
 
 
 @pytest.fixture(name="staging_instance")
-def staging(mocker, config):
+def staging(mocker, config, set_config_file_env_var):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_request = mocker.Mock()
@@ -315,11 +328,6 @@ def staging(mocker, config):
     mock_station_token_list_lock = mocker.Mock()
     mock_station_token_list_lock.__enter__ = mocker.Mock(return_value=mock_station_token_list_lock)
     mock_station_token_list_lock.__exit__ = mocker.Mock(return_value=None)
-
-    mocker.patch.dict(
-        os.environ,
-        {"BUCKET_CONFIG_FILE_PATH": S3_EXPIRATION_BUCKET_CSV_FILE},
-    )
 
     # Instantiate the Staging class with the mocked dependencies
     staging_instance = Staging(
@@ -356,7 +364,7 @@ def event_loop():
 @pytest.fixture(name="config")
 def authentication_config():
     """Return an example of external authentication configuration"""
-    return ExternalAuthenticationConfig(
+    return StationExternalAuthenticationConfig(
         station_id="cadip",
         domain="https://127.0.0.1:5000",
         service_name="cadip",
