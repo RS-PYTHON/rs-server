@@ -274,6 +274,7 @@ jobs:
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
           echo `Print of cov-report.xml:`
           cat cov-report.xml
+          echo `end of print`
 
       - name: List candidate source dirs
         run: find . -name '*.py' | sed 's|/[^/]*$||' | sort -u
