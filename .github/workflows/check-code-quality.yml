@@ -289,7 +289,6 @@ jobs:
             -Dsonar.python.bandit.reportPaths=./bandit-report.json
             -Dsonar.python.coverage.reportPaths=./cov-report.xml
             -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
-            -Dsonar.verbose=true
 
       - name: Wait for quality gate result
         run: sleep 5
