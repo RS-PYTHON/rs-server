@@ -293,7 +293,7 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
+            -Dsonar.sources=services
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
