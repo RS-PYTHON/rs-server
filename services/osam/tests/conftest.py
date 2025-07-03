@@ -116,6 +116,9 @@ def client_(mocker):
         return_value={"mocked": "configmap_data"},
     )
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+
+    # Patch main_osam_task to a no-op so it does NOT start infinite loop thread during tests
+    mocker.patch("osam.main.main_osam_task", lambda *args, **kwargs: None)
     from osam.main import app  # pylint: disable = import-outside-toplevel
 
     # Test the FastAPI application, opens the database session

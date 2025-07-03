@@ -45,12 +45,6 @@ DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 
 DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))
 
 
-def must_be_authenticated(route_path: str) -> bool:
-    """Return true if a user must be authenticated to use this endpoint route path."""
-    no_auth = (route_path in "/_mgmt/ping") or (route_path in ["/api", "/api.html", "/health"])
-    return not no_auth
-
-
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
 router = APIRouter(tags=["OSAM service"])
@@ -74,7 +68,6 @@ async def app_lifespan(fastapi_app: FastAPI):
     )
     # trigger the first run -> this was disabled by a request from ops
     # app.extra["users_sync_trigger"].set()
-
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -139,7 +132,7 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
     """
     logger.debug("Endpoint for getting the user rights")
     if user not in app.extra["users_info"]:
-        return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
     s3_rights = build_s3_rights(app.extra["users_info"][user])
     output = update_s3_rights_lists(s3_rights)
@@ -182,7 +175,6 @@ def main_osam_task(timeout: int = 60):
             # Later Edit: The timeout was disabled because of the request from ops team
             # if this is wanted later, just add `timeout=timeout` as input param in wait()
             triggered = app.extra["users_sync_trigger"].wait()
-
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
                 logger.info("Shutting down background thread and exit")
                 break
