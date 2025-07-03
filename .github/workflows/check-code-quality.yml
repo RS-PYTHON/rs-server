@@ -272,13 +272,14 @@ jobs:
       - name: Normalize coverage paths for SonarCloud
         run: |
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
-          echo `Print of cov-report.xml:`
+          echo "Print of cov-report.xml:"
           cat cov-report.xml
-          echo `end of print`
 
       - name: List candidate source dirs
         run: find . -name '*.py' | sed 's|/[^/]*$||' | sort -u
 
+      - name: Preview which files Sonar will scan
+        run: find services -type f
 
       - name: Run SonarCloud Scanner
         uses: SonarSource/sonarcloud-github-action@v2
@@ -295,7 +296,7 @@ jobs:
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=services
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.exclusions=
+            -Dsonar.exclusions=**/tests/**
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
