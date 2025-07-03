@@ -280,7 +280,8 @@ jobs:
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.exclusions=**/tests/**,tests/**
+            -Dsonar.exclusions=**/tests/**
+            -Dsonar.coverage.exclusions=**/tests/**
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
