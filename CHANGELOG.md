@@ -24,6 +24,31 @@ Changed
 
 None
 
+[0.2a15] - Sprint 25 - 2025-07-02
+================================
+
+## Added
+
+- RSPY-498: Staging: create output collection automatically
+- RSPY-569: Staging: support S3 authentication and download
+- RSPY-605: OSAM: Get OBS access rights (update /storage/account/{account_name}/rights )
+- RSPY-606: OSAM: Create endpoint to deliver S3 credentials ( /storage/account/credentials )
+- RSPY-609: Implement processing Prefect flow with real S3L0Processor 1.0.0 (/develop branch)
+- RSPY-659: Include staging dask cluster as part of the deployment
+- RSPY-675: SAFE conversion process in DPR service
+- RSPY-694: Write pytests for latest rs-client-libraries
+- RSPY-697: Update NodePool name and description
+- RSPY-699: Add a parser for the Neuvector logs in Wazuh.
+- RSPY-700: Deploy Vault on OVH cluster
+- RSPY-701: Migration Publication service image from Artifactory to Github Repository
+- RSPY-702: Sprint 25 corrections of issues
+- RSPY-707: Product assets URL should start with /bucket/user/collection
+
+## Fixed
+
+- RSPY-505: Wrong role name for AUXIP access ( 2 pts )
+- RSPY-710: [RS-OSAM] OSAM pod restarted by kubernetes due to timeout on his liveness probe during update ( 2 pts )
+
 [0.2a14] - Sprint 24 - 2025-06-04
 ================================
 
