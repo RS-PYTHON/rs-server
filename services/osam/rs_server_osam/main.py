@@ -24,6 +24,7 @@ from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from osam.tasks import (
+    apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
     get_user_s3_credentials,
@@ -110,6 +111,37 @@ async def accounts_update():
     )
 
 
+@router.get("/storage/account/{user}/update")
+async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: disable=unused-argument
+    """
+    Retrieves and constructs the S3 access rights policy for a specified user.
+
+    This endpoint:
+      - Looks up the user's Keycloak roles from the in-memory user store.
+      - Parses the roles to determine S3 access permissions (read, read+download, write+download).
+      - Generates a full S3 access policy document using predefined templates.
+
+    Args:
+        request (Request): FastAPI request object (currently unused).
+        user (str): Username of the account for which to retrieve access rights.
+
+    Returns:
+        JSONResponse: A JSON response containing the constructed AWS S3 access policy document.
+
+    Raises:
+        HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
+    """
+    logger.debug("Endpoint for applying the user access policy")
+    if user not in app.extra["users_info"]:
+        return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+    logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
+    s3_rights = build_s3_rights(app.extra["users_info"][user])
+    current_rights = update_s3_rights_lists(s3_rights)
+    response = apply_user_access_policy(app.extra["users_info"][user], current_rights)
+    print(json.dumps(response, indent=4))
+    return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(response)))
+
+
 @router.get("/storage/account/{user}/rights")
 async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
     """
@@ -144,6 +176,7 @@ async def get_credentials(request: Request):
     """Endpoint used to get user credentials from cloud provider.
     Request MUST contain oauth2 cookie in header"""
     auth_info = await oauth2.get_user_info(request)
+    logger.info(f"Getting ovh s3 credentials for keycloak user {auth_info.user_login}")
     return get_user_s3_credentials(auth_info.user_login)
 
 
