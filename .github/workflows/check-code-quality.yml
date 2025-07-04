@@ -275,6 +275,7 @@ jobs:
           sed -i 's|/home/runner/work/operational-services/operational-services/||g' cov-report.xml
           sed -i 's|/tmp/empty-pytest/||g' cov-report.xml
         shell: bash
+
       - name: Run SonarCloud Scanner
         uses: SonarSource/sonarcloud-github-action@v2
         with:

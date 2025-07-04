@@ -223,8 +223,6 @@ def create_obs_user_account_for_keycloak_user(
     Creates an OBS user and links it to a Keycloak user.
 
     Args:
-        ovh_handler (OVHApiHandler): Handler to interact with the OVH API.
-        keycloak_handler (KeycloakHandler): Handler to interact with Keycloak.
         keycloak_user (dict): A dictionary representing the Keycloak user.
 
     Returns:
@@ -244,7 +242,6 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Deletes an OBS user if it is not linked to any Keycloak user.
 
     Args:
-        ovh_handler (OVHApiHandler): Handler to interact with the OVH API.
         obs_user (dict): Dictionary representing the OBS user.
         keycloak_users (list[dict]): List of Keycloak user dictionaries.
 
@@ -312,6 +309,19 @@ def get_user_s3_credentials(user: str):
     except Exception as exc:  # pylint: disable = broad-exception-caught
         logger.error(f"Error while getting s3 credentials for OVH user id {obs_user}. {exc}")
     return {"detail": f"No s3 credentials associated with {user}"}
+
+
+def apply_user_access_policy(user, current_rights):
+    """
+    Apply access policy over an user in ovh
+    """
+    try:
+        obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
+        if obs_user:
+            return get_ovh_handler().apply_user_access_policy(obs_user, current_rights)
+    except Exception as exc:  # pylint: disable = broad-exception-caught
+        logger.error(f"Error while applying access policy for OVH user id {obs_user}. {exc}")
+    return {"detail": f"Could not apply access policy for an ovh account linked to the keycloak account {user}"}
 
 
 @traced_function()
