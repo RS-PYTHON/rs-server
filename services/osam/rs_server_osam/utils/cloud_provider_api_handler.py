@@ -187,5 +187,5 @@ class OVHApiHandler:
         Apply an access policy to the user
         """
         url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/policy"
-        response = self.ovh_client.post(url, policy=access_policy)
+        response = self.ovh_client.post(url, policy=f"{access_policy}")
         return response
