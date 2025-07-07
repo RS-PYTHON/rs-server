@@ -285,7 +285,7 @@ jobs:
             -Dsonar.sources=object_storage_access_manager/osam
             -Dsonar.tests=object_storage_access_manager/tests
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.exclusions=
+            -Dsonar.exclusions=object_storage_access_manager/tests
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
@@ -294,6 +294,8 @@ jobs:
             -Dsonar.python.bandit.reportPaths=./bandit-report.json
             -Dsonar.python.coverage.reportPaths=./cov-report.xml
             -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
+            -Dsonar.verbose=true
+
       - name: Wait for quality gate result
         run: sleep 5
 
