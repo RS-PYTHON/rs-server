@@ -24,7 +24,6 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from osam.main import get_user_rights
 
 
 @pytest.mark.unit
@@ -33,9 +32,18 @@ def test_ping_endpoint(osam_client):
     response = osam_client.get("/_mgmt/ping")
     assert response.status_code == HTTP_200_OK
 
+
 @pytest.mark.unit
-def test_get_user_rights_user_exists(mocker, osam_client):
+def test_get_user_rights_user_exists(mocker):
     """Test when the user exists and rights are returned successfully."""
+    os.environ["RSPY_LOCAL_MODE"] = "1"
+    reload(common_settings)
+    mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+
+    from osam.main import (  # pylint: disable = import-outside-toplevel
+        get_user_rights,
+    )
+
     user = "testuser"
     mock_user_data = {"roles": ["some-role"]}
     mocker.patch(
@@ -62,6 +70,24 @@ def test_get_user_rights_user_exists(mocker, osam_client):
 
 
 @pytest.mark.unit
+def test_get_user_rights_user_not_found(mocker):
+    """Test when the user does not exist (404)."""
+    os.environ["RSPY_LOCAL_MODE"] = "1"
+    reload(common_settings)
+    mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+
+    from osam.main import (  # pylint: disable = import-outside-toplevel
+        get_user_rights,
+    )
+
+    mocker.patch(
+        "osam.main.app.extra",
+        {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
+    )
+    assert not get_user_rights("unknown_user")
+
+
+@pytest.mark.unit
 def test_user_rights_user_exists(mocker, osam_client):
     """Test when the user exists and rights are returned successfully."""
     mock_user_data = {"roles": ["some-role"]}
@@ -74,12 +100,8 @@ def test_user_rights_user_exists(mocker, osam_client):
         },
     )
 
-    mock_build = mocker.patch(
-        "osam.main.build_s3_rights",
-        return_value={"rights": "mock-rights"},
-    )
     mock_update = mocker.patch(
-        "osam.main.update_s3_rights_lists",
+        "osam.main.get_user_rights",
         return_value={"final": "policy"},
     )
 
@@ -87,8 +109,8 @@ def test_user_rights_user_exists(mocker, osam_client):
 
     assert resp.status_code == HTTP_200_OK
     assert resp.json() == {"final": "policy"}
-    mock_build.assert_called_once_with(mock_user_data)
-    mock_update.assert_called_once_with({"rights": "mock-rights"})
+
+    mock_update.assert_called_once_with("testuser")
 
 
 @pytest.mark.unit
@@ -154,6 +176,49 @@ def test_user_rights_update_s3_rights_error(mocker, osam_client):
 
     assert resp.status_code == HTTP_500_INTERNAL_SERVER_ERROR
     assert "update error" in resp.text
+
+
+@pytest.mark.unit
+def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
+    """Test when the user exists and rights are returned successfully."""
+    mock_user_data = {"roles": ["some-role"]}
+    mocker.patch(
+        "osam.main.app.extra",
+        {
+            "shutdown_event": threading.Event(),
+            "users_sync_trigger": threading.Event(),
+            "users_info": {"testuser": mock_user_data},
+        },
+    )
+
+    mocker.patch(
+        "osam.main.get_user_rights",
+        return_value={"final": "policy"},
+    )
+
+    mocker.patch(
+        "osam.main.apply_user_access_policy",
+        return_value={"detail": "Policy applied"},
+    )
+
+    resp = osam_client.get("/storage/account/testuser/update")
+
+    assert resp.status_code == HTTP_200_OK
+    assert resp.json() == {"detail": "Policy applied"}
+
+
+@pytest.mark.unit
+def test_apply_user_obs_access_policy_user_not_found(mocker, osam_client):
+    """Test when the user does not exist (404)."""
+    mocker.patch(
+        "osam.main.app.extra",
+        {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
+    )
+
+    resp = osam_client.get("/storage/account/unknown_user/update")
+
+    assert resp.status_code == HTTP_404_NOT_FOUND
+    assert "does not exist" in resp.text
 
 
 # def test_no_auth_routes():

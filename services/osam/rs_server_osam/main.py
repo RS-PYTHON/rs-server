@@ -131,7 +131,7 @@ def get_user_rights(user):
     """
 
     if user not in app.extra["users_info"]:
-        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+        return None
     logger.debug(f"Building the rights for user {user}")
     s3_rights = build_s3_rights(app.extra["users_info"][user])
     return update_s3_rights_lists(s3_rights)
@@ -157,6 +157,8 @@ async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: 
 
     logger.debug("Endpoint for applying the user access policy")
     current_rights = get_user_rights(user)
+    if not current_rights:
+        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     output = apply_user_access_policy(user, json.dumps(current_rights))
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
@@ -179,6 +181,8 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
 
     logger.debug("Endpoint for getting the user rights")
     output = get_user_rights(user)
+    if not output:
+        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 
