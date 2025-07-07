@@ -21,15 +21,16 @@ If the variable is not set, enables all extensions.
 import asyncio
 import os
 import sys
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from os import environ as env
 from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, Security
+from fastapi import Depends, FastAPI, HTTPException, Security, status
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
@@ -47,6 +48,11 @@ from rs_server_common.middlewares import (
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
+from stac_fastapi.api.errors import (
+    DEFAULT_STATUS_CODES,
+    ErrorResponse,
+    add_exception_handlers,
+)
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import (
     ItemCollectionUri,
@@ -77,6 +83,14 @@ logger = Logging.default(__name__)
 
 # Technical endpoints (no authentication)
 TECH_ENDPOINTS = ["/_mgmt/ping"]
+
+# Build a mapping: status_code → list of exception names
+_status_to_excs = defaultdict(list)
+for exc_cls, status_code in DEFAULT_STATUS_CODES.items():
+    _status_to_excs[status_code].append(exc_cls.__name__)
+
+# If you know each status only ever maps to a single exception you care about:
+STATUS_CODE_TO_ERROR_CODE = {status_code: exc_names[0] for status_code, exc_names in _status_to_excs.items()}
 
 
 def must_be_authenticated(route_path: str) -> bool:
@@ -231,8 +245,17 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        response = await UserCatalog(client).dispatch(request, call_next)
-        return response
+        # response = await UserCatalog(client).dispatch(request, call_next)
+        # return response
+        try:
+            response = await UserCatalog(client).dispatch(request, call_next)
+            return response
+        except HTTPException as exc:
+            code = STATUS_CODE_TO_ERROR_CODE.get(exc.status_code, exc.__class__.__name__)
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=ErrorResponse(code=code, description=str(exc.detail)),
+            )
 
 
 items_get_request_model = create_request_model(
