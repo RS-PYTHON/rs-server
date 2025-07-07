@@ -111,63 +111,74 @@ async def accounts_update():
     )
 
 
-@router.get("/storage/account/{user}/update")
-async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: disable=unused-argument
+def get_user_rights(user):
     """
     Retrieves and constructs the S3 access rights policy for a specified user.
 
-    This endpoint:
+    This function:
       - Looks up the user's Keycloak roles from the in-memory user store.
       - Parses the roles to determine S3 access permissions (read, read+download, write+download).
       - Generates a full S3 access policy document using predefined templates.
 
     Args:
-        request (Request): FastAPI request object (currently unused).
         user (str): Username of the account for which to retrieve access rights.
 
     Returns:
-        JSONResponse: A JSON response containing the constructed AWS S3 access policy document.
+        dict: The constructed S3 access policy for the specified user.
 
     Raises:
         HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
     """
-    logger.debug("Endpoint for applying the user access policy")
+
     if user not in app.extra["users_info"]:
-        return HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
-    logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
+        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+    logger.debug(f"Building the rights for user {user}")
     s3_rights = build_s3_rights(app.extra["users_info"][user])
-    current_rights = update_s3_rights_lists(s3_rights)
-    response = apply_user_access_policy(app.extra["users_info"][user], current_rights)
-    print(json.dumps(response, indent=4))
-    return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(response)))
+    return update_s3_rights_lists(s3_rights)
+
+
+@router.get("/storage/account/{user}/update")
+async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: disable=unused-argument
+    """
+    Applies the S3 access policy for a given user.
+
+    This endpoint:
+      - Retrieves the user's current rights based on Keycloak roles.
+      - Applies the corresponding s3 access policy via the object storage provider,
+      by calling the ovh endpoint
+
+    Args:
+        request (Request): FastAPI request object (currently unused).
+        user (str): Username of the account for which to apply access rights.
+
+    Returns:
+        JSONResponse: A JSON response confirming that the access policy has been applied.
+    """
+
+    logger.debug("Endpoint for applying the user access policy")
+    current_rights = get_user_rights(user)
+    output = apply_user_access_policy(user, json.dumps(current_rights))
+    return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 
 @router.get("/storage/account/{user}/rights")
 async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
     """
-    Retrieves and constructs the S3 access rights policy for a specified user.
+    Retrieves the S3 access rights policy for a given user.
 
     This endpoint:
-      - Looks up the user's Keycloak roles from the in-memory user store.
-      - Parses the roles to determine S3 access permissions (read, read+download, write+download).
-      - Generates a full S3 access policy document using predefined templates.
+      - Returns the full S3 access policy as determined from the user's Keycloak roles.
 
     Args:
         request (Request): FastAPI request object (currently unused).
         user (str): Username of the account for which to retrieve access rights.
 
     Returns:
-        JSONResponse: A JSON response containing the constructed AWS S3 access policy document.
-
-    Raises:
-        HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
+        JSONResponse: A JSON response containing the user's S3 access rights policy.
     """
+
     logger.debug("Endpoint for getting the user rights")
-    if user not in app.extra["users_info"]:
-        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
-    logger.debug(f"Building the rights for user {app.extra['users_info'][user]}")
-    s3_rights = build_s3_rights(app.extra["users_info"][user])
-    output = update_s3_rights_lists(s3_rights)
+    output = get_user_rights(user)
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 

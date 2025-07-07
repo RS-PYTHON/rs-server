@@ -24,6 +24,7 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+from osam.main import get_user_rights
 
 
 @pytest.mark.unit
@@ -31,6 +32,33 @@ def test_ping_endpoint(osam_client):
     """Test for live probe endpoint."""
     response = osam_client.get("/_mgmt/ping")
     assert response.status_code == HTTP_200_OK
+
+@pytest.mark.unit
+def test_get_user_rights_user_exists(mocker, osam_client):
+    """Test when the user exists and rights are returned successfully."""
+    user = "testuser"
+    mock_user_data = {"roles": ["some-role"]}
+    mocker.patch(
+        "osam.main.app.extra",
+        {
+            "shutdown_event": threading.Event(),
+            "users_sync_trigger": threading.Event(),
+            "users_info": {user: mock_user_data},
+        },
+    )
+
+    mock_build = mocker.patch(
+        "osam.main.build_s3_rights",
+        return_value={"rights": "mock-rights"},
+    )
+    mock_update = mocker.patch(
+        "osam.main.update_s3_rights_lists",
+        return_value={"final": "policy"},
+    )
+
+    assert get_user_rights(user) == {"final": "policy"}
+    mock_build.assert_called_once_with(mock_user_data)
+    mock_update.assert_called_once_with({"rights": "mock-rights"})
 
 
 @pytest.mark.unit
