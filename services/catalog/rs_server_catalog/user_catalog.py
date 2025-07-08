@@ -348,7 +348,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         content: dict,
         request: Request,
         item: dict,
-    ) -> Any:
+    ) -> dict:
         """Update the JSON body of a feature push to the catalog.
 
         Args:
@@ -1205,27 +1205,6 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             return False
         await self.build_filelist_to_be_deleted(request)
         return True
-
-    async def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
-        """This function will retrieve the published and expires fields in the item
-        we want to update to keep them unchanged.
-
-        Args:
-            request (Request): The initial request that is a put item.
-
-        Returns:
-            tuple[str, str]: published field, expires field.
-        """
-
-        try:
-            item = await self.client.get_item(
-                item_id=self.request_ids["item_id"],
-                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
-                request=request,
-            )
-            return (item["properties"]["published"], item["properties"]["expires"])
-        except Exception:  # pylint: disable=broad-exception-caught
-            return ("", "")
 
     async def dispatch(
         self,
