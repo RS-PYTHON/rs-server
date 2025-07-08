@@ -182,10 +182,23 @@ class OVHApiHandler:
         url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/s3Credentials/{access_key}/secret"
         return self.ovh_client.post(url)["secret"]
 
-    def apply_user_access_policy(self, user_id: str, access_policy: str) -> str:
+    def apply_user_access_policy(self, user_id: str, access_policy: dict):
         """
-        Apply an access policy to the user
+        Applies the provided S3 access policy to a specified user via the OVH API.
+
+        This method sends a POST request to the OVH cloud API to assign a policy document
+        to the user's object storage account.
+
+        Args:
+            user_id (str): The identifier of the user to whom the policy should be applied.
+            access_policy (dict): The access policy document as a dictionary.
+
+        Raises:
+            Exception: Propagates any exception raised by the `ovh_client.post` call.
         """
         url = f"/cloud/project/{self.ovh_service_name}/user/{user_id}/policy"
-        response = self.ovh_client.post(url, policy=f"{access_policy}")
-        return response
+        # it seems that currently, this 'Import user storage policy' ovh API is in BETA version.
+        # it should return 200, according to the documentation here:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#post-/cloud/project/-serviceName-/user/-userId-/policy
+        # but instead it is returning None when succeeded, and throws an exception (caught by the caller) when it fails
+        self.ovh_client.post(url, policy=str(access_policy))

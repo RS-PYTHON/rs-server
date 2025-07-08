@@ -20,6 +20,7 @@ import pytest
 
 # pylint: disable = unused-argument
 from osam.tasks import (
+    apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
@@ -33,6 +34,7 @@ from osam.utils.tools import (
     match_roles,
     parse_role,
 )
+from ovh.exceptions import BadParametersError
 
 from .conftest import TEST_KEYCLOAK_USERS_LIST
 
@@ -269,6 +271,15 @@ def test_match_roles(roles, expected):
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
+            },
+        ),
+        # Testcase when the roles from the keycloak are not compliant
+        (
+            {"keycloak_roles": ["rsnotcompliant"]},
+            {
+                "read": [],
+                "read_download": [],
+                "write_download": [],
             },
         ),
     ],
@@ -700,4 +711,78 @@ def test_get_user_s3_credentials(
     mock_get_ovh_handler.return_value = mock_ovh_instance
 
     result = get_user_s3_credentials(user)
+    assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "obs_user_present, access_policy, raise_exception, expected_result",
+    [
+        # 1. Success: access policy applied
+        (
+            True,
+            {"access_policy": "value"},
+            False,
+            (
+                True,
+                {"detail": "S3 access policy applied for the OVH account associated with the Keycloak user obs_test"},
+            ),
+        ),
+        # 2. OBS user not found
+        (
+            False,
+            {},
+            False,
+            (
+                False,
+                {
+                    "detail": "Failed to apply the access policy to the OVH account "
+                    "associated with the Keycloak account obs_test. ",
+                },
+            ),
+        ),
+        # 3. Exception raised during processing
+        (
+            True,
+            None,
+            True,
+            (
+                False,
+                {
+                    "detail": "Failed to apply the access policy to the OVH account "
+                    "associated with the Keycloak account obs_test. Exception raised",
+                },
+            ),
+        ),
+    ],
+)
+@patch("osam.tasks.get_ovh_handler")
+@patch("osam.tasks.get_keycloak_handler")
+def test_apply_user_access_policy(
+    mock_get_keycloak_handler,
+    mock_get_ovh_handler,
+    obs_user_present,
+    access_policy,
+    raise_exception,
+    expected_result,
+):
+    """Test cases for get_s3_credentials"""
+    user = "obs_test"
+
+    # Setup mock Keycloak handler
+    mock_keycloak_instance = MagicMock()
+    mock_keycloak_instance.get_obs_user_from_keycloak_username.return_value = (
+        {"id": "obs-user-id", "username": user} if obs_user_present else None
+    )
+    mock_get_keycloak_handler.return_value = mock_keycloak_instance
+
+    # Setup mock OVH handler
+    mock_ovh_instance = MagicMock()
+    if not raise_exception:
+        mock_ovh_instance.apply_user_access_policy.return_value = None
+    else:
+        mock_ovh_instance.apply_user_access_policy.side_effect = BadParametersError("Exception raised")
+
+    mock_get_ovh_handler.return_value = mock_ovh_instance
+
+    result = apply_user_access_policy(user, access_policy)
     assert result == expected_result

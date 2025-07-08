@@ -198,7 +198,7 @@ def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
 
     mocker.patch(
         "osam.main.apply_user_access_policy",
-        return_value={"detail": "Policy applied"},
+        return_value=(True, {"detail": "Policy applied"}),
     )
 
     resp = osam_client.get("/storage/account/testuser/update")
