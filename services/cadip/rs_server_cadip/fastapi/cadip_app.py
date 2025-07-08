@@ -16,6 +16,7 @@
 
 import warnings
 from http import HTTPStatus
+
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 
@@ -29,7 +30,7 @@ from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.fastapi_app import init_app
 
 # Import STAC FastAPI error support
-from stac_fastapi.api.errors import ErrorResponse, add_exception_handlers
+from stac_fastapi.api.errors import ErrorResponse
 
 # Used to supress stac_pydantic userwarnings related to serialization
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
@@ -41,18 +42,9 @@ app = init_app(__version__, cadip_routers, router_prefix="/cadip")
 app.state.get_connection = MockPgstacCadip.get_connection
 app.state.readpool = MockPgstacCadip.readpool()
 
-# Add domain exception handlers if any
-add_exception_handlers(
-    app,
-    {
-        # Add mappings like: MyCustomException: 400
-        # Leave empty if not used yet
-    },
-)
-
 
 @app.exception_handler(HTTPException)
-async def http_exc_handler(request: Request, exc: HTTPException):
+async def http_exc_handler(_request: Request, exc: HTTPException):
     """Override HTTPException to return a STAC-style ErrorResponse."""
     # Convert status code to e.g. "NotFound", "BadRequest", etc.
     phrase = HTTPStatus(exc.status_code).phrase
