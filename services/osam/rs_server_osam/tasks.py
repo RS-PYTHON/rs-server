@@ -315,13 +315,21 @@ def apply_user_access_policy(user, current_rights):
     """
     Apply access policy over an user in ovh
     """
+    msg = ""
     try:
         obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
         if obs_user:
-            return get_ovh_handler().apply_user_access_policy(obs_user, current_rights)
+            get_ovh_handler().apply_user_access_policy(obs_user, current_rights)
+            return True, {
+                "detail": f"S3 access policy applied for the OVH account associated with the Keycloak user {user}",
+            }
     except Exception as exc:  # pylint: disable = broad-exception-caught
         logger.error(f"Error while applying access policy for OVH user id {obs_user}. {exc}")
-    return {"detail": f"Could not apply access policy for an ovh account linked to the keycloak account {user}"}
+        msg = str(exc)
+    return False, {
+        "detail": "Failed to apply the access policy to the OVH account "
+        f"associated with the Keycloak account {user}. {msg}",
+    }
 
 
 @traced_function()

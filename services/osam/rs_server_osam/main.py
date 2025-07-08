@@ -38,7 +38,11 @@ from rs_server_common.utils.logging import Logging
 from starlette.middleware.sessions import SessionMiddleware  # test if still needed
 from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND  # pylint: disable=C0411
+from starlette.status import (  # pylint: disable=C0411
+    HTTP_200_OK,
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+)
 
 # The default synchronization time of the keycloak users with the ovh users (twice per day)
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
@@ -159,8 +163,11 @@ async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: 
     current_rights = get_user_rights(user)
     if not current_rights:
         raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
-    output = apply_user_access_policy(user, json.dumps(current_rights))
-    return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
+    status_code = HTTP_200_OK
+    result, msg = apply_user_access_policy(user, json.dumps(current_rights))
+    if not result:
+        status_code = HTTP_400_BAD_REQUEST
+    return JSONResponse(status_code=status_code, content=msg)
 
 
 @router.get("/storage/account/{user}/rights")
