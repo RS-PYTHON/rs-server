@@ -33,6 +33,7 @@ from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
+from rs_server_catalog.data_lifecycle import DataLifecycle
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import (
@@ -223,7 +224,7 @@ else:
     extensions = list(extensions_map.values())
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
-client = CoreCrudClient(pgstac_search_model=post_request_model)
+core_crud_client = CoreCrudClient(pgstac_search_model=post_request_model)
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -231,7 +232,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        response = await UserCatalog(client).dispatch(request, call_next)
+        response = await UserCatalog(core_crud_client).dispatch(request, call_next)
         return response
 
 
@@ -245,7 +246,7 @@ api = StacApi(
     settings=settings,
     extensions=extensions,
     items_get_request_model=items_get_request_model,
-    client=CoreCrudClient(pgstac_search_model=post_request_model),
+    client=core_crud_client,
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
@@ -295,11 +296,15 @@ async def lifespan(my_app: FastAPI):
 
         common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
+        # Run the data lifecycle management
+        lifecycle = DataLifecycle(my_app, core_crud_client)
+        await lifecycle.run()
+
         yield
 
     finally:
+        await lifecycle.cancel()
         await close_db_connection(my_app)
-
         await common_settings.del_http_client()
 
 
