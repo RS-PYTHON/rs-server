@@ -217,7 +217,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
 
         assert feature_put_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        assert feature_put_response.json() == f"Collection {non_existing_collection} does not exist."
+        assert feature_put_response.json() == {
+            "code": "NotFound",
+            "description": f"Collection {non_existing_collection} does not exist.",
+        }
 
     def test_add_feature_in_non_existing_collection_fails(
         self,
@@ -239,7 +242,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
 
         assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        assert feature_post_response.json() == f"Collection {non_existing_collection} does not exist."
+        assert feature_post_response.json() == {
+            "code": "NotFound",
+            "description": f"Collection {non_existing_collection} does not exist.",
+        }
 
     def test_update_with_an_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
