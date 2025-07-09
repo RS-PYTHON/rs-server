@@ -105,9 +105,9 @@ class KeycloakHandler:
         except KeyError:
             return None
 
-    def get_obs_user_from_keycloak_username(self, username: str) -> str | None:
+    def get_obs_user_from_keycloak_username(self, keycloak_user: str) -> str | None:
         """
-        Fetches the 'obs-user' attribute from Keycloak for the given username.
+        Fetches the 'obs-user' attribute from Keycloak for the given keycloak_user.
 
         Returns:
             str or None: The 'obs-user' value if available, otherwise None.
@@ -116,7 +116,7 @@ class KeycloakHandler:
             KeycloakConnectionError, KeycloakAuthenticationError: For critical Keycloak issues.
         """
         try:
-            user_id = self.keycloak_admin.get_user_id(username)
+            user_id = self.keycloak_admin.get_user_id(keycloak_user)
             user = self.keycloak_admin.get_user(user_id)  # type: ignore
             attributes = user.get("attributes", {}) if user else {}
 
@@ -127,17 +127,17 @@ class KeycloakHandler:
                 return obs_user
 
             logger.warning(
-                f"Unexpected or missing 'obs-user' for '{username}' (ID: {user_id}). "
+                f"Unexpected or missing 'obs-user' for '{keycloak_user}' (ID: {user_id}). "
                 f"Type: {type(obs_user)} Value: {obs_user}",
             )
         except (KeycloakConnectionError, KeycloakAuthenticationError) as e:
-            logger.error(f"Keycloak critical error for '{username}': {e}")
+            logger.error(f"Keycloak critical error for '{keycloak_user}': {e}")
             raise
         except KeycloakError as e:
-            logger.error(f"Keycloak error retrieving user '{username}': {e}")
+            logger.error(f"Keycloak error retrieving user '{keycloak_user}': {e}")
             raise
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Unexpected error for user '{username}': {e}")
+            logger.error(f"Unexpected error for user '{keycloak_user}': {e}")
             raise
 
         return None
