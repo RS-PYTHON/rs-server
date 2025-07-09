@@ -16,6 +16,7 @@
 
 import logging
 import os
+import re
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 from keycloak.exceptions import (
@@ -115,6 +116,9 @@ class KeycloakHandler:
         Raises:
             KeycloakConnectionError, KeycloakAuthenticationError: For critical Keycloak issues.
         """
+        # sanitize the variable before logging, otherwise SonarCloud will complain
+        # allow common username chars only
+        log_keycloak_user = re.sub(r"[^\w.@+-]", "_", str(keycloak_user))
         try:
             user_id = self.keycloak_admin.get_user_id(keycloak_user)
             user = self.keycloak_admin.get_user(user_id)  # type: ignore
@@ -127,17 +131,17 @@ class KeycloakHandler:
                 return obs_user
 
             logger.warning(
-                f"Unexpected or missing 'obs-user' for '{keycloak_user}' (ID: {user_id}). "
+                f"Unexpected or missing 'obs-user' for '{log_keycloak_user}' (ID: {user_id}). "
                 f"Type: {type(obs_user)} Value: {obs_user}",
             )
         except (KeycloakConnectionError, KeycloakAuthenticationError) as e:
-            logger.error(f"Keycloak critical error for '{keycloak_user}': {e}")
+            logger.error(f"Keycloak critical error for '{log_keycloak_user}': {e}")
             raise
         except KeycloakError as e:
-            logger.error(f"Keycloak error retrieving user '{keycloak_user}': {e}")
+            logger.error(f"Keycloak error retrieving user '{log_keycloak_user}': {e}")
             raise
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Unexpected error for user '{keycloak_user}': {e}")
+            logger.error(f"Unexpected error for user '{log_keycloak_user}': {e}")
             raise
 
         return None
