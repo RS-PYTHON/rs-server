@@ -18,6 +18,7 @@ import os
 
 import pytest
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
+from ovh.exceptions import BadParametersError
 
 
 @pytest.fixture(name="handler")
@@ -180,3 +181,33 @@ def test_constructor_with_env_service(mocker):
     handler = OVHApiHandler()
 
     assert handler.ovh_service_name == "explicit-service"
+
+
+def test_apply_user_access_policy(handler):
+    """
+    Test for applying the ovh account access policy
+    """
+
+    handler.ovh_client.post.return_value = None
+    access_policy = {"access_policy": "value"}
+    result = handler.apply_user_access_policy("user1", access_policy)
+    assert result is None
+    handler.ovh_client.post.assert_called_once_with(
+        f"/cloud/project/{handler.ovh_service_name}/user/user1/policy",
+        policy=str(access_policy),
+    )
+
+
+def test_apply_user_access_policy_failure(handler):
+    """
+    Test for applying the ovh account access policy
+    """
+
+    handler.ovh_client.post.side_effect = BadParametersError("Property cannot be null")
+    with pytest.raises(BadParametersError):
+        handler.apply_user_access_policy("user1", None)
+
+    handler.ovh_client.post.assert_called_once_with(
+        f"/cloud/project/{handler.ovh_service_name}/user/user1/policy",
+        policy=str(None),
+    )
