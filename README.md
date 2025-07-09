@@ -1,2 +1,2 @@
 # operational-services
-Repository containing all operational services required for the RefSys system.
+Repository that includes all the operational services needed for the RefSys platform.
