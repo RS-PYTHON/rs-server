@@ -352,6 +352,7 @@ def run():
             log_level="info",
             reload=settings.reload,
             root_path=os.getenv("UVICORN_ROOT_PATH", ""),
+            reload_dirs="/usr/local/lib/python3.11/site-packages/rs_server_catalog",  # DON'T COMMIT
         )
     except ImportError:
         raise RuntimeError("Uvicorn must be installed in order to use command")  # pylint: disable=raise-missing-from
