@@ -68,25 +68,6 @@ class DataLifecycle:
         self.cancel_flag: bool = False
         self.request = self.get_fake_request()
 
-    async def run(self):
-        """Trigger the periodic task"""
-        if (self.period >= 0) and (not self.cancel_flag):
-            with init_opentelemetry.start_span(__name__, "data_lifecycle"):
-                self.periodic_task = asyncio.create_task(self._periodic())
-
-    async def cancel(self):
-        """Cancel the periodic task"""
-        self.cancel_flag = True
-        if not self.periodic_task:
-            return
-
-        # See: https://superfastpython.com/asyncio-periodic-task/#How_to_Run_a_Periodic_Task
-        self.periodic_task.cancel()
-        try:
-            await self.periodic_task
-        except Exception:
-            self.logger.error(traceback.format_exc())
-
     def get_fake_request(self, extra_scope: dict = {}) -> Request:
         """
         Return a fake request instance to work with the database.
@@ -105,83 +86,119 @@ class DataLifecycle:
         request._base_url = "http://dummy-url"
         return request
 
-    async def _periodic(self):
-        """Run the periodic task"""
-        while not self.cancel_flag:
-            try:
-                # Current datetime
-                now: str = datetime.now().strftime(ISO_8601_FORMAT)
+    async def cancel(self):
+        """Cancel the periodic task"""
+        self.cancel_flag = True
+        if not self.periodic_task:
+            return
 
-                # Filter on expired items that have not already been unpublished.
-                # TODO: improve the filter on the "expires" property,
-                # see: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-725
-                filter = {
-                    "op": "and",
-                    "args": [
-                        {"op": "<", "args": [{"property": "expires"}, now]},
-                        {"op": "isNull", "args": [{"property": "unpublished"}]},
-                    ],
-                }
+        # See: https://superfastpython.com/asyncio-periodic-task/#How_to_Run_a_Periodic_Task
+        self.periodic_task.cancel()
+        try:
+            await self.periodic_task
+        except Exception:
+            self.logger.error(traceback.format_exc())
 
-                # FOR TESTING ONLY
-                filter = {}
+    async def run(self):
+        """Trigger the periodic task in a distinct thread and exit."""
+        if (self.period >= 0) and (not self.cancel_flag):
+            self.periodic_task = asyncio.create_task(self._periodic_loop())
 
-                # Search the database. Call directly the stac_fastapi layer, not the rs-server-catalog
-                # http endpoint, so we don't handle the /catalog prefix, the owner_id, the authentication, ...
-                item_collection: ItemCollection = await self.client_search.get_search(
-                    self.request,
-                    filter_expr=json.dumps(filter),
-                    filter_lang="cql2-json",
-                    limit=ITEM_LIMIT,
+    async def _periodic_loop(self):
+        """Run the periodic task in an infinite loop."""
+        with init_opentelemetry.start_span(__name__, "data_lifecycle"):
+
+            # Infinite loop
+            while not self.cancel_flag:
+                try:
+                    # Run the task
+                    await self._periodic_once()
+
+                # Log any error
+                except Exception:
+                    self.logger.error(traceback.format_exc())
+
+                # If the caller cancelled execution, we exit the infinite loop
+                if self.cancel_flag:
+                    return
+
+                # Wait n seconds before next run
+                self.logger.debug(f"Wait {self.period} seconds before next cleaning")
+                await asyncio.sleep(self.period)
+
+    async def _periodic_once(self):
+        """Run the periodic task once"""
+
+        # Current datetime
+        now: str = datetime.now().strftime(ISO_8601_FORMAT)
+
+        # Filter on expired items that have not already been unpublished.
+        # TODO: improve the filter on the "expires" property,
+        # see: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-725
+        filter = {
+            "op": "and",
+            "args": [
+                {"op": "<", "args": [{"property": "expires"}, now]},
+                {"op": "isNull", "args": [{"property": "unpublished"}]},
+            ],
+        }
+
+        # Search the database. Call directly the stac_fastapi layer, not the rs-server-catalog
+        # http endpoint, so we don't handle the /catalog prefix, the owner_id, the authentication, ...
+        item_collection: ItemCollection = await self.client_search.get_search(
+            self.request,
+            filter_expr=json.dumps(filter),
+            filter_lang="cql2-json",
+            limit=ITEM_LIMIT,
+        )
+        items: list[Item] = item_collection.get("features", [])
+
+        if items:
+            ids = [item["id"] for item in items]
+            self.logger.debug(f"Clean items: {ids}")
+        else:
+            self.logger.debug("No items to clean")
+
+        # Order assets by key=bucket name and value=list of bucket keys
+        bucket_info: dict[str, list[str]] = defaultdict(list)
+
+        # Update each item and update bucket info
+        for item in items:
+            await self._manage_item(item, now, bucket_info)
+
+        # Order the items by collection_name
+        items_by_collection: dict[str, list[Item]] = defaultdict(list)
+        for item in items:
+            items_by_collection[item["collection"]].append(item)
+
+        # First, delete all files from the buckets in parallel
+        async with asyncio.TaskGroup() as task_group:
+            for bucket_name, bucket_keys in bucket_info.items():
+                task_group.create_task(
+                    self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys),
                 )
-                items: list[Item] = item_collection.get("features", [])
 
-                # Order assets by key=bucket name and value=list of bucket keys
-                bucket_info: dict[str, list[str]] = defaultdict(list)
+        # Then update the items in the stac database using a bulk transaction.
+        # We need one transaction by collection name, run in parallel.
+        async with asyncio.TaskGroup() as task_group:
+            for col_name, col_items in items_by_collection.items():
 
-                # Update each item and update bucket info
-                for item in items:
-                    await self._manage_item(item, now, bucket_info)
+                # Convert the items into a dict with key=item id and value=items
+                bulk_items = bulk_transactions.Items(
+                    items={item["id"]: item for item in col_items},
+                    method=bulk_transactions.BulkTransactionMethod.UPSERT,
+                )
 
-                # Order the items by collection_name
-                items_by_collection: dict[str, list[Item]] = defaultdict(list)
-                for item in items:
-                    items_by_collection[item["collection"]].append(item)
+                # The collection name goes into the fake request endpoint path
+                request = self.get_fake_request(extra_scope={"path_params": {"collection_id": col_name}})
 
-                # First, delete all files from the buckets in parallel
-                async with asyncio.TaskGroup() as task_group:
-                    for bucket_name, bucket_keys in bucket_info.items():
-                        task_group.create_task(
-                            self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys),
-                        )
-
-                # Then update the items in the stac database using a bulk transaction.
-                # We need one transaction by collection name, run in parallel.
-                async with asyncio.TaskGroup() as task_group:
-                    for col_name, col_items in items_by_collection.items():
-
-                        # Convert the items into a dict with key=item id and value=items
-                        bulk_items = bulk_transactions.Items(
-                            items={item["id"]: item for item in col_items},
-                            method=bulk_transactions.BulkTransactionMethod.UPSERT,
-                        )
-
-                        # The collection name goes into the fake request endpoint path
-                        request = self.get_fake_request(extra_scope={"path_params": {"collection_id": col_name}})
-
-                        # Run the bulk transaction
-                        self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request))
-
-            # Log any error, then wait n seconds before next run
-            except Exception:
-                self.logger.error(traceback.format_exc())
-            if self.cancel_flag:
-                return
-            await asyncio.sleep(self.period)
+                # Run the bulk transaction.
+                # NOTE: call directly the stac_fastapi layer, not the rs-server-catalog http endpoint
+                self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request))
 
     async def _manage_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
-        Update a single item and update bucket info.
+        Update a single item instance and update bucket info.
 
         Args:
             item: Item to clean

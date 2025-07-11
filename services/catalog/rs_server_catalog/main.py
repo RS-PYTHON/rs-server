@@ -313,6 +313,13 @@ app.router.lifespan_context = lifespan
 # Configure OpenTelemetry
 init_opentelemetry.init_traces(app, "rs.server.catalog")
 
+# In local mode only, add an endpoint to manual trigger the data lifecycle management
+if common_settings.LOCAL_MODE:
+
+    @app.router.get("/data/lifecycle", include_in_schema=False)
+    async def data_lifecycle():
+        bp = 0
+
 
 # In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)
 # can appear in the Swagger. This won't do the actual authentication, which is done by a FastAPI middleware.
