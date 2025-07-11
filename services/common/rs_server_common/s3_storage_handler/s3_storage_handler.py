@@ -15,7 +15,6 @@
 """Set of functions to connect to an S3 endpoint and run various operations."""
 
 import asyncio
-import concurrent.futures
 import logging
 import ntpath
 import os
