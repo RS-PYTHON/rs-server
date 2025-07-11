@@ -19,9 +19,9 @@
 import copy
 import json
 import time
+from unittest.mock import patch
 
 import fastapi
-from unittest.mock import patch
 
 
 class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
@@ -167,8 +167,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
         assert deletion.status_code == fastapi.status.HTTP_200_OK
 
-
-    def test_update_timestamp_feature_with_no_publish_and_expires(  # pylint: disable=too-many-locals
+    def test_update_timestamp_feature_with_no_publish_and_no_expires(  # pylint: disable=too-many-locals
         self,
         client,
         a_minimal_collection,
@@ -176,15 +175,18 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
     ):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        item with no published and no expires in properties
         """
-        with patch('rs_server_catalog.timestamps_extension.set_timestamps_for_creation') as mock_creation,\
-             patch('rs_server_catalog.timestamps_extension.set_timestamps_for_insertion') as mock_insertion:
+        with patch("rs_server_catalog.timestamps_extension.set_timestamps_for_creation") as mock_creation, patch(
+            "rs_server_catalog.timestamps_extension.set_timestamps_for_insertion",
+        ) as mock_insertion:
 
             # Define the mock behavior to set 'published' = None and 'expired' = None
             def mock_creation_behavior(item):
                 item = item.copy()
                 item["properties"]["published"] = None
                 return item
+
             def mock_insertion_behavior(item):
                 item = item.copy()
                 item["properties"]["expires"] = None
@@ -219,7 +221,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             content = json.loads(feature_put_response.content)
             assert content["code"] == "BadRequest"
             assert content["description"] == f"Item {a_correct_feature['id']} not found."
-            
+
             deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
             assert deletion.status_code == fastapi.status.HTTP_200_OK
 
