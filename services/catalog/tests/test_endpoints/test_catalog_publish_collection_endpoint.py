@@ -18,6 +18,7 @@ import getpass
 import json
 
 import fastapi
+from unittest.mock import patch
 
 
 # REWORKED TESTS
@@ -202,3 +203,103 @@ class TestCatalogPublishCollectionEndpoint:
 
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
+
+    def test_update_more_than_a_collection(self, client):
+        """
+        Test that endpoint POST /catalog/collections returns 400 BadRequest if more than one collection is updated or created.
+        This action can be performed only by PUT or PATCH /catalog/collections.
+        """
+        minimal_collection = {"collections": [
+            {
+                "id": "collectionOne",
+                "type": "Collection",
+                "description": "test_description",
+                "stac_version": "1.0.0",
+                "owner": "duplicate_owner",
+                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+                "license": "public-domain",
+                "extent": {
+                    "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                    "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+                }
+            },
+            {
+                "id": "collectionTwo",
+                "type": "Collection",
+                "description": "test_description",
+                "stac_version": "1.0.0",
+                "owner": "duplicate_owner",
+                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+                "license": "public-domain",
+                "extent": {
+                    "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                    "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+                }
+            },
+        ]
+        }
+
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        response_content = json.loads(response.content)
+        assert response_content["code"] == "BadRequest"
+        assert response_content["description"] == "Cannot create or update more than one collection !"
+
+
+
+    @patch('rs_server_catalog.user_catalog.remove_user_from_collection')
+    def test_failure_to_create_collection_two(self, mock_remove_user_from_collection, client):
+        """
+        Test endpoint POST /catalog/collections with incorrect collection.
+        Endpoint: POST /catalog/collections
+        """
+        mock_remove_user_from_collection.side_effect = ValueError("Something else went wrong")
+        
+        minimal_collection = {
+            "id": "test_collection_01",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Check that collection status code is 201
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        # Check that internal collection id is set to owner_collection
+        #assert json.loads(response.content)["id"] == "test_collection"
+        #assert json.loads(response.content)["owner"] == "test_owner"
+
+    @patch('rs_server_catalog.user_catalog.remove_user_from_collection')
+    def test_failure_to_create_collection_three(self, mock_remove_user_from_collection, client):
+        """
+        Test endpoint POST /catalog/collections with incorrect collection.
+        Endpoint: POST /catalog/collections
+        """
+        mock_remove_user_from_collection.side_effect = RuntimeError("Remove the user ID Failure")
+        
+        minimal_collection = {
+            "id": "test_collection_02",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Check that collection status code is 201
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        # Check that internal collection id is set to owner_collection
+        #assert json.loads(response.content)["id"] == "test_collection"
+        #assert json.loads(response.content)["owner"] == "test_owner"
+
