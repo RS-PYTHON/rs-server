@@ -14,6 +14,7 @@
 
 """Set of functions to connect to an S3 endpoint and run various operations."""
 
+import asyncio
 import concurrent.futures
 import logging
 import ntpath
@@ -30,6 +31,7 @@ import boto3
 import botocore
 import botocore.exceptions
 import requests
+from fastapi.concurrency import run_in_threadpool
 from rs_server_common.utils.logging import Logging
 
 # seconds
@@ -301,7 +303,7 @@ class S3StorageHandler:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
 
-    def delete_files_from_s3(self, bucket: str, keys: list[str], max_retries: int = S3_MAX_RETRIES):
+    async def delete_files_from_s3(self, bucket: str, keys: list[str], max_retries: int = S3_MAX_RETRIES):
         """Delete a list of files from S3.
         The functionality implies a retry mechanism at the application level, which is different
         than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
@@ -329,24 +331,19 @@ class S3StorageHandler:
                 key_dict = [{"Key": key} for key in keys]
 
                 # The boto3 delete_objects function takes max 1000 items to delete.
-                # If we have less than 1000 items, just call the function.
+                # Split the key list and process the chunks in parallel.
                 MAX_DELETE = 1000
-                if len(keys) <= MAX_DELETE:
-                    self.s3_client.delete_objects(Bucket=bucket, Delete={"Objects": key_dict, "Quiet": True})
-
-                # Else split the key array and run multithreaded calls
-                else:
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        futures = [
-                            executor.submit(
+                async with asyncio.TaskGroup() as task_group:
+                    for i in range(0, len(keys), MAX_DELETE):
+                        task_group.create_task(
+                            # Do the search in a synchronized thread so we don't block the main thread,
+                            # see: https://stackoverflow.com/a/71517830
+                            run_in_threadpool(
                                 self.s3_client.delete_objects,
                                 Bucket=bucket,
                                 Delete={"Objects": key_dict[i : i + MAX_DELETE], "Quiet": True},
-                            )
-                            for i in range(0, len(keys), MAX_DELETE)
-                        ]
-                        for future in concurrent.futures.as_completed(futures):
-                            future.result()
+                            ),
+                        )
 
                 # If everything went OK, exit the function
                 return

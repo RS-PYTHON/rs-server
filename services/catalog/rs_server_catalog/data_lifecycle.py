@@ -24,11 +24,11 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
-from fastapi.concurrency import run_in_threadpool
 from rs_server_catalog.timestamps_extension import ISO_8601_FORMAT
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
+from stac_fastapi.extensions.third_party import bulk_transactions
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient
 from stac_fastapi.types.stac import Item, ItemCollection
@@ -66,17 +66,7 @@ class DataLifecycle:
         self.periodic_task: Task | None = None
         self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD", -1))
         self.cancel_flag: bool = False
-
-        # We need a fake request instance to work with the database
-        scope = {
-            "app": self.app,
-            "type": "http",
-            "method": "GET",
-            "path": "dummy-path",
-            "headers": {},
-        }
-        self.request = Request(scope=scope)
-        self.request._base_url = "http://dummy-url"
+        self.request = self.get_fake_request()
 
     async def run(self):
         """Trigger the periodic task"""
@@ -96,6 +86,24 @@ class DataLifecycle:
             await self.periodic_task
         except Exception:
             self.logger.error(traceback.format_exc())
+
+    def get_fake_request(self, extra_scope: dict = {}) -> Request:
+        """
+        Return a fake request instance to work with the database.
+
+        Args:
+            extra_scope: Extra scope values
+        """
+        scope = {
+            "app": self.app,
+            "type": "http",
+            "method": "GET",
+            "path": "dummy-path",
+            "headers": {},
+        } | extra_scope
+        request = Request(scope=scope)
+        request._base_url = "http://dummy-url"
+        return request
 
     async def _periodic(self):
         """Run the periodic task"""
@@ -126,7 +134,7 @@ class DataLifecycle:
                     filter_lang="cql2-json",
                     limit=ITEM_LIMIT,
                 )
-                items = item_collection.get("features", [])
+                items: list[Item] = item_collection.get("features", [])
 
                 # Order assets by key=bucket name and value=list of bucket keys
                 bucket_info: dict[str, list[str]] = defaultdict(list)
@@ -135,20 +143,38 @@ class DataLifecycle:
                 for item in items:
                     await self._manage_item(item, now, bucket_info)
 
+                # Order the items by collection_name
+                items_by_collection: dict[str, list[Item]] = defaultdict(list)
+                for item in items:
+                    items_by_collection[item["collection"]].append(item)
+
                 # First, delete all files from the buckets in parallel
                 async with asyncio.TaskGroup() as task_group:
                     for bucket_name, bucket_keys in bucket_info.items():
-
-                        # Do the search in a synchronized thread so we don't block the main thread,
-                        # see: https://stackoverflow.com/a/71517830
                         task_group.create_task(
-                            run_in_threadpool(self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys)),
+                            self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys),
                         )
 
+                # Then update the items in the stac database using a bulk transaction.
+                # We need one transaction by collection name, run in parallel.
+                async with asyncio.TaskGroup() as task_group:
+                    for col_name, col_items in items_by_collection.items():
+
+                        # Convert the items into a dict with key=item id and value=items
+                        bulk_items = bulk_transactions.Items(
+                            items={item["id"]: item for item in col_items},
+                            method=bulk_transactions.BulkTransactionMethod.UPSERT,
+                        )
+
+                        # The collection name goes into the fake request endpoint path
+                        request = self.get_fake_request(extra_scope={"path_params": {"collection_id": col_name}})
+
+                        # Run the bulk transaction
+                        self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request))
+
+            # Log any error, then wait n seconds before next run
             except Exception:
                 self.logger.error(traceback.format_exc())
-
-            # Wait n seconds before next run
             if self.cancel_flag:
                 return
             await asyncio.sleep(self.period)
@@ -168,6 +194,10 @@ class DataLifecycle:
         # Remove all the assets from the item
         assets = item.pop("assets", {})
         item["assets"] = {}
+
+        # Remove the links. We don't need to save them to stac.
+        # They are automatically generated at runtime with GET requests.
+        item["links"] = []
 
         # Update bucket info for each asset file path
         for asset in assets.values():
