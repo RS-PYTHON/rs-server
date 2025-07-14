@@ -15,10 +15,6 @@
 """Init the FastAPI application."""
 
 import warnings
-from http import HTTPStatus
-
-from fastapi import HTTPException, Request
-from fastapi.responses import JSONResponse
 
 # Import the database table modules before initializing the FastAPI,
 # that will init the database session and create the tables.
@@ -28,9 +24,7 @@ from rs_server_adgs import __version__
 from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
-
-# Import STAC FastAPI error support
-from stac_fastapi.api.errors import ErrorResponse
+from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 
 # Used to supress stac_pydantic userwarnings related to serialization
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
@@ -42,17 +36,4 @@ app = init_app(__version__, adgs_routers, router_prefix="/auxip")
 app.state.get_connection = MockPgstacAdgs.get_connection
 app.state.readpool = MockPgstacAdgs.readpool()
 
-
-@app.exception_handler(HTTPException)
-async def http_exc_handler(_request: Request, exc: HTTPException):
-    """Override HTTPException to return a STAC-style ErrorResponse."""
-    # Convert status code to e.g. "NotFound", "BadRequest", etc.
-    phrase = HTTPStatus(exc.status_code).phrase
-    code = "".join(word.title() for word in phrase.split())
-
-    # Return STAC-compliant error format
-    payload: ErrorResponse = {
-        "code": code,
-        "description": exc.detail if isinstance(exc.detail, str) else str(exc.detail),
-    }
-    return JSONResponse(status_code=exc.status_code, content=payload)
+register_stac_exception_handlers(app)
