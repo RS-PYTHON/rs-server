@@ -72,8 +72,8 @@ def set_timestamps_for_update(item: dict, original_published: str, original_expi
         dict: The updated item.
     """
     item = set_updated_timestamp_to_now(item)
-    item["properties"]["expires"] = original_expires
-    item["properties"]["published"] = original_published
+    item["properties"].setdefault("expires", original_expires)
+    item["properties"].setdefault("published", original_published)
     return item
 
 
