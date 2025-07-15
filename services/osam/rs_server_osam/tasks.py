@@ -53,7 +53,7 @@ BLOCK_LIST_READ_TEMPLATE = {
     "Action": ["s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads", "s3:GetBucketLocation"],
     "Effect": "Allow",
     "Resource": ["arn:aws:s3:::%placeholder%*"],
-    "Condition": {"StringLike": {"s3:prefix": ["%owner%/%collection%/*"]}},
+    "Condition": {"StringLike": {"s3:prefix": "%owner%/%collection%/*"}},
     "Sid": "ROContainer",
 }
 
@@ -67,7 +67,7 @@ BLOCk_LIST_READ_DOWNLOAD_TEMPLATE = {
     ],
     "Effect": "Allow",
     "Resource": ["arn:aws:s3:::%placeholder%*"],
-    "Condition": {"StringLike": {"s3:prefix": ["%owner%/%collection%/*"]}},
+    "Condition": {"StringLike": {"s3:prefix": "%owner%/%collection%/*"}},
     "Sid": "ROContainer",
 }
 
@@ -426,24 +426,29 @@ def update_s3_rights_lists(s3_rights):
             s3_prefix = []
             for path in s3_rights[key]:
                 # get the bucket, owner and collection
-                splited = path.split("/")
+                splited = path.strip().split("/")
                 # protection for the wrong obs acess policy
-                if len(splited) != 3:
+                if len(splited) < 3:
                     logger.warning(f"Wrong obs policy access found: {path}")
                     continue
-                if splited[0] not in resources:
-                    resources.append(splited[0])
+                bucket = f"arn:aws:s3:::{splited[0]}"
+                if bucket not in resources:
+                    resources.append(bucket)
 
-                for line in template["Condition"]["StringLike"]["s3:prefix"]:
-                    owner_collection = f"{line.replace('%owner%', splited[1])}"
-                    owner_collection = owner_collection.replace("%collection", splited[2])
-                    if owner_collection not in s3_prefix:
-                        s3_prefix.append(owner_collection)
+                line = template["Condition"]["StringLike"]["s3:prefix"]
+                owner_collection = f"{line.replace('%owner%', splited[1])}"
+                owner_collection = owner_collection.replace("%collection%", splited[2])
+                # special case when we have */*/*, this should be */*
+                if owner_collection == "*/*/*":
+                    owner_collection = "*/*"
+                if owner_collection not in s3_prefix:
+                    s3_prefix.append(owner_collection)
+
                 for line in template["Resource"]:
                     resources.append(f"{line.replace('%placeholder%', path)}")
 
-            template["Resource"] = resources
             template["Condition"]["StringLike"]["s3:prefix"] = s3_prefix
+            template["Resource"] = resources
             statements.append(template)
 
     # Fill in main access policy template
