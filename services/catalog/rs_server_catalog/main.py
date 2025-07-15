@@ -71,6 +71,7 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Route
@@ -236,7 +237,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
         try:
             response = await UserCatalog(client).dispatch(request, call_next)
             return response
-        except HTTPException as exc:
+        except (HTTPException, StarletteHTTPException) as exc:
             phrase = HTTPStatus(exc.status_code).phrase
             code = "".join(word.title() for word in phrase.split())
             return JSONResponse(

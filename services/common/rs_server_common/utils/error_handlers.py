@@ -25,10 +25,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 def register_stac_exception_handlers(app: FastAPI):
     """Attach STAC-style error handlers to the given FastAPI app."""
 
-    @app.exception_handler(HTTPException)
-    async def http_exc_handler(_request: Request, exc: HTTPException):
-        """Override HTTPException to return a STAC-style ErrorResponse."""
-        # Convert status code to e.g. "NotFound", "BadRequest", etc.
+    def _build_stac_error_response(exc: HTTPException | StarletteHTTPException) -> JSONResponse:
+        """Build STAC-style error response."""
         phrase = HTTPStatus(exc.status_code).phrase
         code = "".join(word.title() for word in phrase.split())
 
@@ -38,16 +36,13 @@ def register_stac_exception_handlers(app: FastAPI):
             "description": exc.detail if isinstance(exc.detail, str) else str(exc.detail),
         }
         return JSONResponse(status_code=exc.status_code, content=payload)
+
+    @app.exception_handler(HTTPException)
+    async def http_exc_handler(_request: Request, exc: HTTPException):
+        """Override HTTPException to return a STAC-style ErrorResponse."""
+        return _build_stac_error_response(exc)
 
     @app.exception_handler(StarletteHTTPException)
     async def starlette_http_exception_handler(_request: Request, exc: StarletteHTTPException):
         """Catch Starlette HTTPExceptions, including 404 from unknown routes."""
-        phrase = HTTPStatus(exc.status_code).phrase
-        code = "".join(word.title() for word in phrase.split())
-
-        # Return STAC-compliant error format
-        payload: ErrorResponse = {
-            "code": code,
-            "description": exc.detail if isinstance(exc.detail, str) else str(exc.detail),
-        }
-        return JSONResponse(status_code=exc.status_code, content=payload)
+        return _build_stac_error_response(exc)
