@@ -41,7 +41,7 @@ class DataLifecycle:
 
     def __init__(self, app: FastAPI, client_search: CoreCrudClient):
         """
-        Initialize the data lifecycle management. Will run a periodic task to:
+        Initialize the data lifecycle management (cleaning of old assets). Will run a periodic task to:
 
         - Retrieve all expired items (expired field <= current_date() and unpublished field not set).
 
@@ -112,7 +112,7 @@ class DataLifecycle:
             while not self.cancel_flag:
                 try:
                     # Run the task
-                    await self._periodic_once()
+                    await self.periodic_once()
 
                 # Log any error
                 except Exception:
@@ -126,7 +126,7 @@ class DataLifecycle:
                 self.logger.debug(f"Wait {self.period} seconds before next cleaning")
                 await asyncio.sleep(self.period)
 
-    async def _periodic_once(self):
+    async def periodic_once(self):
         """Run the periodic task once"""
 
         # Current datetime
@@ -143,7 +143,7 @@ class DataLifecycle:
             ],
         }
 
-        # Search the database. Call directly the stac_fastapi layer, not the rs-server-catalog
+        # Search the database. We call directly the stac_fastapi layer, not the rs-server-catalog
         # http endpoint, so we don't handle the /catalog prefix, the owner_id, the authentication, ...
         item_collection: ItemCollection = await self.client_search.get_search(
             self.request,
@@ -158,13 +158,14 @@ class DataLifecycle:
             self.logger.debug(f"Clean items: {ids}")
         else:
             self.logger.debug("No items to clean")
+            return
 
         # Order assets by key=bucket name and value=list of bucket keys
         bucket_info: dict[str, list[str]] = defaultdict(list)
 
-        # Update each item and update bucket info
+        # Update each item locally and update bucket info
         for item in items:
-            await self._manage_item(item, now, bucket_info)
+            await self._update_local_item(item, now, bucket_info)
 
         # Order the items by collection_name
         items_by_collection: dict[str, list[Item]] = defaultdict(list)
@@ -193,12 +194,12 @@ class DataLifecycle:
                 request = self.get_fake_request(extra_scope={"path_params": {"collection_id": col_name}})
 
                 # Run the bulk transaction.
-                # NOTE: call directly the stac_fastapi layer, not the rs-server-catalog http endpoint
+                # NOTE: we call directly the stac_fastapi layer, not the rs-server-catalog http endpoint
                 self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request))
 
-    async def _manage_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
+    async def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
-        Update a single item instance and update bucket info.
+        Update a single item instance locally and update bucket info.
 
         Args:
             item: Item to clean
@@ -212,11 +213,11 @@ class DataLifecycle:
         assets = item.pop("assets", {})
         item["assets"] = {}
 
-        # Remove the links. We don't need to save them to stac.
+        # Remove the links. We don't need to save them in stac.
         # They are automatically generated at runtime with GET requests.
         item["links"] = []
 
-        # Update bucket info for each asset file path
+        # Update bucket info for each existing asset file path
         for asset in assets.values():
             try:
                 href = asset["alternate"]["s3"]["href"]

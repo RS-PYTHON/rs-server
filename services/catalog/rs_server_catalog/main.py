@@ -273,6 +273,10 @@ if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
 
+# Data lifecycle management instance (cleaning of old assets)
+lifecycle = DataLifecycle(app, core_crud_client)
+
+
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):
     """The lifespan function."""
@@ -296,8 +300,7 @@ async def lifespan(my_app: FastAPI):
 
         common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
-        # Run the data lifecycle management
-        lifecycle = DataLifecycle(my_app, core_crud_client)
+        # Run the data lifecycle management as an automatic periodic task
         await lifecycle.run()
 
         yield
@@ -313,12 +316,12 @@ app.router.lifespan_context = lifespan
 # Configure OpenTelemetry
 init_opentelemetry.init_traces(app, "rs.server.catalog")
 
-# In local mode only, add an endpoint to manual trigger the data lifecycle management
+# In local mode only, add an endpoint to manual trigger the data lifecycle management (for testing)
 if common_settings.LOCAL_MODE:
 
     @app.router.get("/data/lifecycle", include_in_schema=False)
     async def data_lifecycle():
-        bp = 0
+        await lifecycle.periodic_once()
 
 
 # In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)
@@ -359,7 +362,6 @@ def run():
             log_level="info",
             reload=settings.reload,
             root_path=os.getenv("UVICORN_ROOT_PATH", ""),
-            reload_dirs="/usr/local/lib/python3.11/site-packages/rs_server_catalog",  # DON'T COMMIT
         )
     except ImportError:
         raise RuntimeError("Uvicorn must be installed in order to use command")  # pylint: disable=raise-missing-from
