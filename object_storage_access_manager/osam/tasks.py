@@ -84,7 +84,7 @@ BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
     ],
     "Effect": "Allow",
     "Resource": ["arn:aws:s3:::%placeholder%*"],
-    "Condition": {"StringLike": {"s3:prefix": ["%owner%/%collection%/*"]}},
+    "Condition": {"StringLike": {"s3:prefix": "%owner%/%collection%/*"}},
     "Sid": "RWContainer",
 }
 
