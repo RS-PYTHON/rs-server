@@ -24,6 +24,7 @@ import traceback
 # pylint: disable=redefined-builtin
 from collections import defaultdict
 from collections.abc import Callable
+from datetime import datetime as dt
 from typing import Annotated, Literal
 
 import requests
@@ -165,7 +166,14 @@ class MockPgstacCadip(MockPgstac):
             page += 1
 
         # Update input session items with assets
-        link_assets_to_session(session_features, assets)
+        link_assets_to_session(
+            session_features,
+            sorted(
+                assets,
+                key=lambda x: dt.fromisoformat(x["PublicationDate"].replace("Z", "+00:00")),
+                reverse=False,
+            ),
+        )
 
     def process_files(self, empty_sessions_data: dict) -> dict:
         """
