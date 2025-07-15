@@ -53,16 +53,18 @@ class DataLifecycle:
             app: FastAPI application
             client_search: CoreCrudClient instance for searching items
             client_bulk: BulkTransactionsClient instance for bulk update
+            s3_handler = S3 storage handler instance
             periodic_task: Periodic task
             period: Period in seconds between the end of a management task and the start of a new one. If <0, the
             task is deactivated.
             cancel: Cancel the task
+            request: Fake HTTP request
         """
         self.logger = Logging.default(__name__)
         self.app: FastAPI = app
         self.client_search: CoreCrudClient = client_search
         self.client_bulk = BulkTransactionsClient()
-        self.s3_handler = S3StorageHandler()
+        self.s3_handler: S3StorageHandler | None = None
         self.periodic_task: Task | None = None
         self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD", -1))
         self.cancel_flag: bool = False
@@ -107,6 +109,9 @@ class DataLifecycle:
     async def _periodic_loop(self):
         """Run the periodic task in an infinite loop."""
         with init_opentelemetry.start_span(__name__, "data_lifecycle"):
+
+            if not self.s3_handler:
+                self.s3_handler = S3StorageHandler()
 
             # Infinite loop
             while not self.cancel_flag:
@@ -155,7 +160,7 @@ class DataLifecycle:
 
         if items:
             ids = [item["id"] for item in items]
-            self.logger.debug(f"Clean items: {ids}")
+            self.logger.debug(f"Clean {len(ids)} items: {ids}")
         else:
             self.logger.debug("No items to clean")
             return
@@ -206,7 +211,8 @@ class DataLifecycle:
             now: current datetime
             bucket_info: bucket information to be updated
         """
-        # Set the unpublished property to current datetime
+        # Set the updated and unpublished properties to current datetime
+        item.setdefault("properties", {})["updated"] = now
         item.setdefault("properties", {})["unpublished"] = now
 
         # Remove all the assets from the item

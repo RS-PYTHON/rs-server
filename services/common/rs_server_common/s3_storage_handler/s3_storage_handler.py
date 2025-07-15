@@ -165,10 +165,10 @@ class S3StorageHandler:
 
     def __init__(
         self,
-        access_key_id=os.environ["S3_ACCESSKEY"],
-        secret_access_key=os.environ["S3_SECRETKEY"],
-        endpoint_url=os.environ["S3_ENDPOINT"],
-        region_name=os.environ["S3_REGION"],
+        access_key_id=os.environ.get("S3_ACCESSKEY", ""),
+        secret_access_key=os.environ.get("S3_SECRETKEY", ""),
+        endpoint_url=os.environ.get("S3_ENDPOINT", ""),
+        region_name=os.environ.get("S3_REGION", ""),
     ):
         """Initialize the S3StorageHandler instance.
 
