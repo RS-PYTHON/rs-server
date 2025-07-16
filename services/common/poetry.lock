@@ -821,14 +821,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.6.0"
+version = "3.4.3"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "eodag-3.6.0-py3-none-any.whl", hash = "sha256:2d441e042831635ee399decf46f34f3571eec614c63218cd94035cbc138de049"},
-    {file = "eodag-3.6.0.tar.gz", hash = "sha256:709651bc24b92b468e509c41a5b3645a012ed73f341d56233f5b23d842b142d7"},
+    {file = "eodag-3.4.3-py3-none-any.whl", hash = "sha256:de3d89f37ccc7952e684bf4ce84a6ef25f1ddd2bc460e099eac88f551f9543db"},
+    {file = "eodag-3.4.3.tar.gz", hash = "sha256:a7898b8439c8855cb6bfe39725375b9e411c0d17740f7a493e842a7645ae4047"},
 ]
 
 [package.dependencies]
@@ -862,13 +862,13 @@ all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
 dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
-docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinxcontrib-programoutput", "sphinxemoji"]
+docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinx_autodoc_typehints", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
 stubs = ["boto3-stubs[essential]", "types-PyYAML", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
 tutorials = ["cartopy", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
-usgs = ["usgs (>=0.3.6)"]
+usgs = ["usgs (>=0.3.1)"]
 
 [[package]]
 name = "fastapi"
@@ -976,14 +976,14 @@ files = [
 
 [[package]]
 name = "geojson-pydantic"
-version = "1.2.0"
+version = "2.0.0"
 description = "Pydantic data models for the GeoJSON spec."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "geojson_pydantic-1.2.0-py3-none-any.whl", hash = "sha256:30f469d05f7f73dcac5f995579209d1ae74a148c0724018fa9492675e05eebf6"},
-    {file = "geojson_pydantic-1.2.0.tar.gz", hash = "sha256:eb5c61d3106a28bc71c936ef4cb44f36025db314059217063fee87d82e50cc81"},
+    {file = "geojson_pydantic-2.0.0-py3-none-any.whl", hash = "sha256:fd75876768a1dcab30dd04c478773191e0c19d678ef74580a9bad7c4576bfe98"},
+    {file = "geojson_pydantic-2.0.0.tar.gz", hash = "sha256:b62e8b44502dd1ad518b5f739035a81924a76f980cbdb3a4e8916ef913be242e"},
 ]
 
 [package.dependencies]
@@ -3709,4 +3709,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "03c6ee9aaba090ea011480d370115871d45293d78ab8527bf3b0a9401e9a8e25"
+content-hash = "570c61041d2f139579b8c24d90f2591f935bbb0ceab89ab5ee2fb122fcc5c01a"
