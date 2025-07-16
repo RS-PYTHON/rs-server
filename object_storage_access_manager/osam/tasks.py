@@ -49,43 +49,33 @@ STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST = "write_download"
 # Templates for s3 access rights final lists
 S3_ACCESS_RIGHTS_TEMPLATE = {"Version": "%date%", "Statement": list[dict[str, Sequence[str]]]}
 
-BLOCK_LIST_READ_TEMPLATE = {
-    "Action": ["s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads", "s3:GetBucketLocation"],
+BLOCK_LIST_BUCKETS = {
     "Effect": "Allow",
-    "Resource": ["arn:aws:s3:::%placeholder%*"],
-    "Condition": {"StringLike": {"s3:prefix": "%owner%/%collection%/*"}},
-    "Sid": "ROContainer",
+    "Action": ["s3:ListBucket"],
+    "Resource": "arn:aws:s3:::%bucketholder%",
+    "Condition": {"StringLike": {"s3:prefix": list[str]}},
+}
+
+BLOCK_LIST_READ_TEMPLATE = {
+    "Effect": "Allow",
+    "Action": ["s3:GetBucketLocation"],
+    "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
 BLOCk_LIST_READ_DOWNLOAD_TEMPLATE = {
-    "Action": [
-        "s3:GetObject",
-        "s3:ListBucket",
-        "s3:ListMultipartUploadParts",
-        "s3:ListBucketMultipartUploads",
-        "s3:GetBucketLocation",
-    ],
     "Effect": "Allow",
-    "Resource": ["arn:aws:s3:::%placeholder%*"],
-    "Condition": {"StringLike": {"s3:prefix": "%owner%/%collection%/*"}},
-    "Sid": "ROContainer",
+    "Action": ["s3:GetObject"],
+    "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
 BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
+    "Effect": "Allow",
     "Action": [
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject",
-        "s3:ListBucket",
-        "s3:ListMultipartUploadParts",
-        "s3:ListBucketMultipartUploads",
-        "s3:AbortMultipartUpload",
-        "s3:GetBucketLocation",
     ],
-    "Effect": "Allow",
-    "Resource": ["arn:aws:s3:::%placeholder%*"],
-    "Condition": {"StringLike": {"s3:prefix": "%owner%/%collection%/*"}},
-    "Sid": "RWContainer",
+    "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
 logger = Logging.default(__name__)
@@ -394,7 +384,7 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
 
 
 @traced_function()
-def update_s3_rights_lists(s3_rights):
+def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     """
     Updates the S3 access policy document for a user based on their Keycloak-derived access rights.
 
@@ -418,36 +408,43 @@ def update_s3_rights_lists(s3_rights):
         (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCk_LIST_READ_DOWNLOAD_TEMPLATE),
         (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE),
     ]
-    statements = []
-    for key, block in access_rights_list_keys:
+    statements: list[dict[str, Any]] = []
+    for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks
         if s3_rights.get(key):
-            template: dict[str, Any] = copy.deepcopy(block)
             resources = []
-            s3_prefix = []
             for path in s3_rights[key]:
                 # get the bucket, owner and collection
                 splited = path.strip().split("/")
-                # protection for the wrong obs acess policy
+                # protection against a wrong obs access policy
                 if len(splited) < 3:
                     logger.warning(f"Wrong obs policy access found: {path}")
                     continue
                 bucket = f"arn:aws:s3:::{splited[0]}"
-                if bucket not in resources:
-                    resources.append(bucket)
-
-                line = template["Condition"]["StringLike"]["s3:prefix"]
-                owner_collection = f"{line.replace('%owner%', splited[1])}"
-                owner_collection = owner_collection.replace("%collection%", splited[2])
-                # special case when we have */*/*, this should be */*
+                owner_collection = f"{splited[1]}/{splited[2]}/*"
                 if owner_collection == "*/*/*":
                     owner_collection = "*/*"
-                if owner_collection not in s3_prefix:
-                    s3_prefix.append(owner_collection)
+                # check in the current statements
+                found_in_template_bucket = False
+                for statement in statements:
+                    if bucket == statement["Resource"]:
+                        found_in_template_bucket = True
+                        if owner_collection not in statement["Condition"]["StringLike"]["s3:prefix"]:
+                            statement["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
+                        break
+                if not found_in_template_bucket:
+                    template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
+                    template_bucket["Resource"] = bucket
+                    template_bucket["Condition"]["StringLike"]["s3:prefix"] = [owner_collection]
+                    statements.append(template_bucket)
 
-                for line in template["Resource"]:
-                    resources.append(f"{line.replace('%placeholder%', path)}")
+                template: dict[str, Any] = copy.deepcopy(block)
+                # "Resource": "arn:aws:s3:::%bucketholder%/%ownerholder%/%collectionholder%/*"
+                resource = f"{template['Resource'].replace('%placeholder%', path)}"
+                # find the first "all" (*) and remove everything after it, because it's useless, and
+                # moreover, ovh will not recognize it
+                idx = resource.find("*")
+                resources.append(resource[: idx + 1])
 
-            template["Condition"]["StringLike"]["s3:prefix"] = s3_prefix
             template["Resource"] = resources
             statements.append(template)
 
@@ -457,3 +454,70 @@ def update_s3_rights_lists(s3_rights):
     final_policy["Statement"] = statements
     logger.info(json.dumps(final_policy, indent=2))
     return final_policy
+
+
+# @traced_function()
+# def update_s3_rights_lists(s3_rights):
+#     """
+#     Updates the S3 access policy document for a user based on their Keycloak-derived access rights.
+
+#     This function builds a valid S3 bucket policy by filling in pre-defined policy templates
+#     (`BLOCK_LIST_READ_TEMPLATE`, `BLOCk_LIST_READ_DOWNLOAD_TEMPLATE`, `BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE`)
+#     using the access rights categorized into "read", "read_download", and "write_download" lists.
+
+#     Args:
+#         s3_rights (dict): Dictionary of S3 access rights with keys:
+#             - STRKEY_ACCESS_RIGHT_READ_LIST
+#             - STRKEY_ACCESS_RIGHT_READ_DWN_LIST
+#             - STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST
+
+#     Returns:
+#         dict: A complete S3 policy document with updated statements reflecting the user's access rights.
+#     """
+
+#     # fields from the s3 access rights lists
+#     access_rights_list_keys = [
+#         (STRKEY_ACCESS_RIGHT_READ_LIST, BLOCK_LIST_READ_TEMPLATE),
+#         (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCk_LIST_READ_DOWNLOAD_TEMPLATE),
+#         (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE),
+#     ]
+#     statements = []
+#     template_block: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
+#     for key, block in access_rights_list_keys:
+#         if s3_rights.get(key):
+#             template: dict[str, Any] = copy.deepcopy(block)
+#             resources = []
+#             s3_prefix = []
+#             for path in s3_rights[key]:
+#                 # get the bucket, owner and collection
+#                 splited = path.strip().split("/")
+#                 # protection for the wrong obs acess policy
+#                 if len(splited) < 3:
+#                     logger.warning(f"Wrong obs policy access found: {path}")
+#                     continue
+#                 bucket = f"arn:aws:s3:::{splited[0]}"
+#                 if bucket not in resources:
+#                     resources.append(bucket)
+
+#                 line = template["Condition"]["StringLike"]["s3:prefix"]
+#                 owner_collection = f"{line.replace('%owner%', splited[1])}"
+#                 owner_collection = owner_collection.replace("%collection%", splited[2])
+#                 # special case when we have */*/*, this should be */*
+#                 if owner_collection == "*/*/*":
+#                     owner_collection = "*/*"
+#                 if owner_collection not in s3_prefix:
+#                     s3_prefix.append(owner_collection)
+
+#                 for line in template["Resource"]:
+#                     resources.append(f"{line.replace('%placeholder%', path)}")
+
+#             template["Condition"]["StringLike"]["s3:prefix"] = s3_prefix
+#             template["Resource"] = resources
+#             statements.append(template)
+
+#     # Fill in main access policy template
+#     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
+#     final_policy["Version"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+#     final_policy["Statement"] = statements
+#     logger.info(json.dumps(final_policy, indent=2))
+#     return final_policy
