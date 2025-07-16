@@ -976,14 +976,14 @@ files = [
 
 [[package]]
 name = "geojson-pydantic"
-version = "2.0.0"
+version = "1.2.0"
 description = "Pydantic data models for the GeoJSON spec."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "geojson_pydantic-2.0.0-py3-none-any.whl", hash = "sha256:fd75876768a1dcab30dd04c478773191e0c19d678ef74580a9bad7c4576bfe98"},
-    {file = "geojson_pydantic-2.0.0.tar.gz", hash = "sha256:b62e8b44502dd1ad518b5f739035a81924a76f980cbdb3a4e8916ef913be242e"},
+    {file = "geojson_pydantic-1.2.0-py3-none-any.whl", hash = "sha256:30f469d05f7f73dcac5f995579209d1ae74a148c0724018fa9492675e05eebf6"},
+    {file = "geojson_pydantic-1.2.0.tar.gz", hash = "sha256:eb5c61d3106a28bc71c936ef4cb44f36025db314059217063fee87d82e50cc81"},
 ]
 
 [package.dependencies]
@@ -2594,14 +2594,14 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests
 
 [[package]]
 name = "pytest-asyncio"
-version = "1.0.0"
+version = "1.1.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest_asyncio-1.0.0-py3-none-any.whl", hash = "sha256:4f024da9f1ef945e680dc68610b52550e36590a67fd31bb3b4943979a1f90ef3"},
-    {file = "pytest_asyncio-1.0.0.tar.gz", hash = "sha256:d15463d13f4456e1ead2594520216b225a16f781e144f8fdf6c5bb4667c48b3f"},
+    {file = "pytest_asyncio-1.1.0-py3-none-any.whl", hash = "sha256:5fe2d69607b0bd75c656d1211f969cadba035030156745ee09e7d71740e58ecf"},
+    {file = "pytest_asyncio-1.1.0.tar.gz", hash = "sha256:796aa822981e01b68c12e4827b8697108f7205020f24b5793b3c41555dab68ea"},
 ]
 
 [package.dependencies]
@@ -3709,4 +3709,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "570c61041d2f139579b8c24d90f2591f935bbb0ceab89ab5ee2fb122fcc5c01a"
+content-hash = "773bbc19115e9bca9ee63ca89f6a6617a0277e81323afdef3d34b81b48e04d91"
