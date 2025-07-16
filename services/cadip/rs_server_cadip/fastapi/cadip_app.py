@@ -24,6 +24,7 @@ from rs_server_cadip import __version__
 from rs_server_cadip.api.cadip_search import MockPgstacCadip
 from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.fastapi_app import init_app
+from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 
 # Used to supress stac_pydantic userwarnings related to serialization
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
@@ -34,3 +35,5 @@ app = init_app(__version__, cadip_routers, router_prefix="/cadip")
 # Set properties for the cadip service
 app.state.get_connection = MockPgstacCadip.get_connection
 app.state.readpool = MockPgstacCadip.readpool()
+
+register_stac_exception_handlers(app)

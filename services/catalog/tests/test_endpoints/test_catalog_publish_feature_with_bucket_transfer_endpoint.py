@@ -339,7 +339,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             )
             assert resp.status_code == fastapi.status.HTTP_400_BAD_REQUEST
             content = json.loads(resp.content)
-            assert "However, changing an existing path of an asset is not allowed" in content
+            assert "BadRequest" == content["code"]
+            assert "However, changing an existing path of an asset is not allowed" in content["description"]
             temp_list = s3_handler.list_s3_files_obj(self.temp_bucket, "")
             cat_list = s3_handler.list_s3_files_obj(self.catalog_bucket, "")
             print(f"Files in temp bucket: {temp_list}")
@@ -483,7 +484,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         ] = "incorrect_s3_url/S1SIWOCN_20220412T054447_0024_S139_T902.nc"
         response = client.post("/catalog/collections/darius:S1_L2/items", json=item_test)
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-        assert "Failed to load the S3 key from the asset content" in json.loads(response.content)
+        assert "BadRequest" == json.loads(response.content)["code"]
+        assert "Failed to load the S3 key from the asset content" in json.loads(response.content)["description"]
         clear_aws_credentials()
 
     @pytest.mark.unit

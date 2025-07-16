@@ -16,6 +16,7 @@
 
 import getpass
 import json
+from unittest.mock import patch
 
 import fastapi
 
@@ -202,3 +203,104 @@ class TestCatalogPublishCollectionEndpoint:
 
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
+
+    def test_update_more_than_a_collection(self, client):
+        """
+        Test that endpoint POST /catalog/collections returns 400 BadRequest
+        if more than one collection is updated or created.
+        This action can be performed only by PUT or PATCH /catalog/collections.
+        """
+        minimal_collection = {
+            "collections": [
+                {
+                    "id": "collectionOne",
+                    "type": "Collection",
+                    "description": "test_description",
+                    "stac_version": "1.0.0",
+                    "owner": "duplicate_owner",
+                    "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+                    "license": "public-domain",
+                    "extent": {
+                        "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                        "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+                    },
+                },
+                {
+                    "id": "collectionTwo",
+                    "type": "Collection",
+                    "description": "test_description",
+                    "stac_version": "1.0.0",
+                    "owner": "duplicate_owner",
+                    "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+                    "license": "public-domain",
+                    "extent": {
+                        "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                        "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+                    },
+                },
+            ],
+        }
+
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        response_content = json.loads(response.content)
+        assert response_content["code"] == "BadRequest"
+        assert response_content["description"] == "Cannot create or update more than one collection !"
+
+    @patch("rs_server_catalog.user_catalog.remove_user_from_collection")
+    def test_failure_to_create_collection_generic_exception(self, mock_remove_user_from_collection, client):
+        """
+        Test endpoint POST /catalog/collections with an generic exception raised.
+        Endpoint: POST /catalog/collections
+        """
+        mock_exc = "ValueError"
+        mock_remove_user_from_collection.side_effect = ValueError(mock_exc)
+
+        minimal_collection = {
+            "id": "test_collection_01",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Check that an BadRequest Exception is raised
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        response_content = json.loads(response.content)
+        assert response_content["code"] == "BadRequest"
+        assert response_content["description"] == f"Bad request: {mock_exc}"
+
+    @patch("rs_server_catalog.user_catalog.remove_user_from_collection")
+    def test_failure_to_create_collection_runtime_error(self, mock_remove_user_from_collection, client):
+        """
+        Test endpoint POST /catalog/collections with an RuntimeError exception raised.
+        Endpoint: POST /catalog/collections
+        """
+        mock_exc = "RuntimeError"
+        mock_remove_user_from_collection.side_effect = RuntimeError(mock_exc)
+
+        minimal_collection = {
+            "id": "test_collection_02",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Check that an RuntimeError Exception is raised
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        response_content = json.loads(response.content)
+        assert response_content["code"] == "BadRequest"
+        assert response_content["description"] == f"Failed to clean temporary bucket: {mock_exc}"

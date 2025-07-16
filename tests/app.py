@@ -23,6 +23,7 @@ from rs_server_cadip.api.cadip_search import MockPgstacCadip
 from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
+from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 
 ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
 ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
@@ -50,6 +51,7 @@ def init_app(router_prefix: str = "") -> FastAPI:
         routers=routers,
         router_prefix=router_prefix,
     )
+    register_stac_exception_handlers(app)
     app.state.get_connection = MockPgstacTest.get_connection
     app.state.readpool = MockPgstacTest.readpool()
     return app
