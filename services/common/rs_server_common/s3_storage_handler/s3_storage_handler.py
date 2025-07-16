@@ -30,7 +30,6 @@ import boto3
 import botocore
 import botocore.exceptions
 import requests
-from fastapi.concurrency import run_in_threadpool
 from rs_server_common.utils.logging import Logging
 
 # seconds
@@ -337,7 +336,7 @@ class S3StorageHandler:
                         task_group.create_task(
                             # Do the search in a synchronized thread so we don't block the main thread,
                             # see: https://stackoverflow.com/a/71517830
-                            run_in_threadpool(
+                            asyncio.to_thread(
                                 self.s3_client.delete_objects,
                                 Bucket=bucket,
                                 Delete={"Objects": key_dict[i : i + MAX_DELETE], "Quiet": True},

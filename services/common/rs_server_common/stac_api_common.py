@@ -15,6 +15,7 @@
 # pylint: disable=too-many-lines
 
 """Module to share common functionalities for validating / creating stac items"""
+import asyncio
 import copy
 import json
 import os
@@ -42,7 +43,6 @@ import yaml
 from fastapi import HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
-from fastapi.concurrency import run_in_threadpool
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
@@ -303,7 +303,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Do the search in a synchronized thread so we don't block the main thread,
         # see: https://stackoverflow.com/a/71517830
-        return await run_in_threadpool(self.sync_search, params, post_json_body)
+        return await asyncio.to_thread(self.sync_search, params, post_json_body)
 
     def sync_search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         self,
