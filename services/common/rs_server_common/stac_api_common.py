@@ -75,7 +75,7 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 DATE_INTERVAL_KEYS = ["PublicationDate"]
-COMMA_SEPARATED_LISTS_KEYS = ["platformSerialIdentifier", "platformShortName", "Satellite", "productType"]
+COMMA_SEPARATED_LISTS_KEYS = ["platformSerialIdentifier", "platformShortName", "Satellite", "productType", "SessionId"]
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
@@ -714,7 +714,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     match(odata_entity, "date", crit_key, crit_val)
                 elif crit_key in COMMA_SEPARATED_LISTS_KEYS:
                     iterable = crit_val if isinstance(crit_val, list) else crit_val.split(",")
-                    if value not in {v.strip() for v in iterable}:
+                    if value is None or value.strip().lower() not in {v.strip().lower() for v in iterable}:
                         return nomatch(odata_entity, "list", crit_key, crit_val)
                     match(odata_entity, "list", crit_key, crit_val)
                 elif crit_val != odata_entity.get(crit_key, None):
@@ -730,9 +730,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         Args:
             items (list[Item]): The list of items to filter (modified in place).
         """
-        items[:] = [
-            item for item in items if item.collection or not logger.warning(f"Filter item without collection: {item}")
-        ]
+
+        def has_collection(item):
+            if not item.collection:
+                logger.warning(f"Filter item without collection: {item}")
+                return False
+            return True
+
+        items[:] = [item for item in items if has_collection(item)]
 
     def aggregate_items_from_results(self, all_results) -> ItemCollection:
         """

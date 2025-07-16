@@ -207,6 +207,8 @@ def odata_to_stac(
     # determine item collection
     if collection_provider:
         feature_template["collection"] = collection_provider(odata_dict)
+        if not feature_template["collection"]:
+            logger.warning(f"Unable to determine collection for {odata_dict}")
     return feature_template
 
 

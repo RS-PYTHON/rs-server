@@ -318,7 +318,7 @@ class TestModelValidationError:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
-            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items/sessionId"),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items/S1A_20170501121534062343"),
         ],
         indirect=["fastapi_app"],
     )
@@ -1315,8 +1315,8 @@ class TestFeatureCollectionOdataStacMapping:
         [
             ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3", True),
             ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "1", False),
-            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "3", True),
-            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "1", False),
+            ("/cadip/collections/cadip_session_by_id_list_big/items?token=next:page=", "3", True),
+            ("/cadip/collections/cadip_session_by_id_list_big/items?token=next:page=", "1", False),
         ],
     )
     @responses.activate
@@ -1331,13 +1331,24 @@ class TestFeatureCollectionOdataStacMapping:
     ):
         """Used to test if application correctly builds next/previous token."""
         base_cadip_uri = (
-            "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312'"
-            "&$orderby=PublicationDate desc&"
+            "http://127.0.0.1:5000/Sessions?$filter=SessionId in ("
+            "'S1A_20200105072204051312', 'S1A_20200105072204051313', 'S1A_20200105072204051314', "
+            "'S1A_20200105072204051315', 'S1A_20200105072204051316', 'S1A_20200105072204051317', "
+            "'S1A_20200105072204051318', 'S1A_20200105072204051319', 'S1A_20200105072204051310', "
+            "'S1A_20200105072204051311')&$orderby=PublicationDate desc&"
             f"$top=10&$skip={(int(page) - 1) * 10}"
         )
-        base_cadip_files_uri = (
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0"
-        )
+        base_cadip_files_uris = [
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051313'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051314'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051315'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051316'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051317'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051318'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051319'&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051311'&$top=1000&$skip=0",
+        ]
         base_adgs_uri = (
             "http://127.0.0.1:5001/Products?"
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
@@ -1352,7 +1363,8 @@ class TestFeatureCollectionOdataStacMapping:
             json={"value": []} if is_last else cadip_session_response_10_items,
             status=200,
         )
-        responses.add(responses.GET, base_cadip_files_uri, json={"value": []}, status=200)
+        for base_cadip_files_uri in base_cadip_files_uris:
+            responses.add(responses.GET, base_cadip_files_uri, json={"value": []}, status=200)
         responses.add(
             responses.GET,
             base_adgs_uri,
@@ -1535,11 +1547,11 @@ def test_search_parameters(
 
     if adgs:
         query2 = {
-            "productType": "type1",
+            "productType": "AUX_OBMEMC",
             "platformShortName": "sentinel-1",
         }
         query3 = {
-            "productType": "type1, type2",
+            "productType": "AUX_OBMEMC, type2",
             "platformShortName": "sentinel-1, sentinel-2",
         }
     elif cadip:
