@@ -177,14 +177,7 @@ class DataLifecycle:
         for item in items:
             items_by_collection[item["collection"]].append(item)
 
-        # First, delete all files from the buckets in parallel
-        async with asyncio.TaskGroup() as task_group:
-            for bucket_name, bucket_keys in bucket_info.items():
-                task_group.create_task(
-                    self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys),
-                )
-
-        # Then update the items in the stac database using a bulk transaction.
+        # First, update the items in the stac database using a bulk transaction.
         # We need one transaction by collection name, run in parallel.
         async with asyncio.TaskGroup() as task_group:
             for col_name, col_items in items_by_collection.items():
@@ -201,6 +194,16 @@ class DataLifecycle:
                 # Run the bulk transaction.
                 # NOTE: we call directly the stac_fastapi layer, not the rs-server-catalog http endpoint
                 self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request))
+
+        # Then, delete all files from the buckets in parallel.
+        # NOTE: if ever this fails, a secondary data lifecycle is set on OVH Object Storage side to clean up
+        # automatically the files on the buckets.
+        # This is done 24 hours after the expiration delay set on the config map.
+        async with asyncio.TaskGroup() as task_group:
+            for bucket_name, bucket_keys in bucket_info.items():
+                task_group.create_task(
+                    self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys),
+                )
 
     async def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
