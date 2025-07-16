@@ -2594,14 +2594,14 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests
 
 [[package]]
 name = "pytest-asyncio"
-version = "1.1.0"
+version = "1.0.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest_asyncio-1.1.0-py3-none-any.whl", hash = "sha256:5fe2d69607b0bd75c656d1211f969cadba035030156745ee09e7d71740e58ecf"},
-    {file = "pytest_asyncio-1.1.0.tar.gz", hash = "sha256:796aa822981e01b68c12e4827b8697108f7205020f24b5793b3c41555dab68ea"},
+    {file = "pytest_asyncio-1.0.0-py3-none-any.whl", hash = "sha256:4f024da9f1ef945e680dc68610b52550e36590a67fd31bb3b4943979a1f90ef3"},
+    {file = "pytest_asyncio-1.0.0.tar.gz", hash = "sha256:d15463d13f4456e1ead2594520216b225a16f781e144f8fdf6c5bb4667c48b3f"},
 ]
 
 [package.dependencies]
@@ -3315,14 +3315,14 @@ server = ["uvicorn[standard] (==0.34.0)"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "5.2.0"
+version = "5.2.1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_types-5.2.0-py3-none-any.whl", hash = "sha256:40158c3abffb2d5f503c4a11154f9d6795f085e196e80225773fd46a5d38e928"},
-    {file = "stac_fastapi_types-5.2.0.tar.gz", hash = "sha256:f8d568d46bbd9b6d2c7d7e6c4722cad940d9332827339415f57aa1b122df73f1"},
+    {file = "stac_fastapi_types-5.2.1-py3-none-any.whl", hash = "sha256:57ed90239c60109688c84e9da634f99ac215ac49af8fd691b35330af3ab96e1c"},
+    {file = "stac_fastapi_types-5.2.1.tar.gz", hash = "sha256:a223fb3643940ec4d36aae264235d37e8d787cbb6a634e764b14676f7dabf4bd"},
 ]
 
 [package.dependencies]
@@ -3709,4 +3709,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "773bbc19115e9bca9ee63ca89f6a6617a0277e81323afdef3d34b81b48e04d91"
+content-hash = "33a9831d58349e3bbce45a538a0f717b2b902ede66687aae1e9a00f87810bc10"
