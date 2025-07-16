@@ -353,18 +353,18 @@ class TestModelValidationError:
         mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=CreateProviderFailed)
         response = client.get("/auxip/collections/adgs_by_platform/items")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json() == {"detail": "Bad station identifier: "}
+        assert response.json() == {"code": "BadRequest", "description": "Bad station identifier: "}
         mocker.patch(
             "rs_server_adgs.adgs_retriever.init_adgs_provider",
             side_effect=requests.exceptions.ConnectionError,
         )
         response = client.get("/auxip/collections/adgs_by_platform/items")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json() == {"detail": "Station ADGS connection error: "}
+        assert response.json() == {"code": "ServiceUnavailable", "description": "Station ADGS connection error: "}
         mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=Exception)
         response = client.get("/auxip/collections/adgs_by_platform/items")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert response.json() == {"detail": "General failure: "}
+        assert response.json() == {"code": "ServiceUnavailable", "description": "General failure: "}
 
 
 class TestErrorWhileBuildUpCollection:
@@ -451,7 +451,10 @@ class TestFeatureOdataStacMapping:
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312")
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response.json() != cadip_feature, "Features doesn't match"
-        assert response.json()["detail"] == "Cadip session 'S1A_20200105072204051312' not found."
+        assert response.json() == {
+            "code": "NotFound",
+            "description": "Cadip session 'S1A_20200105072204051312' not found.",
+        }
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.unit
@@ -493,47 +496,47 @@ class TestFeatureOdataStacMapping:
         )
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response.json() != adgs_feature, "Features doesn't match"
-        assert (
-            response.json()["detail"]
-            == "AUXIP item 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF' not found."
-        )
+        assert response.json() == {
+            "code": "NotFound",
+            "description": "AUXIP item 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF' not found.",
+        }
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, detail",
+        "endpoint, response_body",
         [
             (
                 "/auxip/collections/INVALID_COLLECTION/items/S1A_OPER_MPL_ORBPRE_20210214T021411_.EOF",
-                {"detail": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
+                {"code": "NotFound", "description": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
             ),
             (
                 "/cadip/collections/INVALID_COLLECTION/items/S1A_20200105072204051312",
-                {"detail": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
+                {"code": "NotFound", "description": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
             ),
         ],
     )
-    def test_invalid_collection_mapping(self, client, endpoint, detail):
+    def test_invalid_collection_mapping(self, client, endpoint, response_body):
         """Test to verify the output of rs-server when given item collection is invalid."""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json() == detail
+        assert response.json() == response_body
 
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_url, detail",
+        "endpoint, odata_url, response_body",
         [
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/INVALID_ITEM",
                 "http://127.0.0.1:5001/Products?$filter=contains(Name, 'INVALID_ITEM') and Attributes/OData.CSC."
                 "StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq "
                 "'AUX_OBMEMC')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
-                {"detail": "AUXIP item 'INVALID_ITEM' not found."},
+                {"code": "NotFound", "description": "AUXIP item 'INVALID_ITEM' not found."},
             ),
         ],
     )
-    def test_adgs_invalid_item_mapping(self, client, endpoint, odata_url, detail):
+    def test_adgs_invalid_item_mapping(self, client, endpoint, odata_url, response_body):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         responses.add(
             responses.GET,
@@ -543,19 +546,19 @@ class TestFeatureOdataStacMapping:
         )
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json() == detail
+        assert response.json() == response_body
 
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_session_url, odata_file_url, detail",
+        "endpoint, odata_session_url, odata_file_url, response_body",
         [
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
                 "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312'"
                 "&$orderby=PublicationDate desc&$top=1&$skip=0",
                 'http://127.0.0.1:5000/Files?$filter="SessionID eq S1A_20200105072204051312"&$top=20',
-                {"detail": "Cadip session 'INVALID_ITEM' not found."},
+                {"code": "NotFound", "description": "Cadip session 'INVALID_ITEM' not found."},
             ),
         ],
     )
@@ -565,7 +568,7 @@ class TestFeatureOdataStacMapping:
         endpoint,
         odata_session_url,
         odata_file_url,
-        detail,
+        response_body,
     ):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         # Collection URL is valid, returning items
@@ -584,7 +587,7 @@ class TestFeatureOdataStacMapping:
         )
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json() == detail
+        assert response.json() == response_body
 
 
 class TestFeatureCollectionOdataStacMapping:
@@ -783,23 +786,23 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, detail",
+        "endpoint, response_body",
         [
             (
                 "/auxip/collections/INVALID_COLLECTION/items",
-                {"detail": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
+                {"code": "NotFound", "description": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
             ),
             (
                 "/cadip/collections/INVALID_COLLECTION/items",
-                {"detail": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
+                {"code": "NotFound", "description": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
             ),
         ],
     )
-    def test_feature_collection_not_found(self, client, endpoint, detail):
+    def test_feature_collection_not_found(self, client, endpoint, response_body):
         """Test with an invalid collection request, should raise 404."""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json() == detail
+        assert response.json() == response_body
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -985,7 +988,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid pages (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "Invalid page value" in response.json()["detail"]
+        assert "Invalid page value" in response.json()["description"]
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -1000,7 +1003,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid pages (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "parameter is not sortable" in response.json()["detail"]
+        assert "parameter is not sortable" in response.json()["description"]
 
     @pytest.mark.unit
     @pytest.mark.parametrize(

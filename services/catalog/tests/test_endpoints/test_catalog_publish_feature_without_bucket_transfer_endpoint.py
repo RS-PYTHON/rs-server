@@ -19,6 +19,7 @@
 import copy
 import json
 import time
+from unittest.mock import patch
 
 import fastapi
 
@@ -166,6 +167,64 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
         assert deletion.status_code == fastapi.status.HTTP_200_OK
 
+    def test_update_timestamp_feature_with_no_publish_and_no_expires(  # pylint: disable=too-many-locals
+        self,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
+    ):
+        """
+        ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        item with no published and no expires in properties
+        """
+        with patch("rs_server_catalog.timestamps_extension.set_timestamps_for_creation") as mock_creation, patch(
+            "rs_server_catalog.timestamps_extension.set_timestamps_for_insertion",
+        ) as mock_insertion:
+
+            # Define the mock behavior to set 'published' = None and 'expired' = None
+            def mock_creation_behavior(item):
+                item = item.copy()
+                item["properties"]["published"] = None
+                return item
+
+            def mock_insertion_behavior(item):
+                item = item.copy()
+                item["properties"]["expires"] = None
+                return item
+
+            mock_creation.side_effect = mock_creation_behavior
+            mock_insertion.side_effect = mock_insertion_behavior
+            # Change correct feature collection id to match with minimal collection and post it
+            a_correct_feature["collection"] = "fixture_collection"
+            # Post the correct feature to catalog
+            feature_post_response = client.post(
+                "/catalog/collections/fixture_owner:fixture_collection/items",
+                json=a_correct_feature,
+            )
+
+            assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
+
+            # Update the feature and PUT it into catalogDB
+            updated_feature_sent = copy.deepcopy(a_correct_feature)
+            updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
+            del updated_feature_sent["collection"]
+
+            # Test that updated field is correctly updated.
+            time.sleep(1)
+
+            feature_put_response = client.put(
+                f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+                json=updated_feature_sent,
+            )
+
+            assert feature_put_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+            content = json.loads(feature_put_response.content)
+            assert content["code"] == "BadRequest"
+            assert content["description"] == f"Item {a_correct_feature['id']} not found."
+
+            deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
+            assert deletion.status_code == fastapi.status.HTTP_200_OK
+
     def test_update_timestamp_feature_fails_with_unfound_item(
         self,
         client,
@@ -217,7 +276,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
 
         assert feature_put_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        assert feature_put_response.json() == f"Collection {non_existing_collection} does not exist."
+        assert feature_put_response.json() == {
+            "code": "NotFound",
+            "description": f"Collection {non_existing_collection} does not exist.",
+        }
 
     def test_add_feature_in_non_existing_collection_fails(
         self,
@@ -239,7 +301,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
 
         assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        assert feature_post_response.json() == f"Collection {non_existing_collection} does not exist."
+        assert feature_post_response.json() == {
+            "code": "NotFound",
+            "description": f"Collection {non_existing_collection} does not exist.",
+        }
 
     def test_update_with_an_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""

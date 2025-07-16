@@ -22,14 +22,15 @@ import asyncio
 import os
 import sys
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from os import environ as env
 from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, Security
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
@@ -48,6 +49,7 @@ from rs_server_common.middlewares import (
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
+from stac_fastapi.api.errors import ErrorResponse
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import (
     ItemCollectionUri,
@@ -70,6 +72,7 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Route
@@ -232,8 +235,16 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        response = await UserCatalog(core_crud_client).dispatch(request, call_next)
-        return response
+        try:
+            response = await UserCatalog(core_crud_client).dispatch(request, call_next)
+            return response
+        except (HTTPException, StarletteHTTPException) as exc:
+            phrase = HTTPStatus(exc.status_code).phrase
+            code = "".join(word.title() for word in phrase.split())
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=ErrorResponse(code=code, description=str(exc.detail)),
+            )
 
 
 items_get_request_model = create_request_model(
