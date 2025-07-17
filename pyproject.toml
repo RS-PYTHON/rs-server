@@ -64,7 +64,7 @@ optional = true
 pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pytest = "^8.4.1"
-pytest-asyncio = "^1.0.0"
+pytest-asyncio = "^1.1.0"
 pytest-cov = "^6.2.1"
 pytest-docker = "^3.2.2"
 pytest-error-for-skips = "^2.0.2"
@@ -83,7 +83,7 @@ httpx = "^0.28.1"
 sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.41.2"
-click = "8.1.8"
+click = "8.2.1"
 responses = "^0.25.7"
 
 [tool.poetry.requires-plugins]
