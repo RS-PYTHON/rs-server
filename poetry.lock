@@ -888,14 +888,14 @@ files = [
 
 [[package]]
 name = "click"
-version = "8.1.8"
+version = "8.2.1"
 description = "Composable command line interface toolkit"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "click-8.1.8-py3-none-any.whl", hash = "sha256:63c132bbbed01578a06712a2d1f497bb62d9c1c0d329b7903a866228027263b2"},
-    {file = "click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a"},
+    {file = "click-8.2.1-py3-none-any.whl", hash = "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b"},
+    {file = "click-8.2.1.tar.gz", hash = "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202"},
 ]
 
 [package.dependencies]
@@ -1286,14 +1286,14 @@ poetry = ["poetry"]
 
 [[package]]
 name = "eodag"
-version = "3.4.3"
+version = "3.6.0"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "eodag-3.4.3-py3-none-any.whl", hash = "sha256:de3d89f37ccc7952e684bf4ce84a6ef25f1ddd2bc460e099eac88f551f9543db"},
-    {file = "eodag-3.4.3.tar.gz", hash = "sha256:a7898b8439c8855cb6bfe39725375b9e411c0d17740f7a493e842a7645ae4047"},
+    {file = "eodag-3.6.0-py3-none-any.whl", hash = "sha256:2d441e042831635ee399decf46f34f3571eec614c63218cd94035cbc138de049"},
+    {file = "eodag-3.6.0.tar.gz", hash = "sha256:709651bc24b92b468e509c41a5b3645a012ed73f341d56233f5b23d842b142d7"},
 ]
 
 [package.dependencies]
@@ -1327,13 +1327,13 @@ all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
 dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
-docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinx_autodoc_typehints", "sphinxemoji"]
+docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinxcontrib-programoutput", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
 stubs = ["boto3-stubs[essential]", "types-PyYAML", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
 tutorials = ["cartopy", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
-usgs = ["usgs (>=0.3.1)"]
+usgs = ["usgs (>=0.3.6)"]
 
 [[package]]
 name = "fastapi"
@@ -4278,14 +4278,14 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests
 
 [[package]]
 name = "pytest-asyncio"
-version = "1.0.0"
+version = "1.1.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest_asyncio-1.0.0-py3-none-any.whl", hash = "sha256:4f024da9f1ef945e680dc68610b52550e36590a67fd31bb3b4943979a1f90ef3"},
-    {file = "pytest_asyncio-1.0.0.tar.gz", hash = "sha256:d15463d13f4456e1ead2594520216b225a16f781e144f8fdf6c5bb4667c48b3f"},
+    {file = "pytest_asyncio-1.1.0-py3-none-any.whl", hash = "sha256:5fe2d69607b0bd75c656d1211f969cadba035030156745ee09e7d71740e58ecf"},
+    {file = "pytest_asyncio-1.1.0.tar.gz", hash = "sha256:796aa822981e01b68c12e4827b8697108f7205020f24b5793b3c41555dab68ea"},
 ]
 
 [package.dependencies]
@@ -4974,7 +4974,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.2a15.post27.dev0"
+version = "0.2a15.post74.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = "^3.11"
@@ -4991,7 +4991,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.2a15.post27.dev0"
+version = "0.2a15.post74.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = "^3.11"
@@ -5008,7 +5008,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "0.2a15.post27.dev0"
+version = "0.2a15.post74.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = "^3.11"
@@ -5026,7 +5026,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "0.2a15.post27.dev0"
+version = "0.2a15.post74.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = "^3.11"
@@ -5040,7 +5040,7 @@ authlib = "^1.5.0"
 boto3 = ">=1.38.34"
 botocore = ">=1.38.34"
 cachetools = ">=5.5.2"
-eodag = "==v3.4.3"
+eodag = "==v3.6.0"
 fastapi = "^0.115.13"
 filelock = "^3.16.1"
 geojson-pydantic = "1.2.0"
@@ -5074,7 +5074,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.2a15.post27.dev0"
+version = "0.2a15.post74.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = "^3.11"
@@ -5096,7 +5096,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-staging"
-version = "0.2a15.post27.dev0"
+version = "0.2a15.post74.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = "^3.11"
@@ -6458,4 +6458,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "a9f45facb4866532653e2c9080dcab44e2433a14abc695e7ecf04f213db8edca"
+content-hash = "501bd5c8e6543315e712df227de95beff04f3ceaa0474e6f88070429159c1e3a"
