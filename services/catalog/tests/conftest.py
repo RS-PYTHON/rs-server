@@ -14,6 +14,8 @@
 
 """Common fixture for catalog service."""
 
+import os
+
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
@@ -22,11 +24,11 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 # Do this before any other imports.
 # We'll restore the local mode by default a few lines below.
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
+os.environ["FROM_PYTEST"] = "1"
 init_app_cluster_mode()
 
 # flake8: noqa: E402
 
-import os
 import subprocess  # nosec ignore security issue
 from collections.abc import Iterator
 from importlib import reload

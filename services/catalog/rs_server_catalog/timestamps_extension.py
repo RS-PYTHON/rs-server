@@ -54,7 +54,7 @@ def set_timestamps_for_insertion(item: dict) -> dict:
     item_eopf_type = item["properties"].get("eopf:type", "*")
     expiration_range = get_expiration_delay_from_config(item_owner, item_collection, item_eopf_type)
     expiration_date = datetime.datetime.now() + datetime.timedelta(days=expiration_range)
-    item["properties"]["expires"] = expiration_date.strftime(ISO_8601_FORMAT)
+    item["properties"].setdefault("expires", expiration_date.strftime(ISO_8601_FORMAT))
     return item
 
 

@@ -28,7 +28,7 @@ from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
@@ -46,6 +46,7 @@ from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
+from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
@@ -327,12 +328,12 @@ app.router.lifespan_context = lifespan
 # Configure OpenTelemetry
 init_opentelemetry.init_traces(app, "rs.server.catalog")
 
-# In local mode only, add an endpoint to manual trigger the data lifecycle management (for testing)
-if common_settings.LOCAL_MODE:
+# In local mode only or from the pytests, add an endpoint to manual trigger the data lifecycle management (for testing)
+if common_settings.LOCAL_MODE or env_bool("FROM_PYTEST", default=False):
 
     @app.router.get("/data/lifecycle", include_in_schema=False)
-    async def data_lifecycle():
-        await lifecycle.periodic_once()
+    async def data_lifecycle(request: Request):
+        await lifecycle.periodic_once(request)
 
 
 # In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)

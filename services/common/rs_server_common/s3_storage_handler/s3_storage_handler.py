@@ -162,13 +162,7 @@ class S3StorageHandler:
         s3_client (boto3.client): The s3 client to interact with the s3 storage
     """
 
-    def __init__(
-        self,
-        access_key_id=os.environ.get("S3_ACCESSKEY", ""),
-        secret_access_key=os.environ.get("S3_SECRETKEY", ""),
-        endpoint_url=os.environ.get("S3_ENDPOINT", ""),
-        region_name=os.environ.get("S3_REGION", ""),
-    ):
+    def __init__(self, access_key_id="", secret_access_key="", endpoint_url="", region_name=""):
         """Initialize the S3StorageHandler instance.
 
         Args:
@@ -183,10 +177,10 @@ class S3StorageHandler:
         self.logger = Logging.default(__name__)
         self.lock = Lock()
 
-        self.access_key_id = access_key_id
-        self.secret_access_key = secret_access_key
-        self.endpoint_url = endpoint_url
-        self.region_name = region_name
+        self.access_key_id = access_key_id or os.environ.get("S3_ACCESSKEY", "")
+        self.secret_access_key = secret_access_key or os.environ.get("S3_SECRETKEY", "")
+        self.endpoint_url = endpoint_url or os.environ.get("S3_ENDPOINT", "")
+        self.region_name = region_name or os.environ.get("S3_REGION", "")
         self.s3_client: boto3.client = None
         self.connect_s3()
         # Suppress botocore debug messages

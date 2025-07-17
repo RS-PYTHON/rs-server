@@ -15,6 +15,7 @@
 """Data lifecycle management"""
 
 import asyncio
+import copy
 import json
 import os
 import traceback
@@ -68,7 +69,7 @@ class DataLifecycle:
         self.periodic_task: Task | None = None
         self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD", -1))
         self.cancel_flag: bool = False
-        self.request = self.get_fake_request()
+        self.fake_request = self.get_fake_request()
 
     def get_fake_request(self, extra_scope: dict = {}) -> Request:
         """
@@ -110,9 +111,6 @@ class DataLifecycle:
         """Run the periodic task in an infinite loop."""
         with init_opentelemetry.start_span(__name__, "data_lifecycle"):
 
-            if not self.s3_handler:
-                self.s3_handler = S3StorageHandler()
-
             # Infinite loop
             while not self.cancel_flag:
                 try:
@@ -131,8 +129,16 @@ class DataLifecycle:
                 self.logger.debug(f"Wait {self.period} seconds before next cleaning")
                 await asyncio.sleep(self.period)
 
-    async def periodic_once(self):
-        """Run the periodic task once"""
+    async def periodic_once(self, genuine_request: Request | None = None):
+        """
+        Run the periodic task once.
+
+        Args:
+            genuine_request: request coming from the http endpoint. Only in local mode and from the pytests.
+        """
+
+        if not self.s3_handler:
+            self.s3_handler = S3StorageHandler()
 
         # Current datetime
         now: str = datetime.now().strftime(ISO_8601_FORMAT)
@@ -151,7 +157,7 @@ class DataLifecycle:
         # Search the database. We call directly the stac_fastapi layer, not the rs-server-catalog
         # http endpoint, so we don't handle the /catalog prefix, the owner_id, the authentication, ...
         item_collection: ItemCollection = await self.client_search.get_search(
-            self.request,
+            genuine_request or self.fake_request,
             filter_expr=json.dumps(filter),
             filter_lang="cql2-json",
             limit=ITEM_LIMIT,
@@ -189,11 +195,17 @@ class DataLifecycle:
                 )
 
                 # The collection name goes into the fake request endpoint path
-                request = self.get_fake_request(extra_scope={"path_params": {"collection_id": col_name}})
+                extra_scope = {"path_params": {"collection_id": col_name}}
+                if genuine_request:
+                    bulk_request = copy.copy(genuine_request)
+                    bulk_request.scope = copy.copy(genuine_request.scope)
+                    bulk_request.scope.update(extra_scope)
+                else:
+                    bulk_request = self.get_fake_request(extra_scope)
 
                 # Run the bulk transaction.
                 # NOTE: we call directly the stac_fastapi layer, not the rs-server-catalog http endpoint
-                self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request))
+                self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, bulk_request))
 
         # Then, delete all files from the buckets in parallel.
         # NOTE: if ever this fails, a secondary data lifecycle is set on OVH Object Storage side to clean up
