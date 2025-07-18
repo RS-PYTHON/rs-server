@@ -303,27 +303,36 @@ def test_build_s3_rights(user_info, expected):
                 "write_download": [],
             },
             {
+                "Version": "2025-01-01",
                 "Statement": [
                     {
-                        "Action": [
-                            "s3:ListBucket",
-                            "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
-                            "s3:GetBucketLocation",
-                        ],
                         "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation"],
                         "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog-paul/paul/s1-l1/",
                             "arn:aws:s3:::rspython-ops-catalog-paul/paul/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/",
                             "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
                         ],
-                        "Sid": "ROContainer",
                     },
                 ],
-                "Version": "2025-01-01",
             },
         ),
         (
@@ -337,28 +346,36 @@ def test_build_s3_rights(user_info, expected):
                 "write_download": [],
             },
             {
+                "Version": "2025-01-01",
                 "Statement": [
                     {
-                        "Action": [
-                            "s3:GetObject",
-                            "s3:ListBucket",
-                            "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
-                            "s3:GetBucketLocation",
-                        ],
                         "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject"],
                         "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-aux/",
                             "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-aux/*",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/*",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/*",
                         ],
-                        "Sid": "ROContainer",
                     },
                 ],
-                "Version": "2025-01-01",
             },
         ),
         (
@@ -372,31 +389,36 @@ def test_build_s3_rights(user_info, expected):
                 ],
             },
             {
+                "Version": "2025-01-01",
                 "Statement": [
                     {
-                        "Action": [
-                            "s3:GetObject",
-                            "s3:PutObject",
-                            "s3:DeleteObject",
-                            "s3:ListBucket",
-                            "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
-                            "s3:AbortMultipartUpload",
-                            "s3:GetBucketLocation",
-                        ],
                         "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
                         "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-l1/",
                             "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/*",
                         ],
-                        "Sid": "RWContainer",
                     },
                 ],
-                "Version": "2025-01-01",
             },
         ),
         (
@@ -419,70 +441,116 @@ def test_build_s3_rights(user_info, expected):
                 ],
             },
             {
+                "Version": "2025-01-01",
                 "Statement": [
                     {
-                        "Action": [
-                            "s3:ListBucket",
-                            "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
-                            "s3:GetBucketLocation",
-                        ],
                         "Effect": "Allow",
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog/*/s1-l1/",
-                            "arn:aws:s3:::rspython-ops-catalog/*/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/*/s1-l1/",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/*/s1-l1/*",
-                        ],
-                        "Sid": "ROContainer",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*/*"]}},
                     },
                     {
-                        "Action": [
-                            "s3:GetObject",
-                            "s3:ListBucket",
-                            "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
-                            "s3:GetBucketLocation",
-                        ],
                         "Effect": "Allow",
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/",
-                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog/emilie/*/",
-                            "arn:aws:s3:::rspython-ops-catalog/emilie/*/*",
-                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/*",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/emilie/*/",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/emilie/*/*",
-                        ],
-                        "Sid": "ROContainer",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*"]}},
                     },
                     {
-                        "Action": [
-                            "s3:GetObject",
-                            "s3:PutObject",
-                            "s3:DeleteObject",
-                            "s3:ListBucket",
-                            "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
-                            "s3:AbortMultipartUpload",
-                            "s3:GetBucketLocation",
-                        ],
                         "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation"],
                         "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog/*",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/*",
+                        ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
+                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject"],
+                        "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
+                            "arn:aws:s3:::rspython-ops-catalog/emilie/*",
+                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/emilie/*",
+                        ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
                         ],
-                        "Sid": "RWContainer",
                     },
                 ],
+            },
+        ),
+        (
+            {
+                "read": [
+                    "rspython-ops-catalog-paul/*/*/",
+                ],
+                "read_download": [],
+                "write_download": [],
+            },
+            {
                 "Version": "2025-01-01",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul/*",
+                        ],
+                    },
+                ],
+            },
+        ),
+        (
+            {
+                "read": [
+                    "rspython-ops-catalog/no_collection",
+                    "rspython-ops-catalog-paul/*/*/",
+                ],
+                "read_download": [],
+                "write_download": [],
+            },
+            {
+                "Version": "2025-01-01",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul/*",
+                        ],
+                    },
+                ],
             },
         ),
     ],
