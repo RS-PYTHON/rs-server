@@ -103,7 +103,7 @@ class DataLifecycle:
         except asyncio.exceptions.CancelledError:
             pass
 
-    async def run(self):
+    def run(self):
         """Trigger the periodic task in a distinct thread and exit."""
         if (self.period >= 0) and (not self.cancel_flag):
             self.periodic_task = asyncio.create_task(self._periodic_loop())
@@ -140,9 +140,7 @@ class DataLifecycle:
         # Current datetime
         now: str = datetime.now().strftime(ISO_8601_FORMAT)
 
-        # Filter on expired items that have not already been unpublished.
-        # TODO: improve the filter on the "expires" property,
-        # see: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-725
+        # Filter on expired items that have not already been unpublished
         _filter = {
             "op": "and",
             "args": [
@@ -173,7 +171,7 @@ class DataLifecycle:
 
         # Update each item locally and update bucket info
         for item in items:
-            await self._update_local_item(item, now, bucket_info)
+            self._update_local_item(item, now, bucket_info)
 
         # Order the items by collection_name
         items_by_collection: dict[str, list[Item]] = defaultdict(list)
@@ -215,7 +213,7 @@ class DataLifecycle:
                     S3StorageHandler().adelete_files_from_s3(bucket_name, bucket_keys),
                 )
 
-    async def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
+    def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
         Update a single item instance locally and update bucket info.
 

@@ -182,7 +182,7 @@ async def test_data_lifecycle_loop(mocker, monkeypatch, test_error: bool):
         mock_logger_error = mocker.patch.object(lifecycle.logger, "error")
 
     # Trigger the periodic task
-    await lifecycle.run()
+    lifecycle.run()
 
     # Wait n seconds, cancel it and wait a little more
     await asyncio.sleep(0.5)

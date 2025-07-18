@@ -313,7 +313,7 @@ async def lifespan(my_app: FastAPI):
         common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
         # Run the data lifecycle management as an automatic periodic task
-        await lifecycle.run()
+        lifecycle.run()
 
         yield
 
