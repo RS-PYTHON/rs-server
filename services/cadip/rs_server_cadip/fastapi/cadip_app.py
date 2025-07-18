@@ -51,16 +51,15 @@ def generate_openapi_schema():
 # Init the FastAPI application with the cadip routers.
 app = init_app(__version__, cadip_routers, router_prefix="/cadip")
 
+# Set properties for the cadip service
+app.state.get_connection = MockPgstacCadip.get_connection
+app.state.readpool = MockPgstacCadip.readpool()
+
+register_stac_exception_handlers(app)
+
 
 @app.get("/openapi.json", include_in_schema=False)
 async def custom_openapi():
     """."""
     schema = generate_openapi_schema()
     return JSONResponse(content=schema, media_type="application/vnd.oai.openapi+json;version=3.0")
-
-
-# Set properties for the cadip service
-app.state.get_connection = MockPgstacCadip.get_connection
-app.state.readpool = MockPgstacCadip.readpool()
-
-register_stac_exception_handlers(app)

@@ -108,7 +108,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         docs_params = {}
 
     # Init the FastAPI application
-    app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, openapi_url=None, **docs_params)
+    app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
 
     # Configure OpenTelemetry
     init_opentelemetry.init_traces(app, settings.SERVICE_NAME)
