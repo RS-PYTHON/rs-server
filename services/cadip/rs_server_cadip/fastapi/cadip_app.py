@@ -16,6 +16,9 @@
 
 import warnings
 
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
+
 # Import the database table modules before initializing the FastAPI,
 # that will init the database session and create the tables.
 # pylint: disable=unused-import, import-outside-toplevel
@@ -29,8 +32,32 @@ from rs_server_common.utils.error_handlers import register_stac_exception_handle
 # Used to supress stac_pydantic userwarnings related to serialization
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
 
+
+def generate_openapi_schema():
+    """."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_spec = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_spec
+    return app.openapi_schema
+
+
 # Init the FastAPI application with the cadip routers.
 app = init_app(__version__, cadip_routers, router_prefix="/cadip")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def custom_openapi():
+    """."""
+    schema = generate_openapi_schema()
+    return JSONResponse(content=schema, media_type="application/vnd.oai.openapi+json;version=3.0")
+
 
 # Set properties for the cadip service
 app.state.get_connection = MockPgstacCadip.get_connection

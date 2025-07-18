@@ -21,7 +21,6 @@ from os import environ as env
 import httpx
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
@@ -50,16 +49,6 @@ from starlette.datastructures import State
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
-
-
-def custom_openapi_json(app):
-    """Used to overwrite default openapi with new media_type."""
-
-    @app.get("/openapi.json", include_in_schema=False)
-    def overridden_openapi():
-        """Apply media_type."""
-        openapi_schema = app.openapi()
-        return JSONResponse(content=openapi_schema, media_type="application/vnd.oai.openapi+json;version=3.0")
 
 
 # include_in_schema=False: hide this endpoint from the swagger
@@ -220,5 +209,4 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
             allow_headers=["*"],
             allow_credentials=True,
         )
-    custom_openapi_json(app)
     return app
