@@ -141,6 +141,7 @@ disable = [
     "too-many-locals",
     "not-context-manager",
     "too-many-lines",
+    "too-many-public-methods",
 ]
 ignore-paths = '^docs/.*$'
 

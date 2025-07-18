@@ -87,7 +87,7 @@ class DataLifecycle:
             "headers": {},
         } | (extra_scope or {})
         request = Request(scope=scope)
-        request._base_url = URL("http://dummy-url")  # pylint: disable=protected-access
+        request._base_url = URL("https://dummy-url")  # pylint: disable=protected-access
         return request
 
     async def cancel(self):
@@ -212,7 +212,7 @@ class DataLifecycle:
             for bucket_name, bucket_keys in bucket_info.items():
                 # Use a new s3 S3StorageHandler instance for every task as it is not thread-safe
                 task_group.create_task(
-                    S3StorageHandler().delete_files_from_s3(bucket_name, bucket_keys),
+                    S3StorageHandler().adelete_files_from_s3(bucket_name, bucket_keys),
                 )
 
     async def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):

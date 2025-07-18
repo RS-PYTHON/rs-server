@@ -14,7 +14,7 @@
 
 """Set of functions to connect to an S3 endpoint and run various operations."""
 
-import asyncio
+import concurrent.futures
 import logging
 import ntpath
 import os
@@ -237,23 +237,11 @@ class S3StorageHandler:
         if self.s3_client is None:
             self.s3_client = self.__get_s3_client()
 
-    async def aconnect_s3(self):
-        """Async version of connect_s3. Call sync function in a separate thread."""
-        if self.s3_client is None:
-            self.s3_client = await asyncio.to_thread(self.__get_s3_client)
-
     def disconnect_s3(self):
         """Close the connection to the S3 service."""
         if self.s3_client is None:
             return
         self.s3_client.close()
-        self.s3_client = None
-
-    async def adisconnect_s3(self):
-        """Async version of disconnect_s3. Call sync function in a separate thread."""
-        if self.s3_client is None:
-            return
-        await asyncio.to_thread(self.s3_client.close)
         self.s3_client = None
 
     def delete_file_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
@@ -303,7 +291,7 @@ class S3StorageHandler:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
 
-    async def delete_files_from_s3(self, bucket: str, keys: list[str], max_retries: int = S3_MAX_RETRIES):
+    def delete_files_from_s3(self, bucket: str, keys: list[str], max_retries: int = S3_MAX_RETRIES):
         """Delete a list of files from S3.
         The functionality implies a retry mechanism at the application level, which is different
         than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
@@ -325,22 +313,24 @@ class S3StorageHandler:
         attempt = 0
         while True:
             try:
-                await self.aconnect_s3()
+                self.connect_s3()
 
                 # Convert the key values into a dict
                 key_dict = [{"Key": key} for key in keys]
 
                 # The boto3 delete_objects function takes max 1000 items to delete.
                 # Split the key list and process the chunks in parallel.
-                async with asyncio.TaskGroup() as task_group:
-                    for i in range(0, len(keys), MAX_DELETE_FILES):
-                        task_group.create_task(
-                            asyncio.to_thread(  # call sync function in a separate thread
-                                self.s3_client.delete_objects,
-                                Bucket=bucket,
-                                Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
-                            ),
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [
+                        executor.submit(
+                            self.s3_client.delete_objects,
+                            Bucket=bucket,
+                            Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
                         )
+                        for i in range(0, len(keys), MAX_DELETE_FILES)
+                    ]
+                    for future in concurrent.futures.as_completed(futures):
+                        future.result()
 
                 # If everything went OK, exit the function
                 return
@@ -351,12 +341,16 @@ class S3StorageHandler:
                 message = f"Failed to delete keys from 's3://{bucket}':\n{traceback.format_exc()}"
                 if attempt < max_retries:
                     # keep retrying
-                    await self.adisconnect_s3()
+                    self.disconnect_s3()
                     self.logger.error(f"{message}\nRetrying in {S3_RETRY_TIMEOUT} seconds.")
                     self.wait_timeout(S3_RETRY_TIMEOUT)
                 else:
                     self.logger.exception(message)
                     raise RuntimeError(message) from e
+
+    async def adelete_files_from_s3(self, *args, **kwargs):
+        """Async version of delete_files_from_s3. Call sync function in a separate thread."""
+        return self.delete_files_from_s3(*args, **kwargs)
 
     # helper functions
 
