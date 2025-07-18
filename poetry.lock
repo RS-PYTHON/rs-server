@@ -4144,14 +4144,14 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pypgstac"
-version = "0.9.6"
+version = "0.9.7"
 description = "Schema, functions and a python library for storing and accessing STAC collections and items in PostgreSQL"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "pypgstac-0.9.6-py3-none-any.whl", hash = "sha256:317c95ddb88b5a86396c58f481f9fa56a1c40d6e5dedddc62265d438fdd50b50"},
-    {file = "pypgstac-0.9.6.tar.gz", hash = "sha256:47d14f5c8d519e001ad7ae6b38d1a022b6a83683bae94ec77a79942c01cd8b99"},
+    {file = "pypgstac-0.9.7-py3-none-any.whl", hash = "sha256:50c54bffec6b5dba722c280c52d8a796852a42f5dac82305a3ce026166e4b065"},
+    {file = "pypgstac-0.9.7.tar.gz", hash = "sha256:f8576b29fd35103c695fb5958f34466366e20e5a6dc21570b786c2d223ff0f48"},
 ]
 
 [package.dependencies]
@@ -4974,7 +4974,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.2a15.post74.dev0"
+version = "0.2a15.post85.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = "^3.11"
@@ -4991,7 +4991,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.2a15.post74.dev0"
+version = "0.2a15.post85.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = "^3.11"
@@ -5008,7 +5008,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "0.2a15.post74.dev0"
+version = "0.2a15.post85.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = "^3.11"
@@ -5017,7 +5017,7 @@ files = []
 develop = true
 
 [package.dependencies]
-pypgstac = {version = "^0.9.6", extras = ["psycopg"]}
+pypgstac = {version = "^0.9.7", extras = ["psycopg"]}
 rs-server-common = "*"
 
 [package.source]
@@ -5026,7 +5026,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "0.2a15.post74.dev0"
+version = "0.2a15.post85.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = "^3.11"
@@ -5074,7 +5074,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.2a15.post74.dev0"
+version = "0.2a15.post85.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = "^3.11"
@@ -5096,7 +5096,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-staging"
-version = "0.2a15.post74.dev0"
+version = "0.2a15.post85.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = "^3.11"

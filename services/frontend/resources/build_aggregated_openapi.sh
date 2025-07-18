@@ -65,7 +65,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     done
 
     # Idem for pgstac database
-    db_image="ghcr.io/stac-utils/pgstac:v0.9.6"
+    db_image="ghcr.io/stac-utils/pgstac:v0.9.7"
     docker pull "$db_image"
     (docker run --rm --network=$network --name=$pgstac_container \
         -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
