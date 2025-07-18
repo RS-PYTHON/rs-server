@@ -17,28 +17,22 @@
 import asyncio
 import copy
 import json
-import os
 from datetime import datetime
 from urllib.parse import urlparse
 
 import pytest
-import requests
-from moto.server import ThreadedMotoServer
 from rs_server_catalog.data_lifecycle import DataLifecycle
 from rs_server_catalog.timestamps_extension import ISO_8601_FORMAT
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
 from tests.helpers import (
     a_collection,
     add_collection,
-    clear_aws_credentials,
-    export_aws_credentials,
 )
 
-user = "toto"
-temp_bucket = "temp-bucket"
+from .conftest import temp_bucket
+
+user = "lifecycleuser"
 temp_bucket_path = f"s3://{temp_bucket}/"
-catalog_bucket = "rspython-ops-catalog-all-production"  # Default bucket from the config file
 old_date: str = datetime(2000, 1, 1).strftime(ISO_8601_FORMAT)
 
 
@@ -63,30 +57,10 @@ def check_assets(s3_handler, item: dict, exist: bool):
             assert not objects, f"{s3_file!r} should have been removed"
 
 
-async def test_data_lifecycle_once(client, a_correct_feature):
+async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
     """Test the data lifecycle when it is run once"""
-
-    # Create moto server and temp / catalog bucket
-    moto_endpoint = "http://localhost:8077"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    # Enable bucket transfer
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
-    server = ThreadedMotoServer(port=8077)
-    server.start()
+    s3_handler = init_buckets.s3_handler
     try:
-        requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
-        s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-        assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-
         # Order item by collection and id
         expired_items: dict[tuple[str, str], dict] = {}
         unexpired_items: dict[tuple[str, str], dict] = {}
@@ -121,7 +95,7 @@ async def test_data_lifecycle_once(client, a_correct_feature):
                 assert s3_handler.list_s3_files_obj(temp_bucket, "")
 
                 # Mark only the first n items of the first collection to be expired
-                stac_item = {}
+                stac_item: dict = {}
                 expired = False
                 if len(expired_items) < 2:
                     local_item["properties"]["expires"] = old_date
@@ -179,9 +153,9 @@ async def test_data_lifecycle_once(client, a_correct_feature):
             ), f"Different values for item:\n{json.dumps(old_item, indent=2)}\nVS\n{json.dumps(new_item, indent=2)}"
 
     finally:
-        server.stop()
-        clear_aws_credentials()
-        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+        # Clean catalog
+        for col_name in col_names:
+            client.delete(f"/catalog/collections/{user}:{col_name}").raise_for_status()
 
 
 @pytest.mark.parametrize("test_error", [False, True], ids=["nominal", "error"])

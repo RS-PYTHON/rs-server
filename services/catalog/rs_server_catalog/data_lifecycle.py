@@ -33,6 +33,7 @@ from stac_fastapi.extensions.third_party import bulk_transactions
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient
 from stac_fastapi.types.stac import Item, ItemCollection
+from starlette.datastructures import URL
 
 # Number of items to search in a single database request
 ITEM_LIMIT = 100
@@ -46,9 +47,10 @@ class DataLifecycle:
 
         - Retrieve all expired items (expired field <= current_date() and unpublished field not set).
 
-        - For each asset of these items: remove the the associated file from the S3 bucket, remove the asset from the item.
+        - For each asset of these items: remove the the associated file from the S3 bucket,
+          remove the asset from the item.
 
-        - Set the unpublished field of the STAC item to current date using PATCH item catalog endpoint
+        - Set the unpublished and updated fields of the STAC item to current date using PATCH item catalog endpoint.
 
         Args:
             app: FastAPI application
@@ -84,7 +86,7 @@ class DataLifecycle:
             "headers": {},
         } | extra_scope
         request = Request(scope=scope)
-        request._base_url = "http://dummy-url"
+        request._base_url = URL("http://dummy-url")
         return request
 
     async def cancel(self):

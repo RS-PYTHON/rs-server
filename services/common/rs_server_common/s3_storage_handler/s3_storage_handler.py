@@ -166,7 +166,7 @@ class S3StorageHandler:
         s3_client (boto3.client): The s3 client to interact with the s3 storage
     """
 
-    def __init__(self, access_key_id="", secret_access_key="", endpoint_url="", region_name=""):
+    def __init__(self, access_key_id=None, secret_access_key=None, endpoint_url=None, region_name=None):
         """Initialize the S3StorageHandler instance.
 
         Args:

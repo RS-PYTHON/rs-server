@@ -123,6 +123,9 @@ ignore_missing_imports = true
 
 [tool.flake8]
 max-line-length = 120
+extend-ignore = [
+    "E203" # whitespace before ':'
+]
 # per-file-ignores = [
 #     '__init__.py:F401',
 # ]
