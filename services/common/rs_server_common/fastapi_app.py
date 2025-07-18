@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from os import environ as env
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
@@ -209,4 +209,13 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
             allow_headers=["*"],
             allow_credentials=True,
         )
+
+    @app.middleware("http")
+    async def modify_openapi_content_type(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path == app.openapi_url:
+            # Replace content-type header
+            response.headers["Content-Type"] = "application/vnd.oai.openapi+json"
+        return response
+
     return app
