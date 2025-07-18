@@ -242,7 +242,7 @@ class DataLifecycle:
                 href = asset["alternate"]["s3"]["href"]
                 parsed = urlparse(href)
                 bucket_name = parsed.netloc
-                bucket_key = parsed.path
+                bucket_key = parsed.path.strip("/")
                 if (parsed.scheme.lower() != "s3") or (not bucket_name) or (not bucket_key):
                     raise KeyError()
                 bucket_info[bucket_name].append(bucket_key)

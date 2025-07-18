@@ -124,6 +124,9 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
         # For each expired item
         for (col_name, item_id), old_item in expired_items.items():
 
+            # The assets should have been deleted from the bucket
+            check_assets(s3_handler, old_item, exist=False)
+
             # Get the new item values from the stac catalog
             new_item = get_item(client, col_name, item_id)
 
@@ -146,6 +149,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
 
         # On the other hand, the items that are not expired were not changed by the data lifecycle
         for (col_name, item_id), old_item in unexpired_items.items():
+            check_assets(s3_handler, old_item, exist=True)
             new_item = get_item(client, col_name, item_id)
             assert (
                 old_item == new_item

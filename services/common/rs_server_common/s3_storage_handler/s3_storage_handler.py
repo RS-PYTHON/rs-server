@@ -14,6 +14,7 @@
 
 """Set of functions to connect to an S3 endpoint and run various operations."""
 
+import asyncio
 import concurrent.futures
 import logging
 import ntpath
@@ -350,7 +351,7 @@ class S3StorageHandler:
 
     async def adelete_files_from_s3(self, *args, **kwargs):
         """Async version of delete_files_from_s3. Call sync function in a separate thread."""
-        return self.delete_files_from_s3(*args, **kwargs)
+        return await asyncio.to_thread(self.delete_files_from_s3, *args, **kwargs)
 
     # helper functions
 
