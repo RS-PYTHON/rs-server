@@ -341,7 +341,7 @@ class S3StorageHandler:
                 return
 
             # Else handle retries
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 attempt += 1
                 message = f"Failed to delete keys from 's3://{bucket}':\n{traceback.format_exc()}"
                 if attempt < max_retries:

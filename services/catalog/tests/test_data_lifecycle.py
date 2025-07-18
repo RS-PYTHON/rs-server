@@ -29,16 +29,16 @@ from tests.helpers import (
     add_collection,
 )
 
-from .conftest import temp_bucket
+from .conftest import TEMP_BUCKET
 
-user = "lifecycleuser"
-temp_bucket_path = f"s3://{temp_bucket}/"
-old_date: str = datetime(2000, 1, 1).strftime(ISO_8601_FORMAT)
+USER = "lifecycleuser"
+TEMP_BUCKET_PATH = f"s3://{TEMP_BUCKET}/"
+OLD_DATE: str = datetime(2000, 1, 1).strftime(ISO_8601_FORMAT)
 
 
 def get_item(client, collection_id: str, item_id: str) -> dict:
     """Get item from the stac catalog"""
-    response = client.get(f"/catalog/collections/{user}:{collection_id}/items/{item_id}")
+    response = client.get(f"/catalog/collections/{USER}:{collection_id}/items/{item_id}")
     response.raise_for_status()
     return response.json()
 
@@ -68,7 +68,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
         # Create n test collections
         col_names = [f"collection_lifecycle_{i}" for i in range(2)]
         for col_name in col_names:
-            add_collection(client, a_collection(user, col_name))
+            add_collection(client, a_collection(USER, col_name))
 
             # Post n items. Start from the default feature, modify fields.
             item_ids = [f"item_{i}" for i in range(3)]
@@ -78,7 +78,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
                 local_item["collection"] = col_name
                 local_item["assets"] = {
                     f"{col_name}.{item_id}.asset_{i}": {
-                        "href": f"{temp_bucket_path}{col_name}.{item_id}.asset_{i}",
+                        "href": f"{TEMP_BUCKET_PATH}{col_name}.{item_id}.asset_{i}",
                         "roles": ["data"],
                     }
                     for i in range(3)
@@ -88,24 +88,24 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
                 # Then they will be copied to the final bucket by rs-server.
                 for key in local_item["assets"].values():
                     s3_handler.s3_client.put_object(
-                        Bucket=temp_bucket,
-                        Key=key["href"].removeprefix(temp_bucket_path),
+                        Bucket=TEMP_BUCKET,
+                        Key=key["href"].removeprefix(TEMP_BUCKET_PATH),
                         Body="testing\n",
                     )
-                assert s3_handler.list_s3_files_obj(temp_bucket, "")
+                assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
 
                 # Mark only the first n items of the first collection to be expired
                 stac_item: dict = {}
                 expired = False
                 if len(expired_items) < 2:
-                    local_item["properties"]["expires"] = old_date
+                    local_item["properties"]["expires"] = OLD_DATE
                     expired_items[(col_name, item_id)] = stac_item
                     expired = True
                 else:
                     unexpired_items[(col_name, item_id)] = stac_item
 
                 # POST stac feature
-                client.post(f"/catalog/collections/{user}:{col_name}/items", json=local_item).raise_for_status()
+                client.post(f"/catalog/collections/{USER}:{col_name}/items", json=local_item).raise_for_status()
 
                 # Before triggering the data lifecycle, get the item back from the stac catalog
                 # and save its contents
@@ -113,7 +113,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
 
                 # Check that the expire date is as requested
                 if expired:
-                    assert stac_item["properties"]["expires"] == old_date
+                    assert stac_item["properties"]["expires"] == OLD_DATE
 
                 # For now the item should have no unpublised field and the files should exist in the bucket
                 assert "unpublished" not in stac_item["properties"]
@@ -155,7 +155,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
     finally:
         # Clean catalog
         for col_name in col_names:
-            client.delete(f"/catalog/collections/{user}:{col_name}").raise_for_status()
+            client.delete(f"/catalog/collections/{USER}:{col_name}").raise_for_status()
 
 
 @pytest.mark.parametrize("test_error", [False, True], ids=["nominal", "error"])

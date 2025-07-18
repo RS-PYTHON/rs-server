@@ -137,7 +137,10 @@ disable = [
     "R0917",  # Too many positional arguments
     "E0401", # import-error
     "R0902", # too-many-instance-attributes
-    "R0913"  # too-many-arguments
+    "R0913",  # too-many-arguments
+    "too-many-locals",
+    "not-context-manager",
+    "too-many-lines",
 ]
 ignore-paths = '^docs/.*$'
 

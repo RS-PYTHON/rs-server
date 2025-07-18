@@ -991,13 +991,13 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
     )
 
     # Path the max number of items that can be deleted by the boto3 delete_objects function
-    MAX_DELETE_FILES = 10
-    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.MAX_DELETE_FILES", new=MAX_DELETE_FILES)
+    max_delete_files = 10
+    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.MAX_DELETE_FILES", new=max_delete_files)
 
     # prepare a bucket for tests
     bucket = "some_s3"
     files_to_be_deleted = [
-        f"file_to_be_deleted_{i}.txt" for i in range(1 if single_file else (2 * MAX_DELETE_FILES + 1))
+        f"file_to_be_deleted_{i}.txt" for i in range(1 if single_file else (2 * max_delete_files + 1))
     ]
     s3_handler.s3_client.create_bucket(Bucket=bucket)
     for file in files_to_be_deleted:

@@ -333,6 +333,7 @@ if common_settings.LOCAL_MODE or env_bool("FROM_PYTEST", default=False):
 
     @app.router.get("/data/lifecycle", include_in_schema=False)
     async def data_lifecycle(request: Request):
+        """Trigger the data lifecycle management"""
         await lifecycle.periodic_once(request)
 
 

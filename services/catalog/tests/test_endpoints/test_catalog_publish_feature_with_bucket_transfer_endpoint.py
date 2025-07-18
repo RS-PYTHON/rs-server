@@ -27,7 +27,7 @@ import requests
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
-from ..conftest import catalog_bucket, temp_bucket
+from ..conftest import CATALOG_BUCKET, TEMP_BUCKET
 from ..helpers import clear_aws_credentials, export_aws_credentials
 
 ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -36,8 +36,8 @@ ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     """This class is used to group tests that just post a feature on catalogDB without moving assets."""
 
-    temp_bucket = "temp-bucket"
-    catalog_bucket = "rspython-ops-catalog-all-production"  # Default bucket from the config file
+    temp_bucket = TEMP_BUCKET
+    catalog_bucket = CATALOG_BUCKET
 
     @pytest.mark.parametrize(
         "owner, collection_id",
@@ -66,7 +66,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
         ]
         for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+            s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
         added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
         feature_data = json.loads(added_feature.content)
 
@@ -114,13 +114,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
         ]
         for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+            s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
 
         # check that temp_bucket is not empty
-        assert s3_handler.list_s3_files_obj(temp_bucket, "")
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
         # check if temp_bucket content is different from catalog_bucket
-        assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
-            s3_handler.list_s3_files_obj(catalog_bucket, ""),
+        assert sorted(s3_handler.list_s3_files_obj(TEMP_BUCKET, "")) != sorted(
+            s3_handler.list_s3_files_obj(CATALOG_BUCKET, ""),
         )
         # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
         # and a good OBS path. => 201 CREATED
@@ -141,17 +141,17 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         expires_timestamps = content["properties"]["expires"]
 
         # Files were moved, check that catalog_bucket is not empty
-        assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+        assert s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
         # Check if temp_bucket is now empty
-        assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+        assert not s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
         # Check if buckets content is different
-        assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(
-            catalog_bucket,
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "") != s3_handler.list_s3_files_obj(
+            CATALOG_BUCKET,
             "",
         )
         # Check if catalog bucket content match the initial temp-bucket content
         # If so, files were correctly moved from temp-catalog to bucket catalog.
-        assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+        assert sorted(s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")) == sorted(lst_with_files_to_be_copied)
 
         updated_feature_sent = copy.deepcopy(a_correct_feature_copy)
         updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
@@ -198,12 +198,12 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "some/other/path/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
         ]
         for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+            s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
         # check that temp_bucket is not empty
-        assert s3_handler.list_s3_files_obj(temp_bucket, "")
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
         # check if temp_bucket content is different from catalog_bucket
-        assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
-            s3_handler.list_s3_files_obj(catalog_bucket, ""),
+        assert sorted(s3_handler.list_s3_files_obj(TEMP_BUCKET, "")) != sorted(
+            s3_handler.list_s3_files_obj(CATALOG_BUCKET, ""),
         )
 
         item_test = copy.deepcopy(a_correct_feature)
@@ -254,7 +254,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip")
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T902.nc")
 
-        catalog_files = s3_handler.list_s3_files_obj(catalog_bucket, "")
+        catalog_files = s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
         assert len(catalog_files) == 2
         assert set(catalog_files) == {
             "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
@@ -273,8 +273,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         content = json.loads(resp.content)
         assert "BadRequest" == content["code"]
         assert "However, changing an existing path of an asset is not allowed" in content["description"]
-        temp_list = s3_handler.list_s3_files_obj(temp_bucket, "")
-        cat_list = s3_handler.list_s3_files_obj(catalog_bucket, "")
+        temp_list = s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+        cat_list = s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
         print(f"Files in temp bucket: {temp_list}")
         print(f"Files in catalog bucket: {cat_list}")
         assert (
@@ -311,13 +311,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
         ]
         for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+            s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
 
         # check that temp_bucket is not empty
-        assert s3_handler.list_s3_files_obj(temp_bucket, "")
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
         # check if temp_bucket content is different from catalog_bucket
-        assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
-            s3_handler.list_s3_files_obj(catalog_bucket, ""),
+        assert sorted(s3_handler.list_s3_files_obj(TEMP_BUCKET, "")) != sorted(
+            s3_handler.list_s3_files_obj(CATALOG_BUCKET, ""),
         )
 
         # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
@@ -337,17 +337,17 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         )
 
         # Files were moved, check that catalog_bucket is not empty
-        assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+        assert s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
         # Check if temp_bucket is now empty
-        assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+        assert not s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
         # Check if buckets content is different
-        assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(
-            catalog_bucket,
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "") != s3_handler.list_s3_files_obj(
+            CATALOG_BUCKET,
             "",
         )
         # Check if catalog bucket content match the initial temp-bucket content
         # If so, files were correctly moved from temp-catalog to bucket catalog.
-        assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+        assert sorted(s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")) == sorted(lst_with_files_to_be_copied)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -412,7 +412,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         del item_test["assets"]["S1SIWOCN_20220412T054447_0024_S139_T902.nc"]
 
         s3_handler.s3_client.create_bucket(Bucket=custom_bucket)
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+        s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
         lst_with_files_to_be_copied = [
             "correct_location/some_file.zarr.zip",
             "correct_location/some_file.cog.zip",
@@ -422,13 +422,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             s3_handler.s3_client.put_object(Bucket=custom_bucket, Key=obj, Body="testing\n")
 
         assert s3_handler.list_s3_files_obj(custom_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+        assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
         added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=item_test)
         assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
 
         assert not s3_handler.list_s3_files_obj(custom_bucket, "")
-        assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+        assert s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
     def test_generate_download_presigned_url(self, client, init_buckets):
         """Test used to verify the generation of a presigned url for a download."""
@@ -437,10 +437,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
         requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
         # Upload a file to catalog-bucket
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+        s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
         object_content = "testing\n"
         s3_handler.s3_client.put_object(
-            Bucket=catalog_bucket,
+            Bucket=CATALOG_BUCKET,
             Key="S1_L1/images/may24C355000e4102500n.tif",
             Body=object_content,
         )
@@ -502,10 +502,10 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
                 secrets["region"],
             )
 
-            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            s3_handler.s3_client.create_bucket(Bucket=TEMP_BUCKET)
+            s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
+            assert not s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+            assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
             # Populate temp-bucket with some small files.
             lst_with_files_to_be_copied = [
@@ -514,9 +514,9 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
                 "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
             ]
             for obj in lst_with_files_to_be_copied:
-                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
-            assert s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+                s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
+            assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+            assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
             # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
             mocker.patch(
                 "rs_server_catalog.user_catalog.UserCatalog.update_stac_item_publication",
@@ -528,8 +528,8 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
             # If catalog publish fails, catalog_bucket should be empty, and
             # temp_bucket should not be empty.
 
-            assert s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+            assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
         except Exception as e:
             raise RuntimeError("error") from e
         finally:

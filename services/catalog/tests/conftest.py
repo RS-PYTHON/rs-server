@@ -79,8 +79,8 @@ subprocess.run(
 )  # nosec ignore security issue
 
 # Global variables
-temp_bucket = "temp-bucket"
-catalog_bucket = "rspython-ops-catalog-all-production"  # Default bucket from the config file
+TEMP_BUCKET = "temp-bucket"
+CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
@@ -127,6 +127,7 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
 
 @pytest.fixture(scope="function", name="init_buckets")
 def init_buckets_fixture():
+    """Initialize s3 moto server and create buckets"""
 
     # Create moto server and temp / catalog bucket
     moto_endpoint = "http://localhost:8077"
@@ -145,12 +146,15 @@ def init_buckets_fixture():
         secrets["region"],
     )
 
-    for bucket in temp_bucket, catalog_bucket:
+    for bucket in TEMP_BUCKET, CATALOG_BUCKET:
         s3_handler.s3_client.create_bucket(Bucket=bucket)
         assert not s3_handler.list_s3_files_obj(bucket, "")
 
     # Return info
-    yield namedtuple("InitBucketsInfo", ["s3_handler", "moto_endpoint"])(s3_handler, moto_endpoint)
+    yield namedtuple("InitBucketsInfo", ["s3_handler", "moto_endpoint"])(
+        s3_handler,
+        moto_endpoint,
+    )  # type: ignore[call-arg]
 
     # Clear bucket at the end of each test (scope="function")
     server.stop()

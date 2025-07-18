@@ -40,38 +40,39 @@ ITEM_LIMIT = 100
 
 
 class DataLifecycle:
+    """
+    Initialize the data lifecycle management (cleaning of old assets). Will run a periodic task to:
+
+    - Retrieve all expired items (expired field <= current_date() and unpublished field not set).
+
+    - For each asset of these items: remove the the associated file from the S3 bucket,
+        remove the asset from the item.
+
+    - Set the unpublished and updated fields of the STAC item to current date using PATCH item catalog endpoint.
+
+    Args:
+        app: FastAPI application
+        client_search: CoreCrudClient instance for searching items
+        client_bulk: BulkTransactionsClient instance for bulk update
+        periodic_task: Periodic task
+        period: Period in seconds between the end of a cleaning task and the start of a new one. If <0, the
+        task is deactivated.
+        cancel: Cancel the task
+        fake_request: Fake HTTP request
+    """
 
     def __init__(self, app: FastAPI, client_search: CoreCrudClient):
-        """
-        Initialize the data lifecycle management (cleaning of old assets). Will run a periodic task to:
-
-        - Retrieve all expired items (expired field <= current_date() and unpublished field not set).
-
-        - For each asset of these items: remove the the associated file from the S3 bucket,
-          remove the asset from the item.
-
-        - Set the unpublished and updated fields of the STAC item to current date using PATCH item catalog endpoint.
-
-        Args:
-            app: FastAPI application
-            client_search: CoreCrudClient instance for searching items
-            client_bulk: BulkTransactionsClient instance for bulk update
-            periodic_task: Periodic task
-            period: Period in seconds between the end of a cleaning task and the start of a new one. If <0, the
-            task is deactivated.
-            cancel: Cancel the task
-            request: Fake HTTP request
-        """
+        """Constructor"""
         self.logger = Logging.default(__name__)
         self.app: FastAPI = app
         self.client_search: CoreCrudClient = client_search
         self.client_bulk = BulkTransactionsClient()
         self.periodic_task: Task | None = None
-        self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD", -1))
+        self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD") or -1)
         self.cancel_flag: bool = False
         self.fake_request = self.get_fake_request()
 
-    def get_fake_request(self, extra_scope: dict = {}) -> Request:
+    def get_fake_request(self, extra_scope: dict | None = None) -> Request:
         """
         Return a fake request instance to work with the database.
 
@@ -84,9 +85,9 @@ class DataLifecycle:
             "method": "GET",
             "path": "dummy-path",
             "headers": {},
-        } | extra_scope
+        } | (extra_scope or {})
         request = Request(scope=scope)
-        request._base_url = URL("http://dummy-url")
+        request._base_url = URL("http://dummy-url")  # pylint: disable=protected-access
         return request
 
     async def cancel(self):
@@ -118,7 +119,7 @@ class DataLifecycle:
                     await self.periodic_once()
 
                 # Log any error
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     self.logger.error(traceback.format_exc())
 
                 # If the caller cancelled execution, we exit the infinite loop
@@ -142,7 +143,7 @@ class DataLifecycle:
         # Filter on expired items that have not already been unpublished.
         # TODO: improve the filter on the "expires" property,
         # see: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-725
-        filter = {
+        _filter = {
             "op": "and",
             "args": [
                 {"op": "<", "args": [{"property": "expires"}, now]},
@@ -154,7 +155,7 @@ class DataLifecycle:
         # http endpoint, so we don't handle the /catalog prefix, the owner_id, the authentication, ...
         item_collection: ItemCollection = await self.client_search.get_search(
             genuine_request or self.fake_request,
-            filter_expr=json.dumps(filter),
+            filter_expr=json.dumps(_filter),
             filter_lang="cql2-json",
             limit=ITEM_LIMIT,
         )
