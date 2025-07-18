@@ -14,14 +14,17 @@
 
 """Test the data lifecycle (cleaning of old items)"""
 
+import asyncio
 import copy
 import json
 import os
 from datetime import datetime
 from urllib.parse import urlparse
 
+import pytest
 import requests
 from moto.server import ThreadedMotoServer
+from rs_server_catalog.data_lifecycle import DataLifecycle
 from rs_server_catalog.timestamps_extension import ISO_8601_FORMAT
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
@@ -60,18 +63,8 @@ def check_assets(s3_handler, item: dict, exist: bool):
             assert not objects, f"{s3_file!r} should have been removed"
 
 
-async def test_data_lifecycle(client, a_correct_feature):
-    """Test the data lifecycle"""
-
-    # async with lifecycle.fake_request.app.state.get_connection(lifecycle.fake_request, "r") as conn:
-    #     bp = 0
-
-    # test_item = await lifecycle.client_search.get_item(
-    #     item_id="item_id",
-    #     collection_id="col_name",
-    #     request=lifecycle.request,
-    # )
-    bp = 0
+async def test_data_lifecycle_once(client, a_correct_feature):
+    """Test the data lifecycle when it is run once"""
 
     # Create moto server and temp / catalog bucket
     moto_endpoint = "http://localhost:8077"
@@ -189,3 +182,46 @@ async def test_data_lifecycle(client, a_correct_feature):
         server.stop()
         clear_aws_credentials()
         os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+
+@pytest.mark.parametrize("test_error", [False, True], ids=["nominal", "error"])
+async def test_data_lifecycle_loop(mocker, monkeypatch, test_error: bool):
+    """Test the data lifecycle automatic loop"""
+
+    # Mock the period in seconds between the end of a cleaning task and the start of a new one
+    monkeypatch.setenv("RSPY_DATA_LIFECYCLE_PERIOD", "0.1")
+
+    # Dummy instance
+    lifecycle = DataLifecycle(None, None)
+    error_message = "mocked error message !"
+    mock_periodic_once = mocker.patch.object(
+        lifecycle,
+        "periodic_once",
+        side_effect=RuntimeError(error_message) if test_error else None,
+    )
+
+    # Errors are logged, not raised
+    if test_error:
+        mock_logger_error = mocker.patch.object(lifecycle.logger, "error")
+
+    # Trigger the periodic task
+    await lifecycle.run()
+
+    # Wait n seconds, cancel it and wait a little more
+    await asyncio.sleep(0.5)
+    await lifecycle.cancel()
+    await asyncio.sleep(0.1)
+
+    # The task should have been called multiple times
+    old_call_count = mock_periodic_once.call_count
+    assert old_call_count >= 4
+
+    # An error should be logged for every call
+    if test_error:
+        assert mock_logger_error.call_count == old_call_count
+        for error_arg in mock_logger_error.call_args_list:
+            assert f"RuntimeError: {error_message}" in str(error_arg)
+
+    # If we wait more, the task should not be called anymore after being cancelled
+    await asyncio.sleep(0.5)
+    assert old_call_count == mock_periodic_once.call_count

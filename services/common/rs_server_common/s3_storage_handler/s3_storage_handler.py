@@ -22,7 +22,6 @@ import time
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
-from threading import Lock
 from typing import Any
 from urllib.parse import urlparse
 
@@ -157,6 +156,8 @@ class S3StorageHandler:
 
     S3StorageHandler for interacting with an S3 storage service.
 
+    WARNING: THIS CLASS IS NOT THREAD-SAFE because of the connect_s3 and disconnect_s3 methods.
+
     Attributes:
         access_key_id (str): The access key ID for S3 authentication.
         secret_access_key (str): The secret access key for S3 authentication.
@@ -178,7 +179,6 @@ class S3StorageHandler:
             RuntimeError: If the connection to the S3 storage cannot be established.
         """
         self.logger = Logging.default(__name__)
-        self.lock = Lock()
 
         self.access_key_id = access_key_id or os.environ.get("S3_ACCESSKEY", "")
         self.secret_access_key = secret_access_key or os.environ.get("S3_SECRETKEY", "")
@@ -234,22 +234,20 @@ class S3StorageHandler:
         If the S3 client is not already instantiated, this method calls the private __get_s3_client
         method to create an S3 client instance using the provided credentials and configuration (see __init__).
         """
-        with self.lock:
-            if self.s3_client is None:
-                self.s3_client = self.__get_s3_client(
-                    self.access_key_id,
-                    self.secret_access_key,
-                    self.endpoint_url,
-                    self.region_name,
-                )
+        if self.s3_client is None:
+            self.s3_client = self.__get_s3_client(
+                self.access_key_id,
+                self.secret_access_key,
+                self.endpoint_url,
+                self.region_name,
+            )
 
     def disconnect_s3(self):
         """Close the connection to the S3 service."""
-        with self.lock:
-            if self.s3_client is None:
-                return
-            self.s3_client.close()
-            self.s3_client = None
+        if self.s3_client is None:
+            return
+        self.s3_client.close()
+        self.s3_client = None
 
     def delete_file_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
         """Delete a file from S3.

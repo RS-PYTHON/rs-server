@@ -54,7 +54,6 @@ class DataLifecycle:
             app: FastAPI application
             client_search: CoreCrudClient instance for searching items
             client_bulk: BulkTransactionsClient instance for bulk update
-            s3_handler = S3 storage handler instance
             periodic_task: Periodic task
             period: Period in seconds between the end of a cleaning task and the start of a new one. If <0, the
             task is deactivated.
@@ -65,7 +64,6 @@ class DataLifecycle:
         self.app: FastAPI = app
         self.client_search: CoreCrudClient = client_search
         self.client_bulk = BulkTransactionsClient()
-        self.s3_handler: S3StorageHandler | None = None
         self.periodic_task: Task | None = None
         self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD", -1))
         self.cancel_flag: bool = False
@@ -99,8 +97,8 @@ class DataLifecycle:
         self.periodic_task.cancel()
         try:
             await self.periodic_task
-        except Exception:
-            self.logger.error(traceback.format_exc())
+        except asyncio.exceptions.CancelledError:
+            pass
 
     async def run(self):
         """Trigger the periodic task in a distinct thread and exit."""
@@ -136,10 +134,6 @@ class DataLifecycle:
         Args:
             genuine_request: request coming from the http endpoint. Only in local mode and from the pytests.
         """
-
-        if not self.s3_handler:
-            self.s3_handler = S3StorageHandler()
-
         # Current datetime
         now: str = datetime.now().strftime(ISO_8601_FORMAT)
 
@@ -213,8 +207,9 @@ class DataLifecycle:
         # This is done 24 hours after the expiration delay set on the config map.
         async with asyncio.TaskGroup() as task_group:
             for bucket_name, bucket_keys in bucket_info.items():
+                # Use a new s3 S3StorageHandler instance for every task as it is not thread-safe
                 task_group.create_task(
-                    self.s3_handler.delete_files_from_s3(bucket_name, bucket_keys),
+                    S3StorageHandler().delete_files_from_s3(bucket_name, bucket_keys),
                 )
 
     async def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
