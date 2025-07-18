@@ -25,11 +25,10 @@ from rs_server_catalog.data_lifecycle import DataLifecycle
 from rs_server_catalog.timestamps_extension import ISO_8601_FORMAT
 
 from tests.helpers import (
+    TEMP_BUCKET,
     a_collection,
     add_collection,
 )
-
-from .conftest import TEMP_BUCKET
 
 USER = "lifecycleuser"
 TEMP_BUCKET_PATH = f"s3://{TEMP_BUCKET}/"

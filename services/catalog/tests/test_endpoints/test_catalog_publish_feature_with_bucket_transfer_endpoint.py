@@ -27,8 +27,12 @@ import requests
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
-from ..conftest import CATALOG_BUCKET, TEMP_BUCKET
-from ..helpers import clear_aws_credentials, export_aws_credentials
+from tests.helpers import (
+    CATALOG_BUCKET,
+    TEMP_BUCKET,
+    clear_aws_credentials,
+    export_aws_credentials,
+)
 
 ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 

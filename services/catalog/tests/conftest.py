@@ -46,8 +46,10 @@ from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
 
 from .helpers import (
+    CATALOG_BUCKET,
     RESOURCES_FOLDER,
     S3_EXPIRATION_BUCKET_CSV_FILE,
+    TEMP_BUCKET,
     Collection,
     Feature,
     a_collection,
@@ -77,10 +79,6 @@ subprocess.run(
     check=False,
     shell=False,
 )  # nosec ignore security issue
-
-# Global variables
-TEMP_BUCKET = "temp-bucket"
-CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
