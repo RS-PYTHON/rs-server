@@ -192,7 +192,7 @@ class S3StorageHandler:
         logging.getLogger("urllib3").setLevel(logging.INFO)
         self.logger.debug("S3StorageHandler created !")
 
-    def __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
+    def __get_s3_client(self):
         """Retrieve or create an S3 client instance.
 
         Args:
@@ -217,10 +217,10 @@ class S3StorageHandler:
         try:
             return boto3.client(
                 "s3",
-                aws_access_key_id=access_key_id,
-                aws_secret_access_key=secret_access_key,
-                endpoint_url=endpoint_url,
-                region_name=region_name,
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+                endpoint_url=self.endpoint_url,
+                region_name=self.region_name,
                 config=client_config,
             )
 
@@ -235,18 +235,25 @@ class S3StorageHandler:
         method to create an S3 client instance using the provided credentials and configuration (see __init__).
         """
         if self.s3_client is None:
-            self.s3_client = self.__get_s3_client(
-                self.access_key_id,
-                self.secret_access_key,
-                self.endpoint_url,
-                self.region_name,
-            )
+            self.s3_client = self.__get_s3_client()
+
+    async def aconnect_s3(self):
+        """Async version of connect_s3. Call sync function in a separate thread."""
+        if self.s3_client is None:
+            self.s3_client = await asyncio.to_thread(self.__get_s3_client)
 
     def disconnect_s3(self):
         """Close the connection to the S3 service."""
         if self.s3_client is None:
             return
         self.s3_client.close()
+        self.s3_client = None
+
+    async def adisconnect_s3(self):
+        """Async version of disconnect_s3. Call sync function in a separate thread."""
+        if self.s3_client is None:
+            return
+        await asyncio.to_thread(self.s3_client.close)
         self.s3_client = None
 
     def delete_file_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
@@ -318,7 +325,7 @@ class S3StorageHandler:
         attempt = 0
         while True:
             try:
-                self.connect_s3()
+                await self.aconnect_s3()
 
                 # Convert the key values into a dict
                 key_dict = [{"Key": key} for key in keys]
@@ -328,9 +335,7 @@ class S3StorageHandler:
                 async with asyncio.TaskGroup() as task_group:
                     for i in range(0, len(keys), MAX_DELETE_FILES):
                         task_group.create_task(
-                            # Do the search in a synchronized thread so we don't block the main thread,
-                            # see: https://stackoverflow.com/a/71517830
-                            asyncio.to_thread(
+                            asyncio.to_thread(  # call sync function in a separate thread
                                 self.s3_client.delete_objects,
                                 Bucket=bucket,
                                 Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
@@ -346,7 +351,7 @@ class S3StorageHandler:
                 message = f"Failed to delete keys from 's3://{bucket}':\n{traceback.format_exc()}"
                 if attempt < max_retries:
                     # keep retrying
-                    self.disconnect_s3()
+                    await self.adisconnect_s3()
                     self.logger.error(f"{message}\nRetrying in {S3_RETRY_TIMEOUT} seconds.")
                     self.wait_timeout(S3_RETRY_TIMEOUT)
                 else:
