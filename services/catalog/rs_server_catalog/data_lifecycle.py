@@ -56,7 +56,7 @@ class DataLifecycle:
             client_bulk: BulkTransactionsClient instance for bulk update
             s3_handler = S3 storage handler instance
             periodic_task: Periodic task
-            period: Period in seconds between the end of a management task and the start of a new one. If <0, the
+            period: Period in seconds between the end of a cleaning task and the start of a new one. If <0, the
             task is deactivated.
             cancel: Cancel the task
             request: Fake HTTP request

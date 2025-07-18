@@ -990,9 +990,15 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
         secrets["region"],
     )
 
+    # Path the max number of items that can be deleted by the boto3 delete_objects function
+    MAX_DELETE_FILES = 10
+    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.MAX_DELETE_FILES", new=MAX_DELETE_FILES)
+
     # prepare a bucket for tests
     bucket = "some_s3"
-    files_to_be_deleted = [f"file_to_be_deleted_{i}.txt" for i in range(1 if single_file else 10)]
+    files_to_be_deleted = [
+        f"file_to_be_deleted_{i}.txt" for i in range(1 if single_file else (2 * MAX_DELETE_FILES + 1))
+    ]
     s3_handler.s3_client.create_bucket(Bucket=bucket)
     for file in files_to_be_deleted:
         s3_handler.s3_client.put_object(Bucket=bucket, Key=file, Body="testing\n")
@@ -1000,7 +1006,9 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
         if single_file:
             s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
         else:
+            spy = mocker.spy(s3_handler.s3_client, "delete_objects")
             await s3_handler.delete_files_from_s3(bucket, files_to_be_deleted)
+            assert spy.call_count == 3  # because we uploaded 2 * MAX_DELETE_FILES + 1 files
     except RuntimeError:
         server.stop()
         assert False, "s3_handler.delete_file(s)_from_s3 raised exception !"

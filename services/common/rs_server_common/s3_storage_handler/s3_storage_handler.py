@@ -52,6 +52,9 @@ PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATIO
 # see functions like delete_file_from_s3 / get_keys_from_s3 / put_files_to_s3
 S3_PROTOCOL_MAX_ATTEMPTS = 5
 
+# The boto3 delete_objects function takes max 1000 items to delete.
+MAX_DELETE_FILES = 1000
+
 
 # pylint: disable=too-many-lines
 @dataclass
@@ -324,16 +327,15 @@ class S3StorageHandler:
 
                 # The boto3 delete_objects function takes max 1000 items to delete.
                 # Split the key list and process the chunks in parallel.
-                MAX_DELETE = 1000
                 async with asyncio.TaskGroup() as task_group:
-                    for i in range(0, len(keys), MAX_DELETE):
+                    for i in range(0, len(keys), MAX_DELETE_FILES):
                         task_group.create_task(
                             # Do the search in a synchronized thread so we don't block the main thread,
                             # see: https://stackoverflow.com/a/71517830
                             asyncio.to_thread(
                                 self.s3_client.delete_objects,
                                 Bucket=bucket,
-                                Delete={"Objects": key_dict[i : i + MAX_DELETE], "Quiet": True},
+                                Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
                             ),
                         )
 
