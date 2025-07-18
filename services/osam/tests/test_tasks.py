@@ -525,6 +525,34 @@ def test_build_s3_rights(user_info, expected):
                 ],
             },
         ),
+        (
+            {
+                "read": [
+                    "rspython-ops-catalog/no_collection",
+                    "rspython-ops-catalog-paul/*/*/",
+                ],
+                "read_download": [],
+                "write_download": [],
+            },
+            {
+                "Version": "2025-01-01",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul/*",
+                        ],
+                    },
+                ],
+            },
+        ),
     ],
 )
 @patch("osam.tasks.datetime")
