@@ -17,6 +17,7 @@
 import asyncio
 import copy
 import json
+import math
 import os
 import time
 import traceback
@@ -137,7 +138,8 @@ class DataLifecycle:
                 sleep_value = self.period - runtime
 
                 # Wait n seconds before next run
-                self.logger.debug(f"Wait {round(sleep_value)} seconds before next cleaning")
+                if sleep_value != math.inf:
+                    self.logger.debug(f"Wait {round(sleep_value)} seconds before next cleaning")
                 await asyncio.sleep(sleep_value)
 
     async def periodic_once(self, genuine_request: Request | None = None):
