@@ -41,7 +41,7 @@ class TestVerifyExistingItemFromCatalog:
                 user_collection_str="user_collection",
             )
         assert excinfo.value.status_code == 409
-        assert "Conflict error! The item existing_item already exists" in str(excinfo.value.detail)
+        assert "The item existing_item already exists" in str(excinfo.value.detail)
 
     def test_post_nonexistent_item_no_error(self):
         """Test that a POST request with a non-existent item does not raise an error."""

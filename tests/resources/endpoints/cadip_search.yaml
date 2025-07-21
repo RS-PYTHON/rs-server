@@ -50,6 +50,36 @@ collections:
         url: 'https://home.rs-python.eu/'
 
 
+  - id: cadip_session_by_id_list_big
+    station: cadip
+    query:
+      SessionId: S1A_20200105072204051312,S1A_20200105072204051313,S1A_20200105072204051314,S1A_20200105072204051315,S1A_20200105072204051316,S1A_20200105072204051317,S1A_20200105072204051318,S1A_20200105072204051319,S1A_20200105072204051310,S1A_20200105072204051311
+      top: 20
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
+
   - id: cadip_session_by_id
     station: cadip
     query:
@@ -78,14 +108,14 @@ collections:
         roles:
           - host
         url: 'https://home.rs-python.eu/'
+
+
   - id: cadip_session_by_id_platform
     station: cadip
     query:
       SessionId: S1A_20240328185208053186
       Satellite: S1A
       top: 20
-
-
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
@@ -171,6 +201,7 @@ collections:
           - host
         url: 'https://home.rs-python.eu/'
 
+
   - id: cadip_session_by_start_stop_platform
     station: cadip
     query:
@@ -232,7 +263,6 @@ collections:
         url: 'https://home.rs-python.eu/'
 
 
-
   - id: cadip_session_by_satellite
     station: cadip
     query:
@@ -291,6 +321,7 @@ collections:
         roles:
           - host
         url: 'https://home.rs-python.eu/'
+
 
   - id: cadip_session_incorrect
     station: cadip
@@ -489,6 +520,7 @@ collections:
         roles:
           - host
         url: 'https://home.rs-python.eu/'
+
 
   - id: test_collection
     station: authTest

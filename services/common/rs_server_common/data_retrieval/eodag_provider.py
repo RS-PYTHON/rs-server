@@ -31,7 +31,7 @@ from eodag.utils.exceptions import (
 )
 from fastapi import HTTPException, status
 from rs_server_common.authentication.external_authentication_config import (
-    ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
 from rs_server_common.authentication.token_auth import get_station_token
 from rs_server_common.settings import env_bool
@@ -79,7 +79,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
-    def authenticate_provider(self, provider: str, external_config: ExternalAuthenticationConfig):
+    def authenticate_provider(self, provider: str, external_config: StationExternalAuthenticationConfig):
         """
         Set the authentication for an external provider (=station).
 
@@ -134,7 +134,7 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, external_config: ExternalAuthenticationConfig, eodag_config_path: Path, provider: str):
+    def __init__(self, external_config: StationExternalAuthenticationConfig, eodag_config_path: Path, provider: str):
         """Create a EODAG provider.
 
         Args:

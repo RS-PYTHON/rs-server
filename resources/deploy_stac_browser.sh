@@ -27,12 +27,10 @@ if [[ -d "stac-browser" ]]; then
     cd "stac-browser"
     read -p "Reset --hard the '$(pwd)' directory [y/n]? " -n 1 -r
     echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Exiting..."
-        exit 1
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        git reset --hard
     fi
-    git reset --hard
-    git pull
+    git pull || true
 else
     git clone "git@github.com:radiantearth/stac-browser.git"
     cd "stac-browser"

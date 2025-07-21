@@ -372,11 +372,11 @@ def test_s3_streaming_upload_fail(mocker):
 
     # test when there is no bucket to upload
     with pytest.raises(RuntimeError) as exc:
-        s3_handler.s3_streaming_upload(stream_url, [], auth, None, s3_key)
+        s3_handler.s3_streaming_from_http(stream_url, [], auth, None, s3_key)
     assert "Input error for streaming the file from" in str(exc.value)
     # test when there is no file to be uploaded
     with pytest.raises(RuntimeError) as exc:
-        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, None)
+        s3_handler.s3_streaming_from_http(stream_url, [], auth, bucket, None)
     assert "Input error for streaming the file from" in str(exc.value)
     # test when an exception occurs for requests.get function
     # Loop trough all possible exception raised during request.get and check if failure happen
@@ -388,7 +388,7 @@ def test_s3_streaming_upload_fail(mocker):
     ]:
         mocker.patch("requests.Session.send", side_effect=possible_exception("HTTP Error"))
         with pytest.raises(ConnectionError) as con_exc:
-            s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
+            s3_handler.s3_streaming_from_http(stream_url, [], auth, bucket, s3_key)
 
         assert "Failed to stream the file from" in str(con_exc.value)
     body = "some byte-array data to test the streaming of a file from http to a s3 bucket\n"
@@ -410,7 +410,7 @@ def test_s3_streaming_upload_fail(mocker):
         boto_mocker.activate()
 
         with pytest.raises(ConnectionError) as con_exc:
-            s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
+            s3_handler.s3_streaming_from_http(stream_url, [], auth, bucket, s3_key)
 
         assert "Failed to stream the file from" in str(con_exc.value)
         boto_mocker.deactivate()

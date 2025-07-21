@@ -373,6 +373,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
+        logger.debug(f"User to check for: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
@@ -615,8 +616,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         # Check that the collection from the request exists
         for collection in self.request_ids["collection_ids"]:
             if not await self.collection_exists(request, collection):
-                detail = {"error": f"Collection {collection} not found."}
-                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
 
         # Check authorisation in cluster mode
         if common_settings.CLUSTER_MODE and not get_authorisation(
@@ -626,8 +626,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             self.request_ids["owner_id"],
             self.request_ids["user_login"],
         ):
-            detail = {"error": "Unauthorized access."}
-            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -711,16 +710,19 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     self.request_ids["user_login"],
                 )
             ):
-                detail = {"error": "Unauthorized access."}
-                return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
 
             if len(self.request_ids["collection_ids"]) > 1:
-                detail = {"error": "Cannot create or update more than one collection !"}
-                return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="Cannot create or update more than one collection !",
+                )
 
             if len(self.request_ids["collection_ids"]) == 0:
-                detail = {"error": "Cannot create or update -> no collection specified !"}
-                return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST,
+                    detail="Cannot create or update -> no collection specified !",
+                )
 
             collection = self.request_ids["collection_ids"][0]
             if (
@@ -733,13 +735,11 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 # collection owned by another user.
                 # We don't care for local mode, any user may create / delete collection owned by another user
                 if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != self.request_ids["user_login"]:
-                    detail = {
-                        "error": f"The '{self.request_ids['user_login']}' user cannot create a \
+                    error = f"The '{self.request_ids['user_login']}' user cannot create a \
 collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
-field is not permitted also.",
-                    }
-                    logger.error(detail["error"])
-                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+field is not permitted also."
+                    logger.error(error)
+                    raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail=error)
                 content["id"] = f"{self.request_ids['owner_id']}_{content['id']}"
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
@@ -770,8 +770,10 @@ field is not permitted also.",
                             published = item["properties"].get("published", "")
                             expires = item["properties"].get("expires", "")
                         if not published and not expires:
-                            detail = {"error": f"Item {content['id']} not found."}
-                            return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+                            raise HTTPException(
+                                status_code=HTTP_400_BAD_REQUEST,
+                                detail=f"Item {content['id']} not found.",
+                            )
                         content = timestamps_extension.set_timestamps_for_update(
                             content,
                             original_published=published,
@@ -930,8 +932,7 @@ field is not permitted also.",
             if self.request_ids["owner_id"]:
                 content["collections"] = filter_collections(content["collections"], self.request_ids["owner_id"])
                 if len(content["collections"]) == 0:
-                    detail = {"error": "No collections found."}
-                    return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+                    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No collections found.")
                 content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "collections")
                 content = self.adapt_links(
                     content,
@@ -967,8 +968,7 @@ field is not permitted also.",
             # So allow this endpoint without authentication in this specific case.
             and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
         ):
-            detail = {"error": "Unauthorized access."}
-            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
 
         elif (
             "/collections" in request.scope["path"] and "items" not in request.scope["path"]
@@ -1028,8 +1028,7 @@ field is not permitted also.",
                 user_login,
             )
         ):
-            detail = {"error": "Unauthorized access."}
-            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
@@ -1079,9 +1078,12 @@ field is not permitted also.",
             delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
-            return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail=f"Failed to clean temporary bucket: {exc}",
+            ) from exc
         except Exception as exc:  # pylint: disable=broad-except
-            JSONResponse(content=f"Bad request: {exc}", status_code=HTTP_400_BAD_REQUEST)
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, status_code=response.status_code, media_type=media_type)
 
@@ -1277,7 +1279,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
-            return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
 
         # Ensure that user_login is not null after rerouting
@@ -1322,7 +1324,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         elif request.method == "DELETE":
             if not await self.manage_delete_request(request):
-                return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
+                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Deletion not allowed.")
 
         elif "/search" in request.scope["path"]:
             # URL: GET: '/catalog/search'

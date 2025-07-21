@@ -488,7 +488,7 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
         # Test the error message with an unknown cadip station or collection,
         # skip for landing_pages since no need for stations.
         if station == UNKNOWN_CADIP_STATION and "landing_page" not in station_role:
-            message = json.loads(response.content)["detail"]
+            message = json.loads(response.content)["description"]
             assert (
                 response.status_code == status.HTTP_401_UNAUTHORIZED
                 and f"Authorization does not include the right role to download from the 'cadip_{station}' station"
