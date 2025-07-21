@@ -165,7 +165,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
 async def test_data_lifecycle_loop(mocker, monkeypatch, test_error: bool):
     """Test the data lifecycle automatic loop"""
 
-    # Mock the period in seconds between the end of a cleaning task and the start of a new one
+    # Mock the period in seconds between two tasks
     monkeypatch.setenv("RSPY_DATA_LIFECYCLE_PERIOD", "0.1")
 
     # Dummy instance

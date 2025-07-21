@@ -18,6 +18,7 @@ import asyncio
 import copy
 import json
 import os
+import time
 import traceback
 from asyncio import Task
 from collections import defaultdict
@@ -55,8 +56,7 @@ class DataLifecycle:
         client_search: CoreCrudClient instance for searching items
         client_bulk: BulkTransactionsClient instance for bulk update
         periodic_task: Periodic task
-        period: Period in seconds between the end of a cleaning task and the start of a new one. If <0, the
-        task is deactivated.
+        period: Period in seconds between two tasks. If <0, the task is deactivated.
         cancel: Cancel the task
         fake_request: Fake HTTP request
     """
@@ -114,6 +114,7 @@ class DataLifecycle:
 
             # Infinite loop
             while not self.cancel_flag:
+                start_time = time.time()
                 try:
                     # Run the task
                     await self.periodic_once()
@@ -126,9 +127,18 @@ class DataLifecycle:
                 if self.cancel_flag:
                     return
 
+                # Measure execution time of the task in seconds
+                runtime = time.time() - start_time
+
+                # We remove this execution time to the period in seconds between two tasks,
+                # so the tasks run at fixed intervals.
+                # If the current task took more time than the period, then a task was skipped, we don't run it.
+                runtime = runtime % self.period
+                sleep_value = self.period - runtime
+
                 # Wait n seconds before next run
-                self.logger.debug(f"Wait {self.period} seconds before next cleaning")
-                await asyncio.sleep(self.period)
+                self.logger.debug(f"Wait {round(sleep_value)} seconds before next cleaning")
+                await asyncio.sleep(sleep_value)
 
     async def periodic_once(self, genuine_request: Request | None = None):
         """
