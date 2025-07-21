@@ -215,7 +215,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         response = await call_next(request)
         if request.url.path == app.openapi_url:
             # Replace content-type header
-            response.headers["Content-Type"] = "application/vnd.oai.openapi+json"
+            response.headers["Content-Type"] = "application/vnd.oai.openapi+json;version=3.0"
         return response
 
     return app

@@ -1043,7 +1043,7 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
     cadip_session_response,
 ):
     """Test that requesting an auxip/cadip auth token with eodag happens only once per station."""
-    content_type = "application/vnd.oai.openapi+json;version=3.0"
+    content_type = "application/json"
     r_headers = {"Content-Type": content_type}
 
     adgs = station_id == "adgs"
