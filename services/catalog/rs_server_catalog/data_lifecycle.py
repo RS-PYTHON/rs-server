@@ -23,7 +23,7 @@ import time
 import traceback
 from asyncio import Task
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
@@ -139,7 +139,7 @@ class DataLifecycle:
 
                 # Wait n seconds before next run
                 if sleep_value != math.inf:
-                    self.logger.debug(f"Wait {round(sleep_value)} seconds before next cleaning")
+                    self.logger.debug(f"Wait {str(timedelta(seconds=round(sleep_value)))} before next cleaning")
                 await asyncio.sleep(sleep_value)
 
     async def periodic_once(self, genuine_request: Request | None = None):
@@ -224,6 +224,7 @@ class DataLifecycle:
                 task_group.create_task(
                     S3StorageHandler().adelete_files_from_s3(bucket_name, bucket_keys),
                 )
+        self.logger.debug("Finished deleting s3 keys")
 
     def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
