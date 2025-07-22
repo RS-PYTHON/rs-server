@@ -124,7 +124,7 @@ class DataLifecycle:
                 except Exception:  # pylint: disable=broad-exception-caught
                     self.logger.error(traceback.format_exc())
 
-                # If the caller cancelled execution, we exit the infinite loop
+                # If the caller cancelled execution, we exit the infinite loop before the sleep.
                 if self.cancel_flag:
                     return
 
