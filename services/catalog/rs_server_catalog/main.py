@@ -28,12 +28,13 @@ from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
+from rs_server_catalog.data_lifecycle import DataLifecycle
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import (
@@ -45,6 +46,7 @@ from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
+from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
@@ -226,7 +228,7 @@ else:
     extensions = list(extensions_map.values())
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
-client = CoreCrudClient(pgstac_search_model=post_request_model)
+core_crud_client = CoreCrudClient(pgstac_search_model=post_request_model)
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -235,7 +237,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         try:
-            response = await UserCatalog(client).dispatch(request, call_next)
+            response = await UserCatalog(core_crud_client).dispatch(request, call_next)
             return response
         except (HTTPException, StarletteHTTPException) as exc:
             phrase = HTTPStatus(exc.status_code).phrase
@@ -256,7 +258,7 @@ api = StacApi(
     settings=settings,
     extensions=extensions,
     items_get_request_model=items_get_request_model,
-    client=CoreCrudClient(pgstac_search_model=post_request_model),
+    client=core_crud_client,
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
@@ -283,6 +285,10 @@ if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
 
+# Data lifecycle management instance (cleaning of old assets)
+lifecycle = DataLifecycle(app, core_crud_client)
+
+
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):
     """The lifespan function."""
@@ -306,11 +312,14 @@ async def lifespan(my_app: FastAPI):
 
         common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
+        # Run the data lifecycle management as an automatic periodic task
+        lifecycle.run()
+
         yield
 
     finally:
+        await lifecycle.cancel()
         await close_db_connection(my_app)
-
         await common_settings.del_http_client()
 
 
@@ -318,6 +327,14 @@ app.router.lifespan_context = lifespan
 
 # Configure OpenTelemetry
 init_opentelemetry.init_traces(app, "rs.server.catalog")
+
+# In local mode only or from the pytests, add an endpoint to manual trigger the data lifecycle management (for testing)
+if common_settings.LOCAL_MODE or env_bool("FROM_PYTEST", default=False):
+
+    @app.router.get("/data/lifecycle", include_in_schema=False)
+    async def data_lifecycle(request: Request):
+        """Trigger the data lifecycle management"""
+        await lifecycle.periodic_once(request)
 
 
 # In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)

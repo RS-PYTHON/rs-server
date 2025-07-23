@@ -78,7 +78,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     """
     path = request.url.path
     method = request.method
-    patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico", "/data/lifecycle"]
 
     # Catch one endpoint of the following list
     regexp_list = [

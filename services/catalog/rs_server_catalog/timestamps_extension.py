@@ -38,27 +38,23 @@ def set_timestamps_for_creation(item: dict) -> dict:
     return item
 
 
-def set_timestamps_for_insertion(item: dict, expiration: datetime.datetime | None = None) -> dict:
+def set_timestamps_for_insertion(item: dict) -> dict:
     """This function set the timestamps for an item insertion.
     It will update the 'updated' and 'expires' timestamps.
 
     Args:
         item (dict): The item to be updated.
-        expiration (datetime, optional): The expiration date. Defaults to None.
 
     Returns:
         dict: The updated item.
     """
     item = set_updated_timestamp_to_now(item)
-    if expiration:
-        item["properties"]["expires"] = expiration.strftime(ISO_8601_FORMAT)
-    else:
-        item_owner = item["properties"].get("owner", "*")
-        item_collection = item.get("collection", "*").removeprefix(f"{item_owner}_")
-        item_eopf_type = item["properties"].get("eopf:type", "*")
-        expiration_range = get_expiration_delay_from_config(item_owner, item_collection, item_eopf_type)
-        expiration_date = datetime.datetime.now() + datetime.timedelta(days=expiration_range)
-        item["properties"]["expires"] = expiration_date.strftime(ISO_8601_FORMAT)
+    item_owner = item["properties"].get("owner", "*")
+    item_collection = item.get("collection", "*").removeprefix(f"{item_owner}_")
+    item_eopf_type = item["properties"].get("eopf:type", "*")
+    expiration_range = get_expiration_delay_from_config(item_owner, item_collection, item_eopf_type)
+    expiration_date = datetime.datetime.now() + datetime.timedelta(days=expiration_range)
+    item["properties"].setdefault("expires", expiration_date.strftime(ISO_8601_FORMAT))
     return item
 
 
@@ -76,8 +72,8 @@ def set_timestamps_for_update(item: dict, original_published: str, original_expi
         dict: The updated item.
     """
     item = set_updated_timestamp_to_now(item)
-    item["properties"]["expires"] = original_expires
-    item["properties"]["published"] = original_published
+    item["properties"].setdefault("expires", original_expires)
+    item["properties"].setdefault("published", original_published)
     return item
 
 

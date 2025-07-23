@@ -31,7 +31,6 @@ import responses
 import yaml
 from eodag.plugins.authentication.token import TokenAuth
 from fastapi import HTTPException
-from fastapi.concurrency import run_in_threadpool
 from requests import PreparedRequest
 from rs_server_adgs import adgs_retriever, adgs_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
@@ -1118,7 +1117,7 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
     # Call the search endpoint from an async function, just like the real search endpoint does
     async def search(collection_id):
         url = f"{os.getenv('router_prefix')}/search?collections={collection_id}&limit=1"
-        response = await run_in_threadpool(client.get, url)
+        response = await asyncio.to_thread(client.get, url)
         response.raise_for_status()
 
     # Call the search endpoint in parallel for each collection

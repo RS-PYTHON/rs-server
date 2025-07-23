@@ -14,10 +14,13 @@
 
 """Set of functions to connect to an S3 endpoint and run various operations."""
 
+import asyncio
+import concurrent.futures
 import logging
 import ntpath
 import os
 import time
+import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -48,6 +51,9 @@ PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATIO
 # there is also another retry mechanism set on the application level
 # see functions like delete_file_from_s3 / get_keys_from_s3 / put_files_to_s3
 S3_PROTOCOL_MAX_ATTEMPTS = 5
+
+# The boto3 delete_objects function takes max 1000 items to delete.
+MAX_DELETE_FILES = 1000
 
 
 # pylint: disable=too-many-lines
@@ -151,6 +157,8 @@ class S3StorageHandler:
 
     S3StorageHandler for interacting with an S3 storage service.
 
+    WARNING: THIS CLASS IS NOT THREAD-SAFE because of the connect_s3 and disconnect_s3 methods.
+
     Attributes:
         access_key_id (str): The access key ID for S3 authentication.
         secret_access_key (str): The secret access key for S3 authentication.
@@ -159,7 +167,7 @@ class S3StorageHandler:
         s3_client (boto3.client): The s3 client to interact with the s3 storage
     """
 
-    def __init__(self, access_key_id, secret_access_key, endpoint_url, region_name):
+    def __init__(self, access_key_id=None, secret_access_key=None, endpoint_url=None, region_name=None):
         """Initialize the S3StorageHandler instance.
 
         Args:
@@ -173,10 +181,10 @@ class S3StorageHandler:
         """
         self.logger = Logging.default(__name__)
 
-        self.access_key_id = access_key_id
-        self.secret_access_key = secret_access_key
-        self.endpoint_url = endpoint_url
-        self.region_name = region_name
+        self.access_key_id = access_key_id or os.environ.get("S3_ACCESSKEY", "")
+        self.secret_access_key = secret_access_key or os.environ.get("S3_SECRETKEY", "")
+        self.endpoint_url = endpoint_url or os.environ.get("S3_ENDPOINT", "")
+        self.region_name = region_name or os.environ.get("S3_REGION", "")
         self.s3_client: boto3.client = None
         self.connect_s3()
         # Suppress botocore debug messages
@@ -185,7 +193,7 @@ class S3StorageHandler:
         logging.getLogger("urllib3").setLevel(logging.INFO)
         self.logger.debug("S3StorageHandler created !")
 
-    def __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
+    def __get_s3_client(self):
         """Retrieve or create an S3 client instance.
 
         Args:
@@ -210,10 +218,10 @@ class S3StorageHandler:
         try:
             return boto3.client(
                 "s3",
-                aws_access_key_id=access_key_id,
-                aws_secret_access_key=secret_access_key,
-                endpoint_url=endpoint_url,
-                region_name=region_name,
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+                endpoint_url=self.endpoint_url,
+                region_name=self.region_name,
                 config=client_config,
             )
 
@@ -228,12 +236,7 @@ class S3StorageHandler:
         method to create an S3 client instance using the provided credentials and configuration (see __init__).
         """
         if self.s3_client is None:
-            self.s3_client = self.__get_s3_client(
-                self.access_key_id,
-                self.secret_access_key,
-                self.endpoint_url,
-                self.region_name,
-            )
+            self.s3_client = self.__get_s3_client()
 
     def disconnect_s3(self):
         """Close the connection to the S3 service."""
@@ -288,6 +291,67 @@ class S3StorageHandler:
             except Exception as e:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
+
+    def delete_files_from_s3(self, bucket: str, keys: list[str], max_retries: int = S3_MAX_RETRIES):
+        """Delete a list of files from S3.
+        The functionality implies a retry mechanism at the application level, which is different
+        than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
+
+        Args:
+            bucket (str): The S3 bucket name.
+            keys (list[str]): The S3 object keys.
+
+        Raises:
+            RuntimeError: If an error occurs during the bucket access check.
+        """
+        if bucket is None or keys is None:
+            raise RuntimeError("Input error for deleting the files")
+
+        # NOTE: don't check if the files exist on the bucket.
+        # If they don't, nothing happens, we don't have any error from boto3.
+        self.logger.debug(f"Deleting s3 keys from 's3://{bucket}': {keys}")
+
+        attempt = 0
+        while True:
+            try:
+                self.connect_s3()
+
+                # Convert the key values into a dict
+                key_dict = [{"Key": key} for key in keys]
+
+                # The boto3 delete_objects function takes max 1000 items to delete.
+                # Split the key list and process the chunks in parallel.
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [
+                        executor.submit(
+                            self.s3_client.delete_objects,
+                            Bucket=bucket,
+                            Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
+                        )
+                        for i in range(0, len(keys), MAX_DELETE_FILES)
+                    ]
+                    for future in concurrent.futures.as_completed(futures):
+                        future.result()
+
+                # If everything went OK, exit the function
+                return
+
+            # Else handle retries
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                attempt += 1
+                message = f"Failed to delete keys from 's3://{bucket}':\n{traceback.format_exc()}"
+                if attempt < max_retries:
+                    # keep retrying
+                    self.disconnect_s3()
+                    self.logger.error(f"{message}\nRetrying in {S3_RETRY_TIMEOUT} seconds.")
+                    self.wait_timeout(S3_RETRY_TIMEOUT)
+                else:
+                    self.logger.exception(message)
+                    raise RuntimeError(message) from e
+
+    async def adelete_files_from_s3(self, *args, **kwargs):
+        """Async version of delete_files_from_s3. Call sync function in a separate thread."""
+        return await asyncio.to_thread(self.delete_files_from_s3, *args, **kwargs)
 
     # helper functions
 
