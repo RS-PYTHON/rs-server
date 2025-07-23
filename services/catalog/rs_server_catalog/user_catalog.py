@@ -327,10 +327,10 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
-            # In case of the PUT request, all the new assets are transfered (see up)
-            # Any existing asset in the item (already in the catalog from a previous POST request)
-            # but not found in this request is deleted
-            # If a PATCH request is received (not yet implemented) do not delete anything
+            # For a PUT request, all new assets are transferred (as described above).
+            # Any asset that already exists in the catalog from a previous POST request
+            # but is not included in the current request will be deleted.
+            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
             if item and request.method == "PUT":
                 for asset in item["assets"]:
                     self.s3_files_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
@@ -348,7 +348,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         content: dict,
         request: Request,
         item: dict,
-    ) -> dict:
+    ) -> Any:
         """Update the JSON body of a feature push to the catalog.
 
         Args:
@@ -373,7 +373,6 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
-        logger.debug(f"User to check for: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
@@ -418,13 +417,14 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
                 if not self.check_s3_key(item, asset, s3_key):
-                    # update the 'href' key with the download link
-                    new_href = f"https://{request.url.netloc}/catalog/\
+                    # Update the S3 path to use the catalog bucket
+                    content["assets"][asset].update({"href": s3_key, "auth:refs": ["s3"]})
+                    # update the 'href' key with the download link and create the alternate field
+                    https_link = f"https://{request.url.netloc}/catalog/\
 collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/{asset}"
-                    content["assets"][asset].update({"href": new_href})
-                    # Update the S3 path to use the catalog bucket and create the alternate field
-                    new_s3_href = {"s3": {"href": s3_key}}
-                    content["assets"][asset].update({"alternate": new_s3_href})
+                    new_href = {"https": https_link, "auth:refs": ["apikey", "openid", "oauth2"]}
+                    content["assets"][asset].update({"alternate": new_href})
+
                     # copy the key only if it isn't already in the final catalog bucket
                     if not int(
                         os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
@@ -444,6 +444,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         for new_stac_extension in [
             "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         ]:
             if new_stac_extension not in content["stac_extensions"]:
                 content["stac_extensions"].append(new_stac_extension)
@@ -615,7 +616,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         # Check that the collection from the request exists
         for collection in self.request_ids["collection_ids"]:
             if not await self.collection_exists(request, collection):
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
+                detail = {"error": f"Collection {collection} not found."}
+                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
 
         # Check authorisation in cluster mode
         if common_settings.CLUSTER_MODE and not get_authorisation(
@@ -625,7 +627,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             self.request_ids["owner_id"],
             self.request_ids["user_login"],
         ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -709,19 +712,16 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     self.request_ids["user_login"],
                 )
             ):
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+                detail = {"error": "Unauthorized access."}
+                return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
             if len(self.request_ids["collection_ids"]) > 1:
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST,
-                    detail="Cannot create or update more than one collection !",
-                )
+                detail = {"error": "Cannot create or update more than one collection !"}
+                return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
             if len(self.request_ids["collection_ids"]) == 0:
-                raise HTTPException(
-                    status_code=HTTP_400_BAD_REQUEST,
-                    detail="Cannot create or update -> no collection specified !",
-                )
+                detail = {"error": "Cannot create or update -> no collection specified !"}
+                return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
             collection = self.request_ids["collection_ids"][0]
             if (
@@ -734,11 +734,13 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 # collection owned by another user.
                 # We don't care for local mode, any user may create / delete collection owned by another user
                 if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != self.request_ids["user_login"]:
-                    error = f"The '{self.request_ids['user_login']}' user cannot create a \
+                    detail = {
+                        "error": f"The '{self.request_ids['user_login']}' user cannot create a \
 collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
-field is not permitted also."
-                    logger.error(error)
-                    raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail=error)
+field is not permitted also.",
+                    }
+                    logger.error(detail["error"])
+                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                 content["id"] = f"{self.request_ids['owner_id']}_{content['id']}"
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
@@ -769,10 +771,8 @@ field is not permitted also."
                             published = item["properties"].get("published", "")
                             expires = item["properties"].get("expires", "")
                         if not published and not expires:
-                            raise HTTPException(
-                                status_code=HTTP_400_BAD_REQUEST,
-                                detail=f"Item {content['id']} not found.",
-                            )
+                            detail = {"error": f"Item {content['id']} not found."}
+                            return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
                         content = timestamps_extension.set_timestamps_for_update(
                             content,
                             original_published=published,
@@ -931,7 +931,8 @@ field is not permitted also."
             if self.request_ids["owner_id"]:
                 content["collections"] = filter_collections(content["collections"], self.request_ids["owner_id"])
                 if len(content["collections"]) == 0:
-                    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No collections found.")
+                    detail = {"error": "No collections found."}
+                    return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
                 content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "collections")
                 content = self.adapt_links(
                     content,
@@ -967,7 +968,8 @@ field is not permitted also."
             # So allow this endpoint without authentication in this specific case.
             and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
         ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
         elif (
             "/collections" in request.scope["path"] and "items" not in request.scope["path"]
@@ -1027,7 +1029,8 @@ field is not permitted also."
                 user_login,
             )
         ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
@@ -1077,12 +1080,9 @@ field is not permitted also."
             delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
-            raise HTTPException(
-                status_code=HTTP_400_BAD_REQUEST,
-                detail=f"Failed to clean temporary bucket: {exc}",
-            ) from exc
+            return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
+            JSONResponse(content=f"Bad request: {exc}", status_code=HTTP_400_BAD_REQUEST)
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, status_code=response.status_code, media_type=media_type)
 
@@ -1207,6 +1207,27 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         await self.build_filelist_to_be_deleted(request)
         return True
 
+    async def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
+        """This function will retrieve the published and expires fields in the item
+        we want to update to keep them unchanged.
+
+        Args:
+            request (Request): The initial request that is a put item.
+
+        Returns:
+            tuple[str, str]: published field, expires field.
+        """
+
+        try:
+            item = await self.client.get_item(
+                item_id=self.request_ids["item_id"],
+                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
+                request=request,
+            )
+            return (item["properties"]["published"], item["properties"]["expires"])
+        except Exception:  # pylint: disable=broad-exception-caught
+            return ("", "")
+
     async def dispatch(
         self,
         request,
@@ -1257,7 +1278,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
+            return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
 
         # Ensure that user_login is not null after rerouting
@@ -1302,7 +1323,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         elif request.method == "DELETE":
             if not await self.manage_delete_request(request):
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Deletion not allowed.")
+                return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
         elif "/search" in request.scope["path"]:
             # URL: GET: '/catalog/search'
@@ -1422,6 +1443,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                             "scopes": {},
                         },
                     },
+                },
+                "s3": {
+                    "type": "s3",
+                    "description": "S3",
                 },
             },
         )
