@@ -418,12 +418,11 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 # Check if the S3 key exists
                 if not self.check_s3_key(item, asset, s3_key):
                     # Update the S3 path to use the catalog bucket
-                    content["assets"][asset].update({"href": s3_key, "auth:refs": ["s3"]})
+                    content["assets"][asset].update({"href": s3_key})
                     # update the 'href' key with the download link and create the alternate field
                     https_link = f"https://{request.url.netloc}/catalog/\
 collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/{asset}"
-                    new_href = {"https": https_link, "auth:refs": ["apikey", "openid", "oauth2"]}
-                    content["assets"][asset].update({"alternate": new_href})
+                    content["assets"][asset].update({"alternate": {"https": https_link}})
 
                     # copy the key only if it isn't already in the final catalog bucket
                     if not int(
@@ -1452,8 +1451,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         )
 
         # Add the authentication reference to each link and asset
-        for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
+        for link_or_asset in content.get("links", []) + list(content.get("assets", {}).get("alternate", {}).values()):
             link_or_asset["auth:refs"] = ["apikey", "openid", "oauth2"]
+        for asset in list(content.get("assets", {}).values()):
+            asset["auth:refs"] = ["s3"]
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
