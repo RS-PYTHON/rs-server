@@ -19,6 +19,7 @@ import json
 import os
 import pkgutil
 import sys
+from collections.abc import Iterator
 
 import fastapi
 import opentelemetry.instrumentation
@@ -33,6 +34,8 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource  # type: ignore
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace.span import NonRecordingSpan, Span, SpanContext, TraceFlags
+from opentelemetry.util._decorator import _agnosticcontextmanager
 from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 
@@ -206,3 +209,44 @@ def init_traces(app: fastapi.FastAPI, service_name: str, logger=None):
                     _class_instance.instrument(tracer_provider=otel_tracer)
                 # name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
                 # logger.debug(f"OpenTelemetry instrumentation of {name!r}")
+
+
+@_agnosticcontextmanager
+def start_span(
+    instrumenting_module_name: str,
+    name: str,
+    span_context: SpanContext | None = None,
+) -> Iterator[Span]:
+    """
+    Context manager for creating a new main or child OpenTelemetry span and set it
+    as the current span in this tracer's context.
+
+    Args:
+        instrumenting_module_name: Caller module name, just pass __name__
+        name: The name of the span to be created (use a custom name)
+        span_context: Parent span context. Only to create a child span.
+
+    Yields:
+        The newly-created span.
+    """
+    tracer = trace.get_tracer(instrumenting_module_name)
+
+    # Create a main span
+    if not span_context:
+        with tracer.start_as_current_span(name) as span:
+            yield span
+
+    # Create a child span
+    else:
+        main_span_context = SpanContext(
+            trace_id=span_context.trace_id,
+            span_id=span_context.span_id,
+            is_remote=True,
+            trace_flags=TraceFlags(TraceFlags.SAMPLED),
+        )
+        main_span = NonRecordingSpan(main_span_context)
+        with trace.use_span(main_span):  # pylint: disable=not-context-manager
+            # Optionnaly, we could use the main span instead of creating
+            # a new one, to be discussed.
+            with tracer.start_as_current_span(name) as span:
+                yield span

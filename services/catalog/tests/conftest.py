@@ -14,19 +14,27 @@
 
 """Common fixture for catalog service."""
 
+import os
+from collections import namedtuple
+
+import requests
+from moto.server import ThreadedMotoServer
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
+
+from tests.helpers import clear_aws_credentials, export_aws_credentials
 
 # Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.
 # We'll restore the local mode by default a few lines below.
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
+os.environ["FROM_PYTEST"] = "1"
 init_app_cluster_mode()
 
 # flake8: noqa: E402
 
-import os
 import subprocess  # nosec ignore security issue
 from collections.abc import Iterator
 from importlib import reload
@@ -38,8 +46,10 @@ from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
 
 from .helpers import (
+    CATALOG_BUCKET,
     RESOURCES_FOLDER,
     S3_EXPIRATION_BUCKET_CSV_FILE,
+    TEMP_BUCKET,
     Collection,
     Feature,
     a_collection,
@@ -111,6 +121,43 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
                 collection_id = collection["id"].replace("_", ":", 1)
                 client.delete(f"/catalog/collections/{collection_id}")
         yield client  # Does NOT trigger setup_database!
+
+
+@pytest.fixture(scope="function", name="init_buckets")
+def init_buckets_fixture():
+    """Initialize s3 moto server and create buckets"""
+
+    # Create moto server and temp / catalog bucket
+    moto_endpoint = "http://localhost:8077"
+    export_aws_credentials()
+    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+    # Enable bucket transfer
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+    server = ThreadedMotoServer(port=8077)
+    server.start()
+
+    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    for bucket in TEMP_BUCKET, CATALOG_BUCKET:
+        s3_handler.s3_client.create_bucket(Bucket=bucket)
+        assert not s3_handler.list_s3_files_obj(bucket, "")
+
+    # Return info
+    yield namedtuple("InitBucketsInfo", ["s3_handler", "moto_endpoint"])(
+        s3_handler,
+        moto_endpoint,
+    )  # type: ignore[call-arg]
+
+    # Clear bucket at the end of each test (scope="function")
+    server.stop()
+    clear_aws_credentials()
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
 
 @pytest.fixture(scope="session", name="toto_s1_l1")

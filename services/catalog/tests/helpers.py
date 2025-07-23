@@ -28,6 +28,9 @@ from sqlalchemy_utils import database_exists
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "s3/expiration_bucket.csv")
 
+TEMP_BUCKET = "temp-bucket"
+CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
+
 
 def is_db_up(db_url: str) -> bool:
     """Check if the database is up.
@@ -75,7 +78,7 @@ def clear_aws_credentials():
     with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
-            del os.environ[env_var]
+            os.environ.pop(env_var, None)
 
 
 @dataclass

@@ -955,8 +955,9 @@ def test_transfer_from_s3_to_s3(
 
 
 @pytest.mark.unit
-def test_delete_file_from_s3(mocker):
-    """Test the deletion of a file from an S3 bucket.
+@pytest.mark.parametrize("single_file", [True, False], ids=["single", "multiple"])
+async def test_delete_file_from_s3(mocker, single_file: bool):
+    """Test the deletion of one or several files from an S3 bucket.
 
     This unit test verifies the functionality of deleting a file from an S3 bucket using the `delete_file_from_s3`
     method in the `S3StorageHandler` class. It ensures proper handling of errors and retries during deletion.
@@ -970,10 +971,12 @@ def test_delete_file_from_s3(mocker):
 
     Args:
         mocker: Pytest fixture used to mock certain behaviors, such as sleep delays and boto3 exceptions.
+        single_file: Delete a single file or several files ?
 
     Raises:
         AssertionError: If any part of the file deletion process fails or raises an unexpected exception.
     """
+    export_aws_credentials()
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
@@ -987,20 +990,33 @@ def test_delete_file_from_s3(mocker):
         secrets["region"],
     )
 
+    # Path the max number of items that can be deleted by the boto3 delete_objects function
+    max_delete_files = 10
+    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.MAX_DELETE_FILES", new=max_delete_files)
+
     # prepare a bucket for tests
     bucket = "some_s3"
-    file_to_be_deleted = "file_to_be_deleted.txt"
+    files_to_be_deleted = [
+        f"file_to_be_deleted_{i}.txt" for i in range(1 if single_file else (2 * max_delete_files + 1))
+    ]
     s3_handler.s3_client.create_bucket(Bucket=bucket)
-    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
+    for file in files_to_be_deleted:
+        s3_handler.s3_client.put_object(Bucket=bucket, Key=file, Body="testing\n")
     try:
-        s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+        if single_file:
+            s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
+        else:
+            spy = mocker.spy(s3_handler.s3_client, "delete_objects")
+            await s3_handler.adelete_files_from_s3(bucket, files_to_be_deleted)
+            assert spy.call_count == 3  # because we uploaded 2 * MAX_DELETE_FILES + 1 files
     except RuntimeError:
         server.stop()
-        assert False, "s3_handler.delete_file_from_s3 raised exception !"
+        assert False, "s3_handler.delete_file(s)_from_s3 raised exception !"
     assert not s3_handler.list_s3_files_obj(bucket, "")
-    # copy again the file to be deleted
-    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
-    assert len(s3_handler.list_s3_files_obj(bucket, "")) == 1
+    # copy again the files to be deleted
+    for file in files_to_be_deleted:
+        s3_handler.s3_client.put_object(Bucket=bucket, Key=file, Body="testing\n")
+    assert len(s3_handler.list_s3_files_obj(bucket, "")) == len(files_to_be_deleted)
     # test when the retrying succeeds after all
     res = mocker.patch("time.sleep", side_effect=None)
     # mock the current client
@@ -1009,21 +1025,25 @@ def test_delete_file_from_s3(mocker):
         # The delete_object should throw an exception on the first call, triggering a retry.
         # On the second retry, a different client will be used.
         # The retry mechanism is handled at the application level (different than ).
-        boto_mocker.add_response(
-            "head_object",
-            {
-                "ResponseMetadata": {
-                    "HTTPStatusCode": 200,
+        for file in files_to_be_deleted:
+            boto_mocker.add_response(
+                "head_object",
+                {
+                    "ResponseMetadata": {
+                        "HTTPStatusCode": 200,
+                    },
                 },
-            },
-            {"Bucket": "some_s3", "Key": "file_to_be_deleted.txt"},
-        )
+                {"Bucket": "some_s3", "Key": file},
+            )
         boto_mocker.add_client_error("delete_object", service_error_code="botocore.exceptions.BotoCoreError")
         try:
-            s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+            if single_file:
+                s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
+            else:
+                await s3_handler.adelete_files_from_s3(bucket, files_to_be_deleted)
         except RuntimeError:
             server.stop()
-            assert False, "s3_handler.delete_file_from_s3 raised exception !"
+            assert False, "s3_handler.delete_file(s)_from_s3 raised exception !"
         assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
         assert not s3_handler.list_s3_files_obj(bucket, "")
     server.stop()
