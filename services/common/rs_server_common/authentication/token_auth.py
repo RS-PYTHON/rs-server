@@ -279,7 +279,7 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
     # or if both the access and refresh tokens are expired,
     # or if we don't have any 'refresh_expires_in' value but the access token is expired,
     # we get a new token using the authorisation grant
-    if (
+    if (  # pylint: disable=too-many-boolean-expressions
         not token_dict
         or (
             token_dict
@@ -294,7 +294,7 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
             and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
             > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
         )
-    ):  # pylint: disable=too-many-boolean-expressions
+    ):
         if not token_dict:
             logger.info(
                 f"""No existing token found -> fetching a new access token """
