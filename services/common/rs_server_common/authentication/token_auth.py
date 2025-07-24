@@ -275,37 +275,36 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
     nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE", "60"))
     nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE", "60"))
 
-    # If we have no token yet
-    # or if both the access and refresh tokens are expired,
-    # or if we don't have any 'refresh_expires_in' value but the access token is expired,
-    # we get a new token using the authorisation grant
-    if (  # pylint: disable=too-many-boolean-expressions
-        not token_dict
-        or (
-            token_dict
-            and ("refresh_expires_in" not in token_dict.keys() or not token_dict["refresh_expires_in"])
-            and (current_date - token_dict["access_token_creation_date"]).total_seconds()
-            > token_dict["expires_in"] - nb_secs_before_token_exp
+    # Cases when we need a new token:
+    # - if we have no token yet
+    # - if both the access and refresh tokens are expired
+    # - if we don't have any 'refresh_expires_in' value but the access token is expired
+    get_new_token = False
+    if not token_dict:
+        get_new_token = True
+        logger.info(
+            f"""No existing token found -> fetching a new access token """
+            f"""from station url: {external_auth_config.token_url}""",
         )
-        or (
-            token_dict
-            and (current_date - token_dict["access_token_creation_date"]).total_seconds()
-            > token_dict["expires_in"] - nb_secs_before_token_exp
-            and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
-            > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
-        )
-    ):
-        if not token_dict:
-            logger.info(
-                f"""No existing token found -> fetching a new access token """
-                f"""from station url: {external_auth_config.token_url}""",
-            )
-        else:
+    else:
+        is_access_token_expired = (
+            current_date - token_dict["access_token_creation_date"]
+        ).total_seconds() > token_dict["expires_in"] - nb_secs_before_token_exp
+        is_refresh_token_expired = (
+            "refresh_expires_in" not in token_dict.keys() or not token_dict["refresh_expires_in"]
+        ) or (current_date - token_dict["refresh_token_creation_date"]).total_seconds() > token_dict[
+            "refresh_expires_in"
+        ] - nb_secs_before_refresh_token_exp
+
+        if is_access_token_expired and is_refresh_token_expired:
+            get_new_token = True
             logger.info(
                 f"""Current access and refresh token expired -> fetching access token """
                 f"""from station url: {external_auth_config.token_url}""",
             )
 
+    # If necessary, get a new token using the authorisation grant
+    if get_new_token:
         # Get the new token and add its creation date
         data_to_send = prepare_data(external_auth_config, call_refresh=False)
         token_dict.update(__request_token(external_auth_config, data_to_send))
