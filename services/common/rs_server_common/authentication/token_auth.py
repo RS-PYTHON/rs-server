@@ -60,12 +60,6 @@ MANDATORY_TOKEN_ATTRS = [
     "refresh_token_creation_date",
 ]
 
-# Token attributes that are not mandatory but are expected to be present
-# in a regular token.
-OPTIONAL_TOKEN_ATTRS = [
-    "refresh_expires_in",
-]
-
 
 class TokenDataNotFound(HTTPException):
     """Raised if there are missing data in the dictionary to handle information about the token"""
@@ -177,15 +171,6 @@ def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationCo
                 f"Token variable attribute {attr} of the station {config.station_id} is None !",
                 None,
                 TokenDataNotFound,
-            )
-    for attr in OPTIONAL_TOKEN_ATTRS:
-        if attr not in token_dict:
-            logger.warning(
-                f"Attribute {attr} is not defined in the token variable " f"of the station {config.station_id}.",
-            )
-        if not token_dict[attr]:
-            logger.warning(
-                f"Token variable attribute {attr} of the station {config.station_id} is None.",
             )
     for attr in "access_token", "refresh_token":
         validate_token_format(attr)
