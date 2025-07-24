@@ -58,6 +58,11 @@ MANDATORY_TOKEN_ATTRS = [
     "expires_in",
     "refresh_token",
     "refresh_token_creation_date",
+]
+
+# Token attributes that are not mandatory but are expected to be present
+# in a regular token.
+EXPECTED_TOKEN_ATTRS = [
     "refresh_expires_in",
 ]
 
@@ -173,6 +178,15 @@ def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationCo
                 None,
                 TokenDataNotFound,
             )
+    for attr in EXPECTED_TOKEN_ATTRS:
+        if attr not in token_dict:
+            logger.warning(
+                f"Attribute {attr} is not defined in the token variable " f"of the station {config.station_id}.",
+            )
+        if not token_dict[attr]:
+            logger.warning(
+                f"Token variable attribute {attr} of the station {config.station_id} is None.",
+            )
     for attr in "access_token", "refresh_token":
         validate_token_format(attr)
 
@@ -263,12 +277,21 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
 
     # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
     # using the authorisation grant
-    if not token_dict or (
-        token_dict
-        and (current_date - token_dict["access_token_creation_date"]).total_seconds()
-        > token_dict["expires_in"] - nb_secs_before_token_exp
-        and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
-        > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
+    if (
+        not token_dict
+        or (
+            token_dict
+            and ("refresh_expires_in" not in token_dict.keys() or not token_dict["refresh_expires_in"])
+            and (current_date - token_dict["access_token_creation_date"]).total_seconds()
+            > token_dict["expires_in"] - nb_secs_before_token_exp
+        )
+        or (
+            token_dict
+            and (current_date - token_dict["access_token_creation_date"]).total_seconds()
+            > token_dict["expires_in"] - nb_secs_before_token_exp
+            and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
+            > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
+        )
     ):
         if not token_dict:
             logger.info(
