@@ -287,14 +287,22 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
             f"""from station url: {external_auth_config.token_url}""",
         )
     else:
-        is_access_token_expired = (
-            current_date - token_dict["access_token_creation_date"]
-        ).total_seconds() > token_dict["expires_in"] - nb_secs_before_token_exp
-        is_refresh_token_expired = (
-            "refresh_expires_in" not in token_dict.keys() or not token_dict["refresh_expires_in"]
-        ) or (current_date - token_dict["refresh_token_creation_date"]).total_seconds() > token_dict[
-            "refresh_expires_in"
-        ] - nb_secs_before_refresh_token_exp
+        access_token_expiration_date = (
+            token_dict["access_token_creation_date"].total_seconds()
+            + token_dict["expires_in"]
+            - nb_secs_before_token_exp
+        )
+        is_access_token_expired = current_date > access_token_expiration_date
+
+        if "refresh_expires_in" not in token_dict.keys() or not token_dict["refresh_expires_in"]:
+            is_refresh_token_expired = True
+        else:
+            refresh_token_expiration_date = (
+                token_dict["refresh_token_creation_date"].total_seconds()
+                + token_dict["refresh_expires_in"]
+                - nb_secs_before_refresh_token_exp
+            )
+            is_refresh_token_expired = current_date > refresh_token_expiration_date
 
         if is_access_token_expired and is_refresh_token_expired:
             get_new_token = True
