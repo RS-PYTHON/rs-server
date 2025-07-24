@@ -250,7 +250,7 @@ class DataLifecycle:
         # Update bucket info for each existing asset file path
         for asset in assets.values():
             try:
-                href = asset["alternate"]["s3"]["href"]
+                href = asset["href"]
                 parsed = urlparse(href)
                 bucket_name = parsed.netloc
                 bucket_key = parsed.path.strip("/")

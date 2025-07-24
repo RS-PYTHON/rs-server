@@ -138,8 +138,8 @@ class TestCatalogDeleteEndpoints:
             "features": [
                 {
                     "assets": {
-                        "asset1": {"alternate": {"s3": {"href": "s3://bucket/file1"}}},
-                        "asset2": {"alternate": {"s3": {"href": "s3://bucket/file2"}}},
+                        "asset1": {"href": "s3://bucket/file1"},
+                        "asset2": {"href": "s3://bucket/file2"},
                     },
                 },
             ],
@@ -176,7 +176,11 @@ class TestCatalogDeleteEndpoints:
         mock_request.scope = {"path": "/catalog/collections/user_collection_id/items/item_id"}
 
         # Mock response from client.get_item for item deletion
-        mock_client.get_item.return_value = {"assets": {"asset1": {"alternate": {"s3": {"href": "s3://bucket/file1"}}}}}
+        mock_client.get_item.return_value = {
+            "assets": {
+                "asset1": {"href": "s3://bucket/file1", "alternate": {"https": {"href": "https://catalog/file1"}}},
+            },
+        }
 
         # Instantiate UserCatalog and set request_ids for the test
         catalog = UserCatalog(mock_client)
