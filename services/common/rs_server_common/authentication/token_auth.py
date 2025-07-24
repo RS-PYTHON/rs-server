@@ -62,7 +62,7 @@ MANDATORY_TOKEN_ATTRS = [
 
 # Token attributes that are not mandatory but are expected to be present
 # in a regular token.
-EXPECTED_TOKEN_ATTRS = [
+OPTIONAL_TOKEN_ATTRS = [
     "refresh_expires_in",
 ]
 
@@ -178,7 +178,7 @@ def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationCo
                 None,
                 TokenDataNotFound,
             )
-    for attr in EXPECTED_TOKEN_ATTRS:
+    for attr in OPTIONAL_TOKEN_ATTRS:
         if attr not in token_dict:
             logger.warning(
                 f"Attribute {attr} is not defined in the token variable " f"of the station {config.station_id}.",
