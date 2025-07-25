@@ -25,7 +25,7 @@ collections:
     query:
       SessionId: S1A_20170501121534062343,S1A_20240328185208053186
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -55,7 +55,7 @@ collections:
     query:
       SessionId: S1A_20200105072204051312,S1A_20200105072204051313,S1A_20200105072204051314,S1A_20200105072204051315,S1A_20200105072204051316,S1A_20200105072204051317,S1A_20200105072204051318,S1A_20200105072204051319,S1A_20200105072204051310,S1A_20200105072204051311
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -85,7 +85,7 @@ collections:
     query:
       SessionId: S1A_20200105072204051312
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -116,7 +116,7 @@ collections:
       SessionId: S1A_20240328185208053186
       Satellite: S1A
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -147,7 +147,7 @@ collections:
       SessionId: S1A_20240328185208053186,S1A_20240328185208053186
       Satellite: S1A,S2B
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -177,7 +177,7 @@ collections:
     query:
       Satellite: S1A, S2B
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -208,7 +208,7 @@ collections:
       PublicationDate: "2020-02-16T12:00:00Z/2023-02-16T12:00:00Z"
       Satellite: S1A
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -238,7 +238,7 @@ collections:
     query:
       PublicationDate: "2014-02-16T12:00:00Z/2024-02-16T12:00:00Z"
       top: 2
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -268,7 +268,7 @@ collections:
     query:
       Satellite: S1A
       limit: 2
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -298,7 +298,7 @@ collections:
     query:
       Satellite: S2B
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -327,7 +327,7 @@ collections:
     station: cadip
     query:
       Satellite: incorrect_platform
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -356,7 +356,7 @@ collections:
     station: cadip
     query:
       top: 1
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -380,7 +380,7 @@ collections:
     station: cadip
     query:
       PublicationDate: "2020-02-16T12:00:00Z/invalid_stop"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -409,7 +409,7 @@ collections:
     station: cadip
     query:
       PublicationDate: "invalid_start/2020-02-16T12:00:00Z"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -439,7 +439,7 @@ collections:
     query:
       Satellite: S1A
       PublicationDate: "invalid_stop/2020-02-16T12:00:00Z"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -468,7 +468,7 @@ collections:
     station: incorrect
     query:
       Satellite: S1A
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -497,7 +497,7 @@ collections:
     station: cadip
     query:
       top: 1
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -527,7 +527,7 @@ collections:
     query:
       Satellite: S1A
       top: 1
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -555,7 +555,7 @@ collections:
   - id: cadip
     station: cadip
     query: null
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
