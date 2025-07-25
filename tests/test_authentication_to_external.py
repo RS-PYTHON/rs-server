@@ -186,6 +186,31 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
     # Check that the old token has been replaced with the new one
     assert new_token["refresh_token"] == response_new_valid_token["refresh_token"]
 
+    # ---------- Test to generate a new token when current access token is expired
+    # and there is no refresh_expires_in value
+
+    # Change the mock variable creation date and expiration date of both access and refresh tokens
+    # to make them become unvalid
+    mock_token_dict["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+    mock_token_dict["refresh_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+
+    response_new_valid_token = {
+        "access_token": "NewFakeAccessToken",
+        "expires_in": 3600,
+        "refresh_token": "NewfakeRefreshToken",
+        "token_type": "Bearer",
+    }
+    responses.add(
+        responses.POST,
+        url=ext_auth_config.token_url,
+        status=HTTP_200_OK,
+        body=json.dumps(response_new_valid_token),
+    )
+    new_token = get_station_token(ext_auth_config, mock_token_dict)
+    # Check that the old token has been replaced with the new one
+    assert new_token["access_token"] == response_new_valid_token["access_token"]
+    assert new_token["refresh_token"] == response_new_valid_token["refresh_token"]
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
