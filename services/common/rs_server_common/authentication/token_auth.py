@@ -58,7 +58,6 @@ MANDATORY_TOKEN_ATTRS = [
     "expires_in",
     "refresh_token",
     "refresh_token_creation_date",
-    "refresh_expires_in",
 ]
 
 
@@ -261,26 +260,43 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
     nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE", "60"))
     nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE", "60"))
 
-    # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
-    # using the authorisation grant
-    if not token_dict or (
-        token_dict
-        and (current_date - token_dict["access_token_creation_date"]).total_seconds()
-        > token_dict["expires_in"] - nb_secs_before_token_exp
-        and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
-        > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
-    ):
-        if not token_dict:
-            logger.info(
-                f"""No existing token found -> fetching a new access token """
-                f"""from station url: {external_auth_config.token_url}""",
-            )
+    # If we have no token yet, then we need one
+    if not token_dict:
+        get_token = True
+        logger.info(
+            f"""No existing token found -> fetching a new access token """
+            f"""from station url: {external_auth_config.token_url}""",
+        )
+
+    # Else, check if the access token is expired
+    else:
+        access_age = (current_date - token_dict["access_token_creation_date"]).total_seconds()
+        access_age += nb_secs_before_token_exp  # take a margin
+
+        # We don't need a new token if the access token is young enough
+        if access_age <= token_dict["expires_in"]:
+            get_token = False
+
+        # If the access token is too old, we also check the refresh token
         else:
+            # If it's missing, then we need a new token
+            if "refresh_expires_in" not in token_dict:
+                get_token = True
+
+            # Else we need a new token if the access and refresh token are both too old
+            else:
+                refresh_age = (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
+                refresh_age += nb_secs_before_refresh_token_exp  # take a margin
+                get_token = refresh_age > token_dict["refresh_expires_in"]
+
+        if get_token:
             logger.info(
                 f"""Current access and refresh token expired -> fetching access token """
                 f"""from station url: {external_auth_config.token_url}""",
             )
 
+    # If necessary, get a new token using the authorisation grant
+    if get_token:
         # Get the new token and add its creation date
         data_to_send = prepare_data(external_auth_config, call_refresh=False)
         token_dict.update(__request_token(external_auth_config, data_to_send))
