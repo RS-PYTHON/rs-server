@@ -18,7 +18,7 @@ collections:
     query:
       platformShortName: Sentinel-1
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -47,7 +47,7 @@ collections:
     query:
       platformShortName: Sentinel-1
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -75,7 +75,7 @@ collections:
     station: adgs2
     query:
       productType: AUX_OBMEMC
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -102,7 +102,7 @@ collections:
   - id: adgs_invalid
     station: adgs2
     query:
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -130,7 +130,7 @@ collections:
     station: adgs2
     query:
       PublicationDate: "invalid_start/2020-02-16T12:00:00Z"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -158,7 +158,7 @@ collections:
     station: adgs2
     query:
       PublicationDate: "2020-02-16T12:00:00Z/invalid_stop"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -186,7 +186,7 @@ collections:
     station: adgs
     query:
       top: 1
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -214,7 +214,7 @@ collections:
   - id: adgs
     station: adgs
     query: null
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'
     description: 'Auxiliary files from ADGS'
     license: other

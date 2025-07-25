@@ -24,7 +24,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: All from 'adgs' station
   description: All from 'adgs' station
@@ -65,7 +65,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: All from 'adgs2' station
   description: All from 'adgs2' station
@@ -107,7 +107,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: AUX_PP2 'adgs' station
   description: AUX_PP2 'adgs' station
@@ -149,7 +149,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_ECMWFD_PDMC 'adgs' station
   description: OPER_AUX_ECMWFD_PDMC 'adgs' station
@@ -191,7 +191,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_OBMEMC 'adgs' station
   description: OPER_AUX_OBMEMC 'adgs' station
@@ -233,7 +233,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_OBMEMC_PDMC 'adgs' station
   description: OPER_AUX_OBMEMC_PDMC 'adgs' station
@@ -275,7 +275,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_PREORB_OPOD 'adgs' station
   description: OPER_AUX_PREORB_OPOD 'adgs' station
@@ -317,7 +317,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_RESORB_OPOD 'adgs' station
   description: OPER_AUX_RESORB_OPOD 'adgs' station
@@ -359,7 +359,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_RESORB_OPODs 'adgs' station
   description: OPER_AUX_RESORB_OPODs 'adgs' station
@@ -401,7 +401,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_MPL_ORBPRE 'adgs' station
   description: OPER_MPL_ORBPRE 'adgs' station
@@ -443,7 +443,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_MPL_ORBSCT 'adgs' station
   description: OPER_MPL_ORBSCT 'adgs' station
@@ -485,7 +485,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: AUX_PP2 'adgs2' station
   description: AUX_PP2 'adgs2' station
@@ -527,7 +527,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_ECMWFD_PDMC 'adgs2' station
   description: OPER_AUX_ECMWFD_PDMC 'adgs2' station
@@ -569,7 +569,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_OBMEMC 'adgs2' station
   description: OPER_AUX_OBMEMC 'adgs2' station
@@ -611,7 +611,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_OBMEMC_PDMC 'adgs2' station
   description: OPER_AUX_OBMEMC_PDMC 'adgs2' station
@@ -653,7 +653,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_PREORB_OPOD 'adgs2' station
   description: OPER_AUX_PREORB_OPOD 'adgs2' station
@@ -695,7 +695,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_RESORB_OPOD 'adgs2' station
   description: OPER_AUX_RESORB_OPOD 'adgs2' station
@@ -737,7 +737,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_AUX_RESORB_OPODs 'adgs2' station
   description: OPER_AUX_RESORB_OPODs 'adgs2' station
@@ -779,7 +779,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_MPL_ORBPRE 'adgs2' station
   description: OPER_MPL_ORBPRE 'adgs2' station
@@ -821,7 +821,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/auxip-stac-extension/v1.1.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: OPER_MPL_ORBSCT 'adgs2' station
   description: OPER_MPL_ORBSCT 'adgs2' station

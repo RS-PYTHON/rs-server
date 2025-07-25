@@ -24,7 +24,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: All from 'cadip' station
   description: All from 'cadip' station
@@ -65,7 +65,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: All from 'mti' station
   description: All from 'mti' station
@@ -106,7 +106,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: All from 'sgs' station
   description: All from 'sgs' station
@@ -148,7 +148,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-1 'cadip' station
   description: Sentinel-1 'cadip' station
@@ -190,7 +190,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-2 'cadip' station
   description: Sentinel-2 'cadip' station
@@ -232,7 +232,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-3 'cadip' station
   description: Sentinel-3 'cadip' station
@@ -274,7 +274,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-5 'cadip' station
   description: Sentinel-5 'cadip' station
@@ -316,7 +316,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-1 'mti' station
   description: Sentinel-1 'mti' station
@@ -358,7 +358,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-2 'mti' station
   description: Sentinel-2 'mti' station
@@ -400,7 +400,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-3 'mti' station
   description: Sentinel-3 'mti' station
@@ -442,7 +442,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-5 'mti' station
   description: Sentinel-5 'mti' station
@@ -484,7 +484,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-1 'sgs' station
   description: Sentinel-1 'sgs' station
@@ -526,7 +526,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-2 'sgs' station
   description: Sentinel-2 'sgs' station
@@ -568,7 +568,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-3 'sgs' station
   description: Sentinel-3 'sgs' station
@@ -610,7 +610,7 @@ collections:
   stac_extensions:
   - https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json
   - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
   - https://stac-extensions.github.io/view/v1.0.0/schema.json
   title: Sentinel-5 'sgs' station
   description: Sentinel-5 'sgs' station
