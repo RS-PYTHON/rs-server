@@ -61,7 +61,7 @@ flask-cors = "^6.0.1" # for moto
 sqlalchemy-utils = "^0.41.2"
 psycopg2 = "^2.9.9"
 pytest-httpx = ">=0.35,<0.36"
-pytest-asyncio = "^1.0.0"
+pytest-asyncio = "^1.1.0"
 
 
 [tool.black]
