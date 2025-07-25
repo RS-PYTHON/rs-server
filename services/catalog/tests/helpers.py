@@ -235,7 +235,7 @@ class Feature:
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
-                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
             ],
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
