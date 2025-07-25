@@ -27,22 +27,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-rs-server-common = "*"
-uvicorn = ">=0.34.1,<0.35.0"
-fastapi = ">=0.116.1,<0.117.0"
+rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
 jsonpatch = "^1.33"
 openapi-core = "^0.19.5"
-opentelemetry-api = "^1.35.0"
-opentelemetry-sdk = "^1.35.0"
-opentelemetry-instrumentation = "^0.56b0"
-opentelemetry-instrumentation-fastapi = "^0.56b0"
-opentelemetry-exporter-otlp = "^1.35.0"
-opentelemetry-distro = "^0.56b0"
-opentelemetry-instrumentation-aws-lambda = "^0.56b0"
-opentelemetry-instrumentation-httpx = "^0.56b0"
-python-keycloak = ">=5.5.0"
 ovh = "^1.2.0"
-# opentelemetry comes with rs-server-common
 
 [tool.poetry.group.dev]
 optional = true
