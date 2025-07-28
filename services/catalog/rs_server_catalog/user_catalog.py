@@ -409,22 +409,23 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
             if fid != asset:
                 raise HTTPException(
                     detail=(
-                        f"Invalid structure for the asset '{asset}'. The name of the key "
-                        f"should be the filename, which is {fid} "
+                        f"Invalid structure for the asset '{asset}'. The name of the asset "
+                        f"should be the filename, that is {fid} "
                     ),
                     status_code=HTTP_400_BAD_REQUEST,
                 )
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = s3_filename.split("/")
+                old_bucket = old_bucket_arr[2]
                 old_bucket_arr[2] = bucket_name
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
-                s3_key_exists, size = self.check_s3_key(item, asset, s3_key)
+                s3_key_exists, _ = self.check_s3_key(item, asset, s3_key)
                 if not s3_key_exists:
                     # update the S3 path to use the catalog bucket
                     # add also the file:size and file:local_path fields
-                    content["assets"][asset].update({"href": s3_key, "file:size": size, "file:local_path": fid})
+                    content["assets"][asset].update({"href": s3_key, "file:local_path": "/".join(old_bucket_arr[-2:])})
                     # update the 'href' key with the download link and create the alternate field
                     https_link = f"https://{request.url.netloc}/catalog/\
 collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/{asset}"
@@ -433,12 +434,17 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     # copy the key only if it isn't already in the final catalog bucket
                     # (don't do anything if in local mode)
                     if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):
-                        s3_key_exists, _ = self.s3_handler.check_s3_key_on_bucket(
+                        s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(
                             bucket_name,
                             "/".join(old_bucket_arr[3:]),
                         )
                         if not s3_key_exists:
                             files_s3_key.append(s3_filename)
+                            _, size = self.s3_handler.check_s3_key_on_bucket(old_bucket, "/".join(old_bucket_arr[3:]))
+                        if size != -1:
+                            content["assets"][asset]["file:size"] = size
+                        logger.debug(f"file:size = {size}")
+
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the catalog s3 bucket later on
