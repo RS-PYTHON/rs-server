@@ -246,11 +246,11 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                         if the S3 paths do not match, or if there is an error checking the key.
         """
         if not item or not self.s3_handler:
-            return False
+            return False, -1
         # update an item
         existing_asset = item["assets"].get(asset_name)
         if not existing_asset:
-            return False
+            return False, -1
 
         # check if the new s3_href is the same as the existing one
         try:
@@ -275,12 +275,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         # check the presence of the key
         try:
-            if not self.s3_handler.check_s3_key_on_bucket(bucket, key_path):
+            s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
+            if not s3_key_exists:
                 raise HTTPException(
                     detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
-            return True
+            return True, size
         except RuntimeError as rte:
             raise HTTPException(
                 detail=f"When checking the presence of the {s3_key} key, an error has been raised: {rte}",
@@ -345,7 +346,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         except RuntimeError as rte:
             raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
-    def update_stac_item_publication(  # pylint: disable=too-many-locals
+    def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches
         self,
         content: dict,
         request: Request,
@@ -419,19 +420,25 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 old_bucket_arr[2] = bucket_name
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
-                if not self.check_s3_key(item, asset, s3_key):
-                    # Update the S3 path to use the catalog bucket
-                    content["assets"][asset].update({"href": s3_key})
+                s3_key_exists, size = self.check_s3_key(item, asset, s3_key)
+                if not s3_key_exists:
+                    # update the S3 path to use the catalog bucket
+                    # add also the file:size and file:local_path fields
+                    content["assets"][asset].update({"href": s3_key, "file:size": size, "file:local_path": fid})
                     # update the 'href' key with the download link and create the alternate field
                     https_link = f"https://{request.url.netloc}/catalog/\
 collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/{asset}"
-                    content["assets"][asset].update({ALTERNATE_STRING: {"https": https_link}})
+                    content["assets"][asset].update({ALTERNATE_STRING: {"https": {"href": https_link}}})
 
                     # copy the key only if it isn't already in the final catalog bucket
-                    if not int(
-                        os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
-                    ) and not self.s3_handler.check_s3_key_on_bucket(bucket_name, "/".join(old_bucket_arr[3:])):
-                        files_s3_key.append(s3_filename)
+                    # (don't do anything if in local mode)
+                    if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):
+                        s3_key_exists, _ = self.s3_handler.check_s3_key_on_bucket(
+                            bucket_name,
+                            "/".join(old_bucket_arr[3:]),
+                        )
+                        if not s3_key_exists:
+                            files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the catalog s3 bucket later on
