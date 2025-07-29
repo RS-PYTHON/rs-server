@@ -109,7 +109,10 @@ class TestGetS3FilenameFromAsset:
 
     def test_retrieve_s3_key_from_alternate_field(self):
         """Test retrieving the S3 key from the 'alternate.s3.href' field."""
-        asset = {"alternate": {"s3": {"href": "s3://test_catalog_bucket/path/to/filename"}}}
+        asset = {
+            "href": "s3://test_catalog_bucket/path/to/filename",
+            "alternate": {"https": {"href": "https://rs-server/test_catalog/path/to/filename"}},
+        }
         s3_filename, alternate_field = get_s3_filename_from_asset(asset)
         assert s3_filename == "s3://test_catalog_bucket/path/to/filename"
         assert alternate_field is True

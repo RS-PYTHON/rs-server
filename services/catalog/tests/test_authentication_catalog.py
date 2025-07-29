@@ -79,6 +79,10 @@ AUTHENT_SCHEME = {
                 },
             },
         },
+        "s3": {
+            "type": "s3",
+            "description": "S3",
+        },
     },
 }
 AUTHENT_REF = {
