@@ -1473,8 +1473,7 @@ class TestCollection:
                 "/cadip/collections/cadip_session_by_id",
                 'http://127.0.0.1:5000/Sessions?$filter="SessionId eq S1A_20200105072204051312"&$top=20',
                 {
-                    "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
-                    "Sentinel_Data_Terms_and_Conditions.pdf",
+                    "href": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
                     "rel": "license",
                     "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
                 },
@@ -1485,8 +1484,7 @@ class TestCollection:
                 "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
                 "&$expand=Attributes",
                 {
-                    "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
-                    "Sentinel_Data_Terms_and_Conditions.pdf",
+                    "href": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
                     "rel": "license",
                     "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
                 },

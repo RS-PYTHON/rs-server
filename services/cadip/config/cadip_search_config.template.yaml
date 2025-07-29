@@ -18,10 +18,6 @@ template:
   query:
   stac_extensions:
     [
-      "https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json",
-      "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-      "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
-      "https://stac-extensions.github.io/view/v1.0.0/schema.json",
     ]
   title:
   description:
@@ -33,7 +29,7 @@ template:
       interval: [["2024-06-12T02:57:21.459000Z", "2024-08-22T11:30:12.767000Z"]]
   links:
     - rel: license
-      href: "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf"
+      href: "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice"
       title: "Legal notice on the use of Copernicus Sentinel Data and Service Information"
       type: "application/pdf"
     - rel: describedby
