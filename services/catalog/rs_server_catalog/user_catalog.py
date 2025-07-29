@@ -346,7 +346,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         except RuntimeError as rte:
             raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
-    def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches
+    def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
         self,
         content: dict,
         request: Request,
@@ -376,7 +376,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
-        logger.debug(f"User to check for: {user}")
+        logger.debug(f"Update item for user: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
@@ -440,8 +440,12 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                         )
                         if not s3_key_exists:
                             files_s3_key.append(s3_filename)
-                            _, size = self.s3_handler.check_s3_key_on_bucket(old_bucket, "/".join(old_bucket_arr[3:]))
-                        if size != -1:
+                            if "file:size" not in content["assets"][asset]:
+                                _, size = self.s3_handler.check_s3_key_on_bucket(
+                                    old_bucket,
+                                    "/".join(old_bucket_arr[3:]),
+                                )
+                        if "file:size" not in content["assets"][asset] and size != -1:
                             content["assets"][asset]["file:size"] = size
                         logger.debug(f"file:size = {size}")
 
