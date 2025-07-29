@@ -493,7 +493,6 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             **COMMON_FIELDS,
         },
     ]
-    print("DEBUG__")
     all_collections = client.request("GET", "/catalog/collections", **header)
 
     assert all_collections.status_code == HTTP_200_OK
@@ -502,7 +501,6 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
 
     # Test a wrong apikey
     if test_apikey:
-        print("YES")
         wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
         assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
