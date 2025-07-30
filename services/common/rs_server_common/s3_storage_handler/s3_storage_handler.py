@@ -310,7 +310,7 @@ class S3StorageHandler:
 
         # NOTE: don't check if the files exist on the bucket.
         # If they don't, nothing happens, we don't have any error from boto3.
-        self.logger.debug(f"Deleting s3 keys from 's3://{bucket}': {keys}")
+        self.logger.debug(f"Deleting {len(keys)} s3 keys from 's3://{bucket}'")
 
         attempt = 0
         while True:

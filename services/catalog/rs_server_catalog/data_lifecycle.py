@@ -111,36 +111,35 @@ class DataLifecycle:
 
     async def _periodic_loop(self):
         """Run the periodic task in an infinite loop."""
-        with init_opentelemetry.start_span(__name__, "data_lifecycle"):
-
-            # Infinite loop
-            while not self.cancel_flag:
-                start_time = time.time()
-                try:
-                    # Run the task
+        # Infinite loop
+        while not self.cancel_flag:
+            start_time = time.time()
+            try:
+                # Run the task
+                with init_opentelemetry.start_span(__name__, "data_lifecycle"):
                     await self.periodic_once()
 
-                # Log any error
-                except Exception:  # pylint: disable=broad-exception-caught
-                    self.logger.error(traceback.format_exc())
+            # Log any error
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.logger.error(traceback.format_exc())
 
-                # If the caller cancelled execution, we exit the infinite loop before the sleep.
-                if self.cancel_flag:
-                    return
+            # If the caller cancelled execution, we exit the infinite loop before the sleep.
+            if self.cancel_flag:
+                return
 
-                # Measure execution time of the task in seconds
-                runtime = time.time() - start_time
+            # Measure execution time of the task in seconds
+            runtime = time.time() - start_time
 
-                # We remove this execution time to the period in seconds between two tasks,
-                # so the tasks run at fixed intervals.
-                # If the current task took more time than the period, then a task was skipped, we don't run it.
-                runtime = runtime % self.period
-                sleep_value = self.period - runtime
+            # We remove this execution time to the period in seconds between two tasks,
+            # so the tasks run at fixed intervals.
+            # If the current task took more time than the period, then a task was skipped, we don't run it.
+            runtime = runtime % self.period
+            sleep_value = self.period - runtime
 
-                # Wait n seconds before next run
-                if sleep_value != math.inf:
-                    self.logger.debug(f"Wait {str(timedelta(seconds=round(sleep_value)))} before next cleaning")
-                await asyncio.sleep(sleep_value)
+            # Wait n seconds before next run
+            if sleep_value != math.inf:
+                self.logger.debug(f"Wait {str(timedelta(seconds=round(sleep_value)))} before next cleaning")
+            await asyncio.sleep(sleep_value)
 
     async def periodic_once(self, genuine_request: Request | None = None):
         """
@@ -172,8 +171,7 @@ class DataLifecycle:
         items: list[Item] = item_collection.get("features", [])
 
         if items:
-            ids = [item["id"] for item in items]
-            self.logger.debug(f"Clean {len(ids)} items: {ids}")
+            self.logger.debug(f"Clean {len(items)} items")
         else:
             self.logger.debug("No items to clean")
             return
