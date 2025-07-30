@@ -24,6 +24,45 @@ Changed
 
 None
 
+[0.2] - Sprint 26 - 2025-07-30
+================================
+
+## Added
+
+- RSPY-156: Implement RS data lifecycle (cleanup of expired STAC items)
+- RSPY-212: Deploy Grafana Alloy on K8S cluster
+- RSPY-269: [Monitoring] Update to latest stable version of Grafana
+- RSPY-301: Means to scale-up/scale-down the cluster
+- RSPY-314: Sort roles in apikeymanager
+- RSPY-460: [Monitoring] Update to Loki 3
+- RSPY-461: [Monitoring] Update to latest version of Tempo
+- RSPY-621: Catalog: Allow to download products from S3
+- RSPY-622: STAC error management
+- RSPY-698: Move to SonarQube Cloud solution
+- RSPY-703: Merge processing and operational namespaces to share the same configmap
+- RSPY-709: Support refresh token without "refresh_expires_in" field (2 pts)
+- RSPY-715: Create an user friendly @flow "session-stage"
+- RSPY-716: Fix SARIF upload category
+- RSPY-717: OSAM: apply OBS access rights for one user (/storage/account/{account_name}/update )
+- RSPY-718: Create an user friendly @flow "aux-stage"
+- RSPY-719: Sprint 26 corrections of issues
+- RSPY-727: Update right applied for user with OSAM component
+- RSPY-737: Make S3L0 processing work (title to change!)
+
+## Fixed
+
+- RSPY-201: New code is not fully covered by tests SonarQube (0 pts)
+- RSPY-272: [Deployment] Node label not set (terraform error) ( 0 pt)
+- RSPY-313: Optional usage of owner_id for catalog endpoints (0 pt)
+- RSPY-443: [Deployment] Jupyter-Hub failed to be deployed (0 pt)
+- RSPY-477: CADIP STAC validation: media type used in Accept header must get response with same Content-Type header (2 pts)
+- RSPY-545: CADIP chunks are no longer sorted by date (1 pt)
+- RSPY-706: AUXIP search performs too many requests (1 per collection) (0 point)
+- RSPY-721: Do not reveal S3 credentials when calling SAFE to ZARR transformation (2 pts)
+- RSPY-722: Error staging to a collection named "collection10" [1pt]
+- RSPY-723: Composite CQL2 filters don't work in Auxip staging (mockup only) (3 pts)
+- RSPY-726: The search from stac-browser-auxip returns items with bad url ( 2 points )
+
 [0.2a15] - Sprint 25 - 2025-07-02
 ================================
 
