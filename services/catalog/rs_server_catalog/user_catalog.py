@@ -930,7 +930,7 @@ field is not permitted also."
             # add child links
             collections_resp = await self.client.all_collections(request=request)
             collections = collections_resp.get("collections", [])
-            base_url = content["links"][0]["href"].rstrip("/") + "/"
+            base_url = next((l["href"] for l in content["links"] if l.get("rel") == "self"), "").rstrip("/") + "/"
 
             for collection in collections:
                 collection_id = (
@@ -943,7 +943,7 @@ field is not permitted also."
                         "rel": "child",
                         "type": "application/json",
                         "title": collection.get("title") or collection_id,
-                        "href": urljoin(base_url, f"collections/{collection_id}"),
+                        "href": urljoin(base_url, f"collections/{collection['owner']}:{collection_id}"),
                     },
                 )
 

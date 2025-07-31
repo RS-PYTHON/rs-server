@@ -17,6 +17,7 @@
 """Unit tests for the authentication."""
 
 import json
+import os
 
 import pytest
 import requests
@@ -178,6 +179,48 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "type": "text/html",
             "title": "OpenAPI service documentation",
             "href": "http://testserver/catalog/api.html",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "S1_L1",
+            "href": "http://testserver/catalog/collections/toto:S1_L1",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "S2_L3",
+            "href": "http://testserver/catalog/collections/toto:S2_L3",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "S2_L1",
+            "href": "http://testserver/catalog/collections/titi:S2_L1",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "S1_L2",
+            "href": "http://testserver/catalog/collections/darius:S1_L2",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "S1_L1",
+            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "S2_L2",
+            "href": f"http://testserver/catalog/collections/{os.environ['LOGNAME']}:S2_L2",
             **AUTHENT_REF,
         },
     ]

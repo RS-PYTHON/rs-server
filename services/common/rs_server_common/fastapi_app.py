@@ -131,12 +131,10 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
     app.state.pgstac_client = CoreCrudClient(pgstac_search_model=search_post_request_model)
 
-    # Store the bound method correctly
-    original_landing_page = app.state.pgstac_client.landing_page
-
+    # patch the pgstac_client.landing_page method
     async def patched_landing_page(self, request, **kwargs):
         # Call the original method
-        original = await original_landing_page(request=request, **kwargs)
+        original = await CoreCrudClient.landing_page(self, request=request, **kwargs)
 
         # Get base from 'self' link
         base = next((l["href"] for l in original["links"] if l.get("rel") == "self"), "").rstrip("/") + "/"
