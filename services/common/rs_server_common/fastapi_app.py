@@ -131,7 +131,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
     app.state.pgstac_client = CoreCrudClient(pgstac_search_model=search_post_request_model)
 
-    # patch the pgstac_client.landing_page method
+    # patch the pgstac_client.landing_page method to add "rel": "child" link for each collection
     async def patched_landing_page(self, request, **kwargs):
         # Call the original method
         original = await CoreCrudClient.landing_page(self, request=request, **kwargs)

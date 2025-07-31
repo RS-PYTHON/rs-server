@@ -947,7 +947,7 @@ field is not permitted also."
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
 
-            # add child links
+            # patch the catalog landing page with "rel": "child" link for each collection
             collections_resp = await self.client.all_collections(request=request)
             collections = collections_resp.get("collections", [])
             base_url = (
