@@ -137,7 +137,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         original = await CoreCrudClient.landing_page(self, request=request, **kwargs)
 
         # Get base from 'self' link
-        base = next((l["href"] for l in original["links"] if l.get("rel") == "self"), "").rstrip("/") + "/"
+        base = next((link["href"] for link in original["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
 
         # Fetch collections
         collections = (await self.all_collections(request=request)).get("collections", [])

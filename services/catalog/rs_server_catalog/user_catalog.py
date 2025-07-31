@@ -950,7 +950,9 @@ field is not permitted also."
             # add child links
             collections_resp = await self.client.all_collections(request=request)
             collections = collections_resp.get("collections", [])
-            base_url = next((l["href"] for l in content["links"] if l.get("rel") == "self"), "").rstrip("/") + "/"
+            base_url = (
+                next((link["href"] for link in content["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
+            )
 
             for collection in collections:
                 collection_id = (
