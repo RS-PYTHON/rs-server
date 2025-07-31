@@ -265,7 +265,8 @@ class S3StorageHandler:
             try:
                 self.connect_s3()
                 self.logger.debug("Deleting s3 key s3://%s/%s", bucket, key)
-                if not self.check_s3_key_on_bucket(bucket, key):
+                s3_key_exists, _ = self.check_s3_key_on_bucket(bucket, key)
+                if not s3_key_exists:
                     self.logger.debug("S3 key to be deleted s3://%s/%s does not exist", bucket, key)
                     return
                 self.s3_client.delete_object(Bucket=bucket, Key=key)
@@ -309,7 +310,7 @@ class S3StorageHandler:
 
         # NOTE: don't check if the files exist on the bucket.
         # If they don't, nothing happens, we don't have any error from boto3.
-        self.logger.debug(f"Deleting s3 keys from 's3://{bucket}': {keys}")
+        self.logger.debug(f"Deleting {len(keys)} s3 keys from 's3://{bucket}'")
 
         attempt = 0
         while True:
@@ -572,14 +573,20 @@ class S3StorageHandler:
             bucket (str): The S3 bucket name.
             s3_key (str): The s3 key that should be checked
 
+        Returns: True and size if the s3 key is available, False and -1 and it isn't
+
         Raises:
             RuntimeError: If an error occurs during the bucket access check or if
                 the s3_key is not available.
         """
+        size = -1
         try:
             self.connect_s3()
             self.logger.debug(f"Checking for the presence of the s3 key s3://{bucket}/{s3_key}")
-            self.s3_client.head_object(Bucket=bucket, Key=s3_key)
+            response = self.s3_client.head_object(Bucket=bucket, Key=s3_key)
+            # get the size of the file as well
+            if isinstance(response, dict):
+                size = response.get("ContentLength", -1)
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
             # If it was a 404 error, then the bucket does not exist.
@@ -589,7 +596,7 @@ class S3StorageHandler:
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             if error_code == S3_ERR_NOT_FOUND:
                 self.logger.exception(f"The key s3://{bucket}/{s3_key} does not exist!")
-                return False
+                return False, size
             self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
         except (
@@ -603,7 +610,7 @@ class S3StorageHandler:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
 
-        return True
+        return True, size
 
     def wait_timeout(self, timeout):
         """

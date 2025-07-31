@@ -472,7 +472,7 @@ def test_check_s3_key_on_bucket_not_found(mocker):
         boto_mocker.add_client_error("head_object", service_message="Not Found", service_error_code=S3_ERR_NOT_FOUND)
 
         # Call the function
-        result = s3_handler.check_s3_key_on_bucket(bucket, s3_key)
+        result, _ = s3_handler.check_s3_key_on_bucket(bucket, s3_key)
         mock_logger.exception.assert_called_once_with(f"The key s3://{bucket}/{s3_key} does not exist!")
         assert result is False
 

@@ -1074,7 +1074,7 @@ def test_check_s3_key_on_bucket_success(mocker):
     mock_logger = mocker.patch.object(s3_handler, "logger")
 
     # Call the function
-    result = s3_handler.check_s3_key_on_bucket(bucket, file_to_be_checked)
+    result, _ = s3_handler.check_s3_key_on_bucket(bucket, file_to_be_checked)
 
     # Assertions
     mock_logger.debug.assert_called_once_with(

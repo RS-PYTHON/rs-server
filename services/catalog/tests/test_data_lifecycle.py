@@ -44,7 +44,7 @@ def get_item(client, collection_id: str, item_id: str) -> dict:
 
 def check_assets(s3_handler, item: dict, exist: bool):
     """Check that all asset files exist (or not) in the s3 bucket"""
-    files = [asset["alternate"]["s3"]["href"] for asset in item.get("assets", {}).values()]
+    files = [asset["href"] for asset in item.get("assets", {}).values()]
     for s3_file in files:
         parsed = urlparse(s3_file)
         bucket_name = parsed.netloc

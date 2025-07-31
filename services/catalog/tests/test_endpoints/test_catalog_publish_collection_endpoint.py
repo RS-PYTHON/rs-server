@@ -244,6 +244,7 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         response_content = json.loads(response.content)
+        print(f"response_content = {response_content}")
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == "Cannot create or update more than one collection !"
 

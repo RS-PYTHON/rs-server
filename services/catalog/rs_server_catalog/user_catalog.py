@@ -100,6 +100,7 @@ DEFAULT_GEOM = {
 }
 DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 QUERYABLES = "/queryables"
+ALTERNATE_STRING = "alternate"
 # pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
@@ -152,8 +153,8 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             item_collection = content.get("collection", "*").removeprefix(f"{item_owner}_")
             item_eopf_type = content["properties"].get("eopf:type", "*")
             bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
-            # For catalog bucket, data is already stored into alternate:s3:href
-            file_key = content["assets"][asset]["alternate"]["s3"]["href"]
+            # For catalog bucket, data is already stored into href field (from an asset)
+            file_key = content["assets"][asset]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
                 self.s3_handler.delete_file_from_s3(bucket_name, file_key)
 
@@ -245,15 +246,15 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                         if the S3 paths do not match, or if there is an error checking the key.
         """
         if not item or not self.s3_handler:
-            return False
+            return False, -1
         # update an item
         existing_asset = item["assets"].get(asset_name)
         if not existing_asset:
-            return False
+            return False, -1
 
         # check if the new s3_href is the same as the existing one
         try:
-            item_s3_path = existing_asset["alternate"]["s3"]["href"]
+            item_s3_path = existing_asset["href"]
         except KeyError as exc:
             raise HTTPException(
                 detail=f"Failed to get the s3 path for the asset {asset_name}",
@@ -274,12 +275,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         # check the presence of the key
         try:
-            if not self.s3_handler.check_s3_key_on_bucket(bucket, key_path):
+            s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
+            if not s3_key_exists:
                 raise HTTPException(
                     detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
-            return True
+            return True, size
         except RuntimeError as rte:
             raise HTTPException(
                 detail=f"When checking the presence of the {s3_key} key, an error has been raised: {rte}",
@@ -302,8 +304,9 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
             return
 
         try:
+            # get the temporary bucket name, there should be one only in the set
             temp_bucket_name = get_temp_bucket_name(files_s3_key)
-            # now remove the s3://temp_bucket_name for each s3_key
+            # now, remove the s3://temp_bucket_name for each s3_key
             for idx, s3_key in enumerate(files_s3_key):
                 # build the list with files to be deleted from the temporary bucket
                 self.s3_files_to_be_deleted.append(s3_key)
@@ -327,13 +330,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
-            # In case of the PUT request, all the new assets are transfered (see up)
-            # Any existing asset in the item (already in the catalog from a previous POST request)
-            # but not found in this request is deleted
-            # If a PATCH request is received (not yet implemented) do not delete anything
+            # For a PUT request, all new assets are transferred (as described above).
+            # Any asset that already exists in the catalog from a previous POST request
+            # but is not included in the current request will be deleted.
+            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
             if item and request.method == "PUT":
                 for asset in item["assets"]:
-                    self.s3_files_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
+                    self.s3_files_to_be_deleted.append(item["assets"][asset]["href"])
         except KeyError as kerr:
             self.s3_files_to_be_deleted.clear()
             raise HTTPException(
@@ -343,7 +346,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         except RuntimeError as rte:
             raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
-    def update_stac_item_publication(  # pylint: disable=too-many-locals
+    def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
         self,
         content: dict,
         request: Request,
@@ -373,7 +376,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
-        logger.debug(f"User to check for: {user}")
+        logger.debug(f"Update item for user: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
@@ -393,43 +396,59 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 if not item:
                     # the asset should be already in the catalog from a previous POST/PUT request
                     raise HTTPException(
-                        detail=(f"The item that contains asset '{asset}' does not exist in the catalog "),
+                        detail=(f"The item that contains asset '{asset}' does not exist in the catalog but it should "),
                         status_code=HTTP_400_BAD_REQUEST,
                     )
             # else:
-            # when alternate_key does not exist, it means the request is coming from the staging process
-            # the file should not be deleted from the temp bucket, because in fact it does not exist. THe file
-            # is already in the final catalog bucket, from the staging process. Nothing to do
+            # if alternate_key is missing, it indicates the request originates from the staging process.
+            # In this case, the file should not be deleted from the temp bucket — it's already stored in the
+            # final catalog bucket, so no action is needed.
 
             logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
             fid = s3_filename.rsplit("/", maxsplit=1)[-1]
             if fid != asset:
                 raise HTTPException(
                     detail=(
-                        f"Invalid structure for the asset '{asset}'. The name of the key "
-                        f"should be the filename, which is {fid} "
+                        f"Invalid structure for the asset '{asset}'. The name of the asset "
+                        f"should be the filename, that is {fid} "
                     ),
                     status_code=HTTP_400_BAD_REQUEST,
                 )
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = s3_filename.split("/")
+                old_bucket = old_bucket_arr[2]
                 old_bucket_arr[2] = bucket_name
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
-                if not self.check_s3_key(item, asset, s3_key):
-                    # update the 'href' key with the download link
-                    new_href = f"https://{request.url.netloc}/catalog/\
+                s3_key_exists, _ = self.check_s3_key(item, asset, s3_key)
+                if not s3_key_exists:
+                    # update the S3 path to use the catalog bucket
+                    # add also the file:size and file:local_path fields
+                    content["assets"][asset].update({"href": s3_key, "file:local_path": "/".join(old_bucket_arr[-2:])})
+                    # update the 'href' key with the download link and create the alternate field
+                    https_link = f"https://{request.url.netloc}/catalog/\
 collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/{asset}"
-                    content["assets"][asset].update({"href": new_href})
-                    # Update the S3 path to use the catalog bucket and create the alternate field
-                    new_s3_href = {"s3": {"href": s3_key}}
-                    content["assets"][asset].update({"alternate": new_s3_href})
+                    content["assets"][asset].update({ALTERNATE_STRING: {"https": {"href": https_link}}})
+
                     # copy the key only if it isn't already in the final catalog bucket
-                    if not int(
-                        os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
-                    ) and not self.s3_handler.check_s3_key_on_bucket(bucket_name, "/".join(old_bucket_arr[3:])):
-                        files_s3_key.append(s3_filename)
+                    # (don't do anything if in local mode)
+                    if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):
+                        s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(
+                            bucket_name,
+                            "/".join(old_bucket_arr[3:]),
+                        )
+                        if not s3_key_exists:
+                            files_s3_key.append(s3_filename)
+                            if "file:size" not in content["assets"][asset]:
+                                _, size = self.s3_handler.check_s3_key_on_bucket(
+                                    old_bucket,
+                                    "/".join(old_bucket_arr[3:]),
+                                )
+                        if "file:size" not in content["assets"][asset] and size != -1:
+                            content["assets"][asset]["file:size"] = size
+                        logger.debug(f"file:size = {size}")
+
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the catalog s3 bucket later on
@@ -444,6 +463,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         for new_stac_extension in [
             "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         ]:
             if new_stac_extension not in content["stac_extensions"]:
                 content["stac_extensions"].append(new_stac_extension)
@@ -470,7 +490,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
         try:
             s3_path = (
-                content["assets"][asset_id]["alternate"]["s3"]["href"]
+                content["assets"][asset_id]["href"]
                 .replace(
                     f"s3://{bucket_name}",
                     "",
@@ -1170,7 +1190,7 @@ field is not permitted also."
                 for item in items:
                     assets = item.get("assets", {})
                     for _, asset_info in assets.items():
-                        s3_href = asset_info.get("alternate", {}).get("s3", {}).get("href")
+                        s3_href = asset_info.get("href")
                         if s3_href:
                             self.s3_files_to_be_deleted.append(s3_href)
             except KeyError as e:
@@ -1443,12 +1463,20 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                         },
                     },
                 },
+                "s3": {
+                    "type": "s3",
+                    "description": "S3",
+                },
             },
         )
 
         # Add the authentication reference to each link and asset
-        for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
-            link_or_asset["auth:refs"] = ["apikey", "openid", "oauth2"]
+        for link in content.get("links", []):
+            link["auth:refs"] = ["apikey", "openid", "oauth2"]
+        for asset in list(content.get("assets", {}).values()):
+            asset["auth:refs"] = ["s3"]
+            if ALTERNATE_STRING in asset:
+                asset[ALTERNATE_STRING].update({"auth:refs": ["apikey", "openid", "oauth2"]})
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:

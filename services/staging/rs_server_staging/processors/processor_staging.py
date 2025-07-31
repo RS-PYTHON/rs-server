@@ -1038,7 +1038,7 @@ class Staging(
         Args:
             catalog_collection (str): Name of the catalog collection.
             feature (dict): The feature to be published, represented as a dictionary. It should
-            include all necessary attributes required by the catalog.
+            include all the necessary attributes required by the catalog.
 
         Returns:
             bool: Returns `True` if the feature was successfully published, otherwise returns `False`

@@ -74,11 +74,11 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
     Once the asset is inserted in the catalog, the content typically looks like this:
         "filename": {
             "alternate": {
-                "s3": {
-                    "href": "s3://rs-dev-cluster-catalog/path/to/filename"
+                "https": {
+                    "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
                 }
             },
-            "href": "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
+            "href": "s3://rs-dev-cluster-catalog/path/to/filename",
         }
 
     Args:
@@ -92,11 +92,8 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
         HTTPException: If the S3 key could not be loaded or is invalid.
     """
     # Attempt to retrieve the S3 key from the 'alternate.s3.href' or 'href' fields
-    s3_filename = asset.get("alternate", {}).get("s3", {}).get("href")
-    alternate_field = bool(s3_filename)
-
-    if not s3_filename:
-        s3_filename = asset.get("href", "")
+    s3_filename = asset.get("href", "")
+    alternate_field = bool(asset.get("alternate", None))
 
     # Validate that the S3 key was successfully retrieved and has the correct format
     if not is_s3_path(s3_filename):
