@@ -87,7 +87,7 @@ DEFAULT_FILES_LIMIT = 1000
 
 
 def validate(queryables: dict):
-    """Function used to verify / update ADGS-specific queryables before being sent to eodag."""
+    """Function used to verify / update CADIP-specific queryables before being sent to eodag."""
     for queryable_name, queryable_data in queryables.items():
         if queryable_name == "PublicationDate":
             queryables[queryable_name] = validate_inputs_format(queryable_data)
@@ -476,7 +476,7 @@ async def get_cadip_collection_item_details(
 @validate_call(config={"arbitrary_types_allowed": True})
 def process_session_search(  # type: ignore # pylint: disable=too-many-arguments, too-many-locals, unused-argument
     station: str,
-    queryables,
+    queryables: dict,
     collection_provider: Callable[[dict], str | None],
     sortby: str,
     limit: Annotated[
@@ -574,7 +574,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
 
 def process_files_search(  # pylint: disable=too-many-locals
     station: str,
-    queryables,
+    queryables: dict,
     limit: int | None = DEFAULT_FILES_LIMIT,
     **kwargs,
 ) -> list[dict] | dict:
@@ -601,7 +601,6 @@ def process_files_search(  # pylint: disable=too-many-locals
         HTTPException: If a general failure occurs during the process.
     """
     query_datetime = queryables.get("PublicationDate")
-
     session_id = queryables.get("SessionId")
     if not query_datetime and not session_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
