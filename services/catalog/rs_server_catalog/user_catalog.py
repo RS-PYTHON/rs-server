@@ -34,7 +34,7 @@ import json
 import os
 import re
 from typing import Any
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import botocore
 from fastapi import HTTPException
@@ -946,6 +946,28 @@ field is not permitted also."
             url = request.url._url  # pylint: disable=protected-access
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
+
+            # patch the catalog landing page with "rel": "child" link for each collection
+            collections_resp = await self.client.all_collections(request=request)
+            collections = collections_resp.get("collections", [])
+            base_url = (
+                next((link["href"] for link in content["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
+            )
+
+            for collection in collections:
+                collection_id = (
+                    collection["id"].removeprefix(f"{collection['owner']}_")
+                    if collection["owner"]
+                    else collection["id"]
+                )
+                content["links"].append(
+                    {
+                        "rel": "child",
+                        "type": "application/json",
+                        "title": collection.get("title") or collection_id,
+                        "href": urljoin(base_url, f"collections/{collection['owner']}:{collection_id}"),
+                    },
+                )
 
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if self.request_ids["owner_id"]:

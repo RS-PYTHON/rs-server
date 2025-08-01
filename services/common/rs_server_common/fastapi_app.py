@@ -17,6 +17,8 @@
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
+from types import MethodType
+from urllib.parse import urljoin
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -128,6 +130,33 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
     app.state.pgstac_client = CoreCrudClient(pgstac_search_model=search_post_request_model)
+
+    # patch the pgstac_client.landing_page method to add "rel": "child" link for each collection
+    async def patched_landing_page(self, request, **kwargs):
+        # Call the original method
+        original = await CoreCrudClient.landing_page(self, request=request, **kwargs)
+
+        # Get base from 'self' link
+        base = next((link["href"] for link in original["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
+
+        # Fetch collections
+        collections = (await self.all_collections(request=request)).get("collections", [])
+
+        # Append rel="child" links
+        original["links"] += [
+            {
+                "rel": "child",
+                "type": "application/json",
+                "title": collection.get("title") or collection["id"],
+                "href": urljoin(base, f"collections/{collection['id']}"),
+            }
+            for collection in collections
+        ]
+
+        return original
+
+    # Monkey patch the pgstac_client.landing_page method
+    app.state.pgstac_client.landing_page = MethodType(patched_landing_page, app.state.pgstac_client)
 
     # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
     app.state.pgstac_client.extensions = extensions
