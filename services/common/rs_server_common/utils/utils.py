@@ -21,6 +21,7 @@ from datetime import datetime
 from threading import Thread
 from typing import Any
 
+from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
@@ -28,31 +29,6 @@ from rs_server_common.utils.logging import Logging
 # pylint: disable=too-few-public-methods
 
 logger = Logging.default(__name__)
-
-# TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
-DWN_THREAD_START_TIMEOUT = 5
-
-
-def is_valid_date_format(date: str) -> bool:
-    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS[.sss]Z".
-
-    Args:
-        date (str): The string to be validated for the specified date format.
-
-    Returns:
-        bool: True if the input string adheres to the expected date format, otherwise False.
-
-    """
-    try:
-        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")  # test without milliseconds
-        return True
-    except ValueError:
-        try:
-            datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")  # test with milliseconds
-            return True
-        except ValueError:
-            pass
-    return False
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -133,24 +109,25 @@ def validate_inputs_format(
         logger.error("Missing start or stop in endpoint call!")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
 
-    for date in [fixed_date, start_date, stop_date]:
-        if date.strip("'\".") and not is_valid_date_format(date):
-            logger.info("Invalid start/stop in endpoint call!")
-            if raise_errors:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-            return None, None, None
-
-    def to_dt(dates) -> list[datetime | None]:
-        """Converts a list of date strings to datetime objects or None if the conversion fails."""
-        return [datetime.fromisoformat(date) if is_valid_date(date) else None for date in dates]
-
     def is_valid_date(date: str) -> bool:
         """Check if the string can be converted to a valid datetime."""
         try:
-            datetime.fromisoformat(date)
+            isoparse(date)
             return True
         except ValueError:
             return False
+
+    for date in [fixed_date, start_date, stop_date]:
+        if date.strip("'\".") and not is_valid_date(date):
+            message: str = f"Invalid date: {date}"
+            logger.warning(message)
+            if raise_errors:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+            return None, None, None
+
+    def to_dt(dates: list[str]) -> list[datetime | None]:
+        """Converts a list of date strings to datetime objects or None if the conversion fails."""
+        return [isoparse(date) if is_valid_date(date) else None for date in dates]
 
     fixed_date_dt, start_date_dt, stop_date_dt = to_dt([fixed_date, start_date, stop_date])
 
