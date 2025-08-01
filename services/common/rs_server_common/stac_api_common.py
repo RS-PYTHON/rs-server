@@ -631,7 +631,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     odata_params_by_station[station] = odata_merged
             else:
                 # Do the same search for all stations
-                odata_params_by_station[station] = odata_params
+                odata_params_by_station[station] = odata_params.copy()
 
         # Search all stations in parallel threads
         return run_in_threads(
