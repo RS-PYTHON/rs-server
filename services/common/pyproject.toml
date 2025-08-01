@@ -53,8 +53,8 @@ include = [
 python = "^3.11"
 fastapi = "^0.116.1"
 starlette = ">=0.47.2,<0.48"
-boto3 = ">=1.38.34"
-botocore = ">=1.38.34"
+boto3 = ">=1.39.17"
+botocore = ">=1.39.17"
 sqlalchemy = "^2.0.35"
 eodag = "==v3.6.0"
 # NOTE: to use a forked eodag version we would use:
@@ -71,10 +71,10 @@ opentelemetry-distro = "^0.57b0" # then run 'poetry run opentelemetry-bootstrap 
 opentelemetry-instrumentation-aws-lambda = "^0.57b0"
 opentelemetry-test-utils = "^0.57b0"
 opentelemetry-exporter-otlp = "^1.36.0"
-protobuf = ">=5.29.5"
+protobuf = ">=6.31.1"
 python-logging-loki = "^0.3.1"
-authlib = "^1.5.0"
-python-keycloak = ">=5.3.1,<6.0"
+authlib = "^1.6.1"
+python-keycloak = ">=5.7.0,<6.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 stac-fastapi-pgstac = "^5.0.3"
@@ -91,7 +91,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
-pytest = "^8.3.5"
+pytest = "^8.4.1"
 pytest-asyncio = "^1.1.0"
 pytest-cov = "^6.2.1"
 pytest-docker = "^3.2.2"
@@ -99,7 +99,7 @@ pytest-error-for-skips = "^2.0.2"
 pytest-httpx = ">=0.35,<0.36"
 pytest-mock = "^3.14.1"
 responses = "^0.25.7"
-moto = "^5.1.6"
+moto = "^5.1.9"
 flask = "^3.1.1" # for moto
 flask-cors = "^6.0.1" # for moto
 
