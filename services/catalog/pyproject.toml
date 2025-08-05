@@ -52,7 +52,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-common = "*"
-pypgstac = {extras = ["psycopg"], version = "^0.9.7"}
+pypgstac = {extras = ["psycopg"], version = "^0.9.8"}
 
 [tool.poetry.group.dev]
 optional = true
