@@ -28,6 +28,7 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 (set -x; rm -rf ./.coverage ./cov-report.xml ./junit-xml-report*.xml)
 
 # We must manually append the junit report
+pip install --upgrade pip
 pip install junitparser
 junit=0
 

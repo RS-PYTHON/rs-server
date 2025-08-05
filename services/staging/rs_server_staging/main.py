@@ -34,7 +34,7 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
-from pygeoapi.provider.postgresql import get_engine
+from pygeoapi.provider.sql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication import auth_validation
@@ -215,7 +215,7 @@ def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
     connection = manager_def["connection"]
 
     # Create SQL Alchemy engine
-    engine = get_engine(**connection)
+    engine = get_engine(driver_name="postgresql+psycopg2", **connection)
 
     while True:
         try:

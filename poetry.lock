@@ -3977,13 +3977,15 @@ files = [
 
 [[package]]
 name = "pygeoapi"
-version = "0.21.dev0"
+version = "0.21.0"
 description = "pygeoapi provides an API to geospatial data"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
-files = []
-develop = false
+files = [
+    {file = "pygeoapi-0.21.0-py2.py3-none-any.whl", hash = "sha256:c2b97676cd5a5742eeb38e9608117de66354028a7309e5b026dd6d9a24f487fc"},
+    {file = "pygeoapi-0.21.0.tar.gz", hash = "sha256:2f5b07af8c6735e8259a468766821c22909e4c00e0c872dea8767d812164fa6a"},
+]
 
 [package.dependencies]
 Babel = "*"
@@ -3992,7 +3994,7 @@ filelock = "*"
 Flask = "*"
 jinja2 = "*"
 jsonschema = "*"
-pydantic = ">2.0"
+pydantic = "*"
 pygeofilter = "*"
 pygeoif = "*"
 pyproj = "*"
@@ -4004,12 +4006,6 @@ requests = "*"
 shapely = "*"
 SQLAlchemy = "*"
 tinydb = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/geopython/pygeoapi.git"
-reference = "1eb24cb"
-resolved_reference = "1eb24cba0fc3bde4af12618c4d06279d4acc97da"
 
 [[package]]
 name = "pygeofilter"
@@ -5111,7 +5107,7 @@ flask = "^3.1.1"
 geoalchemy2 = ">=0.17,<0.18"
 openapi-core = "^0.19.5"
 psycopg2 = "^2.9.9"
-pygeoapi = ">=0.21.dev0"
+pygeoapi = "^0.21"
 rs-server-common = "*"
 SQLAlchemy = "^2.0.37"
 
@@ -6444,4 +6440,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "501bd5c8e6543315e712df227de95beff04f3ceaa0474e6f88070429159c1e3a"
+content-hash = "eaffa4dad27abf39a75b2a4533f1f426da8e08364c861b79486ccc41bd96bdb5"

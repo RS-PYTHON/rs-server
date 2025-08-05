@@ -49,6 +49,7 @@ class TestInitDb:
 
         # Assert: Check that create_engine and create_all were called correctly
         mock_get_engine.assert_called_once_with(  # nosec hardcoded_password_funcarg
+            driver_name="postgresql+psycopg2",
             host="localhost",
             port=5500,
             database="rspy_pytest",
