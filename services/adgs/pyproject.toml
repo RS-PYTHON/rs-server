@@ -67,7 +67,7 @@ pytest-error-for-skips = "^2.0.2"
 pytest-httpx = ">=0.35,<0.36"
 pytest-mock = "^3.14.1"
 black = ">=24.8,<26.0"
-mypy = "^1.16.1"
+mypy = "^1.17.1"
 
 [tool.black]
 line-length = 120
