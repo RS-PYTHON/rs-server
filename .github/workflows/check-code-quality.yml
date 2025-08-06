@@ -266,7 +266,7 @@ jobs:
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
 
       - name: Run SonarCloud Scanner
-        uses: SonarSource/sonarcloud-github-action@v5
+        uses: SonarSource/sonarqube-scan-action@v5
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
@@ -319,8 +319,6 @@ jobs:
         # We will resolve these issues later.
         # continue-on-error: true
 
-      # http instead of https or the url appears as *** in github, I don't know why,
-      # it may be configurable. But http works as well.
       - if: always()
         run: >
           echo "SonarQube report:
