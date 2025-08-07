@@ -3298,7 +3298,7 @@ python-logging-loki = "^0.3.1"
 requests = "^2.32.4"
 sqlalchemy = "^2.0.42"
 stac-fastapi-pgstac = "^5.0.3"
-stac-fastapi-types = "5.2.0"
+stac-fastapi-types = "5.2.1"
 stac-pydantic = "^3.1.4"
 starlette = ">=0.47.2,<0.48"
 urllib3 = ">=2.5.0"
@@ -3634,14 +3634,14 @@ server = ["uvicorn[standard] (==0.34.0)"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "5.2.0"
+version = "5.2.1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_types-5.2.0-py3-none-any.whl", hash = "sha256:40158c3abffb2d5f503c4a11154f9d6795f085e196e80225773fd46a5d38e928"},
-    {file = "stac_fastapi_types-5.2.0.tar.gz", hash = "sha256:f8d568d46bbd9b6d2c7d7e6c4722cad940d9332827339415f57aa1b122df73f1"},
+    {file = "stac_fastapi_types-5.2.1-py3-none-any.whl", hash = "sha256:57ed90239c60109688c84e9da634f99ac215ac49af8fd691b35330af3ab96e1c"},
+    {file = "stac_fastapi_types-5.2.1.tar.gz", hash = "sha256:a223fb3643940ec4d36aae264235d37e8d787cbb6a634e764b14676f7dabf4bd"},
 ]
 
 [package.dependencies]
