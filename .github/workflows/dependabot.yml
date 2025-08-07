@@ -1,0 +1,48 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Handle Dependabot Updates
+
+on:
+  pull_request:
+    paths:
+      - 'services/common/**'
+
+jobs:
+  update-dependent-locks:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
+
+      - name: Regenerate lock files
+        run: |
+          for dir in services/adgs services/cadip services/catalog services/frontend services/staging; do
+            cd $dir
+            poetry lock
+            cd -
+          done
+          poetry lock
+
+      - name: Commit updated lock files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "chore: update dependent poetry.lock files" || echo "No changes to commit"
+          git push
