@@ -199,18 +199,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.40.3"
+version = "1.40.4"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.40.3-py3-none-any.whl", hash = "sha256:6e8ace4439b5a03ce1b07532a86a3e56fc0adc268bcdeef55624d64f99e90e2a"},
-    {file = "boto3-1.40.3.tar.gz", hash = "sha256:8cdda3a3fbaa0229aa32fdf2f6f59b5c96e5cd5916ed45be378c06fae09cef19"},
+    {file = "boto3-1.40.4-py3-none-any.whl", hash = "sha256:95cdc86454e9ff43e0693c5d807a54ce6813b6711d3543a0052ead5216b93367"},
+    {file = "boto3-1.40.4.tar.gz", hash = "sha256:6eceffe4ae67c2cb077574289c0efe3ba60e8446646893a974fc3c2fa1130e7c"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.3,<1.41.0"
+botocore = ">=1.40.4,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.13.0,<0.14.0"
 
@@ -219,14 +219,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.3"
+version = "1.40.4"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.40.3-py3-none-any.whl", hash = "sha256:0c6d00b4412babb5e3d0944b5e057d31f763bf54429d5667f367e7b46e5c1c22"},
-    {file = "botocore-1.40.3.tar.gz", hash = "sha256:bba6b642fff19e32bee52edbbb8dd3f45e37ba7b8e54addc9ae3b105c4eaf2a4"},
+    {file = "botocore-1.40.4-py3-none-any.whl", hash = "sha256:4e131c52731e10a6af998c2ac3bfbda12e6ecef0e3633268c7752d0502c74197"},
+    {file = "botocore-1.40.4.tar.gz", hash = "sha256:f1dacde69ec8b08f39bcdb62247bab4554938b5d7f8805ade78447da55c9df36"},
 ]
 
 [package.dependencies]
@@ -798,14 +798,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.6.0"
+version = "3.7.0"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "eodag-3.6.0-py3-none-any.whl", hash = "sha256:2d441e042831635ee399decf46f34f3571eec614c63218cd94035cbc138de049"},
-    {file = "eodag-3.6.0.tar.gz", hash = "sha256:709651bc24b92b468e509c41a5b3645a012ed73f341d56233f5b23d842b142d7"},
+    {file = "eodag-3.7.0-py3-none-any.whl", hash = "sha256:48d13a37479d209064fd286842b483ff5bd2629e31cc36e5b815e0b347d69a62"},
+    {file = "eodag-3.7.0.tar.gz", hash = "sha256:c253918b24744232cdac8bc4b97ff0d01fda2cf5e8645279bf8eb68b7ae8f19e"},
 ]
 
 [package.dependencies]
@@ -844,7 +844,7 @@ ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
 stubs = ["boto3-stubs[essential]", "types-PyYAML", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
-tutorials = ["cartopy", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
+tutorials = ["cartopy", "covjsonkit", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
 usgs = ["usgs (>=0.3.6)"]
 
 [[package]]
@@ -3713,4 +3713,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "5f4d631c74f07726c096642ace91fa03f48ff012d8819d6c36e1592a256cb366"
+content-hash = "1634e33237f066b42de2f31e2714c5b6986fe36e63fb4ad6968c3e764c30701b"
