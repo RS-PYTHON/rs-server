@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from rs_server_cadip.cadip_utils import link_assets_to_session
-from stac_pydantic import Item, ItemCollection, ItemProperties
+from stac_pydantic import Item, ItemProperties
 from stac_pydantic.links import Links
 
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "services/cadip/config"
@@ -65,7 +65,6 @@ def do_test_link_assets_to_session(start: bool, end: bool):
         assets={},
         links=Links([]),
     )
-    session_data = ItemCollection(features=[item], type="FeatureCollection")
     assets: list[dict] = (
         [
             {
@@ -79,7 +78,7 @@ def do_test_link_assets_to_session(start: bool, end: bool):
         else []
     )
 
-    link_assets_to_session(session_data, assets)
+    link_assets_to_session([item], assets)
 
     assert item.properties.datetime == datetime(  # pylint: disable=no-member
         2024,

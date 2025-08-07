@@ -31,7 +31,7 @@ class TestStagingCatalog:
     def _call_check_catalog(self, staging_instance: Staging, staging_inputs: dict):
         return staging_instance.check_catalog(
             staging_inputs["collection"],
-            FeatureCollectionModel.parse_obj(staging_inputs["items"]["value"]).features,
+            FeatureCollectionModel.model_validate(staging_inputs["items"]["value"]).features,
         )
 
     @pytest.mark.asyncio
