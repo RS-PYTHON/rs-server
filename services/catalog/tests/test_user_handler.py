@@ -142,7 +142,7 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        assert request.scope["path"] == "/catalog/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
         valid_request_ids = {
             "owner_id": "Toto",
             "collection_ids": ["joplin"],
@@ -167,7 +167,7 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         reroute_url(request, request_ids)
         assert (
             request.scope["path"]
-            == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+            == f"/catalog/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
         )
         valid_request_ids = {
             "owner_id": getpass.getuser(),
@@ -192,19 +192,19 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         assert request.scope["path"] == ""
         assert request_ids == valid_request_ids
 
-    def test_work_with_ping_endpoinst(self, request_ids):
+    def test_work_with_ping_endpoint(self, request_ids):
         request = Request(
             scope={
                 "type": "http",
                 "method": "GET",
-                "path": "/_mgmt/ping",
+                "path": "/catalog/_mgmt/ping",
                 "query_string": "",
                 "user": "",
                 "headers": {},
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == ("/_mgmt/ping")
+        assert request.scope["path"] == ("/catalog/_mgmt/ping")
 
     def test_reroute_oauth2(self, request_ids):
         request = Request(
@@ -218,13 +218,13 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == "/docs/oauth2-redirect"
+        assert request.scope["path"] == "/catalog/docs/oauth2-redirect"
 
     @pytest.mark.parametrize(
         "path, expected",
         [
-            ("/catalog/", "/"),
-            ("/catalog", "/"),
+            ("/catalog/", "/catalog/"),
+            ("/catalog", "/catalog"),
         ],
     )
     def test_reroute_catalog(self, request_ids, path, expected):
@@ -255,7 +255,7 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == "/api"
+        assert request.scope["path"] == "/catalog/api"
 
     def test_reroute_queryables(self, request_ids):
         request = Request(
@@ -269,13 +269,13 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == "/queryables"
+        assert request.scope["path"] == "/catalog/queryables"
 
     @pytest.mark.parametrize(
         "path, expected",
         [
-            ("/whatever-test/health", "/health"),
-            ("/health", "/health"),
+            ("/whatever-test/health", ""),
+            ("/catalog/_mgmt/health", "/catalog/_mgmt/health"),
         ],
     )
     def test_reroute_health(self, request_ids, path, expected):
@@ -306,7 +306,7 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         )
         reroute_url(request, request_ids)
 
-        assert request.scope["path"] == "/collections/toto_S1_L1/queryables"
+        assert request.scope["path"] == "/catalog/collections/toto_S1_L1/queryables"
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
             "owner_id": "toto",
@@ -328,7 +328,7 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         )
         reroute_url(request, request_ids)
 
-        assert request.scope["path"] == "/collections/toto_S1_L1/bulk_items"
+        assert request.scope["path"] == "/catalog/collections/toto_S1_L1/bulk_items"
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
             "owner_id": "toto",
@@ -342,18 +342,18 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function add_user_prefix."""
 
     def test_add_prefix_and_user_prefix(self):
-        assert add_user_prefix("/collections", "toto", "") == "/catalog/collections"
+        assert add_user_prefix("/catalog/collections", "toto", "") == "/catalog/collections"
 
     def test_add_prefix_and_replace_user(self):
-        result = add_user_prefix("/collections/toto_joplin", "toto", "joplin")
+        result = add_user_prefix("/catalog/collections/toto_joplin", "toto", "joplin")
         assert result == "/catalog/collections/toto:joplin"
 
     def test_add_prefix_replace_user_with_items(self):
-        result = add_user_prefix("/collections/toto_joplin/items", "toto", "joplin")
+        result = add_user_prefix("/catalog/collections/toto_joplin/items", "toto", "joplin")
         assert result == "/catalog/collections/toto:joplin/items"
 
     def test_add_prefix_replace_user_with_queryables(self):
-        result = add_user_prefix("/collections/toto_joplin/queryables", "toto", "joplin")
+        result = add_user_prefix("/catalog/collections/toto_joplin/queryables", "toto", "joplin")
         assert result == "/catalog/collections/toto:joplin/queryables"
 
     def test_does_nothing_if_url_not_found(self):

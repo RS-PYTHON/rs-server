@@ -484,7 +484,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if op != "and":
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed: {format_dict(filt)}",
+                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed, got '{op}': {format_dict(filt)}",  # noqa: E501 # pylint: disable=line-too-long
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
@@ -523,7 +523,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             else:
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    "Invalid query filter, only '=' and temporal operators are allowed",
+                    "Invalid query filter, only '=' and temporal operators are allowed, got: " + query_arg,
                 )
 
         read_cql(params.pop("filter", {}))
@@ -1250,10 +1250,9 @@ def check_bbox_input(input_value: str | None) -> BBox | None:
     """validate bbox for STAC API compliance"""
     if input_value:
         try:
-            bbox = str2bbox(input_value)
-            if len(bbox) not in [4, 6]:
-                raise log_http_exception(status.HTTP_400_BAD_REQUEST, f"Invalid bbox: {bbox}")
-            return bbox
+            return str2bbox(input_value)
+        except HTTPException as e:
+            raise e
         except Exception as e:
             raise log_http_exception(status.HTTP_400_BAD_REQUEST, str(e)) from e
     return None

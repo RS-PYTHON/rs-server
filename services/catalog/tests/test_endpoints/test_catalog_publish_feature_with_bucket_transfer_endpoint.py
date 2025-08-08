@@ -21,11 +21,18 @@ import json
 import os
 from datetime import datetime, timedelta
 
-import fastapi
 import pytest
 import requests
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_302_FOUND,
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 from tests.helpers import (
     CATALOG_BUCKET,
@@ -98,7 +105,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             client.delete(
                 f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139",
             ).status_code
-            == fastapi.status.HTTP_200_OK
+            == HTTP_200_OK
         )
 
     def test_updating_timestamp_item(  # pylint: disable=too-many-locals, too-many-statements
@@ -137,7 +144,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             json=a_correct_feature_copy,
         )
 
-        assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
+        assert added_feature.status_code == HTTP_201_CREATED
 
         content = json.loads(added_feature.content)
         updated_timestamp = content["properties"]["updated"]
@@ -164,7 +171,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
         modified_feature = client.put(path, json=updated_feature_sent)
 
-        assert modified_feature.status_code == fastapi.status.HTTP_200_OK
+        assert modified_feature.status_code == HTTP_200_OK
 
         updated_content = json.loads(modified_feature.content)
 
@@ -181,7 +188,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             client.delete(
                 "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
             ).status_code
-            == fastapi.status.HTTP_200_OK
+            == HTTP_200_OK
         )
 
     def test_updating_assets_in_item(  # pylint: disable=too-many-locals, too-many-statements
@@ -220,7 +227,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=item_test,
         )
-        assert resp.status_code == fastapi.status.HTTP_201_CREATED
+        assert resp.status_code == HTTP_201_CREATED
         content = json.loads(resp.content)
 
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
@@ -238,7 +245,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
         content = json.loads(resp.content)
 
-        assert resp.status_code == fastapi.status.HTTP_200_OK
+        assert resp.status_code == HTTP_200_OK
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip")
         assert not content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T902.nc")
@@ -252,7 +259,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             f"/catalog/collections/fixture_owner:fixture_collection/items/{content['id']}",
             json=content,
         )
-        assert resp.status_code == fastapi.status.HTTP_200_OK
+        assert resp.status_code == HTTP_200_OK
         content = json.loads(resp.content)
         assert not content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip")
@@ -273,7 +280,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             f"/catalog/collections/fixture_owner:fixture_collection/items/{content['id']}",
             json=content,
         )
-        assert resp.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        assert resp.status_code == HTTP_400_BAD_REQUEST
         content = json.loads(resp.content)
         assert "BadRequest" == content["code"]
         assert "However, changing an existing path of an asset is not allowed" in content["description"]
@@ -285,7 +292,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             client.delete(
                 "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
             ).status_code
-            == fastapi.status.HTTP_200_OK
+            == HTTP_200_OK
         )
 
     @pytest.mark.parametrize(
@@ -329,7 +336,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         # Check if that user darius have a collection (Added in conftest -> setup_database)
         # Add a featureCollection to darius collection
         added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
-        assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
+        assert added_feature.status_code == HTTP_201_CREATED
         feature_data = json.loads(added_feature.content)
         # check if owner was added and match to the owner of the collection
         assert feature_data["properties"]["owner"] == owner
@@ -368,7 +375,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
         added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
         # Bad request = 400
-        assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        assert added_feature.status_code == HTTP_400_BAD_REQUEST
 
     @pytest.mark.unit
     def test_incorrect_bucket_publish(self, client, a_correct_feature):
@@ -387,7 +394,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "href"
         ] = "incorrect_s3_url/S1SIWOCN_20220412T054447_0024_S139_T902.nc"
         response = client.post("/catalog/collections/darius:S1_L2/items", json=item_test)
-        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        assert response.status_code == HTTP_400_BAD_REQUEST
         assert "BadRequest" == json.loads(response.content)["code"]
         assert "Failed to load the S3 key from the asset content" in json.loads(response.content)["description"]
         clear_aws_credentials()
@@ -429,7 +436,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
         added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=item_test)
-        assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
+        assert added_feature.status_code == HTTP_201_CREATED
 
         assert not s3_handler.list_s3_files_obj(custom_bucket, "")
         assert s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
@@ -453,20 +460,20 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
             "may24C355000e4102500n.tif",
         )
-        assert response.status_code == fastapi.status.HTTP_302_FOUND
+        assert response.status_code == HTTP_302_FOUND
         # Check that response body is empty
         assert response.content == b""
 
         # call the redirected url
         product_content = requests.get(response.headers["location"], timeout=10)
-        assert product_content.status_code == fastapi.status.HTTP_200_OK
+        assert product_content.status_code == HTTP_200_OK
         # check that content is the same as the original file
         assert product_content.content.decode() == object_content
         # test with a non-existing asset id
         response = client.get(
             "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/UNKNWON",
         )
-        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+        assert response.status_code == HTTP_404_NOT_FOUND
         assert (
             response.content
             == b"\"Failed to find asset named 'UNKNWON' \
@@ -475,7 +482,7 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
         # test with a non-existing item id
         assert (
             client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/UNKNWON").status_code
-            == fastapi.status.HTTP_404_NOT_FOUND
+            == HTTP_404_NOT_FOUND
         )
 
         # Remove bucket credentials form env variables / should create a s3_handler without credentials error
@@ -485,8 +492,8 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
             "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
             "may24C355000e4102500n.tif",
         )
-        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-        assert response.content == b'"Failed to find s3 credentials"'
+        assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
 
     @pytest.mark.unit
     def test_failure_while_moving_files_between_buckets(self, client, mocker, a_correct_feature):
@@ -528,7 +535,7 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
             )
             added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
             # Check if status code is BAD REQUEST
-            assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+            assert added_feature.status_code == HTTP_400_BAD_REQUEST
             # If catalog publish fails, catalog_bucket should be empty, and
             # temp_bucket should not be empty.
 

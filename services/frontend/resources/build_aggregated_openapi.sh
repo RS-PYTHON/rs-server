@@ -122,12 +122,16 @@ if [[ " $@ " == *" --run-services "* ]]; then
         run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
 
     # Use pgstac database
-    POSTGRES_DBNAME=$POSTGRES_DB \
-    POSTGRES_PASS=$POSTGRES_PASSWORD \
-    POSTGRES_HOST_READER=$POSTGRES_HOST \
-    POSTGRES_HOST_WRITER=$POSTGRES_HOST \
-    POSTGRES_PORT=$PGSTAC_PORT \
-        run_local_service "../catalog" "rs_server_catalog.main:app" 8003 "_mgmt/ping"
+    PGDATABASE=$POSTGRES_DB \
+    PGUSER=$POSTGRES_USER \
+    PGPASSWORD=$POSTGRES_PASSWORD \
+    PGHOST=$POSTGRES_HOST \
+    PGPORT=$PGSTAC_PORT \
+    ENABLE_TRANSACTIONS_EXTENSIONS=1 \
+    PREFIX_PATH=/catalog \
+    OPENAPI_URL=/catalog/api \
+    DOCS_URL=/catalog/api.html \
+        run_local_service "../catalog" "rs_server_catalog.app:app" 8003 "catalog/_mgmt/ping"
 fi
 
 services_file="${SCRIPT_DIR}/services.yml" # input file = describe services

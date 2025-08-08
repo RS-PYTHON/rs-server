@@ -47,12 +47,12 @@ LOCAL_MODE: bool = env_bool("RSPY_LOCAL_MODE", default=False)
 CLUSTER_MODE: bool = not LOCAL_MODE
 
 # STAC browser URL(s), as seen from the user browser, separated by commas e.g. http://url1,http://url2
-STAC_BROWSER_URLS: list[str] = [url.strip() for url in os.environ.get("STAC_BROWSER_URLS", "").split(";") if url]
+CORS_ORIGINS: list[str] = [url.strip() for url in os.environ.get("CORS_ORIGINS", "").split(";") if url]
 
 
 def request_from_stacbrowser(request: Request) -> bool:
     """Return if the HTTP request comes from the STAC browser."""
-    return bool((origin := request.headers.get("origin")) and (origin.rstrip("/") in STAC_BROWSER_URLS))
+    return bool((origin := request.headers.get("origin")) and (origin.rstrip("/") in CORS_ORIGINS))
 
 
 def docs_params(prefix: str = "") -> dict[str, str]:

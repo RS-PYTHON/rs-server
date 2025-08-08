@@ -17,6 +17,7 @@
 """Unittests for rs-server search endpoints."""
 import os
 from copy import deepcopy
+from urllib.parse import quote
 
 import pytest
 import requests
@@ -1375,8 +1376,11 @@ class TestFeatureCollectionOdataStacMapping:
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
 
-        next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"
-        prev_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=prev:page={str(int(page) - 1)}"
+        base_url = str(response.url).split("token", maxsplit=1)[0]
+        next_token = quote(f"next:page={int(page) + 1}")
+        prev_token = quote(f"prev:page={int(page) - 1}")
+        next_url = f"{base_url}token={next_token}"
+        prev_url = f"{base_url}token={prev_token}"
         # If this is last page (No results returned, check that "next" link doesn't exist.)
         if is_last:
             assert not any(link["rel"] == "next" for link in response.json()["links"])

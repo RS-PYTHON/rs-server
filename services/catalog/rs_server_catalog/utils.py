@@ -21,6 +21,7 @@ from typing import Any
 from fastapi import HTTPException
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
+from starlette.responses import Response
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 logger = Logging.default(__name__)
@@ -200,3 +201,8 @@ def get_token_for_pagination(items_dic: dict[Any, Any]):
         if link.get("rel") == "next":
             token = link.get("href", None)
     return token
+
+
+def headers_minus_content_length(response: Response) -> dict[str, str]:
+    """Returns response headers without Content-Length"""
+    return {k: v for k, v in response.headers.items() if k.lower() != "content-length"}

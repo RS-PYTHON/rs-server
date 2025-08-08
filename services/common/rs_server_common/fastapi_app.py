@@ -223,10 +223,10 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.add_middleware(ProxyHeaderMiddleware)
 
     # Add CORS requests from the STAC browser
-    if settings.STAC_BROWSER_URLS:
+    if settings.CORS_ORIGINS:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=settings.STAC_BROWSER_URLS,
+            allow_origins=settings.CORS_ORIGINS,
             allow_methods=["*"],
             allow_headers=["*"],
             allow_credentials=True,

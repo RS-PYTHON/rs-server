@@ -29,11 +29,12 @@ The middleware:
 * modifies the response to update the links.
 """
 
+import copy
 import getpass
 import json
 import os
 import re
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import botocore
@@ -58,8 +59,10 @@ from rs_server_catalog.user_handler import (
 from rs_server_catalog.utils import (
     delete_s3_files,
     get_s3_filename_from_asset,
+    get_s3_handler,
     get_temp_bucket_name,
     get_token_for_pagination,
+    headers_minus_content_length,
     verify_existing_item_from_catalog,
 )
 from rs_server_common import settings as common_settings
@@ -71,10 +74,12 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
+from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.models import GeoJSONResponse
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.types.errors import NotFoundError
+from starlette.middleware.base import RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import (
     JSONResponse,
@@ -93,6 +98,12 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
+from .user_handler import (
+    CATALOG_COLLECTIONS,
+    CATALOG_PREFIX,
+    owner_id_and_collection_id,
+)
+
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 DEFAULT_GEOM = {
     "type": "Polygon",
@@ -105,6 +116,11 @@ ALTERNATE_STRING = "alternate"
 logger = Logging.default(__name__)
 
 
+def log_http_exception(*args, **kwargs) -> type[HTTPException]:
+    """Log error and return an HTTP exception to be raised by the caller"""
+    return utils2.log_http_exception(logger, *args, **kwargs)
+
+
 class UserCatalog:  # pylint: disable=too-many-public-methods
     """The user catalog middleware handler."""
 
@@ -113,7 +129,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
     def __init__(self, client: CoreCrudClient):
         """Constructor, called from the middleware"""
         # TODO: the s3_handler member should not exist anymore
-        # it should be retrieved with uitls.get_s3_handler when needed
+        # it should be retrieved with utils.get_s3_handler when needed
         # To be checked later for a complete removal
         self.s3_handler: S3StorageHandler = None
         # end of TODO
@@ -190,10 +206,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             dict: The content passed in parameter with adapted links
         """
         links = content["links"]
-        for i, link in enumerate(links):
+        for link in links:
             link_parser = urlparse(link["href"])
             new_path = add_user_prefix(link_parser.path, user, collection_id)
-            links[i]["href"] = link_parser._replace(path=new_path).geturl()
+            link["href"] = link_parser._replace(path=new_path).geturl()
         # Go through each item and apply corrections to the links
         for i in range(len(content[object_name])):
             content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
@@ -208,24 +224,18 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             Optional[Dict]: The item from the collection if found, else None.
         """
+        item_id = self.request_ids["item_id"]
+        collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}"
         try:
-            item = await self.client.get_item(
-                item_id=self.request_ids["item_id"],
-                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
-                request=request,
-            )
+            item = await self.client.get_item(item_id=item_id, collection_id=collection_id, request=request)
             return item
         except NotFoundError:
-            logger.info(
-                f"The element {self.request_ids['item_id']} does not \
-exist in collection {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
-            )
+            logger.info(f"The item '{item_id}' does not exist in collection '{collection_id}'")
             return None
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception(f"Exception: {e}")
-            raise HTTPException(
-                detail=f"Exception when trying to get the item {item['id']} \
-from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]} collection",
+            raise log_http_exception(
+                detail=f"Exception when trying to get the item {item_id} from the collection '{collection_id}'",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
 
@@ -256,12 +266,12 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         try:
             item_s3_path = existing_asset["href"]
         except KeyError as exc:
-            raise HTTPException(
+            raise log_http_exception(
                 detail=f"Failed to get the s3 path for the asset {asset_name}",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
         if item_s3_path != s3_key:
-            raise HTTPException(
+            raise log_http_exception(
                 detail=(
                     f"Received an updated path for the asset {asset_name} of item {item['id']}. "
                     f"The current path is {item_s3_path}, and the new path is {s3_key}. "
@@ -277,13 +287,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         try:
             s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
             if not s3_key_exists:
-                raise HTTPException(
+                raise log_http_exception(
                     detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
             return True, size
         except RuntimeError as rte:
-            raise HTTPException(
+            raise log_http_exception(
                 detail=f"When checking the presence of the {s3_key} key, an error has been raised: {rte}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from rte
@@ -326,7 +336,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
 
             if failed_files:
                 self.s3_files_to_be_deleted.clear()
-                raise HTTPException(
+                raise log_http_exception(
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
@@ -339,12 +349,12 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                     self.s3_files_to_be_deleted.append(item["assets"][asset]["href"])
         except KeyError as kerr:
             self.s3_files_to_be_deleted.clear()
-            raise HTTPException(
+            raise log_http_exception(
                 detail=f"{err_message} Failed to find S3 credentials.",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr
         except RuntimeError as rte:
-            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
+            raise log_http_exception(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
     def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
         self,
@@ -367,18 +377,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                         invalid S3 bucket, or failed file transfers.
         """
         if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
-            self.s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
+            self.s3_handler = get_s3_handler()
 
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
         logger.debug(f"Update item for user: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
-            raise HTTPException(
+            raise log_http_exception(
                 detail="Failed to get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -395,7 +400,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
             if alternate_field:
                 if not item:
                     # the asset should be already in the catalog from a previous POST/PUT request
-                    raise HTTPException(
+                    raise log_http_exception(
                         detail=(f"The item that contains asset '{asset}' does not exist in the catalog but it should "),
                         status_code=HTTP_400_BAD_REQUEST,
                     )
@@ -407,7 +412,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
             logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
             fid = s3_filename.rsplit("/", maxsplit=1)[-1]
             if fid != asset:
-                raise HTTPException(
+                raise log_http_exception(
                     detail=(
                         f"Invalid structure for the asset '{asset}'. The name of the asset "
                         f"should be the filename, that is {fid} "
@@ -454,7 +459,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     # be deleted from the catalog s3 bucket later on
                     item["assets"].pop(asset)
             except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     detail=f"Failed to handle the s3 level. Reason: {exc}",
                     status_code=HTTP_400_BAD_REQUEST,
                 ) from exc
@@ -500,19 +505,17 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         except KeyError:
             return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
+            s3_handler = get_s3_handler()
+            if not s3_handler:
+                raise log_http_exception(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to find s3 credentials",
+                )
             response = s3_handler.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": bucket_name, "Key": s3_path},
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
-        except KeyError:
-            return "Failed to find s3 credentials", HTTP_400_BAD_REQUEST
         except botocore.exceptions.ClientError:
             return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
         return response, HTTP_302_FOUND
@@ -599,7 +602,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                         logger.debug(f"Using collection name: {content['collections'][i]}")
 
                 self.request_ids["collection_ids"] = content["collections"]
-                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+                request = self.override_request_body(request, content)
 
         # ---------- GET requests
         elif request.method == "GET":
@@ -626,16 +629,15 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 for i, collection in enumerate(coll_list):
                     if not await self.collection_exists(request, collection):
                         coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
-                        logger.debug(f"Using collection name: {coll_list[i]}")
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
-                request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode("utf-8")
+                request = self.override_request_query_string(request, query_params_dict)
 
         # Check that the collection from the request exists
         for collection in self.request_ids["collection_ids"]:
             if not await self.collection_exists(request, collection):
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
+                raise log_http_exception(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
 
         # Check authorisation in cluster mode
         if common_settings.CLUSTER_MODE and not get_authorisation(
@@ -645,10 +647,10 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             self.request_ids["owner_id"],
             self.request_ids["user_login"],
         ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         return request
 
-    async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
+    async def manage_search_response(self, request: Request, response: StreamingResponse) -> GeoJSONResponse:
         """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_ids.
         to get these values, this function try to search them into the search query. If successful,
         updates the response content by removing the owner_id from the collection_ids and adapt all links.
@@ -659,7 +661,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             request (Request): The request from the client.
 
         Returns:
-            Response: The updated response.
+            GeoJSONResponse: The updated response.
         """
         filters: Node | None = None
         if request.method == "GET":
@@ -685,8 +687,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             # Extract owner_id from the name of the first collection in the list
             self.request_ids["owner_id"] = self.request_ids["collection_ids"][0].split("_")[0]
             self.request_ids["collection_ids"] = [
-                coll.removeprefix(f"{self.request_ids['owner_id']}_")
-                for i, coll in enumerate(query["collections"][0].split(","))
+                coll.removeprefix(f"{self.request_ids['owner_id']}_") for coll in query["collections"][0].split(",")
             ]
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
@@ -699,7 +700,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
 
-        return GeoJSONResponse(content, status_code=response.status_code)
+        return GeoJSONResponse(content, response.status_code, headers_minus_content_length(response))
 
     async def manage_put_post_request(  # pylint: disable=too-many-statements,too-many-return-statements,too-many-branches  # noqa: E501
         self,
@@ -714,7 +715,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             Request: The request updated.
         """
         try:
-            content = await request.json()
+            original_content = await request.json()
+            content = copy.deepcopy(original_content)
             if not self.request_ids["owner_id"]:
                 self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             # If item is not geolocated, add a default one to comply pgstac format.
@@ -729,25 +731,25 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     self.request_ids["user_login"],
                 )
             ):
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+                raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
 
             if len(self.request_ids["collection_ids"]) > 1:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=HTTP_400_BAD_REQUEST,
                     detail="Cannot create or update more than one collection !",
                 )
 
             if len(self.request_ids["collection_ids"]) == 0:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=HTTP_400_BAD_REQUEST,
                     detail="Cannot create or update -> no collection specified !",
                 )
 
             collection = self.request_ids["collection_ids"][0]
             if (
-                request.scope["path"] == "/collections"  # POST collection
+                request.scope["path"] == CATALOG_COLLECTIONS  # POST collection
                 or request.scope["path"]
-                == f"/collections/{self.request_ids['owner_id']}_{collection}"  # PUT collection
+                == CATALOG_COLLECTIONS + f"/{self.request_ids['owner_id']}_{collection}"  # PUT collection
             ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
@@ -757,19 +759,18 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     error = f"The '{self.request_ids['user_login']}' user cannot create a \
 collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
 field is not permitted also."
-                    logger.error(error)
-                    raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail=error)
-                content["id"] = f"{self.request_ids['owner_id']}_{content['id']}"
+                    raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail=error)
+                content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
                 logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
 
             # The following section handles the request to create/update an item
-            elif "items" in request.scope["path"]:
+            elif "/items" in request.scope["path"]:
                 # first check if the collection exists
                 if not await self.collection_exists(request, f"{self.request_ids['owner_id']}_{collection}"):
-                    raise HTTPException(
+                    raise log_http_exception(
                         status_code=HTTP_404_NOT_FOUND,
                         detail=f"Collection {collection} does not exist.",
                     )
@@ -789,7 +790,7 @@ field is not permitted also."
                             published = item["properties"].get("published", "")
                             expires = item["properties"].get("expires", "")
                         if not published and not expires:
-                            raise HTTPException(
+                            raise log_http_exception(
                                 status_code=HTTP_400_BAD_REQUEST,
                                 detail=f"Item {content['id']} not found.",
                             )
@@ -806,15 +807,28 @@ field is not permitted also."
                 if hasattr(content, "status_code"):
                     return content
 
-            # update request body (better find the function that updates the body maybe?)c
-            request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+            # update request body if needed
+            if content != original_content:
+                request = self.override_request_body(request, content)
 
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
-            raise HTTPException(
+            raise log_http_exception(
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg
+
+    def override_request_body(self, request: Request, content: Any) -> Request:
+        """Update request body (better find the function that updates the body maybe?)"""
+        request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+        logger.debug("new request body: %s", request._body)  # pylint: disable=protected-access
+        return request
+
+    def override_request_query_string(self, request: Request, query_params: dict) -> Request:
+        """Update request query string"""
+        request.scope["query_string"] = urlencode(query_params, doseq=True).encode("utf-8")
+        logger.debug("new request query_string: %s", request.scope["query_string"])
+        return request
 
     def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list[dict]:
         """Return the list of all collections accessible by the user calling it.
@@ -844,24 +858,12 @@ field is not permitted also."
                     accessible_collections.extend(
                         filter_collections(
                             collections,
-                            owner_id if collection_id == "*" else f"{owner_id}_{collection_id}",
+                            f"{owner_id}_" if collection_id == "*" else f"{owner_id}_{collection_id}",
                         ),
                     )
 
         accessible_collections.extend(filter_collections(collections, user_login))
-        return accessible_collections
-
-    def get_collection_id(self, collection: dict[str, str], size_owner_id: int) -> str:
-        """get the collection id with explicit typing
-
-        Args:
-            collection (dict[str, str]): The collection.
-            size_owner_id (int): The size of owner id.
-
-        Returns:
-            str: the collection id.
-        """
-        return collection["id"][size_owner_id:]
+        return sorted(accessible_collections, key=lambda c: c["id"])
 
     def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
         """Update the links for the endpoint /catalog/collections.
@@ -874,11 +876,7 @@ field is not permitted also."
         """
         for collection in collections:
             owner_id = collection["owner"]
-            size_owner_id = int(
-                len(owner_id) + 1,
-            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id==len('toto_')==len('toto')+1.
-            collection_id = self.get_collection_id(collection, size_owner_id)
-            # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
+            collection_id = collection["id"].removeprefix(f"{owner_id}_")
             for link in collection["links"]:
                 link_parser = urlparse(link["href"])
                 new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
@@ -899,7 +897,7 @@ field is not permitted also."
                 if key in metadata:
                     metadata[key] = os.environ.get(f"CATALOG_METADATA_{key.upper()}", metadata[key])
 
-    async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    async def manage_get_response(
         self,
         request: Request,
         response: StreamingResponse,
@@ -915,6 +913,23 @@ field is not permitted also."
         # Load content of the response as a dictionary
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
+        content = await self.manage_get_response_content(request, dec_content) if dec_content else None
+        media_type = "application/geo+json" if "/items" in request.scope["path"] else None
+        return JSONResponse(content, response.status_code, headers_minus_content_length(response), media_type)
+
+    async def manage_get_response_content(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+        self,
+        request: Request,
+        dec_content: str,
+    ) -> Any:
+        """Manage content of GET responses with a body
+
+        Args:
+            request (Request): The client request.
+            dec_content (str): The decoded json content
+        Returns:
+            Any: the response content
+        """
         content = json.loads(dec_content)
         self.update_stac_catalog_metadata(content)
         auth_roles = []
@@ -930,12 +945,10 @@ field is not permitted also."
             user_login = request.state.user_login
 
         # Manage local landing page of the catalog
-        if request.scope["path"] == "/":
+        if request.scope["path"] in (CATALOG_PREFIX, CATALOG_PREFIX + "/"):
             if common_settings.CLUSTER_MODE:  # /catalog
                 content = manage_landing_page(auth_roles, user_login, content)
-                if hasattr(content, "status_code"):  # Unauthorized
-                    return content
-            regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
+            regex_catalog = CATALOG_COLLECTIONS + r"/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
                 link_parser = urlparse(link["href"])
 
@@ -948,8 +961,9 @@ field is not permitted also."
             content = add_prefix_link_landing_page(content, url)
 
             # patch the catalog landing page with "rel": "child" link for each collection
-            collections_resp = await self.client.all_collections(request=request)
-            collections = collections_resp.get("collections", [])
+            # limit must be explicitely set, otherwise the default pgstac limit of 10 is used
+            collections_resp = await self.client.all_collections(request=request, limit=1000)
+            collections = self.manage_all_collections(collections_resp.get("collections", []), auth_roles, user_login)
             base_url = (
                 next((link["href"] for link in content["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
             )
@@ -969,28 +983,13 @@ field is not permitted also."
                     },
                 )
 
-        elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-            if self.request_ids["owner_id"]:
-                content["collections"] = filter_collections(content["collections"], self.request_ids["owner_id"])
-                if len(content["collections"]) == 0:
-                    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No collections found.")
-                content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "collections")
-                content = self.adapt_links(
-                    content,
-                    self.request_ids["owner_id"],
-                    self.request_ids["collection_ids"],
-                    "collections",
-                )
-            else:
-                content["collections"] = self.manage_all_collections(
-                    content["collections"],
-                    auth_roles,
-                    user_login,
-                )
-                content["collections"] = self.update_links_for_all_collections(content["collections"])
-                self_parser = urlparse(content["links"][1]["href"])
-                content["links"][0]["href"] += "catalog/"
-                content["links"][1]["href"] = self_parser._replace(path="/catalog/collections").geturl()
+        elif request.scope["path"] == CATALOG_COLLECTIONS:  # /catalog/collections
+            content["collections"] = self.manage_all_collections(
+                content["collections"],
+                auth_roles,
+                user_login,
+            )
+            content["collections"] = self.update_links_for_all_collections(content["collections"])
 
         # If we are in cluster mode and the user_login is not authorized
         # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
@@ -1009,15 +1008,14 @@ field is not permitted also."
             # So allow this endpoint without authentication in this specific case.
             and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
         ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
-
+            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         elif (
-            "/collections" in request.scope["path"] and "items" not in request.scope["path"]
+            "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = remove_user_from_collection(content, self.request_ids["owner_id"])
             content = self.adapt_object_links(content, self.request_ids["owner_id"])
         elif (
-            "items" in request.scope["path"] and not self.request_ids["item_id"]
+            "/items" in request.scope["path"] and not self.request_ids["item_id"]
         ):  # /catalog/owner_id/collections/collection_id/items
             content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "features")
             content = self.adapt_links(
@@ -1034,11 +1032,13 @@ field is not permitted also."
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
+        return content
 
-        media_type = "application/geo+json" if "/items" in request.scope["path"] else None
-        return JSONResponse(content, status_code=response.status_code, media_type=media_type)
-
-    async def manage_download_response(self, request: Request, response: StreamingResponse) -> Response:
+    async def manage_download_response(
+        self,
+        request: Request,
+        response: StreamingResponse,
+    ) -> JSONResponse | RedirectResponse:
         """
         Manage download response and handle requests that should generate a presigned URL.
 
@@ -1049,7 +1049,6 @@ field is not permitted also."
         Returns:
             JSONResponse: Returns a JSONResponse object containing either the presigned URL or
             the response content with the appropriate status code.
-
         """
         user_login = ""
         auth_roles = []
@@ -1069,7 +1068,7 @@ field is not permitted also."
                 user_login,
             )
         ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
@@ -1077,8 +1076,8 @@ field is not permitted also."
             content, code = self.generate_presigned_url(content, request.url.path)
             if code == HTTP_302_FOUND:
                 return RedirectResponse(url=content, status_code=code)
-            return JSONResponse(content, status_code=code)
-        return JSONResponse(content, status_code=response.status_code)
+            return JSONResponse(content, code, headers_minus_content_length(response))
+        return JSONResponse(content, response.status_code, headers_minus_content_length(response))
 
     async def manage_put_post_response(self, request: Request, response: StreamingResponse):
         """
@@ -1096,19 +1095,19 @@ field is not permitted also."
             raises an HTTPException with a status code of 400 and detailed information.
             If there is a generic exception, raises an HTTPException with a status code
             of 400 and a generic bad request detail.
-
         """
         try:
             user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             # Don't display geometry and bbox for default case since it was added just for compliance.
-            if request.scope["path"] == "/collections":
+            if request.scope["path"] == CATALOG_COLLECTIONS:
                 response_content = remove_user_from_collection(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
             elif (
                 request.scope["path"]
-                == f"/collections/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
+                == CATALOG_COLLECTIONS
+                + f"/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
@@ -1119,20 +1118,19 @@ field is not permitted also."
             delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=f"Failed to clean temporary bucket: {exc}",
             ) from exc
         except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
+            raise log_http_exception(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
-        return JSONResponse(response_content, status_code=response.status_code, media_type=media_type)
+        return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
 
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
 
         Args:
-
             response (StreamingResponse): The client response.
             user (str): The owner id.
 
@@ -1146,7 +1144,7 @@ field is not permitted also."
         # delete the s3 files as well
         delete_s3_files(self.s3_files_to_be_deleted)
         self.s3_files_to_be_deleted.clear()
-        return JSONResponse(response_content)
+        return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))
 
     async def build_filelist_to_be_deleted(self, request):
         """Build the list of the s3 files that will be deleted if the request is successfull"""
@@ -1249,11 +1247,11 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         await self.build_filelist_to_be_deleted(request)
         return True
 
-    async def dispatch(
+    async def dispatch(  # pylint: disable=too-many-branches
         self,
-        request,
-        call_next,
-    ):  # pylint: disable=too-many-branches,too-many-return-statements, too-many-statements
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
         """
         Redirect the user catalog specific endpoint and adapt the response content.
 
@@ -1264,7 +1262,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         Returns:
             response (Response): Response to the current request
         """
-        request_body = None if request.method not in ["POST", "PUT"] else await request.json()
+        request_body = None if request.method not in ["PATCH", "POST", "PUT"] else await request.json()
         auth_roles = user_login = owner_id = None
 
         # ---------- Management of  authentification (retrieve user_login + default owner_id)
@@ -1285,7 +1283,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             user_login = get_user(None, None)
         owner_id = ""  # Default owner_id is empty
         logger.debug(
-            f"Received {request.method} user_login is '{user_login}' | {request.url.path}?{request.query_params}",
+            f"Received {request.method} from '{user_login}' | {request.url.path}?{request.query_params}",
         )
 
         # ---------- Request rerouting
@@ -1299,13 +1297,13 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
-        logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
+            raise log_http_exception(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
+        logger.debug(f"path = {request.scope['path']} | requests_ids = {self.request_ids}")
 
         # Ensure that user_login is not null after rerouting
         if not self.request_ids["user_login"]:
-            raise HTTPException(
-                status_code=500,
+            raise log_http_exception(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="user_login is not defined !",
             )
 
@@ -1327,92 +1325,100 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
                 self.request_ids["item_id"] = request_body.get("id")
 
-        if "/health" in request.scope["path"]:
-            # return true if up and running
-            return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
-
         # ---------- Apply specific changes for each endpoint
 
         if request.method in ("POST", "PUT") and "/search" not in request.scope["path"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
-            request = await self.manage_put_post_request(request)
-            if hasattr(request, "status_code"):  # Unauthorized
-                return request
-        # elif request.method in ["POST", "PUT"] and not self.request_ids["owner_id"]:
-        #     return JSONResponse(content="Invalid body.", status_code=HTTP_400_BAD_REQUEST)
+            request_or_response = await self.manage_put_post_request(request)
+            if hasattr(request_or_response, "status_code"):  # Unauthorized
+                return cast(Response, request_or_response)
+            request = request_or_response
 
         elif request.method == "DELETE":
             if not await self.manage_delete_request(request):
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Deletion not allowed.")
+                raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Deletion not allowed.")
 
         elif "/search" in request.scope["path"]:
             # URL: GET: '/catalog/search'
-            request = await self.manage_search_request(request)
-            if hasattr(request, "status_code"):  # Unauthorized
-                return request
+            request_or_response = await self.manage_search_request(request)
+            if hasattr(request_or_response, "status_code"):  # Unauthorized
+                return cast(Response, request_or_response)
+            request = request_or_response
 
-        if request.method == "GET" and request.scope["path"] == "/collections":
-
-            query_params_dict = dict(request.query_params)
-            self.request_ids["owner_id"] = query_params_dict["owner"] if "owner" in query_params_dict else ""
+        elif request.method == "GET" and request.scope["path"] == CATALOG_COLLECTIONS:
+            # override default pgstac limit of 10 items if not explicitely set
+            if "limit" not in request.query_params:
+                request = self.override_request_query_string(request, {**request.query_params, "limit": 1000})
 
         response = await call_next(request)
+        return await self.manage_responses(request, cast(StreamingResponse, response))
+
+    async def manage_responses(
+        self,
+        request: Request,
+        streaming_response: StreamingResponse,
+    ) -> Response:
+        """Manage responses after dispatch"""
 
         # Don't forward responses that fail.
         # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
-        if response.status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
-            if response is None:
-                return None
+        status_code = streaming_response.status_code
+        if status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
 
             # Read the body. WARNING: after this, the body cannot be read a second time.
-            body = [chunk async for chunk in response.body_iterator]
+            body = [chunk async for chunk in streaming_response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type:ignore
+            logger.debug("response: %d - %s", streaming_response.status_code, response_content)
             self.clear_catalog_bucket(response_content)
 
             # GET: '/catalog/queryables' when no collections in the catalog
             if (
                 request.method == "GET"
-                and request.scope["path"] == QUERYABLES
+                and request.scope["path"] == CATALOG_PREFIX + QUERYABLES
                 and not self.request_ids["collection_ids"]
                 and response_content["code"] == "NotFoundError"
             ):
                 # Return empty list of properties and additionalProperties set to true on /catalog/queryables
                 # when there are no collections in catalog.
-                empty_catalog_queryables_response = {
-                    "$id": f"{request.base_url}queryables",
-                    "type": "object",
-                    "title": "STAC Queryables.",
-                    "$schema": "https://json-schema.org/draft-07/schema#",
-                    "properties": {},
-                    "additionalProperties": True,
-                }
-                return JSONResponse(status_code=HTTP_200_OK, content=empty_catalog_queryables_response)
+                return JSONResponse(
+                    {
+                        "$id": f"{request.url}",
+                        "type": "object",
+                        "title": "STAC Queryables.",
+                        "$schema": "https://json-schema.org/draft-07/schema#",
+                        "properties": {},
+                        "additionalProperties": True,
+                    },
+                    HTTP_200_OK,
+                    headers_minus_content_length(streaming_response),
+                )
 
             # Return a regular JSON response instead of StreamingResponse because the body cannot be read again.
-            return JSONResponse(status_code=response.status_code, content=response_content)
+            return JSONResponse(response_content, status_code, headers_minus_content_length(streaming_response))
 
         # Handle responses
-        if request.scope["path"] == "/search":
+        response: Response = streaming_response
+        if request.scope["path"] == CATALOG_PREFIX + "/search":
             # GET: '/catalog/search'
-            response = await self.manage_search_response(request, response)
-        elif request.method == "GET" and "download" in request.url.path:
+            response = await self.manage_search_response(request, streaming_response)
+        elif request.method == "GET" and "/download" in request.url.path:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
-            response = await self.manage_download_response(request, response)
-
+            response = await self.manage_download_response(request, streaming_response)
         elif request.method == "GET" and (
-            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", QUERYABLES]
+            self.request_ids["owner_id"]
+            or request.scope["path"] in [CATALOG_PREFIX, CATALOG_PREFIX + "/", CATALOG_COLLECTIONS, QUERYABLES]
         ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
             # URL: GET: '/catalog/collections
-            response = await self.manage_get_response(request, response)
+            response = await self.manage_get_response(request, streaming_response)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
-            response = await self.manage_put_post_response(request, response)
+            response = await self.manage_put_post_response(request, streaming_response)
         elif request.method == "DELETE" and self.request_ids["owner_id"]:
-            response = await self.manage_delete_response(response, self.request_ids["owner_id"])
+            response = await self.manage_delete_response(streaming_response, self.request_ids["owner_id"])
 
         return response
 

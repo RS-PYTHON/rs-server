@@ -42,7 +42,7 @@ logger = Logging.default(__name__)
 
 
 def log_http_exception(*args, **kwargs) -> type[HTTPException]:
-    """Log error and return an HTTP execption to be raised by the caller"""
+    """Log error and return an HTTP exception to be raised by the caller"""
     return utils2.log_http_exception(logger, *args, **kwargs)
 
 
