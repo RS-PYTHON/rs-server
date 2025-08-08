@@ -77,6 +77,7 @@ from rs_server_common.utils.utils import (
 )
 from rs_server_common.utils.utils2 import log_http_exception
 from stac_fastapi.api.models import GeoJSONResponse
+from stac_pydantic import ItemCollection
 
 # pylint: disable=duplicate-code # with adgs_search
 
@@ -125,7 +126,7 @@ class MockPgstacCadip(MockPgstac):
         collection_provider: Callable[[dict], str | None],
         limit: int,
         page: int,
-    ) -> stac_pydantic.ItemCollection:
+    ) -> ItemCollection:
         """Search cadip sessions for the given station and OData parameters."""
         return process_session_search(station, odata_params, collection_provider, self.sortby, limit, page)
 
@@ -146,6 +147,7 @@ class MockPgstacCadip(MockPgstac):
 
         # Join session ids with ', '
         features_ids = ", ".join(feature.id for feature in session_features)
+        logger.debug(f"Searching for CADIP files at station {station} for session ids: {features_ids}")
 
         assets: list[dict] = []
         page = 1
@@ -187,7 +189,7 @@ class MockPgstacCadip(MockPgstac):
         """
 
         # Convert input dict into stac object
-        item_collection = stac_pydantic.ItemCollection.model_validate(empty_sessions_data)
+        item_collection = ItemCollection.model_validate(empty_sessions_data)
 
         # Group sessions coming from the same collection. {col1: "item1, item2", col2: "item3" }
         grouped_sessions = defaultdict(list)
@@ -213,7 +215,7 @@ class MockPgstacCadip(MockPgstac):
         # We implemented some custom Item formating, so we do a back and forth conversion
         # to apply the formating, then finally return a dict.
         formatted = [Item.model_validate(feature.model_dump()) for feature in item_collection.features]
-        return stac_pydantic.ItemCollection(features=formatted, type=item_collection.type).model_dump()
+        return ItemCollection(features=formatted, type=item_collection.type).model_dump()
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -484,7 +486,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         Query(gt=0, default=100, description="Pagination Limit"),
     ],
     page: int | None = 1,
-) -> stac_pydantic.ItemCollection:
+) -> ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
     A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
@@ -619,10 +621,11 @@ def process_files_search(  # pylint: disable=too-many-locals
             page=kwargs.get("page", 1),
         )
 
-        cadip_item_collection = create_stac_collection(products, cadip_odata_to_stac_template(), cadip_stac_mapper())
-        logger.info("Succesfully listed and processed products from CADIP station")
         if kwargs.get("map_to_session", False):
+            logger.debug(f"Retrieved products from CADIP station {station}: {products}")
             return [product.properties for product in products]
+        cadip_item_collection = create_stac_collection(products, cadip_odata_to_stac_template(), cadip_stac_mapper())
+        logger.debug(f"Retrieved item collection from CADIP station {station}: {cadip_item_collection}")
         return cadip_item_collection.model_dump()
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:

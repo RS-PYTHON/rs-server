@@ -235,7 +235,7 @@ class Staging(
 
         # self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (
-            FeatureCollectionModel.parse_obj(data["items"]["value"])
+            FeatureCollectionModel.model_validate(data["items"]["value"])
             if "items" in data and "value" in data["items"]
             else None
         )

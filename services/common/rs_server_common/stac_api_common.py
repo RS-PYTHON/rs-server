@@ -1013,8 +1013,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 def create_collection(collection: dict) -> stac_pydantic.Collection:
     """Used to create stac_pydantic Model Collection based on given collection data."""
     try:
-        stac_collection = stac_pydantic.Collection(type="Collection", **collection)
-        return stac_collection
+        return stac_pydantic.Collection(type="Collection", **collection)
     except ValidationError as exc:
         raise log_http_exception(
             detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
@@ -1106,6 +1105,7 @@ def filter_allowed_collections(all_collections: list[dict], role: ServiceRole | 
         config.setdefault("stac_version", DEFAULT_STAC_VERSION)
         try:
             collection: stac_pydantic.Collection = create_collection(config)
+            logger.info(f"Loaded STAC collection '{collection.id}'")
             stac_collections.append(collection.model_dump())
 
         # If a collection is incomplete in the configuration file, log the error and proceed
