@@ -16,11 +16,12 @@
 
 import os
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_cadip.api.cadip_search import MockPgstacCadip
 from rs_server_cadip.fastapi.cadip_routers import cadip_routers
+from rs_server_common.authentication.oauth2 import SWAGGER_HOMEPAGE
 from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
 from rs_server_common.utils.error_handlers import register_stac_exception_handlers
@@ -43,9 +44,21 @@ class MockPgstacTest(MockPgstac):
         raise RuntimeError(f"Invalid router_prefix or endpoint: {router_prefix!r} / {endpoint!r}")
 
 
+def swagger_router() -> APIRouter:
+    """Returns a router simulating the frontend swagger page to make oauth2 tests work"""
+    router = APIRouter(tags=["Swagger"])
+
+    @router.get(SWAGGER_HOMEPAGE)
+    async def get_docs():
+        """Endpoint must exist for oauth2 tests to work"""
+        return ""
+
+    return router
+
+
 def init_app(router_prefix: str = "") -> FastAPI:
     """Run all routers for the tests."""
-    routers = adgs_routers + cadip_routers
+    routers = adgs_routers + cadip_routers + [swagger_router()]
     app: FastAPI = init_app_with_args(
         api_version="test",
         routers=routers,

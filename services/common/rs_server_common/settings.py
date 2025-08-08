@@ -15,6 +15,7 @@
 """Store diverse objects and values used throughout the application."""
 
 import os
+from os import environ as env
 
 from httpx import AsyncClient
 from starlette.requests import Request
@@ -52,6 +53,24 @@ STAC_BROWSER_URLS: list[str] = [url.strip() for url in os.environ.get("STAC_BROW
 def request_from_stacbrowser(request: Request) -> bool:
     """Return if the HTTP request comes from the STAC browser."""
     return bool((origin := request.headers.get("origin")) and (origin.rstrip("/") in STAC_BROWSER_URLS))
+
+
+def docs_params(prefix: str = "") -> dict[str, str]:
+    """
+    Return the docs parameters for the FastAPI application.
+
+    Args:
+        prefix (str, optional): Prefix to prepend to default values, when RSPY_DOCS_URL is not set. Defaults to "".
+
+    Returns:
+        dict[str, str]: dict with FastAPI docs_url and openapi_url keys.
+    """
+    # For cluster deployment: override the swagger /docs URL from an environment variable.
+    # Also set the openapi.json URL under the same path.
+    if "RSPY_DOCS_URL" in env:
+        docs_url = env["RSPY_DOCS_URL"].strip("/")
+        return {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+    return {"docs_url": prefix + "/api.html", "openapi_url": prefix + "/api"}  # Default values from stac-fastapi
 
 
 ###################

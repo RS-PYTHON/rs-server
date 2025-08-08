@@ -103,10 +103,10 @@ class JobsFormatError(Exception):
     """Exception raised when an error occurred during the init of a provider."""
 
 
-def must_be_authenticated(path: str) -> bool:
+def must_be_authenticated(path: str, prefix: str = "") -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
 
-    no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
+    no_auth = (path in [prefix + "/api", prefix + "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
     return not no_auth
 
 

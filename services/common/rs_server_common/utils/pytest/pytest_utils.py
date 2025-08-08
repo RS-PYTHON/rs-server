@@ -102,7 +102,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
         client.follow_redirects = old_follow_redirects
 
     if assert_success:
-        assert response.is_success  # nosec
+        assert response.is_success, f"{endpoint} => {response}"  # nosec
 
     # After this, if successful, we should have a cookie with the authentication information.
     # Except for the logout endpoint which should have removed the cookie.
