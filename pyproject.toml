@@ -99,7 +99,7 @@ sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.41.2"
 click = "8.2.1"
-responses = "^0.25.7"
+responses = "^0.25.8"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
