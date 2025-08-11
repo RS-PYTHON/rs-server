@@ -88,7 +88,7 @@ pytest-mock = "^3.14.1"
 black = "^25.1.0"
 mypy = "^1.17.1"
 pre-commit = "^4.3.0"
-types-requests = "^2.32.4.20250611"
+types-requests = "^2.32.4.20250809"
 flake8 = "^7.1.2"
 bandit = "^1.8.5"
 safety = "^3.6.0"
@@ -99,7 +99,7 @@ sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.41.2"
 click = "8.2.1"
-responses = "^0.25.7"
+responses = "^0.25.8"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }

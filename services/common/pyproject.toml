@@ -98,7 +98,7 @@ pytest-docker = "^3.2.2"
 pytest-error-for-skips = "^2.0.2"
 pytest-httpx = ">=0.35,<0.36"
 pytest-mock = "^3.14.1"
-responses = "^0.25.7"
+responses = "^0.25.8"
 moto = "^5.1.9"
 flask = "^3.1.1" # for moto
 flask-cors = "^6.0.1" # for moto
