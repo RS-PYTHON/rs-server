@@ -28,7 +28,7 @@ from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Security
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
@@ -189,6 +189,7 @@ items_get_request_model = create_request_model(
 api = StacApi(
     settings=settings,
     extensions=extensions,
+    router=APIRouter(prefix="/catalog"),
     items_get_request_model=items_get_request_model,
     client=core_crud_client,
     response_class=ORJSONResponse,
