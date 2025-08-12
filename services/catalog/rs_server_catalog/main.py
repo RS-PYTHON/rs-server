@@ -29,17 +29,14 @@ from typing import Annotated
 import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
-from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
-from rs_server_catalog import __version__
 from rs_server_catalog.data_lifecycle import DataLifecycle
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import (
     APIKEY_AUTH_HEADER,
-    APIKEY_SCHEME_NAME,
 )
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
@@ -76,7 +73,6 @@ from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.routing import Route
 
 logger = Logging.default(__name__)
 
@@ -141,70 +137,6 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
         case "/conformance":
             res = "/catalog/conformance"
     return res
-
-
-def extract_openapi_specification():  # pylint: disable=too-many-locals
-    """Extract the openapi specifications and modify the content to be conform
-    to the rs catalog specifications. Then, apply the changes in the application.
-    """
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_spec = get_openapi(
-        title=app.title,
-        version=__version__,
-        openapi_version=app.openapi_version,
-        description=app.description,
-        routes=app.routes,
-    )
-    # add starlette routes: /api, /api.html and /docs/oauth2-redirect and add /catalog prefix
-    for route in app.routes:  # pylint: disable=redefined-outer-name
-        if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
-            path = f"/catalog{route.path}"
-            method = "GET"
-            to_add = {
-                "summary": f"Auto-generated {method} for {path}",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {"application/json": {"example": {"message": "Success"}}},
-                    },
-                },
-                "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
-            }
-            if common_settings.CLUSTER_MODE and must_be_authenticated(route.path):
-                to_add["security"] = [{APIKEY_SCHEME_NAME: []}]
-            openapi_spec["paths"].setdefault(path, {})[method.lower()] = to_add
-
-    openapi_spec_paths = openapi_spec["paths"]
-    for key in list(openapi_spec_paths.keys()):
-        if key in TECH_ENDPOINTS:
-            del openapi_spec_paths[key]
-            continue
-
-        new_key = get_new_key(key)
-        if new_key:
-            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-            endpoint = openapi_spec_paths[new_key]
-            for method_key in endpoint.keys():
-                method = endpoint[method_key]
-                if isinstance(method, dict):
-                    if (  # Add the parameter owner_id in the endpoint if needed.
-                        new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]
-                        and "parameters" in method
-                    ):
-                        method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-                    elif (  # Add description to the /catalog/search endpoint.
-                        "operationId" in method
-                        and isinstance(method["operationId"], str)
-                        and method["operationId"] == "Search_search_get"
-                    ):
-                        method["description"] = (
-                            "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
-                        )
-
-    # Add all previous created endpoints.
-    app.openapi_schema = openapi_spec
-    return app.openapi_schema
 
 
 settings = Settings()
@@ -278,7 +210,6 @@ api = StacApi(
     ],
 )
 app = api.app
-app.openapi = extract_openapi_specification
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:

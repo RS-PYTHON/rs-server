@@ -42,7 +42,7 @@ from importlib import reload
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from rs_server_catalog.main import app, extract_openapi_specification
+from rs_server_catalog.main import app
 from rs_server_common import settings as common_settings
 
 from .helpers import (
@@ -65,7 +65,6 @@ from .helpers import (
 # Load the .env file
 load_dotenv(RESOURCES_FOLDER / "db/.env")
 
-app.openapi = extract_openapi_specification
 app.openapi()
 
 # Restore the local mode by default
