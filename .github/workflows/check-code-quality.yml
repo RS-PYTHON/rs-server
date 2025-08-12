@@ -38,7 +38,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       conf: ${{ steps.filter.outputs.conf }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -52,7 +52,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/install-python
       - run: >
           echo
@@ -67,7 +67,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
 
@@ -78,7 +78,7 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     # continue-on-error: true # run other jobs, resolve issues later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
         with:
           rm-plugin-dir: true
@@ -113,7 +113,7 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     # continue-on-error: true # run other jobs, resolve issues later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
         with:
           rm-plugin-dir: true
@@ -127,7 +127,7 @@ jobs:
     # continue-on-error: true
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
         with:
           rm-plugin-dir: true
@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
       - name: Run pytest
         run: ./resources/all_pytests.sh --install
@@ -235,7 +235,7 @@ jobs:
       SONAR_PROJECT_KEY: RS-PYTHON_rs-server
       SONAR_HOST_URL: https://sonarcloud.io
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
