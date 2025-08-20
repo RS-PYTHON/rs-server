@@ -83,7 +83,7 @@ pygeofilter = ">=0.3.1.post1"
 stac-pydantic = "^3.1.5"
 geojson-pydantic = "2.0.0"
 stac-fastapi-types = "5.2.1"
-requests = "^2.32.4"
+requests = "^2.32.5"
 urllib3 = ">=2.5.0"
 
 [tool.poetry.group.dev]
