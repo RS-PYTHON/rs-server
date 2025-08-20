@@ -553,7 +553,7 @@ async def test_stac_browser_authent(
 
     # Mock global vars
     stac_browser_url = "http://stac_browser_url"
-    mocker.patch("rs_server_common.settings.STAC_BROWSER_URLS", new=[stac_browser_url], autospec=False)
+    mocker.patch("rs_server_common.settings.CORS_ORIGINS", new=[stac_browser_url], autospec=False)
 
     # Mock functions
     mocked_user_login = "mocked_user_login"

@@ -60,7 +60,7 @@ class TestCatalogDeleteEndpoints:
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
 
         # Check that collection is correctly deleted
-        second_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
+        second_check_response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
         assert second_check_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_delete_a_non_existent_collection(self, client):

@@ -17,13 +17,12 @@
 """Unit tests for the authentication."""
 
 import json
-import os
 
 import pytest
 import requests
 from moto.server import ThreadedMotoServer
 from pytest_httpx import HTTPXMock
-from rs_server_catalog.main import app, must_be_authenticated
+from rs_server_catalog.app import app, must_be_authenticated
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
@@ -40,11 +39,11 @@ from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_302_FOUND,
-    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from .helpers import (  # pylint: disable=no-name-in-module
@@ -118,7 +117,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
     await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, True)
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
-    valid_links = [
+    base_links = [
         {
             "rel": "self",
             "type": "application/json",
@@ -185,6 +184,9 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "href": "http://testserver/catalog/api.html",
             **AUTHENT_REF,
         },
+    ]
+
+    static_child_links = [
         {
             "rel": "child",
             "type": "application/json",
@@ -209,29 +211,19 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         {
             "rel": "child",
             "type": "application/json",
-            "title": "S1_L2",
-            "href": "http://testserver/catalog/collections/darius:S1_L2",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
             "title": "S1_L1",
             "href": "http://testserver/catalog/collections/pyteam:S1_L1",
             **AUTHENT_REF,
         },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "S2_L2",
-            "href": f"http://testserver/catalog/collections/{os.environ['LOGNAME']}:S2_L2",
-            **AUTHENT_REF,
-        },
     ]
+
     landing_page_response = client.request("GET", "/catalog/", **header)
     assert landing_page_response.status_code == HTTP_200_OK
     content = json.loads(landing_page_response.content)
-    assert content["links"] == valid_links
+    assert content["links"] == base_links + sorted(
+        static_child_links,
+        key=lambda link: link["href"],  # type: ignore
+    )
 
     pyteam_collection = {
         "id": "S2_L1",
@@ -540,7 +532,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
 
     assert all_collections.status_code == HTTP_200_OK
     content = json.loads(all_collections.content)
-    assert content["collections"] == valid_collections
+    assert content["collections"] == sorted(valid_collections, key=lambda link: link["id"])  # type: ignore
 
     # Test a wrong apikey
     if test_apikey:
@@ -1302,8 +1294,8 @@ class TestAuthenticationDownload:
             "may24C355000e4102500n.tif",
             **header,
         )
-        assert response.status_code == HTTP_400_BAD_REQUEST
-        assert response.content == b'"Failed to find s3 credentials"'
+        assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
@@ -1594,7 +1586,7 @@ async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMoc
 
 def test_authenticated_endpoints():
     """Test that the catalog endpoints need authentication."""
-    for route_path in ["/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/", "/health"]:
+    for route_path in ["/catalog/_mgmt/health", "/catalog/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/"]:
         assert not must_be_authenticated(route_path)
     for route_path in [
         "/catalog",

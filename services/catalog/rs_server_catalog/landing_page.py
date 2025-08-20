@@ -16,7 +16,7 @@
 
 import re
 
-from starlette.responses import JSONResponse
+from .user_handler import CATALOG_PREFIX
 
 
 def get_unauthorized_collections_links(auth_roles: list, user_login: str, content: dict) -> list:
@@ -62,7 +62,7 @@ def manage_landing_page(
     auth_roles: list,
     user_login: str,
     content: dict,
-) -> dict | JSONResponse:
+) -> dict:
     """Remove unauthorized collections links.
 
     Args:
@@ -80,15 +80,15 @@ def manage_landing_page(
 
 
 def add_prefix_link_landing_page(content: dict, url: str):
-    """add the prefix '/catalog' if it is not present
+    """add the CATALOG_PREFIX if it is not present
 
     Args:
         content (dict): the landing page
         url (str): the url
     """
     for link in content["links"]:
-        if "href" in link and "/catalog" not in link["href"]:
+        if "href" in link and CATALOG_PREFIX not in link["href"]:
             href = link["href"]
             url_size = len(url)
-            link["href"] = href[:url_size] + "/catalog" + href[url_size:]
+            link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
     return content

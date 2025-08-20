@@ -16,7 +16,7 @@
 import os
 import traceback
 from collections.abc import Callable
-from typing import TypedDict
+from typing import ParamSpec, TypedDict
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -26,11 +26,12 @@ from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware import Middleware
+from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 logger = Logging.default(__name__)
+P = ParamSpec("P")
 
 
 class ErrorResponse(TypedDict):
@@ -110,6 +111,56 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         )
 
 
+def insert_middleware_at(app: FastAPI, index: int, middleware: Middleware):
+    """Insert the given middleware at the specified index in a FastAPI application.
+
+    Args:
+        app (FastAPI): FastAPI application
+        index (int): index at which the middleware has to be inserted
+        middleware (Middleware): Middleware to insert
+
+    Raises:
+        RuntimeError: if the application has already started
+
+    Returns:
+        FastAPI: The modified FastAPI application instance with the required middleware.
+    """
+    if app.middleware_stack:
+        raise RuntimeError("Cannot add middleware after an application has started")
+    if not any(m.cls == middleware.cls for m in app.user_middleware):
+        logger.debug("Adding %s", middleware)
+        app.user_middleware.insert(index, middleware)
+    return app
+
+
+def insert_middleware_after(
+    app: FastAPI,
+    previous_mw_class: _MiddlewareFactory,
+    middleware_class: _MiddlewareFactory[P],
+    *args: P.args,
+    **kwargs: P.kwargs,
+):
+    """Insert the given middleware after an existing one in a FastAPI application.
+
+    Args:
+        app (FastAPI): FastAPI application
+        previous_mw_class (str): Class of middleware after which the new middleware has to be inserted
+        middleware_class (Middleware): Class of middleware to insert
+        args: args for middleware_class constructor
+        kwargs: kwargs for middleware_class constructor
+
+    Raises:
+        RuntimeError: if the application has already started
+
+    Returns:
+        FastAPI: The modified FastAPI application instance with the required middleware.
+    """
+    # Existing middlewares
+    middleware_names = [middleware.cls for middleware in app.user_middleware]
+    middleware_index = middleware_names.index(previous_mw_class)
+    return insert_middleware_at(app, middleware_index + 1, Middleware(middleware_class, *args, **kwargs))
+
+
 def apply_middlewares(app: FastAPI):
     """
     Applies necessary middlewares and authentication routes to the FastAPI application.
@@ -127,16 +178,11 @@ def apply_middlewares(app: FastAPI):
     Returns:
         FastAPI: The modified FastAPI application instance with the required middleware and authentication routes.
     """
-    # Existing middlewares
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]  # type: ignore
 
     # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    if app.middleware_stack:
-        raise RuntimeError("Cannot add middleware after an application has started")
-    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
-    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
+    insert_middleware_after(app, HandleExceptionsMiddleware, SessionMiddleware, secret_key=cookie_secret)
 
     # Get the oauth2 router
     oauth2_router = oauth2.get_router(app)
