@@ -20,35 +20,39 @@ It includes an API endpoint, utility functions, and initialization for accessing
 
 
 import os.path as osp
+from datetime import datetime
 from pathlib import Path
-
-from stac_pydantic import ItemCollection
-
-from fastapi import APIRouter, Request
 from typing import Literal
-from fastapi.responses import RedirectResponse
 
 from eodag import EODataAccessGateway
-
-from rs_server_prip import prip_tags
-
-from stac_fastapi.api.models import GeoJSONResponse
-from stac_pydantic import Item, Collection
-
-from datetime import datetime
-
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
-
-from rs_server_common.stac_api_common import (
-    MockPgstac,
-    handle_exceptions
-)
-
+from rs_server_common.stac_api_common import MockPgstac, handle_exceptions
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
+from rs_server_prip import prip_tags
+from rs_server_prip.prip_utils import (
+    prip_map_mission,
+    read_conf,
+    select_config,
+    stac_to_odata,
+)
+from stac_fastapi.api.models import GeoJSONResponse
+from stac_pydantic import Collection, Item, ItemCollection
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=prip_tags)
-ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
+PRIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
+
+
+def validate(queryables: dict):
+    """Function used to verify / update PRIP-specific queryables before being sent to eodag."""
+    if "PublicationDate" in queryables:
+        queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
+
+    return queryables
+
 
 class MockPgstacPrip(MockPgstac):
     """PRIP implementation of MockPgstac"""
@@ -58,24 +62,46 @@ class MockPgstacPrip(MockPgstac):
             request=request,
             readwrite=readwrite,
             service="prip",
-            all_collections=lambda: [],                # Empty list or replace with real config
-            select_config=lambda _id: None,            # Stub for now
-            stac_to_odata=lambda x: x,                 # Identity, update later
-            map_mission=lambda p, c: (p, c),           # Identity, update later
+            all_collections=lambda: read_conf()["collections"],
+            select_config=select_config,
+            stac_to_odata=stac_to_odata,
+            map_mission=prip_map_mission,
             temporal_mapping={
                 "start_datetime": "ContentDate/Start",
                 "end_datetime": "ContentDate/End",
             },
         )
         self.sortby = "-created"
-    
+
     def process_search(self, station, odata_params, collection_provider, limit, page) -> ItemCollection:
         raise NotImplementedError("PRIP search not implemented yet.")
+
+
+def auth_validation(request: Request, collection_id: str, access_type: str):
+    """
+    Check if the user KeyCloak roles contain the right for this specific PRIP collection and access type.
+
+    Args:
+        collection_id (str): Used to find the PRIP station ("ADGS1, ADGS2")
+                            from the RSPY_PRIP_SEARCH_CONFIG config yaml file.
+        access_type (str): The type of access, such as "download" or "read".
+    """
+
+    # Find the collection which id == the input collection_id
+    collection = select_config(collection_id)
+    if not collection:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown PRIP collection: {collection_id!r}")
+    station = collection["station"]
+
+    # Call the authentication function from the authentication module
+    authentication.auth_validation("prip", access_type, request=request, station=station)
+
 
 @router.get("/", include_in_schema=False)
 async def home_endpoint():
     """Redirect to the landing page."""
     return RedirectResponse("/prip")
+
 
 @router.get("/prip")
 async def get_root_catalog(request: Request):
@@ -83,43 +109,34 @@ async def get_root_catalog(request: Request):
     authentication.auth_validation("prip", "landing_page", request=request)
     return await request.app.state.pgstac_client.landing_page(request=request)
 
+
 @router.get("/prip/conformance")
 async def get_conformance(request: Request):
     """Return the STAC/OGC conformance classes implemented by this server."""
     authentication.auth_validation("prip", "landing_page", request=request)
     return await request.app.state.pgstac_client.conformance()
 
-@router.get("/prip/collections", response_class=GeoJSONResponse)
+
+@router.get("/prip/collections")
 @handle_exceptions
-async def list_collections(request: Request):
-    dag = EODataAccessGateway(user_conf_file_path="config/prip_ws_config.yaml")
-    products = dag.search(provider="prip")
+async def get_allowed_prip_collections(request: Request):
+    """Return the PRIP collections to which the user has access to."""
+    logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("prip", "landing_page", request=request)
+    return await request.app.state.pgstac_client.all_collections(request=request)
 
-    collections = {}
-    for p in products:
-        pt = p.properties.get("id", "UNKNOWN")
-        pub_date = p.properties.get("publicationDate", "2020-01-01T00:00:00Z")
-        pub_date = pub_date or "2020-01-01T00:00:00Z"
 
-        if pt not in collections:
-            collections[pt] = Collection(
-                type="Collection",
-                id=pt,
-                title=f"{pt} products",
-                description=f"Collection of {pt} products",
-                license="proprietary",
-                extent={
-                    "spatial": {"bbox": [[-180.0, -90.0, 180.0, 90.0]]},
-                    "temporal": {"interval": [[pub_date, None]]},
-                },
-                links=[],
-                stac_extensions=[],
-            )
+@router.get("/prip/collections/{collection_id}")
+@handle_exceptions
+async def get_prip_collection(
+    request: Request,
+    collection_id: str,
+) -> list[dict] | dict | Collection:
+    """Return a specific PRIP collection."""
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+    return await request.app.state.pgstac_client.get_collection(collection_id, request)
 
-    return {
-        "collections": [c.dict(by_alias=True) for c in collections.values()],
-        "type": "Catalog"
-    }
 
 @router.get("/prip/collections/{collection_id}/items", response_class=GeoJSONResponse)
 async def get_prip_items(
@@ -133,19 +150,15 @@ async def get_prip_items(
         type="Feature",
         geometry=None,
         bbox=[0, 0, 1, 1],
-        properties={
-            "datetime": "2025-08-01T00:00:00Z",
-            "platform": "S1A",
-            "instrument": "SAR"
-        },
+        properties={"datetime": "2025-08-01T00:00:00Z", "platform": "S1A", "instrument": "SAR"},
         collection=collection_id,
         assets={
             "product": {
                 "href": "http://127.0.0.1:5000/Products(123)/$value",
                 "type": "application/zip",
-                "roles": ["data", "metadata"]
-            }
+                "roles": ["data", "metadata"],
+            },
         },
-        links=[]
+        links=[],
     )
     return {"type": "FeatureCollection", "features": [item.dict(by_alias=True)]}

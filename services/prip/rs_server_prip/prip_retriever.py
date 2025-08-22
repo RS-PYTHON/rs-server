@@ -22,8 +22,8 @@ Usage:
 
 import os
 import os.path as osp
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 from rs_server_common.authentication.authentication_to_external import (
     load_external_auth_config,
@@ -38,6 +38,7 @@ if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
     DEFAULT_EODAG_CONFIG = CONF_DIR / "prip_ws_config_token_module.yaml"
 else:
     DEFAULT_EODAG_CONFIG = CONF_DIR / "prip_ws_config.yaml"
+
 
 @lru_cache
 def init_prip_provider(station: str) -> EodagProvider:
@@ -63,14 +64,12 @@ def init_prip_provider(station: str) -> EodagProvider:
         # Get the adgs_ws_config.yaml file path for eodag.
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_PRIP_CONFIG", DEFAULT_EODAG_CONFIG))
-        
+
         # Read the station authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
         ext_auth_config = load_external_auth_config(station, "prip")
-        
+
         # default to eodag, default station "prip"
         return EodagProvider(ext_auth_config, eodag_config, station)
 
     except Exception as exc:
-        raise CreateProviderFailed(
-            f"Failed to setup EODAG for PRIP station '{station}'"
-        ) from exc
+        raise CreateProviderFailed(f"Failed to setup EODAG for PRIP station {station}") from exc
