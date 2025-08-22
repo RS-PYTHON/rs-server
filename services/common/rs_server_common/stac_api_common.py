@@ -484,7 +484,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if op != "and":
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed: {format_dict(filt)}",
+                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed, got '{op}': {format_dict(filt)}",  # noqa: E501 # pylint: disable=line-too-long
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
@@ -523,7 +523,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             else:
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    "Invalid query filter, only '=' and temporal operators are allowed",
+                    "Invalid query filter, only '=' and temporal operators are allowed, got: " + query_arg,
                 )
 
         read_cql(params.pop("filter", {}))
@@ -1013,8 +1013,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 def create_collection(collection: dict) -> stac_pydantic.Collection:
     """Used to create stac_pydantic Model Collection based on given collection data."""
     try:
-        stac_collection = stac_pydantic.Collection(type="Collection", **collection)
-        return stac_collection
+        return stac_pydantic.Collection(type="Collection", **collection)
     except ValidationError as exc:
         raise log_http_exception(
             detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
@@ -1106,6 +1105,7 @@ def filter_allowed_collections(all_collections: list[dict], role: ServiceRole | 
         config.setdefault("stac_version", DEFAULT_STAC_VERSION)
         try:
             collection: stac_pydantic.Collection = create_collection(config)
+            logger.info(f"Loaded STAC collection '{collection.id}'")
             stac_collections.append(collection.model_dump())
 
         # If a collection is incomplete in the configuration file, log the error and proceed
@@ -1250,10 +1250,9 @@ def check_bbox_input(input_value: str | None) -> BBox | None:
     """validate bbox for STAC API compliance"""
     if input_value:
         try:
-            bbox = str2bbox(input_value)
-            if len(bbox) not in [4, 6]:
-                raise log_http_exception(status.HTTP_400_BAD_REQUEST, f"Invalid bbox: {bbox}")
-            return bbox
+            return str2bbox(input_value)
+        except HTTPException as e:
+            raise e
         except Exception as e:
             raise log_http_exception(status.HTTP_400_BAD_REQUEST, str(e)) from e
     return None

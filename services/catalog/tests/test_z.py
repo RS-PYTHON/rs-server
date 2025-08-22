@@ -16,7 +16,7 @@
 as it deletes all the databases in the catalog."""
 
 
-import fastapi
+from starlette.status import HTTP_200_OK
 
 
 def test_queryables_with_empty_catalog(client_with_empty_catalog):
@@ -25,9 +25,9 @@ def test_queryables_with_empty_catalog(client_with_empty_catalog):
     """
     response_empty = client_with_empty_catalog.get("/catalog/queryables")
 
-    assert response_empty.status_code == fastapi.status.HTTP_200_OK
+    assert response_empty.status_code == HTTP_200_OK
     expected_response = {
-        "$id": f"{client_with_empty_catalog.base_url}/queryables",
+        "$id": f"{client_with_empty_catalog.base_url}/catalog/queryables",
         "type": "object",
         "title": "STAC Queryables.",
         "$schema": "https://json-schema.org/draft-07/schema#",

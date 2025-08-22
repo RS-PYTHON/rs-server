@@ -16,21 +16,24 @@
 
 import json
 import os
+from typing import cast
 
 import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.keycloak_util import KCInfo
+from rs_server_common.settings import docs_params
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
+from starlette.routing import Route
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -188,7 +191,7 @@ async def test_oauth2_security(mocker, client):
     ids=["auxip", "cadip"],
 )
 async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-many-locals
-    fastapi_app,
+    fastapi_app: FastAPI,
     client,
     mocker,
     monkeypatch,
@@ -254,14 +257,22 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
+    openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
+
     # If we test the oauth2 authentication, we login the user.
     # His authentication information is saved in the client session cookies.
     if test_oauth2:
         await mock_oauth2(mocker, client, "/auth/login", oauth2_user_id, oauth2_username, oauth2_roles)
 
     # For each adgs or cadip api endpoint
-    for route in fastapi_app.router.routes:
-        if not route.path.startswith(("/adgs/", "/auxip/", "/cadip/")):
+    for base_route in fastapi_app.router.routes:
+        route = cast(Route, base_route)
+        if (
+            route.path in openapi_urls
+            or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/"))
+            or not route.methods
+        ):
+            logger.debug(f"Skipping {route.path}")
             continue
 
         # For each method (get, post, ...)
@@ -542,7 +553,7 @@ async def test_stac_browser_authent(
 
     # Mock global vars
     stac_browser_url = "http://stac_browser_url"
-    mocker.patch("rs_server_common.settings.STAC_BROWSER_URLS", new=[stac_browser_url], autospec=False)
+    mocker.patch("rs_server_common.settings.CORS_ORIGINS", new=[stac_browser_url], autospec=False)
 
     # Mock functions
     mocked_user_login = "mocked_user_login"

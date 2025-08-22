@@ -23,7 +23,6 @@ import fastapi
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/api.html")
     assert response.status_code == fastapi.status.HTTP_200_OK
-    print(f"Response vaut: {response}")
 
 
 def test_update_stac_catalog_metadata(client):

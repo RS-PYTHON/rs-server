@@ -117,7 +117,7 @@ def set_db_env_var_fixture(monkeypatch):
     This fixture sets a variety of environment variables related to token-based
     authentication for different services, allowing tests to be executed with
     the correct configurations in place.
-    The enviornment variables set are managing 3 stations:
+    The environment variables set are managing 3 stations:
     - adgs (service auxip)
     - ins (service cadip)
     - mps (service cadip)

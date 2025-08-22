@@ -42,7 +42,6 @@ from importlib import reload
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
 
 from .helpers import (
@@ -62,10 +61,11 @@ from .helpers import (
     is_db_up,
 )
 
-# Load the .env file
+# Load the .env file before instantiating stac-fastapi-pgstac
 load_dotenv(RESOURCES_FOLDER / "db/.env")
 
-app.openapi = extract_openapi_specification
+from rs_server_catalog.app import app
+
 app.openapi()
 
 # Restore the local mode by default

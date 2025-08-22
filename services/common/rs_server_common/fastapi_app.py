@@ -16,12 +16,11 @@
 
 import typing
 from contextlib import asynccontextmanager
-from os import environ as env
 from types import MethodType
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
@@ -31,11 +30,13 @@ from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.middlewares import HandleExceptionsMiddleware
 from rs_server_common.schemas.health_schema import HealthSchema
+from rs_server_common.settings import docs_params
 from rs_server_common.utils import init_opentelemetry
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.errors import add_exception_handlers
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
+from stac_fastapi.api.openapi import update_openapi
 from stac_fastapi.api.routes import add_route_dependencies
 from stac_fastapi.extensions.core import (
     FieldsExtension,
@@ -101,16 +102,8 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         # Close objects for dependency injection
         await settings.del_http_client()
 
-    # For cluster deployment: override the swagger /docs URL from an environment variable.
-    # Also set the openapi.json URL under the same path.
-    try:
-        docs_url = env["RSPY_DOCS_URL"].strip("/")
-        docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
-    except KeyError:
-        docs_params = {}
-
     # Init the FastAPI application
-    app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
+    app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params(router_prefix))
 
     # Configure OpenTelemetry
     init_opentelemetry.init_traces(app, settings.SERVICE_NAME)
@@ -230,21 +223,14 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.add_middleware(ProxyHeaderMiddleware)
 
     # Add CORS requests from the STAC browser
-    if settings.STAC_BROWSER_URLS:
+    if settings.CORS_ORIGINS:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=settings.STAC_BROWSER_URLS,
+            allow_origins=settings.CORS_ORIGINS,
             allow_methods=["*"],
             allow_headers=["*"],
             allow_credentials=True,
         )
 
-    @app.middleware("http")
-    async def modify_openapi_content_type(request: Request, call_next):
-        response = await call_next(request)
-        if request.url.path == app.openapi_url:
-            # Replace content-type header
-            response.headers["Content-Type"] = "application/vnd.oai.openapi+json;version=3.0"
-        return response
-
-    return app
+    # Finally, apply stac-fastapi openapi patch to comply with the STAC API spec
+    return update_openapi(app)

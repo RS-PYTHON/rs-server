@@ -101,7 +101,7 @@ class DataLifecycle:
         self.periodic_task.cancel()
         try:
             await self.periodic_task
-        except asyncio.exceptions.CancelledError:
+        except asyncio.exceptions.CancelledError:  # NOSONAR - see https://github.com/python/cpython/issues/103486
             pass
 
     def run(self):
@@ -238,7 +238,7 @@ class DataLifecycle:
         item.setdefault("properties", {})["unpublished"] = now
 
         # Remove all the assets from the item
-        assets = item.pop("assets", {})
+        assets = item.get("assets", {})
         item["assets"] = {}
 
         # Remove the links. We don't need to save them in stac.

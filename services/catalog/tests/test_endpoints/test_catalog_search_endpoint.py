@@ -324,7 +324,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
                 "filter-lang": "cql2-text",
                 "owner": "testowner",
                 "filter": "T_CONTAINS(INTERVAL(start_datetime,end_datetime),"
-                "INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+                "INTERVAL('2025-03-01T00:00:00Z','2025-06-01T00:00:00Z'))",
             }
             response = client.get("/catalog/search", params=test_params)
 
@@ -362,7 +362,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
                 "filter-lang": "cql2-text",
                 "owner": "testowner",
                 "filter": "T_CONTAINS(INTERVAL(start_datetime,end_datetime),"
-                "INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+                "INTERVAL('2025-03-01T00:00:00Z','2025-06-01T00:00:00Z'))",
                 "sortby": "-properties.created",
                 "limit": "1",
             }
@@ -400,7 +400,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
                 "filter-lang": "cql2-text",
                 "owner": "testowner",
                 "filter": "T_INTERSECTS(INTERVAL(start_datetime,end_datetime),"
-                "INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+                "INTERVAL('2025-03-01T00:00:00Z','2025-06-01T00:00:00Z'))",
             }
             response = client.get("/catalog/search", params=test_params)
 
@@ -440,7 +440,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
                 "filter-lang": "cql2-text",
                 "owner": "testowner",
                 "filter": "T_INTERSECTS(INTERVAL(start_datetime,end_datetime),"
-                "INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+                "INTERVAL('2025-03-01T00:00:00Z','2025-06-01T00:00:00Z'))",
                 "sortby": "-properties.created",
                 "limit": "1",
             }

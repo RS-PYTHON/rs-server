@@ -23,10 +23,6 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
   - package-ecosystem: "pip"
     directories:
       - "/"
