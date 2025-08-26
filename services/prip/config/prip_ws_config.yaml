@@ -1,4 +1,4 @@
-prip:
+prip_s1a:
   auth:
     type: TokenAuth
     auth_uri: PLACEHOLDER
@@ -32,7 +32,7 @@ prip:
       id:
       - null
       - $.Id
-      auxip:id:
+      prip:id:
       - null
       - $.Id
       Name:
@@ -108,7 +108,7 @@ prip:
         operations:
           and:
           - contains(Name, '{Name}')
-          - contains(Id, '{auxip:id}')
+          - contains(Id, '{prip:id}')
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -152,7 +152,7 @@ prip:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         id: Name
-        auxip:id: Id
+        prip:id: Id
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate

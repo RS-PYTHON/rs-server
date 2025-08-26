@@ -1,0 +1,81 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+id:
+  type: string
+  title: id
+  format: string
+  description: string
+platform:
+  type: string
+  title: platform
+  format: string
+  description: string
+  enum: ["sentinel-1a", "sentinel-1b", "sentinel-1c", "sentinel-1d", "sentinel-2a", "sentinel-2b", "sentinel-2c", "sentinel-3a", "sentinel-3b", "sentinel-5P"]
+constellation:
+  type: string
+  title: constellation
+  format: string
+  description: string
+  enum: ["sentinel-1", "sentinel-2", "sentinel-3", "sentinel-5P"]
+Name:
+  type: string
+  title: Name
+  format: string
+  description: string
+auxip:id:
+  type: string
+  title: auxip:id
+  format: string
+  description: id
+created:
+  type: datetime
+  title: created
+  format: datetime
+  description: PublicationDate
+datetime:
+  type: datetime
+  title: datetime
+  format: datetime
+  description: ContentDate/Start
+start_datetime:
+  type: datetime
+  title: start_datetime
+  format: datetime
+  description: ContentDate/Start
+end_datetime:
+  type: datetime
+  title: end_datetime
+  format: datetime
+  description: ContentDate/End
+product:type:
+  type: string
+  title: product:type
+  format: string
+  description: productType
+processing:datetime:
+  type: datetime
+  title: processing:datetime
+  format: datetime
+  description: processingDate
+processing:facility:
+  type: string
+  title: processing:facility
+  format: string
+  description: processingCenter
+published:
+  type: datetime
+  title: published
+  format: datetime
+  description: PublicationDate

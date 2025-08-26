@@ -18,7 +18,7 @@
 # DON'T MODIFY IT DIRECTLY !
 
 collections:
-- id: prip_s1a_iw_slc__1s
+- id: S1A_L1_IW_SLC
   station: prip_s1a
   query:
     productType: IW_SLC__1S
@@ -28,15 +28,9 @@ collections:
   license: other
   extent:
     spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
+      bbox: [[ -180, -82.85, 180, 82.82 ]]
     temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
+      interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
   links:
     - rel: license
       href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'

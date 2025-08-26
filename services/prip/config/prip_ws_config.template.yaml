@@ -1,0 +1,210 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# NOTE: this file contains configuration values for eodag.
+# The 'PLACEHOLDER' values will be replaced by values from RSPY__TOKEN__ env vars or rs-server.yaml file.
+
+template:
+  auth:
+    type: TokenAuth
+    auth_uri: PLACEHOLDER
+    token_type: json
+    token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
+    request_method: POST
+    req_data:
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
+    credentials:
+      auth_for_token: PLACEHOLDER # WARNING: the 'credentials" field must be present with at least one value !
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: "{auth_for_token}"
+  products:
+    CAMS_GRF_AUX:
+      productType: cams-ads-grf-aux
+
+  search:
+    type: ODataV4Search
+    api_endpoint:
+    need_auth: true
+    results_entry: $.value | $
+    metadata_mapping:
+      id:
+        - null
+        - "$.Id"
+      auxip:id:
+        - null
+        - "$.Id"
+      Name:
+        - null
+        - "$.Name"
+      ContentLength:
+        - null
+        - "$.ContentLength"
+      ContentType:
+        - null
+        - "$.ContentType"
+      PublicationDate:
+        - null
+        - "$.PublicationDate"
+      EvictionDate:
+        - null
+        - "$.EvictionDate"
+      DatetimeStart:
+        - null
+        - "$.ContentDate.Start"
+      Start:
+        - null
+        - "$.ContentDate.Start"
+      End:
+        - null
+        - "$.ContentDate.End"
+      StartPublicationDate:
+        - null
+        - "$.PublicationDate"
+      StopPublicationDate:
+        - null
+        - "$.PublicationDate"
+      ChecksumValue:
+        - null
+        - '{$.Checksum[0].Value#to_lower}'
+      attr_ptype:
+        - null
+        - "$.attr_ptype"
+      attr_ptypes:
+        - null
+        - "$.attr_ptype"
+      platformSerialIdentifier:
+        - null
+        - "$.platformSerialIdentifier"
+      platformSerialIdentifiers:
+        - null
+        - "$.platformSerialIdentifier"
+      platformShortName:
+        - null
+        - "$.platformShortName"
+      platformShortNames:
+        - null
+        - "$.platformShortName"
+      processing:datetime:
+        - null
+        - "$.processing:datetime"
+      processingCenter:
+        - null
+        - "$.processingCenter"
+      attrs:
+        - null
+        - "$.Attributes"
+      href:
+      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
+      downloadLink:
+      title: "$.Name"
+
+    free_text_search_operations:
+      $filter:
+        union: " OR "
+        wrapper: '{}'
+        operations:
+          and:
+            - "contains(Name, '{Name}')"
+            - "contains(Id, '{auxip:id}')"
+            - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
+            - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
+            - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')"
+            - "ContentDate/Start gt {Start#to_iso_utc_datetime}"
+            - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
+            - "ContentDate/Stop lt {Stop#to_iso_utc_datetime}"
+            - "{t_before}"
+            - "{t_after}"
+            - "{t_meets}"
+            - "{t_metby}"
+            - "{t_overlaps}"
+            - "{t_overlappedby}"
+            - "{t_starts}"
+            - "{t_startedby}"
+            - "{t_during}"
+            - "{t_contains}"
+            - "{t_finishes}"
+            - "{t_finishedby}"
+            - "{t_equals}"
+            - "{t_disjoint}"
+            - "{t_intersects}"
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: Name
+        auxip:id: Id
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        created: PublicationDate
+        start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
+    pagination:
+      max_items_per_page: 10000
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes"
+      total_items_nb_key_path: "$.total"
+
+  download:
+    type: HTTPDownload
+    base_uri:
+    metadata_mapping:
+      uid: "$.Id"
+      downloadLink:
+
+adgs:
+  search:
+    api_endpoint: "http://127.0.0.1:5000/Products"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5000/Products({id})/$value"
+      downloadLink: "http://127.0.0.1:5000/Products({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5000/Products"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5000/Products({uid})/$value"
+
+adgs2:
+  search:
+    api_endpoint: "http://127.0.0.1:5001/Products"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5001/Products({id})/$value"
+      downloadLink: "http://127.0.0.1:5001/Products({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5001/Products"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5001/Products({uid})/$value"
