@@ -26,5 +26,5 @@ poetry lock --regenerate || exit 80
 poetry show -o || exit 85
 git add . || exit 90
 git commit -m "Dependency updates" || exit 100
-git push --branch "updates-$d"
+git push --set-upstream origin "updates-$d"
 git stash pop
