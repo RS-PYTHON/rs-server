@@ -21,8 +21,8 @@ prip_s1a:
       Content-Type: application/x-www-form-urlencoded
       Authorization: '{auth_for_token}'
   products:
-    S1_SAR_SLC:
-      productType: SLC
+    S1_SAR_RAW:
+      productType: IW_RAW__0N
   search:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5000/Products?$expand=Attributes
