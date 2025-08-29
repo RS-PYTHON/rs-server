@@ -24,6 +24,33 @@ Changed
 
 None
 
+[1.0a1] - Sprint 27 - 2025-08-27
+================================
+
+## Added
+
+- RSPY-168: Perform 0.2 release delivery
+- RSPY-402: Implement a PRIP mockup
+- RSPY-615: Conformance of STAC landing pages to ESA requirements
+- RSPY-667: Update to stac-fastapi 6.0.x
+- RSPY-728: Update to latest stable version of Oauth2-Proxy
+- RSPY-729: Use OVH managed private registry instead of docker hub
+- RSPY-735: Create database 'Performance'
+- RSPY-736: Create a prefect @task to record a 'flow_run'
+- RSPY-768: Add /dpr/jobs and /dpr/processes endpoints
+- RSPY-776: S3-L0 : deliver some integration test results.
+- RSPY-777: Sprint 27 corrections of issues
+
+## Fixed
+
+- RSPY-176: Platform deployment: first application deployment execution failed for the step cluster-issuer [2 pts]
+- RSPY-649: Some datetime formats not supported in cadip/auxip STAC API (1 pt)
+- RSPY-724: dask-cluster launcher create many dask-cluster (1 pt )
+- RSPY-765: STAC validation GET /cadip/search: multithreading issue (1 pt)
+- RSPY-767: STAC pagination validation failed due to authentification error (1 pt)
+- RSPY-784: AUXIP/CADIP service-desc URLs are not correct (2 pt)
+- RSPY-787: Fix alloy configuration (5 pts)
+
 [0.2] - Sprint 26 - 2025-07-30
 ================================
 
