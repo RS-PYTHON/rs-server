@@ -18,6 +18,7 @@ import os
 import traceback
 from collections.abc import Callable
 from typing import ParamSpec, TypedDict
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -31,7 +32,7 @@ from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-# pylint: disable = too-few-public-methods
+# pylint: disable = too-few-public-methods, too-many-return-statements
 logger = Logging.default(__name__)
 P = ParamSpec("P")
 
@@ -114,9 +115,32 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
 
 
 def get_link_title(link: dict, entity: dict) -> str:
-    """."""
-    rel = link.get("rel")
-    href = link.get("href")
+    """
+    Determine a human-readable STAC link title based on the link relation and context.
+
+    ESA requirement STAC-CORE-GEN-STAC-REQ-0031:
+    Every link must have a "title" property that reflects the title of the entity it refers to,
+    or the entity ID if no title is available.
+
+    Rules implemented:
+    - rel = "collection": use the collection's title or ID
+    - rel = "item": use the item's title or ID
+    - rel = "self" on a Catalog: "STAC Landing Page"
+    - rel = "self" when href ends with "/collections": "All Collections"
+    - rel = "parent": "Parent Catalog"
+    - rel = "root": "STAC Root Catalog"
+    - rel = "child": generate "All from collection <collection_id>" from href
+    - fallback: use href or "Unknown Entity"
+
+    Args:
+        link: The STAC link dictionary (must contain at least "rel" and "href").
+        entity: The STAC entity (Catalog, Collection, or Item) that contains the link.
+
+    Returns:
+        A string with the human-readable link title.
+    """
+    rel: str = link.get("rel", "")
+    href: str = link.get("href", "")
 
     match rel:
         case "collection":
@@ -125,8 +149,16 @@ def get_link_title(link: dict, entity: dict) -> str:
             return entity.get("title") or entity.get("id") or "Item"
         case "self" if entity.get("type") == "Catalog":
             return "STAC Landing Page"
+        case "self" if href.endswith("/collections"):
+            return "All Collections"
         case "parent":
             return "Parent Catalog"
+        case "root":
+            return "STAC Root Catalog"
+        case "child":
+            path = urlparse(href).path
+            collection_id = path.split("/")[-1] if path else "unknown"
+            return f"All from collection {collection_id}"
         case _:
             return href or "Unknown Entity"
 
@@ -135,12 +167,34 @@ class StacLinksTitleMiddleware(BaseHTTPMiddleware):
     """Middleware used to update links with title"""
 
     def __init__(self, app: FastAPI, title: str = "Default Title"):
-        """."""
+        """
+        Initialize the middleware.
+
+        Args:
+            app: The FastAPI application instance to attach the middleware to.
+            title: Default title to use for STAC links if no specific title is provided.
+        """
         super().__init__(app)
         self.title = title
 
     async def dispatch(self, request: Request, call_next):
-        """."""
+        """
+        Intercept and modify outgoing responses to ensure all STAC links have proper titles.
+
+        This middleware method:
+        1. Awaits the response from the next handler.
+        2. Reads and parses the response body as JSON.
+        3. Updates the "title" property of each link using `get_link_title`.
+        4. Rebuilds the response without the original Content-Length header to prevent mismatches.
+        5. If the response body is not JSON, returns it unchanged.
+
+        Args:
+            request: The incoming FastAPI Request object.
+            call_next: The next ASGI handler in the middleware chain.
+
+        Returns:
+            A FastAPI Response object with updated STAC link titles.
+        """
         response = await call_next(request)
 
         body = b""
