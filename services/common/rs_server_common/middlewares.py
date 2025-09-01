@@ -13,12 +13,13 @@
 # limitations under the License.
 
 """Common functions for fastapi middlewares"""
+import json
 import os
 import traceback
 from collections.abc import Callable
 from typing import ParamSpec, TypedDict
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
@@ -30,6 +31,7 @@ from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+# pylint: disable = too-few-public-methods
 logger = Logging.default(__name__)
 P = ParamSpec("P")
 
@@ -109,6 +111,72 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         return "bbox" in request.query_params and (
             str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
         )
+
+
+def get_link_title(link: dict, entity: dict) -> str:
+    """."""
+    rel = link.get("rel")
+    href = link.get("href")
+
+    match rel:
+        case "collection":
+            return entity.get("title") or entity.get("id") or "Collection"
+        case "item":
+            return entity.get("title") or entity.get("id") or "Item"
+        case "self" if entity.get("type") == "Catalog":
+            return "STAC Landing Page"
+        case "parent":
+            return "Parent Catalog"
+        case _:
+            return href or "Unknown Entity"
+
+
+class StacLinksTitleMiddleware(BaseHTTPMiddleware):
+    """Middleware used to update links with title"""
+
+    def __init__(self, app: FastAPI, title: str = "Default Title"):
+        """."""
+        super().__init__(app)
+        self.title = title
+
+    async def dispatch(self, request: Request, call_next):
+        """."""
+        response = await call_next(request)
+
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+
+        try:
+            data = json.loads(body)
+
+            if isinstance(data, dict) and "links" in data:
+                for link in data["links"]:
+                    if isinstance(link, dict):
+                        link["title"] = get_link_title(link, data)
+
+            # rebuild response without content-length
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+
+            response = Response(
+                content=json.dumps(data).encode("utf-8"),
+                status_code=response.status_code,
+                headers=headers,
+                media_type="application/json",
+            )
+        except Exception:  # pylint: disable = broad-exception-caught
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+
+            response = Response(
+                content=body,
+                status_code=response.status_code,
+                headers=headers,
+                media_type=response.headers.get("content-type"),
+            )
+
+        return response
 
 
 def insert_middleware_at(app: FastAPI, index: int, middleware: Middleware):

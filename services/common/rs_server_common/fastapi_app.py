@@ -28,7 +28,10 @@ from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
-from rs_server_common.middlewares import HandleExceptionsMiddleware
+from rs_server_common.middlewares import (
+    HandleExceptionsMiddleware,
+    StacLinksTitleMiddleware,
+)
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.settings import docs_params
 from rs_server_common.utils import init_opentelemetry
@@ -221,7 +224,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)
-
+    app.add_middleware(StacLinksTitleMiddleware, title="My STAC Title")
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:
         app.add_middleware(
