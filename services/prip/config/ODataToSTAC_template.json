@@ -11,7 +11,7 @@
     "type": "Feature",
     "id": "PLACEHOLDER",
     "geometry": null,
-    "bbox": [],
+    "bbox": [-180, -90, 180, 90],
     "properties": {
         "prip:id": "PLACEHOLDER",
         "published": "PLACEHOLDER",
@@ -31,8 +31,8 @@
         "processing:datetime": "PLACEHOLDER",
         "processing:facility": "PLACEHOLDER",
         "constellation": "PLACEHOLDER",
-        "platform": "PLACEHOLDER",
         "instruments": "PLACEHOLDER",
+        "platform": "PLACEHOLDER",
         "sat:absolute_orbit": "PLACEHOLDER",
         "sat:relative_orbit": "PLACEHOLDER",
         "sat:orbit_state": "PLACEHOLDER",

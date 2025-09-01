@@ -23,7 +23,6 @@ This module mirrors rs_server_adgs.adgs_utils but adapts for PRIP:
   and an href that points to the OData $value endpoint.
 - platform/constellation mapping helpers reuse the common `map_stac_platform()` table.
 """
-from __future__ import annotations
 
 import json
 import os
@@ -47,16 +46,16 @@ search_yaml = PRIP_CONFIG / "prip_search_config.yaml"
 # Config loaders
 # ----------------------
 @lru_cache
-def read_conf() -> dict[str, Any]:
-    """Used each time to read RSPY_ADGS_SEARCH_CONFIG config yaml."""
+def read_conf():
+    """Used each time to read RSPY_PRIP_SEARCH_CONFIG config yaml."""
     prip_search_config = Path(os.environ.get("RSPY_PRIP_SEARCH_CONFIG", str(search_yaml.absolute())))
     with open(prip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
-    return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
+    return config # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
 
 
 @lru_cache
-def prip_odata_to_stac_template() -> dict[str, Any]:
+def prip_odata_to_stac_template():
     """Used each time to read the ODataToSTAC_template json template."""
     with open(PRIP_CONFIG / "ODataToSTAC_template.json", encoding="utf-8") as mapper:
         config = json.loads(mapper.read())
@@ -64,8 +63,8 @@ def prip_odata_to_stac_template() -> dict[str, Any]:
 
 
 @lru_cache
-def prip_stac_mapper() -> dict[str, str]:
-    """Used each time to read the adgs_stac_mapper config yaml."""
+def prip_stac_mapper():
+    """Used each time to read the prip_stac_mapper config yaml."""
     with open(PRIP_CONFIG / "prip_stac_mapper.json", encoding="utf-8") as stac_map:
         config = json.loads(stac_map.read())
     return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
@@ -95,17 +94,15 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
     - Ensure roles ["data","metadata"] as per STAC-PRIP-ITEM-REQ-0090.
     """
     for feature in feature_collection.features:
-        prip_id = feature.properties.dict().get("prip:id") or feature.id
+        prip_id = feature.properties.dict()["prip:id"]
         # Find matching product by id
-        # matched = next((p for p in products if p.get("properties", {}).get("id") == prip_id), None)
-        matched = next((p for p in products if p.properties.get("Name") == prip_id), None)
+        matched = next((p for p in products if p.get("properties", {}).get("id") == prip_id), None)
         if not matched:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Unable to map product for feature {feature.id}",
             )
-        # href = matched.get("properties", {}).get("href")
-        href = matched.properties.get("href")
+        href = matched.get("properties", {}).get("href")
         if not href:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -114,13 +111,10 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
 
         # Update asset href and rename to item id
         feature.assets["file"].href = re.sub(r"\([^\)]*\)", f"({prip_id})", href)
-        new_key = (feature.id or prip_id).rsplit(".", 1)[0]
+        new_key = (feature.id or    prip_id).rsplit(".", 1)[0]
         feature.assets[new_key] = feature.assets.pop("file")
         # roles: ["data","metadata"]
         asset = feature.assets[new_key]
-        
-        asset.extra_fields = {}
-        
         roles = list(dict.fromkeys((asset.extra_fields or {}).get("roles", []) + ["data", "metadata"]))  # unique
         asset.extra_fields = {**(asset.extra_fields or {}), "roles": roles}
         # Normalize item id (drop extension if any)
@@ -229,15 +223,16 @@ def prip_map_mission(platform: str | None, constellation: str | None) -> tuple[s
 
 
 def prip_reverse_map_mission(platform: str | None, constellation: str | None) -> tuple[str | None, str | None]:
-    """Reverse the mapping back to user-friendly STAC values using the platform map table."""
+    """Function used to re-map platform and constellation based on satellite value."""
     if not (constellation or platform):
         return None, None
 
     if constellation:
         constellation = constellation.lower()  # type: ignore
 
-    for sat in map_stac_platform().get("satellites", []):
-        for sat_name, info in sat.items():
+    for satellite in map_stac_platform().get("satellites", []):
+        for sat_name, info in satellite.items():
+            # Check for matching serialid and constellation
             if info.get("serialid") == platform and info.get("constellation", "").lower() == (constellation or ""):
                 return sat_name, info.get("constellation")
 
@@ -245,20 +240,10 @@ def prip_reverse_map_mission(platform: str | None, constellation: str | None) ->
 
 
 def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
-    """Apply final tweaks to a returned STAC ItemCollection for PRIP:
-    - reverse-map platform/constellation for display
-    - (future) inject sar:instrument_mode if back-end didn't already
-    """
+    """Used to create a more complex mapping on platform/constallation from odata to stac."""
     for feature in collection.features:
         feature.properties.platform, feature.properties.constellation = prip_reverse_map_mission(
             getattr(feature.properties, "platform", None),
             getattr(feature.properties, "constellation", None),
         )
-        # Ensure asset has roles ["data","metadata"] if missing
-        if feature.assets:
-            # pick first asset
-            k = next(iter(feature.assets))
-            asset = feature.assets[k]
-            roles = list(dict.fromkeys((asset.extra_fields or {}).get("roles", []) + ["data", "metadata"]))
-            asset.extra_fields = {**(asset.extra_fields or {}), "roles": roles}
     return collection

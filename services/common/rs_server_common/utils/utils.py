@@ -172,7 +172,10 @@ def odata_to_stac(
     for stac_key, eodag_key in odata_stac_mapper.items():
         if eodag_key in odata_dict:
             if stac_key in feature_template["properties"]:
-                feature_template["properties"][stac_key] = odata_dict[eodag_key]
+                if stac_key=="instruments":
+                    feature_template["properties"][stac_key] = [odata_dict[eodag_key]]
+                else:
+                    feature_template["properties"][stac_key] = odata_dict[eodag_key]
             elif stac_key == "id":
                 feature_template["id"] = odata_dict[eodag_key]
             elif stac_key in feature_template["assets"]["file"]:

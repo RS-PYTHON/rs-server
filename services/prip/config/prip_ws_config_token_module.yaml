@@ -1,0 +1,158 @@
+prip_s1a:
+  auth:
+    type: HTTPHeaderAuth
+    headers:
+      Authorization: Bearer {token}
+    credentials:
+      token: token_value
+  products:
+    S1_SAR_SLC:
+      productType: IW_SLC__1S
+  search:
+    type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5000/Products
+    need_auth: true
+    results_entry: $.value | $
+    metadata_mapping:
+      id:
+        - null
+        - $.Id
+      prip:id:
+        - null
+        - $.Id
+      Name:
+        - null
+        - $.Name
+      ContentLength:
+        - null
+        - $.ContentLength
+      ContentType:
+        - null
+        - $.ContentType
+      PublicationDate:
+        - null
+        - $.PublicationDate
+      EvictionDate:
+        - null
+        - $.EvictionDate
+      DatetimeStart:
+        - null
+        - $.ContentDate.Start
+      Start:
+        - null
+        - $.ContentDate.Start
+      End:
+        - null
+        - $.ContentDate.End
+      StartPublicationDate:
+        - null
+        - $.PublicationDate
+      StopPublicationDate:
+        - null
+        - $.PublicationDate
+      ChecksumValue:
+        - null
+        - '{$.Checksum[0].Value#to_lower}'
+      product:type:
+        - null
+        - $.Attributes[?(@.Name=='productType')].Value
+      processing:datetime:
+        - null
+        - $.Attributes[?(@.Name=='processingDate')].Value
+      processing:facility:
+        - null
+        - $.Attributes[?(@.Name=='processingCenter')].Value
+      processing:version:
+        - null
+        - $.Attributes[?(@.Name=='processorVersion')].Value
+      platformShortName:
+        - null
+        - $.Attributes[?(@.Name=='platformShortName')].Value
+      platformSerialIdentifier:
+        - null
+        - $.Attributes[?(@.Name=='platformSerialIdentifier')].Value
+      instrumentShortName:
+        - null
+        - $.Attributes[?(@.Name=='instrumentShortName')].Value
+      orbitNumber:
+        - null
+        - $.Attributes[?(@.Name=='orbitNumber')].Value
+      relativeOrbitNumber:
+        - null
+        - $.Attributes[?(@.Name=='relativeOrbitNumber')].Value
+      cycleNumber:
+        - null
+        - $.Attributes[?(@.Name=='cycleNumber')].Value
+      orbitDirection:
+        - null
+        - $.Attributes[?(@.Name=='orbitDirection')].Value
+      polarisationChannels:
+        - null
+        - $.Attributes[?(@.Name=='polarisationChannels')].Value
+      datatakeID:
+        - null
+        - $.Attributes[?(@.Name=='datatakeID')].Value
+      href:
+        - null
+        - http://127.0.0.1:5000/Products({id})/$value
+      downloadLink: http://127.0.0.1:5000/Products({id})/$value
+      title: $.Name
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '{}'
+        operations:
+          and:
+            - contains(Name, '{Name}')
+            - contains(Id, '{prip:id}')
+            - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})
+            - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})
+            - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+            - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq '{product:type}')
+            - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq '{platformSerialIdentifier}')
+            - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq '{platformShortName#to_upper}')
+            - Attributes/OData.CSC.DateTimeOffsetAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.DateTimeOffsetAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
+            - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processing:facility}')
+            - ContentDate/Start gt {Start#to_iso_utc_datetime}
+            - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
+            - ContentDate/End lt {End#to_iso_utc_datetime}
+            - '{t_before}'
+            - '{t_after}'
+            - '{t_meets}'
+            - '{t_metby}'
+            - '{t_overlaps}'
+            - '{t_overlappedby}'
+            - '{t_starts}'
+            - '{t_startedby}'
+            - '{t_during}'
+            - '{t_contains}'
+            - '{t_finishes}'
+            - '{t_finishedby}'
+            - '{t_equals}'
+            - '{t_disjoint}'
+            - '{t_intersects}'
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: Name
+        prip:id: Id
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        created: PublicationDate
+        start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+    pagination:
+      max_items_per_page: 10000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
+      total_items_nb_key_path: $.total
+  download:
+    type: HTTPDownload
+    base_uri: http://127.0.0.1:5000/Products
+    metadata_mapping:
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5000/Products({uid})/$value

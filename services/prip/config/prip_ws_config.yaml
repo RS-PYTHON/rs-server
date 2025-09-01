@@ -25,7 +25,7 @@ prip_s1a:
       productType: IW_RAW__0N
   search:
     type: ODataV4Search
-    api_endpoint: http://127.0.0.1:5000/Products?$expand=Attributes
+    api_endpoint: http://127.0.0.1:5000/Products
     need_auth: true
     results_entry: $.value | $
     metadata_mapping:

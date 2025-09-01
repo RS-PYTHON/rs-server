@@ -1181,7 +1181,7 @@ def create_stac_collection(
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper, collection_provider)
         try:
             item = Item(**feature_tmp)
-            item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
+            # item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore # <- delete this line : pydantic warning
             items.append(item)
         except ValidationError as e:
             logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")

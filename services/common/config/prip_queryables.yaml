@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2025 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
 id:
   type: string
   title: id
+  format: string
+  description: string
+collection:
+  type: string
+  title: collection
   format: string
   description: string
 platform:
@@ -34,16 +39,37 @@ Name:
   title: Name
   format: string
   description: string
-auxip:id:
+prip:id:
   type: string
   title: auxip:id
   format: string
   description: id
-created:
+product:type:
+  type: string
+  title: product:type
+  format: string
+  description: string
+processing:level:
+  type: string
+  title: processing:level
+  format: string
+  description: string
+  enum: [L1, L1B, L1C, L2, L2A]
+processing:version:
+  type: string
+  title: processing:version
+  format: string
+  description: string
+processing:datetime:
   type: datetime
-  title: created
+  title: processing:datetime
   format: datetime
-  description: PublicationDate
+  description: string
+processing:facility:
+  type: string
+  title: processing:facility
+  format: string
+  description: string
 datetime:
   type: datetime
   title: datetime
@@ -59,23 +85,34 @@ end_datetime:
   title: end_datetime
   format: datetime
   description: ContentDate/End
-product:type:
-  type: string
-  title: product:type
-  format: string
-  description: productType
-processing:datetime:
-  type: datetime
-  title: processing:datetime
-  format: datetime
-  description: processingDate
-processing:facility:
-  type: string
-  title: processing:facility
-  format: string
-  description: processingCenter
 published:
   type: datetime
   title: published
   format: datetime
   description: PublicationDate
+sat:absolute_orbit:
+  type: integer
+  title: sat:absolute_orbit
+  format: integer
+  description: string
+sat:relative_orbit:
+  type: integer
+  title: sat:relative_orbit
+  format: integer
+  description: string
+sat:orbit_state:
+  type: string
+  title: sat:orbit_state
+  format: string
+  description: string
+  enum: [ascending, descending]
+sar:instrument_mode:
+  type: string
+  title: sar:instrument_mode
+  format: string
+  description: string
+eopf:instrument_mode:
+  type: string
+  title: eopf:instrument_mode
+  format: string
+  description: string
