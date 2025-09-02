@@ -14,17 +14,26 @@
 
 """Init the FastAPI application."""
 
-from fastapi import FastAPI
-from rs_server_common.fastapi_app import init_app
-from rs_server_common.utils.error_handlers import register_stac_exception_handlers
+import warnings
+
+# Import the database table modules before initializing the FastAPI,
+# that will init the database session and create the tables.
+# pylint: disable=unused-import, import-outside-toplevel
+# flake8: noqa
+from rs_server_prip import __version__
 from rs_server_prip.api.prip_search import MockPgstacPrip
 from rs_server_prip.fastapi.prip_routers import prip_routers
+from rs_server_common.fastapi_app import init_app
+from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 
-app = init_app("0.1.0", prip_routers, router_prefix="/prip")
+
+# Used to supress stac_pydantic userwarnings related to serialization
+warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
+
+app = init_app(__version__, prip_routers, router_prefix="/prip")
 
 # Set properties for the prip service
 app.state.get_connection = MockPgstacPrip.get_connection
 app.state.readpool = MockPgstacPrip.readpool()
-
 
 register_stac_exception_handlers(app)

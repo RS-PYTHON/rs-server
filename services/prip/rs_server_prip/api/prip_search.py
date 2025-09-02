@@ -174,7 +174,7 @@ async def get_allowed_prip_collections(request: Request):
 async def get_prip_collection(
     request: Request,
     collection_id: str,
-) -> list[dict] | dict | Collection:
+) -> list[dict] | dict | stac_pydantic.Collection:
     """Return a specific PRIP collection."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
@@ -182,29 +182,50 @@ async def get_prip_collection(
 
 
 @router.get("/prip/collections/{collection_id}/items", response_class=GeoJSONResponse)
-async def get_prip_items(
+async def get_prip_collection_items(
     request: Request,
-    collection_id: str,
-    limit: int = 10,
-    page: int = 1,
-):
-    item = Item(
-        id="mock-product-001",
-        type="Feature",
-        geometry=None,
-        bbox=[0, 0, 1, 1],
-        properties={"datetime": "2025-08-01T00:00:00Z", "platform": "S1A", "instrument": "SAR"},
-        collection=collection_id,
-        assets={
-            "product": {
-                "href": "http://127.0.0.1:5000/Products(123)/$value",
-                "type": "application/zip",
-                "roles": ["data", "metadata"],
-            },
-        },
-        links=[],
+    collection_id: CollectionType,
+    # stac search parameters
+    bbox: BBoxType = None,
+    datetime: DateTimeType = None,
+    filter_: FilterType = None,
+    filter_lang: FilterLangType = "cql2-text",
+    sortby: SortByType = None,
+    limit: LimitType = None,
+    page: PageType = None,
+)-> list[dict] | dict:
+    """
+    Retrieve a list of items from a specified PRIP collection.
+
+    This endpoint returns a collection of items associated with the given PRIP
+    collection ID. It utilizes the collection ID to validate access and fetches
+    the items based on defined query parameters.
+
+    Args:
+        collection_id (str): PRIP collection ID. Must be a valid collection identifier
+                             (e.g., 'ins_s1').
+
+    Returns:
+        list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+                    error message if the collection is not found.
+
+    Raises:
+        HTTPException: If the authentication fails, or if there are issues with the
+                       collection ID provided.
+    """
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+    return await request.app.state.pgstac_client.item_collection(
+        collection_id,
+        request,
+        bbox=check_bbox_input(bbox),
+        datetime=datetime,
+        filter_expr=filter_,
+        filter_lang=filter_lang,
+        sortby=[sortby] if sortby else None,
+        limit=limit,
+        page=page,
     )
-    return {"type": "FeatureCollection", "features": [item.dict(by_alias=True)]}
 
 
 def process_product_search(  # pylint: disable=too-many-locals
@@ -217,10 +238,10 @@ def process_product_search(  # pylint: disable=too-many-locals
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
-    Performs a search for products using the ADGS provider and generates a STAC Feature Collection from the products.
+    Performs a search for products using the PRIP provider and generates a STAC Feature Collection from the products.
 
     Args:
-        station (str): Auxip station identifier.
+        station (str): prip station identifier.
         queryables (dict): Query parameters for filtering results.
         collection_provider (Callable[[dict], str | None]): Function that determines STAC collection
                                                             for a given OData entity

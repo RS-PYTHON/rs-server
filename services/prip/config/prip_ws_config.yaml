@@ -65,6 +65,15 @@ prip_s1a:
       StopPublicationDate:
       - null
       - $.PublicationDate
+      GeoFootprint:
+      - null
+      - $.GeoFootprint
+      OriginDate:
+      - null
+      - $.OriginDate
+      ProductionType:
+      - null
+      - $.ProductionType
       ChecksumValue:
       - null
       - '{$.Checksum[0].Value#to_lower}'
@@ -92,6 +101,9 @@ prip_s1a:
       processingCenter:
       - null
       - $.processingCenter
+      processorVersion:
+      - null
+      - $.Attributes[?(@.Name=='processorVersion')].Value
       attrs:
       - null
       - $.Attributes

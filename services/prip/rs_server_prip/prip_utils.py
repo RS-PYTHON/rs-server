@@ -38,7 +38,7 @@ import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import QueryableField, map_stac_platform
 
-# Resolve the config directory colocated with the package
+
 PRIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = PRIP_CONFIG / "prip_search_config.yaml"
 
@@ -47,16 +47,16 @@ search_yaml = PRIP_CONFIG / "prip_search_config.yaml"
 # Config loaders
 # ----------------------
 @lru_cache
-def read_conf() -> dict[str, Any]:
+def read_conf():
     """Used each time to read RSPY_ADGS_SEARCH_CONFIG config yaml."""
-    prip_search_config = Path(os.environ.get("RSPY_PRIP_SEARCH_CONFIG", str(search_yaml.absolute())))
+    prip_search_config = os.environ.get("RSPY_PRIP_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(prip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
     return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
 
 
 @lru_cache
-def prip_odata_to_stac_template() -> dict[str, Any]:
+def prip_odata_to_stac_template():
     """Used each time to read the ODataToSTAC_template json template."""
     with open(PRIP_CONFIG / "ODataToSTAC_template.json", encoding="utf-8") as mapper:
         config = json.loads(mapper.read())
@@ -64,7 +64,7 @@ def prip_odata_to_stac_template() -> dict[str, Any]:
 
 
 @lru_cache
-def prip_stac_mapper() -> dict[str, str]:
+def prip_stac_mapper():
     """Used each time to read the adgs_stac_mapper config yaml."""
     with open(PRIP_CONFIG / "prip_stac_mapper.json", encoding="utf-8") as stac_map:
         config = json.loads(stac_map.read())
@@ -129,75 +129,39 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
     return feature_collection
 
 
-# ----------------------
-# Queryables
-# ----------------------
+
 def get_prip_queryables() -> dict[str, QueryableField]:
-    """List queryables exposed by the PRIP Item Search surface.
-    These names are STAC-facing and will be translated by `prip_stac_mapper`.
-    """
+    """Function to list all available queryables for PRIP file search."""
     return {
-        "published": QueryableField(
-            title="published",
+        "PublicationDate": QueryableField(
+            title="PublicationDate",
             type="Interval",
-            description="Product publication (ingestion) time interval",
-            format="2019-02-16T12:00:00Z/2025-01-01T12:00:00Z",
+            description="File Publication Date",
+            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
         ),
-        "datetime": QueryableField(
-            title="datetime",
-            type="Interval",
-            description="Acquisition time interval",
-            format="2024-01-01T00:00:00Z/2024-12-31T23:59:59Z",
+        "processingDate": QueryableField(
+            title="Processing Date",
+            type="DateTimeOffset",
+            description="Auxip processing date",
+            format="2019-02-16T12:00:00.000Z",
         ),
-        "start_datetime": QueryableField(
-            title="start_datetime",
-            type="DateTime",
-            description="Acquisition start time",
-            format="2024-01-01T00:00:00Z",
-        ),
-        "end_datetime": QueryableField(
-            title="end_datetime",
-            type="DateTime",
-            description="Acquisition end time",
-            format="2024-01-02T00:00:00Z",
-        ),
-        "processing:datetime": QueryableField(
-            title="processing:datetime",
-            type="DateTime",
-            description="Processing completion time",
-            format="2024-01-01T12:34:56Z",
-        ),
-        "product:type": QueryableField(
-            title="product:type",
+        "platformSerialIdentifier": QueryableField(
+            title="Platform Serial Identifier",
             type="StringAttribute",
-            description="New PRIP product type (e.g., SLC/IW, S2 L1C)",
-            format="SLC / GRD / L1C / ...",
+            description="Mission identifier (A/B/C)",
+            format="A / B / C",
         ),
-        # Platform fields (will be remapped through prip_map_mission where needed)
-        "platform": QueryableField(
-            title="platform",
+        "platformShortName": QueryableField(
+            title="Platform Short Name",
             type="StringAttribute",
-            description="Platform serial id (e.g., A/B/C/D)",
-            format="A / B / C / D",
+            description="Platform Short name",
+            format="SENTINEL-2 / SENTINEL-1",
         ),
         "constellation": QueryableField(
             title="constellation",
             type="StringAttribute",
-            description="Platform short name (e.g., SENTINEL-1)",
-            format="SENTINEL-1 / SENTINEL-2 / ...",
-        ),
-        # Instrument mode (PRIP requires `sar:instrument_mode` for S1)
-        "sar:instrument_mode": QueryableField(
-            title="sar:instrument_mode",
-            type="StringAttribute",
-            description="Instrument mode (SAR) derived from PRIP product type (e.g., IW/EW/SM)",
-            format="IW / EW / SM / ...",
-        ),
-        "file:size": QueryableField(
-            title="file:size",
-            type="Integer",
-            description="Product size in bytes",
-            format="12345678",
+            description="constellation name",
+            format="SENTINEL-2 / SENTINEL-1",
         ),
     }
 
@@ -205,60 +169,71 @@ def get_prip_queryables() -> dict[str, QueryableField]:
 # ----------------------
 # Platform mapping utilities
 # ----------------------
-def prip_map_mission(platform: str | None, constellation: str | None) -> tuple[str | None, str | None]:
-    """Map free-form STAC platform/constellation inputs to normalized values.
-
-    Example:
-        input ("sentinel-1a", "sentinel-1") → ("A", "sentinel-1")
-        input (None, "sentinel-5P") → (None, "sentinel-5p")
+def prip_map_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
     """
+    Custom function for PRIP, to read constellation mapper and return propper
+    values for platform and serial.
+    Eodag maps this values to platformShortName, platformSerialIdentifier
+
+    Input: platform = sentinel-1a       Output: sentinel-1, A
+    Input: platform = sentinel-5P       Output: sentinel-5p, None
+    Input: constellation = sentinel-1   Output: sentinel-1, None
+    """
+    data = map_stac_platform()
+    platform_short_name: str | None = None
+    platform_serial_identifier: str | None = None
+    try:
+        if platform:
+            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
+            platform_short_name = config.get("constellation", None)
+            platform_serial_identifier = config.get("serialid", None)
+        if constellation:
+            if platform_short_name and platform_short_name != constellation:
+                # Inconsistent combination of platform / constellation case
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid combination of platform-constellation",
+                )
+            if any(
+                satellite[list(satellite.keys())[0]]["constellation"] == constellation
+                for satellite in data["satellites"]
+            ):
+                platform_short_name = constellation
+                platform_serial_identifier = None
+            else:
+                raise KeyError
+    except (KeyError, IndexError, StopIteration) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot map platform/constellation",
+        ) from exc
+    return platform_short_name, platform_serial_identifier
+
+
+def prip_reverse_map_mission(
+    platform: str | None,
+    constellation: str | None,
+) -> tuple[str | None, str | None]:
+    """Function used to re-map platform and constellation based on satellite value."""
     if not (constellation or platform):
         return None, None
 
     if constellation:
         constellation = constellation.lower()  # type: ignore
 
-    for sat in map_stac_platform().get("satellites", []):
-        for sat_name, info in sat.items():
-            if platform and info.get("serialid") == platform:
-                return info.get("serialid"), info.get("constellation")
-            if constellation and sat_name.lower() == constellation:
-                return info.get("serialid"), info.get("constellation")
-
-    return platform, constellation
-
-
-def prip_reverse_map_mission(platform: str | None, constellation: str | None) -> tuple[str | None, str | None]:
-    """Reverse the mapping back to user-friendly STAC values using the platform map table."""
-    if not (constellation or platform):
-        return None, None
-
-    if constellation:
-        constellation = constellation.lower()  # type: ignore
-
-    for sat in map_stac_platform().get("satellites", []):
-        for sat_name, info in sat.items():
-            if info.get("serialid") == platform and info.get("constellation", "").lower() == (constellation or ""):
-                return sat_name, info.get("constellation")
-
-    return platform, constellation
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            # Check for matching serialid and constellation
+            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                return key, info.get("constellation")
+    return None, None
 
 
 def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
-    """Apply final tweaks to a returned STAC ItemCollection for PRIP:
-    - reverse-map platform/constellation for display
-    - (future) inject sar:instrument_mode if back-end didn't already
-    """
+    """Used to create a more complex mapping on platform/constallation from odata to stac."""
     for feature in collection.features:
         feature.properties.platform, feature.properties.constellation = prip_reverse_map_mission(
-            getattr(feature.properties, "platform", None),
-            getattr(feature.properties, "constellation", None),
+            feature.properties.platform,
+            feature.properties.constellation,
         )
-        # Ensure asset has roles ["data","metadata"] if missing
-        if feature.assets:
-            # pick first asset
-            k = next(iter(feature.assets))
-            asset = feature.assets[k]
-            roles = list(dict.fromkeys((asset.extra_fields or {}).get("roles", []) + ["data", "metadata"]))
-            asset.extra_fields = {**(asset.extra_fields or {}), "roles": roles}
     return collection

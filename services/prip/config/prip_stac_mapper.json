@@ -13,6 +13,8 @@
     "file:checksum": "ChecksumValue",
     "eviction_datetime": "EvictionDate",
     "product:type": "productType",
+    "processing:lineage": "ProductionType",
+    "processing:version": "processorVersion",
     "processing:datetime": "processingDate",
     "processing:facility": "processingCenter",
     "constellation": "platformShortName",
@@ -26,5 +28,7 @@
     "eopf:datatake_id": "datatakeID",
     "eopf:instrument_configuration_id": "instrumentConfigurationID",
     "sar:instrument_mode": "instrumentMode",
-    "eopf:instrument_mode": "instrumentMode"
+    "eopf:instrument_mode": "instrumentMode",
+    "eopf:origin_datetime": "OriginDate",
+    "geometry": "GeoFootprint"
 }

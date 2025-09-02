@@ -41,7 +41,7 @@ Name:
   description: string
 prip:id:
   type: string
-  title: auxip:id
+  title: prip:id
   format: string
   description: id
 product:type:
