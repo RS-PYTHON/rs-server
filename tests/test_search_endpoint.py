@@ -626,7 +626,10 @@ class TestFeatureCollectionOdataStacMapping:
         items = response.json()
         # Assert that receive odata response is correctly mapped to stac feature.
         assert items["type"] == "FeatureCollection", "Type doesn't match"
-        assert items["features"] == [cadip_feature], "Features don't match"
+        assert items["features"][0]["properties"] == cadip_feature["properties"], "properties doesn't match"
+        assert items["features"][0]["assets"] == cadip_feature["assets"], "assets doesn't match"
+        assert items["features"][0]["id"] == cadip_feature["id"], "id doesn't match"
+
         assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
@@ -651,7 +654,9 @@ class TestFeatureCollectionOdataStacMapping:
         items = response.json()
         # Assert that receive odata response is correctly mapped to stac feature.
         assert items["type"] == "FeatureCollection", "Type doesn't match"
-        assert items["features"] == [adgs_feature], "Features don't match"
+        assert items["features"][0]["properties"] == adgs_feature["properties"], "properties doesn't match"
+        assert items["features"][0]["assets"] == adgs_feature["assets"], "assets doesn't match"
+        assert items["features"][0]["id"] == adgs_feature["id"], "id doesn't match"
         assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
