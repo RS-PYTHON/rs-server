@@ -16,6 +16,9 @@
 
 import warnings
 
+from rs_server_common.fastapi_app import init_app
+from rs_server_common.utils.error_handlers import register_stac_exception_handlers
+
 # Import the database table modules before initializing the FastAPI,
 # that will init the database session and create the tables.
 # pylint: disable=unused-import, import-outside-toplevel
@@ -23,9 +26,6 @@ import warnings
 from rs_server_prip import __version__
 from rs_server_prip.api.prip_search import MockPgstacPrip
 from rs_server_prip.fastapi.prip_routers import prip_routers
-from rs_server_common.fastapi_app import init_app
-from rs_server_common.utils.error_handlers import register_stac_exception_handlers
-
 
 # Used to supress stac_pydantic userwarnings related to serialization
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")

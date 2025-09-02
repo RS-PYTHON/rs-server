@@ -27,6 +27,7 @@ updates:
     directories:
       - "/"
       - "/services/adgs"
+      - "/services/prip"
       - "/services/cadip"
       - "/services/catalog"
       - "/services/common"

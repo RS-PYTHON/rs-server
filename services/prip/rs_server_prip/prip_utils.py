@@ -38,7 +38,6 @@ import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import QueryableField, map_stac_platform
 
-
 PRIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = PRIP_CONFIG / "prip_search_config.yaml"
 
@@ -118,16 +117,15 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
         feature.assets[new_key] = feature.assets.pop("file")
         # roles: ["data","metadata"]
         asset = feature.assets[new_key]
-        
+
         asset.extra_fields = {}
-        
+
         roles = list(dict.fromkeys((asset.extra_fields or {}).get("roles", []) + ["data", "metadata"]))  # unique
         asset.extra_fields = {**(asset.extra_fields or {}), "roles": roles}
         # Normalize item id (drop extension if any)
         feature.id = new_key
 
     return feature_collection
-
 
 
 def get_prip_queryables() -> dict[str, QueryableField]:

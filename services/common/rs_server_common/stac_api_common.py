@@ -223,7 +223,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     queryables.update({queryable_name: QueryableField(**queryable_data)})
 
             return queryables
-        
+
         if self.prip:
             can_query = True
             if can_query:

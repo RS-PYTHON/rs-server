@@ -28,7 +28,6 @@ from typing import Literal
 
 import requests
 import stac_pydantic
-
 from eodag import EODataAccessGateway
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -53,10 +52,10 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
 from rs_server_prip import prip_retriever, prip_tags
 from rs_server_prip.prip_utils import (
+    prepare_collection,
     prip_map_mission,
     prip_odata_to_stac_template,
     prip_stac_mapper,
-    prepare_collection,
     read_conf,
     select_config,
     serialize_prip_asset,
@@ -193,7 +192,7 @@ async def get_prip_collection_items(
     sortby: SortByType = None,
     limit: LimitType = None,
     page: PageType = None,
-)-> list[dict] | dict:
+) -> list[dict] | dict:
     """
     Retrieve a list of items from a specified PRIP collection.
 
@@ -269,9 +268,9 @@ def process_product_search(  # pylint: disable=too-many-locals
         )
         collection = create_stac_collection(
             products,
-            prip_odata_to_stac_template(),   # PRIP template (OData->STAC skeleton)
-            prip_stac_mapper(),              # PRIP mapper (field mapping)
-            collection_provider,             # SAME pattern as ADGS
+            prip_odata_to_stac_template(),  # PRIP template (OData->STAC skeleton)
+            prip_stac_mapper(),  # PRIP mapper (field mapping)
+            collection_provider,  # SAME pattern as ADGS
         )
 
         # Attach PRIP assets/download links, contentType, rels, etc.
