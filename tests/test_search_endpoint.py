@@ -1372,7 +1372,6 @@ class TestFeatureCollectionOdataStacMapping:
             json={"value": []} if is_last else adgs_response_10_items,
             status=200,
         )
-
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
 
@@ -1393,6 +1392,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "type": "application/geo+json",
                 "method": "GET",
                 "href": prev_url,
+                "title": "Previous link",
             } in response.json()["links"]
         else:
             # If this is first page (1) check that "previous" link doesn't exist.
@@ -1403,6 +1403,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "type": "application/geo+json",
                 "method": "GET",
                 "href": next_url,
+                "title": "Next link",
             } in response.json()["links"]
 
             # Check that "previous" link exists
@@ -1431,6 +1432,7 @@ class TestCollection:
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/cadip/collections/cadip_session_by_id",
+                    "title": "This collection",
                 },
             ),
             (
@@ -1443,6 +1445,7 @@ class TestCollection:
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC",
+                    "title": "This collection",
                 },
             ),
         ],

@@ -18,7 +18,7 @@ import os
 import traceback
 from collections.abc import Callable
 from typing import ParamSpec, TypedDict
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -32,6 +32,23 @@ from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+REL_TITLES = {
+    "collection": "Collection",
+    "item": "Item",
+    "parent": "Parent Catalog",
+    "root": "STAC Root Catalog",
+    "conformance": "Conformance link",
+    "service-desc": "Service description",
+    "service-doc": "Service documentation",
+    "search": "Search endpoint",
+    "data": "Data link",
+    "items": "This collection items",
+    "self": "This collection",
+    "license": "License description",
+    "describedby": "Described by link",
+    "next": "Next link",
+    "previous": "Previous link",
+}
 # pylint: disable = too-few-public-methods, too-many-return-statements
 logger = Logging.default(__name__)
 P = ParamSpec("P")
@@ -117,50 +134,36 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
 def get_link_title(link: dict, entity: dict) -> str:
     """
     Determine a human-readable STAC link title based on the link relation and context.
-
-    ESA requirement STAC-CORE-GEN-STAC-REQ-0031:
-    Every link must have a "title" property that reflects the title of the entity it refers to,
-    or the entity ID if no title is available.
-
-    Rules implemented:
-    - rel = "collection": use the collection's title or ID
-    - rel = "item": use the item's title or ID
-    - rel = "self" on a Catalog: "STAC Landing Page"
-    - rel = "self" when href ends with "/collections": "All Collections"
-    - rel = "parent": "Parent Catalog"
-    - rel = "root": "STAC Root Catalog"
-    - rel = "child": generate "All from collection <collection_id>" from href
-    - fallback: use href or "Unknown Entity"
-
-    Args:
-        link: The STAC link dictionary (must contain at least "rel" and "href").
-        entity: The STAC entity (Catalog, Collection, or Item) that contains the link.
-
-    Returns:
-        A string with the human-readable link title.
     """
-    rel: str = link.get("rel", "")
-    href: str = link.get("href", "")
-
+    rel = link.get("rel")
+    href = link.get("href", "")
+    if "title" in link:
+        # don't overwrite
+        return link["title"]
     match rel:
+        # --- special cases needing entity context ---
         case "collection":
-            return entity.get("title") or entity.get("id") or "Collection"
+            return entity.get("title") or entity.get("id") or REL_TITLES["collection"]
         case "item":
-            return entity.get("title") or entity.get("id") or "Item"
+            return entity.get("title") or entity.get("id") or REL_TITLES["item"]
         case "self" if entity.get("type") == "Catalog":
             return "STAC Landing Page"
         case "self" if href.endswith("/collections"):
             return "All Collections"
-        case "parent":
-            return "Parent Catalog"
-        case "root":
-            return "STAC Root Catalog"
         case "child":
             path = urlparse(href).path
             collection_id = path.split("/")[-1] if path else "unknown"
             return f"All from collection {collection_id}"
+        # --- all others: just lookup in REL_TITLES ---
         case _:
-            return href or "Unknown Entity"
+            return REL_TITLES.get(rel, href or "Unknown Entity")  # type: ignore
+
+
+def normalize_href(href: str) -> str:
+    """Encode query parameters in href to match expected STAC format."""
+    parsed = urlparse(href)
+    query = urlencode(parse_qsl(parsed.query), safe="")  # encode ":" -> "%3A"
+    return urlunparse(parsed._replace(query=query))
 
 
 class StacLinksTitleMiddleware(BaseHTTPMiddleware):
@@ -207,14 +210,17 @@ class StacLinksTitleMiddleware(BaseHTTPMiddleware):
             if isinstance(data, dict) and "links" in data:
                 for link in data["links"]:
                     if isinstance(link, dict):
+                        # normalize href to decode any %xx
+                        if "href" in link:
+                            link["href"] = normalize_href(link["href"])
+                        # update title
                         link["title"] = get_link_title(link, data)
 
-            # rebuild response without content-length
             headers = dict(response.headers)
             headers.pop("content-length", None)
 
             response = Response(
-                content=json.dumps(data).encode("utf-8"),
+                content=json.dumps(data, ensure_ascii=False).encode("utf-8"),
                 status_code=response.status_code,
                 headers=headers,
                 media_type="application/json",
