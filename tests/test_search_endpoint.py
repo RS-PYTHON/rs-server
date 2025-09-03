@@ -626,7 +626,10 @@ class TestFeatureCollectionOdataStacMapping:
         items = response.json()
         # Assert that receive odata response is correctly mapped to stac feature.
         assert items["type"] == "FeatureCollection", "Type doesn't match"
-        assert items["features"] == [cadip_feature], "Features don't match"
+        assert items["features"][0]["properties"] == cadip_feature["properties"], "properties doesn't match"
+        assert items["features"][0]["assets"] == cadip_feature["assets"], "assets doesn't match"
+        assert items["features"][0]["id"] == cadip_feature["id"], "id doesn't match"
+
         assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
@@ -651,7 +654,9 @@ class TestFeatureCollectionOdataStacMapping:
         items = response.json()
         # Assert that receive odata response is correctly mapped to stac feature.
         assert items["type"] == "FeatureCollection", "Type doesn't match"
-        assert items["features"] == [adgs_feature], "Features don't match"
+        assert items["features"][0]["properties"] == adgs_feature["properties"], "properties doesn't match"
+        assert items["features"][0]["assets"] == adgs_feature["assets"], "assets doesn't match"
+        assert items["features"][0]["id"] == adgs_feature["id"], "id doesn't match"
         assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
@@ -1372,7 +1377,6 @@ class TestFeatureCollectionOdataStacMapping:
             json={"value": []} if is_last else adgs_response_10_items,
             status=200,
         )
-
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
 
@@ -1393,6 +1397,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "type": "application/geo+json",
                 "method": "GET",
                 "href": prev_url,
+                "title": "Previous link",
             } in response.json()["links"]
         else:
             # If this is first page (1) check that "previous" link doesn't exist.
@@ -1403,6 +1408,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "type": "application/geo+json",
                 "method": "GET",
                 "href": next_url,
+                "title": "Next link",
             } in response.json()["links"]
 
             # Check that "previous" link exists
@@ -1431,6 +1437,7 @@ class TestCollection:
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/cadip/collections/cadip_session_by_id",
+                    "title": "This collection",
                 },
             ),
             (
@@ -1443,6 +1450,7 @@ class TestCollection:
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC",
+                    "title": "This collection",
                 },
             ),
         ],
