@@ -29,21 +29,25 @@
         {
             "rel": "collection",
             "type": "application/json",
+            "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001",
             "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC"
         },
         {
             "rel": "parent",
             "type": "application/json",
+            "title": "Parent Catalog",
             "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC"
         },
         {
             "rel": "root",
             "type": "application/json",
+            "title": "STAC Root Catalog",
             "href": "http://testserver/auxip/"
         },
         {
             "rel": "self",
             "type": "application/geo+json",
+            "title": "This collection",
             "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001"
         }
     ],

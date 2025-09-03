@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Common functions for fastapi middlewares"""
+import json
 import os
 import traceback
 from collections.abc import Callable
 from typing import ParamSpec, TypedDict
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
@@ -30,6 +32,24 @@ from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+REL_TITLES = {
+    "collection": "Collection",
+    "item": "Item",
+    "parent": "Parent Catalog",
+    "root": "STAC Root Catalog",
+    "conformance": "Conformance link",
+    "service-desc": "Service description",
+    "service-doc": "Service documentation",
+    "search": "Search endpoint",
+    "data": "Data link",
+    "items": "This collection items",
+    "self": "This collection",
+    "license": "License description",
+    "describedby": "Described by link",
+    "next": "Next link",
+    "previous": "Previous link",
+}
+# pylint: disable = too-few-public-methods, too-many-return-statements
 logger = Logging.default(__name__)
 P = ParamSpec("P")
 
@@ -109,6 +129,114 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         return "bbox" in request.query_params and (
             str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
         )
+
+
+def get_link_title(link: dict, entity: dict) -> str:
+    """
+    Determine a human-readable STAC link title based on the link relation and context.
+    """
+    rel = link.get("rel")
+    href = link.get("href", "")
+    if "title" in link:
+        # don't overwrite
+        return link["title"]
+    match rel:
+        # --- special cases needing entity context ---
+        case "collection":
+            return entity.get("title") or entity.get("id") or REL_TITLES["collection"]
+        case "item":
+            return entity.get("title") or entity.get("id") or REL_TITLES["item"]
+        case "self" if entity.get("type") == "Catalog":
+            return "STAC Landing Page"
+        case "self" if href.endswith("/collections"):
+            return "All Collections"
+        case "child":
+            path = urlparse(href).path
+            collection_id = path.split("/")[-1] if path else "unknown"
+            return f"All from collection {collection_id}"
+        # --- all others: just lookup in REL_TITLES ---
+        case _:
+            return REL_TITLES.get(rel, href or "Unknown Entity")  # type: ignore
+
+
+def normalize_href(href: str) -> str:
+    """Encode query parameters in href to match expected STAC format."""
+    parsed = urlparse(href)
+    query = urlencode(parse_qsl(parsed.query), safe="")  # encode ":" -> "%3A"
+    return urlunparse(parsed._replace(query=query))
+
+
+class StacLinksTitleMiddleware(BaseHTTPMiddleware):
+    """Middleware used to update links with title"""
+
+    def __init__(self, app: FastAPI, title: str = "Default Title"):
+        """
+        Initialize the middleware.
+
+        Args:
+            app: The FastAPI application instance to attach the middleware to.
+            title: Default title to use for STAC links if no specific title is provided.
+        """
+        super().__init__(app)
+        self.title = title
+
+    async def dispatch(self, request: Request, call_next):
+        """
+        Intercept and modify outgoing responses to ensure all STAC links have proper titles.
+
+        This middleware method:
+        1. Awaits the response from the next handler.
+        2. Reads and parses the response body as JSON.
+        3. Updates the "title" property of each link using `get_link_title`.
+        4. Rebuilds the response without the original Content-Length header to prevent mismatches.
+        5. If the response body is not JSON, returns it unchanged.
+
+        Args:
+            request: The incoming FastAPI Request object.
+            call_next: The next ASGI handler in the middleware chain.
+
+        Returns:
+            A FastAPI Response object with updated STAC link titles.
+        """
+        response = await call_next(request)
+
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+
+        try:
+            data = json.loads(body)
+
+            if isinstance(data, dict) and "links" in data:
+                for link in data["links"]:
+                    if isinstance(link, dict):
+                        # normalize href to decode any %xx
+                        if "href" in link:
+                            link["href"] = normalize_href(link["href"])
+                        # update title
+                        link["title"] = get_link_title(link, data)
+
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+
+            response = Response(
+                content=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+                status_code=response.status_code,
+                headers=headers,
+                media_type="application/json",
+            )
+        except Exception:  # pylint: disable = broad-exception-caught
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+
+            response = Response(
+                content=body,
+                status_code=response.status_code,
+                headers=headers,
+                media_type=response.headers.get("content-type"),
+            )
+
+        return response
 
 
 def insert_middleware_at(app: FastAPI, index: int, middleware: Middleware):
