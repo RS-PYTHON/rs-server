@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Common functions for fastapi middlewares"""
+import json
 import os
 import traceback
 from collections.abc import Callable
 from typing import ParamSpec, TypedDict
+from urllib.parse import urlencode
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
@@ -109,6 +111,76 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         return "bbox" in request.query_params and (
             str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
         )
+
+
+class AddFirstLinkMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to implement 'first' and 'last' buttons in STAC Browser for endpoints:
+        - /search
+        - /collections/<collectionId>/items
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+
+        # Only for /search in auxip, prip, cadip
+        if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search"]:
+
+            # parse query params to remove any 'prev' or 'next' and set page=1
+            # without this the button 'first' would not redirect to first page
+            query_dict = dict(request.query_params)
+            query_dict.pop("token", None)
+            if "page" in query_dict:
+                query_dict["page"] = '1'
+            new_query_string = urlencode(query_dict, doseq=True)
+
+            response = await call_next(request)
+            response_body = b""
+            async for chunk in response.body_iterator:
+                response_body += chunk
+
+            # reconstruct 'first' link
+            href = f"{str(request.base_url).rstrip('/')}{request.url.path}?{new_query_string}"
+            first_link = {
+                "rel": "first",
+                "type": "application/geo+json",
+                "method": "GET",
+                "title": "First page",
+                "href": href,
+            }
+
+            try:
+                data = json.loads(response_body)
+
+                links = data.get("links", [])
+                has_prev = any(link.get("rel") == "previous" for link in links)
+
+                if has_prev is True:
+                    links.append(first_link)
+                    data["links"] = links
+
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+
+                response = Response(
+                    content=json.dumps(data).encode("utf-8"),
+                    status_code=response.status_code,
+                    headers=headers,
+                    media_type="application/json",
+                )
+            except Exception:
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+
+                response = Response(
+                    content=response_body,
+                    status_code=response.status_code,
+                    headers=headers,
+                    media_type=response.headers.get("content-type"),
+                )
+        else:
+            return await call_next(request)
+
+        return response
 
 
 def insert_middleware_at(app: FastAPI, index: int, middleware: Middleware):
