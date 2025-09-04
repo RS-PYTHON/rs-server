@@ -61,21 +61,25 @@
         {
             "rel": "collection",
             "type": "application/json",
+            "title": "S1A_20200105072204051312",
             "href": "http://testserver/cadip/collections/cadip_session_by_id"
         },
         {
             "rel": "parent",
             "type": "application/json",
+            "title": "Parent Catalog",
             "href": "http://testserver/cadip/collections/cadip_session_by_id"
         },
         {
             "rel": "root",
             "type": "application/json",
+            "title": "STAC Root Catalog",
             "href": "http://testserver/cadip/"
         },
         {
             "rel": "self",
             "type": "application/geo+json",
+            "title": "This collection",
             "href": "http://testserver/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312"
         }
     ],

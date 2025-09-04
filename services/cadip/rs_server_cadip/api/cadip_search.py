@@ -622,7 +622,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         )
 
         if kwargs.get("map_to_session", False):
-            logger.debug(f"Retrieved products from CADIP station {station}: {products}")
+            # logger.debug(f"Retrieved products from CADIP station {station}: {products}")
             return [product.properties for product in products]
         cadip_item_collection = create_stac_collection(products, cadip_odata_to_stac_template(), cadip_stac_mapper())
         logger.debug(f"Retrieved item collection from CADIP station {station}: {cadip_item_collection}")
