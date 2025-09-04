@@ -1,6 +1,6 @@
 {
     "id": "Name",
-    "prip:id": "Id",
+    "prip:id": "id",
     "created": "PublicationDate",
     "published": "PublicationDate",
     "updated": "processingDate",

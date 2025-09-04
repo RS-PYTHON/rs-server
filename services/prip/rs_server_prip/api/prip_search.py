@@ -22,13 +22,11 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import os.path as osp
 import traceback
 from collections.abc import Callable
-from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 import requests
 import stac_pydantic
-from eodag import EODataAccessGateway
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
@@ -62,7 +60,6 @@ from rs_server_prip.prip_utils import (
     stac_to_odata,
 )
 from stac_fastapi.api.models import GeoJSONResponse
-from stac_pydantic import Collection, Item, ItemCollection
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=prip_tags)
@@ -147,6 +144,7 @@ async def home_endpoint():
 
 @router.get("/prip")
 async def get_root_catalog(request: Request):
+    """Redirect to the landing page."""
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("prip", "landing_page", request=request)
     return await request.app.state.pgstac_client.landing_page(request=request)

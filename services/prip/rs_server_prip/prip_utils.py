@@ -96,8 +96,7 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
     for feature in feature_collection.features:
         prip_id = feature.properties.dict().get("prip:id") or feature.id
         # Find matching product by id
-        # matched = next((p for p in products if p.get("properties", {}).get("id") == prip_id), None)
-        matched = next((p for p in products if p.properties.get("Name") == prip_id), None)
+        matched = next((p for p in products if p.properties.get("id") == prip_id), None)
         if not matched:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

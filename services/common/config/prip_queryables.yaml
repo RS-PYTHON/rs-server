@@ -116,3 +116,8 @@ eopf:instrument_mode:
   title: eopf:instrument_mode
   format: string
   description: string
+intersects_wkt:
+  type: string
+  title: intersects_wkt
+  format: wkt
+  description: "WKT Polygon/MultiPolygon"

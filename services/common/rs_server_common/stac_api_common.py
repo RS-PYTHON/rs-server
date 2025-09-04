@@ -465,12 +465,49 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 value = value.strip()
             stac_params[prop] = value
 
+        # --- helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON) ---
+        def _geojson_to_wkt(geom: dict) -> str:
+            # Expects lon/lat coordinates; supports Polygon and MultiPolygon
+            gtype = (geom.get("type") or "").lower()
+            coords = geom.get("coordinates")
+            if gtype == "polygon":
+                ring = coords[0]
+                if ring and ring[0] != ring[-1]:
+                    ring = ring + [ring[0]]
+                return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
+            if gtype == "multipolygon":
+                parts = []
+                for poly in coords:
+                    ring = poly[0]
+                    if ring and ring[0] != ring[-1]:
+                        ring = ring + [ring[0]]
+                    parts.append("((" + ", ".join(f"{x} {y}" for x, y in ring) + "))")
+                return "MULTIPOLYGON(" + ",".join(parts) + ")"
+            raise ValueError(f"Unsupported geometry type: {geom.get('type')}")
+
+        # ------------------------------------------------------------------------
+
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
             if not filt:
                 return
             op: str = filt.get("op")  # type: ignore
             args = filt.get("args", [])
+
+            # --- ADD: CQL2-JSON op: {"op":"intersects","args":[{"property":"geometry"}, <geom>]} ---
+            if op and op.lower() == "intersects":
+                if len(args) != 2:
+                    raise log_http_exception(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Invalid intersects: {format_dict(filt)}",
+                    )
+                geom = args[1]
+                if isinstance(geom, dict) and geom.get("type") and geom.get("coordinates"):
+                    stac_params["intersects_wkt"] = _geojson_to_wkt(geom)
+                else:
+                    stac_params["intersects_wkt"] = str(geom).strip("'\"")
+                return
+            # ----------------------------------------------------------------------------------------
 
             # Read a single property
             if op == "=":
@@ -509,6 +546,19 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 for condition in conditions:
                     read_query(condition)
                 return
+
+            # --- ADD: simple CQL2-text helper: intersects(POLYGON((...))) -------
+            m = re.search(r"^\s*intersects\s*\((.+)\)\s*$", query_arg, re.IGNORECASE)
+            if m:
+                arg = m.group(1)
+                if "," in arg:  # allow intersects(geometry, POLYGON(...))
+                    _, rhs = arg.split(",", 1)
+                else:
+                    rhs = arg
+                stac_params["intersects_wkt"] = rhs.strip().strip("'\"")
+                return
+            # --------------------------------------------------------------------
+
             # Handle '='
             if "=" in query_arg:
                 kv = query_arg.split("=")
