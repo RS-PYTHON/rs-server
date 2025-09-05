@@ -235,7 +235,7 @@ class EodagProvider(Provider):
                     prov_cfg = self.client.providers_config[self.provider]
                     products_cfg = getattr(prov_cfg, "products", {}) or {}
                     dataset_key = next(iter(products_cfg.keys()))
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     dataset_key = "S1_SAR_RAW"  # last-resort fallback
             products = self.client.search(
                 **mapped_search_args,  # type: ignore

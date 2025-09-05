@@ -204,7 +204,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Mock the readpool function."""
         return cls.ReadPool(cls)
 
-    def get_queryables(self, collection_id: str | None = None) -> dict[str, QueryableField]:
+    # pylint: disable=too-many-branches
+    def get_queryables(
+        self,
+        collection_id: str | None = None,
+    ) -> dict[str, QueryableField]:
         """Function to list all available queryables for CADIP session search."""
 
         # Note: the queryables contain stac keys
@@ -224,9 +228,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             return queryables
 
-        if self.prip:
+        if self.prip:  # pylint: disable=too-many-branches
             can_query = True
-            if can_query:
+            if can_query:  # pylint: disable=too-many-branches
                 for queryable_name, queryable_data in get_prip_queryables().items():
                     queryables.update({queryable_name: QueryableField(**queryable_data)})
 
@@ -1231,7 +1235,7 @@ def create_stac_collection(
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper, collection_provider)
         try:
             item = Item(**feature_tmp)
-            # item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore # <- delete this line : pydantic warning
+            item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
             items.append(item)
         except ValidationError as e:
             logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")

@@ -43,7 +43,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rs_server_adgs import adgs_retriever, adgs_utils
-from rs_server_prip import prip_retriever, prip_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
@@ -52,6 +51,7 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
+from rs_server_prip import prip_retriever, prip_utils
 
 from tests.app import init_app
 

@@ -19,14 +19,14 @@ import os
 from fastapi import APIRouter, FastAPI, Request
 from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
-from rs_server_prip.api.prip_search import MockPgstacPrip
-from rs_server_prip.fastapi.prip_routers import prip_routers
 from rs_server_cadip.api.cadip_search import MockPgstacCadip
 from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.authentication.oauth2 import SWAGGER_HOMEPAGE
 from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
 from rs_server_common.utils.error_handlers import register_stac_exception_handlers
+from rs_server_prip.api.prip_search import MockPgstacPrip
+from rs_server_prip.fastapi.prip_routers import prip_routers
 
 ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
 ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}

@@ -181,8 +181,7 @@ def odata_to_stac(
             elif stac_key == "geometry":
                 feature_template["geometry"] = odata_dict[eodag_key]
                 # compute bbox from geometry
-                feature_template["bbox"] = _bbox_from_geometry(
-                    feature_template.get("geometry"))
+                feature_template["bbox"] = _bbox_from_geometry(feature_template.get("geometry"))
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
         elif stac_key in feature_template["properties"]:
@@ -231,18 +230,23 @@ def _wkt_to_geojson(wkt: str) -> dict:
 def _bbox_from_geometry(geom: dict) -> list[float]:
     """Compute [minLon, minLat, maxLon, maxLat] from GeoJSON Polygon/MultiPolygon."""
     t = (geom.get("type") or "").lower()
+
     def _extrema(points):
-        xs = [p[0] for p in points]; ys = [p[1] for p in points]
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
         return [min(xs), min(ys), max(xs), max(ys)]
+
     if t == "polygon":
         ring = (geom.get("coordinates") or [[]])[0] or []
         return _extrema(ring) if ring else []
     if t == "multipolygon":
         xs, ys = [], []
-        for poly in (geom.get("coordinates") or []):
+        for poly in geom.get("coordinates") or []:
             ring = poly[0] if poly else []
             if ring:
-                b = _extrema(ring); xs += [b[0], b[2]]; ys += [b[1], b[3]]
+                b = _extrema(ring)
+                xs += [b[0], b[2]]
+                ys += [b[1], b[3]]
         return [min(xs), min(ys), max(xs), max(ys)] if xs else []
     return []
 

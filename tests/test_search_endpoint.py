@@ -141,7 +141,11 @@ class TestLandingPagesEndpoints:
     @pytest.mark.unit
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, collection_link",
-        [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections"), (ROUTER_PREFIX_PRIP, "/prip", "/prip/collections")],
+        [
+            (ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"),
+            (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections"),
+            (ROUTER_PREFIX_PRIP, "/prip", "/prip/collections"),
+        ],
         indirect=["fastapi_app"],
     )
     def test_local_landing_pages(self, client: TestClient, endpoint, collection_link):
