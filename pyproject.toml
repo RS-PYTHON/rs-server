@@ -64,6 +64,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-adgs = {path = "services/adgs", develop = true}
+rs-server-prip = {path = "services/prip", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
 rs-server-catalog = {path = "services/catalog", develop = true}
 rs-server-common = {path = "services/common", develop = true}
