@@ -178,10 +178,16 @@ def odata_to_stac(
                     feature_template["properties"][stac_key] = odata_dict[eodag_key]
             elif stac_key == "id":
                 feature_template["id"] = odata_dict[eodag_key]
+            elif stac_key == "geometry":
+                feature_template["geometry"] = odata_dict[eodag_key]
+                # compute bbox from geometry
+                feature_template["bbox"] = _bbox_from_geometry(
+                    feature_template.get("geometry"))
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
         elif stac_key in feature_template["properties"]:
             feature_template["properties"].pop(stac_key, None)
+
     # to pass pydantic validation, make sure we don't have a single timerange value
     check_and_fix_timerange(feature_template)
     # determine item collection
@@ -190,6 +196,55 @@ def odata_to_stac(
         if not feature_template["collection"]:
             logger.warning(f"Unable to determine collection for {odata_dict}")
     return feature_template
+
+
+def _wkt_to_geojson(wkt: str) -> dict:
+    """Very small WKT -> GeoJSON for POLYGON/MULTIPOLYGON (lon,lat order)."""
+    s = wkt.strip()
+    if s.upper().startswith("POLYGON"):
+        coords_txt = s[s.find("((") + 2 : s.rfind("))")]
+        ring = []
+        for pair in coords_txt.split(","):
+            x, y = (p for p in pair.strip().split())
+            ring.append([float(x), float(y)])
+        # ensure ring closed
+        if ring and ring[0] != ring[-1]:
+            ring.append(ring[0])
+        return {"type": "Polygon", "coordinates": [ring]}
+    if s.upper().startswith("MULTIPOLYGON"):
+        polys_txt = s[s.find("(") + 1 : s.rfind(")")]
+        parts = []
+        # split top-level polygons: "))," separators
+        for poly_txt in polys_txt.split(")),"):
+            poly_txt = poly_txt.strip().lstrip("(").rstrip(")")
+            ring = []
+            for pair in poly_txt.split(","):
+                x, y = (p for p in pair.strip().split())
+                ring.append([float(x), float(y)])
+            if ring and ring[0] != ring[-1]:
+                ring.append(ring[0])
+            parts.append([ring])
+        return {"type": "MultiPolygon", "coordinates": parts}
+    raise ValueError(f"Unsupported WKT: {wkt[:32]}...")
+
+
+def _bbox_from_geometry(geom: dict) -> list[float]:
+    """Compute [minLon, minLat, maxLon, maxLat] from GeoJSON Polygon/MultiPolygon."""
+    t = (geom.get("type") or "").lower()
+    def _extrema(points):
+        xs = [p[0] for p in points]; ys = [p[1] for p in points]
+        return [min(xs), min(ys), max(xs), max(ys)]
+    if t == "polygon":
+        ring = (geom.get("coordinates") or [[]])[0] or []
+        return _extrema(ring) if ring else []
+    if t == "multipolygon":
+        xs, ys = [], []
+        for poly in (geom.get("coordinates") or []):
+            ring = poly[0] if poly else []
+            if ring:
+                b = _extrema(ring); xs += [b[0], b[2]]; ys += [b[1], b[3]]
+        return [min(xs), min(ys), max(xs), max(ys)] if xs else []
+    return []
 
 
 def check_and_fix_timerange(item: dict):

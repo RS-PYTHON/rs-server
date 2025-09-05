@@ -8,10 +8,10 @@
         "https://stac-extensions.github.io/sar/v1.0.0/schema.json",
         "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
     ],
-    "type": "Feature",
     "id": "PLACEHOLDER",
+    "type": "Feature",
     "geometry": null,
-    "bbox": [-180, -90, 180, 90],
+    "bbox": null,
     "properties": {
         "prip:id": "PLACEHOLDER",
         "published": "PLACEHOLDER",
