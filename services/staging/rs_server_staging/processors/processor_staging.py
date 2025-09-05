@@ -734,14 +734,14 @@ class Staging(
 
         2. **Kubernetes Mode**:
         - If `self.cluster` is not already defined, the method attempts to connect to a Dask Gateway
-            (using environment variables `DASK_GATEWAY__ADDRESS` and `DASK_GATEWAY__AUTH__TYPE`) to
+            (using environment variables `DASK_GATEWAY_ADDRESS` and `DASK_GATEWAY__AUTH__TYPE`) to
             retrieve a list of existing clusters.
         - If no clusters are available, it attempts to create a new cluster scheduler.
 
         Raises:
             RuntimeError: Raised if the cluster name is None, required environment variables are missing,
                         cluster creation fails or authentication errors occur.
-            KeyError: Raised if the necessary Dask Gateway environment variables (`DASK_GATEWAY__ADDRESS`,
+            KeyError: Raised if the necessary Dask Gateway environment variables (`DASK_GATEWAY_ADDRESS`,
                 `DASK_GATEWAY__AUTH__TYPE`, `RSPY_DASK_STAGING_CLUSTER_NAME`, `JUPYTERHUB_API_TOKEN` ) are not set.
             IndexError: Raised if no clusters are found in the Dask Gateway and new cluster creation is attempted.
             dask_gateway.exceptions.GatewayServerError: Raised when there is a server-side error in Dask Gateway.
@@ -802,13 +802,13 @@ class Staging(
                         raise RuntimeError(f"Unsupported authentication type: {auth_type}")
 
                 gateway = Gateway(
-                    address=os.environ["DASK_GATEWAY__ADDRESS"],
+                    address=os.environ["DASK_GATEWAY_ADDRESS"],
                     auth=gateway_auth,
                 )
 
                 # Sort the clusters by newest first
                 clusters = sorted(gateway.list_clusters(), key=lambda cluster: cluster.start_time, reverse=True)
-                self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY__ADDRESS']!r}: {clusters}")
+                self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY_ADDRESS']!r}: {clusters}")
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
@@ -847,7 +847,7 @@ class Staging(
                 self.logger.exception(
                     "Failed to retrieve the required connection details for "
                     "the Dask Gateway from one or more of the following environment variables: "
-                    "DASK_GATEWAY__ADDRESS, RSPY_DASK_STAGING_CLUSTER_NAME, "
+                    "DASK_GATEWAY_ADDRESS, RSPY_DASK_STAGING_CLUSTER_NAME, "
                     f"JUPYTERHUB_API_TOKEN, DASK_GATEWAY__AUTH__TYPE. {e}",
                 )
 
