@@ -34,7 +34,7 @@ from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils2 import read_response_error
 
-from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
 
 # pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
 # pylint: disable=too-many-branches, too-many-lines, too-many-statements
@@ -141,7 +141,7 @@ class TestLandingPagesEndpoints:
     @pytest.mark.unit
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, collection_link",
-        [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections")],
+        [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections"), (ROUTER_PREFIX_PRIP, "/prip", "/prip/collections")],
         indirect=["fastapi_app"],
     )
     def test_local_landing_pages(self, client: TestClient, endpoint, collection_link):

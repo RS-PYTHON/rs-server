@@ -43,6 +43,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rs_server_adgs import adgs_retriever, adgs_utils
+from rs_server_prip import prip_retriever, prip_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
@@ -180,6 +181,8 @@ def clear_caches():
     yield
     adgs_retriever.init_adgs_provider.cache_clear()
     adgs_utils.read_conf.cache_clear()
+    prip_retriever.init_prip_provider.cache_clear()
+    prip_utils.read_conf.cache_clear()
     cadip_retriever.init_cadip_provider.cache_clear()
     cadip_utils.read_conf.cache_clear()
     cadip_utils.cadip_stac_mapper.cache_clear()
@@ -197,6 +200,7 @@ def use_module_for_station_token(monkeypatch):
     """
     monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
     reload(adgs_retriever)
+    reload(prip_retriever)
     reload(cadip_retriever)
 
     yield
