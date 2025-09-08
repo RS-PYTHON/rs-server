@@ -469,27 +469,25 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 value = value.strip()
             stac_params[prop] = value
 
-        # --- helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON) ---
+        # helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON)
         def _geojson_to_wkt(geom: dict) -> str:
             # Expects lon/lat coordinates; supports Polygon and MultiPolygon
             gtype = (geom.get("type") or "").lower()
             coords = geom.get("coordinates")
             if gtype == "polygon":
-                ring = coords[0]
+                ring = coords[0]  # type: ignore[index]
                 if ring and ring[0] != ring[-1]:
                     ring = ring + [ring[0]]
                 return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
             if gtype == "multipolygon":
                 parts = []
-                for poly in coords:
+                for poly in coords:  # type: ignore[union-attr]
                     ring = poly[0]
                     if ring and ring[0] != ring[-1]:
                         ring = ring + [ring[0]]
                     parts.append("((" + ", ".join(f"{x} {y}" for x, y in ring) + "))")
                 return "MULTIPOLYGON(" + ",".join(parts) + ")"
             raise ValueError(f"Unsupported geometry type: {geom.get('type')}")
-
-        # ------------------------------------------------------------------------
 
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
@@ -498,7 +496,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             op: str = filt.get("op")  # type: ignore
             args = filt.get("args", [])
 
-            # --- ADD: CQL2-JSON op: {"op":"intersects","args":[{"property":"geometry"}, <geom>]} ---
+            # ADD: CQL2-JSON op: {"op":"intersects","args":[{"property":"geometry"}, <geom>]}
             if op and op.lower() == "intersects":
                 if len(args) != 2:
                     raise log_http_exception(
@@ -511,7 +509,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 else:
                     stac_params["intersects_wkt"] = str(geom).strip("'\"")
                 return
-            # ----------------------------------------------------------------------------------------
 
             # Read a single property
             if op == "=":
@@ -551,7 +548,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     read_query(condition)
                 return
 
-            # --- ADD: simple CQL2-text helper: intersects(POLYGON((...))) -------
+            # ADD: simple CQL2-text helper: intersects(POLYGON((...)))
             m = re.search(r"^\s*intersects\s*\((.+)\)\s*$", query_arg, re.IGNORECASE)
             if m:
                 arg = m.group(1)
@@ -561,7 +558,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     rhs = arg
                 stac_params["intersects_wkt"] = rhs.strip().strip("'\"")
                 return
-            # --------------------------------------------------------------------
 
             # Handle '='
             if "=" in query_arg:
@@ -602,6 +598,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     ", only {'<property>': {'eq': <value>}} is allowed",
                 )
             read_property(prop, value)
+
+        # read 'intersects' from POST body (GeoJSON or WKT)
+        gj = post_json_body.get("intersects") if post_json_body else None
+        if gj:
+            try:
+                stac_params["intersects_wkt"] = _geojson_to_wkt(gj) if isinstance(gj, dict) else str(gj).strip("'\"")
+            except Exception as exc:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid 'intersects' geometry: {exc}",
+                ) from exc
 
         # map stac platform/constellation values to odata values...
         mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))

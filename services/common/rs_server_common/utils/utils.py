@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
-from typing import Any
+from typing import Any, cast
 
 from dateutil.parser import isoparse
 from eodag import EOProduct
@@ -181,7 +181,8 @@ def odata_to_stac(
             elif stac_key == "geometry":
                 feature_template["geometry"] = odata_dict[eodag_key]
                 # compute bbox from geometry
-                feature_template["bbox"] = _bbox_from_geometry(feature_template.get("geometry"))
+                geom: dict[Any, Any] = cast(dict[Any, Any], feature_template["geometry"])
+                feature_template["bbox"] = _bbox_from_geometry(geom)
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
         elif stac_key in feature_template["properties"]:

@@ -23,6 +23,7 @@ This module mirrors rs_server_adgs.adgs_utils but adapts for PRIP:
   and an href that points to the OData $value endpoint.
 - platform/constellation mapping helpers reuse the common `map_stac_platform()` table.
 """
+# pylint: disable=duplicate-code
 from __future__ import annotations
 
 import json
@@ -96,14 +97,14 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
     for feature in feature_collection.features:
         prip_id = feature.properties.dict().get("prip:id") or feature.id
         # Find matching product by id
-        matched = next((p for p in products if p.properties.get("id") == prip_id), None)
+        matched = next((p for p in products if p.properties.get("id") == prip_id), None)  # type: ignore[attr-defined]
         if not matched:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Unable to map product for feature {feature.id}",
             )
         # href = matched.get("properties", {}).get("href")
-        href = matched.properties.get("href")
+        href = matched.properties.get("href")  # type: ignore[attr-defined]
         if not href:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -117,10 +118,9 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
         # roles: ["data","metadata"]
         asset = feature.assets[new_key]
 
-        asset.extra_fields = {}
-
-        roles = list(dict.fromkeys((asset.extra_fields or {}).get("roles", []) + ["data", "metadata"]))  # unique
-        asset.extra_fields = {**(asset.extra_fields or {}), "roles": roles}
+        # Merge any existing roles with required ones and de-duplicate
+        existing_roles = list(asset.roles or [])
+        asset.roles = list(dict.fromkeys(existing_roles + ["data", "metadata"]))
         # Normalize item id (drop extension if any)
         feature.id = new_key
 
