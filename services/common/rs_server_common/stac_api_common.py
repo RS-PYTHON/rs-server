@@ -114,7 +114,7 @@ LimitType = Annotated[
     ),
 ]
 PageType = Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")]
-ServiceRole: TypeAlias = Literal["auxip", "cadip"]
+ServiceRole: TypeAlias = Literal["auxip", "cadip", "prip"]
 
 
 class Queryables(BaseModel):

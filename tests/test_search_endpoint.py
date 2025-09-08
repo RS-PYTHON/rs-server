@@ -179,6 +179,7 @@ class TestLandingPagesEndpoints:
         [
             ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
             ("/auxip/collections", ["rs_adgs_landing_page", "rs_auxip_authTest_read"]),
+            ("/prip/collections",  ["rs_prip_landing_page",  "rs_prip_authTest_read"]),
         ],
     )
     def test_cluster_landing_page_with_roles(self, client, mocker, endpoint, roles):
@@ -219,11 +220,17 @@ class TestLandingPagesEndpoints:
             new_callable=mocker.PropertyMock,
             return_value=mock_request_state,
         )
+        mocker.patch(
+            "rs_server_prip.api.prip_search.Request.state",
+            new_callable=mocker.PropertyMock,
+            return_value=mock_request_state,
+        )
         response = client.get(endpoint).json()
         # Check links and collections.
         assert isinstance(response["links"], list)
         assert isinstance(response["collections"], list)
         # Check if not empty
+        import pdb; pdb.set_trace()
         assert response["collections"]
         # Check that collection type is correctly set.
         assert any("Collection" in collection["type"] for collection in response["collections"])
@@ -236,6 +243,7 @@ class TestLandingPagesEndpoints:
         [
             ("/cadip/collections", ["rs_cadip_landing_page"], "rs_server_cadip.api.cadip_search.Request.state"),
             ("/auxip/collections", ["rs_adgs_landing_page"], "rs_server_adgs.api.adgs_search.Request.state"),
+            ("/prip/collections",  ["rs_prip_landing_page"],  "rs_server_prip.api.prip_search.Request.state"),
         ],
     )
     def test_cluster_landing_page_without_roles(self, client, mocker, endpoint, roles, request_path):
@@ -258,7 +266,10 @@ class TestLandingPagesEndpoints:
     @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint, local_config",
-        [("/cadip/collections", "RSPY_CADIP_SEARCH_CONFIG"), ("/auxip/collections", "RSPY_ADGS_SEARCH_CONFIG")],
+        [("/cadip/collections", "RSPY_CADIP_SEARCH_CONFIG"),
+         ("/auxip/collections", "RSPY_ADGS_SEARCH_CONFIG"),
+         ("/prip/collections",  "RSPY_PRIP_SEARCH_CONFIG"),
+        ],
     )
     def test_local_landing_page(self, client, endpoint, local_config):
         """On local mode, /collections should return all defined collections."""
@@ -290,6 +301,7 @@ class TestQueryablesEndpoints:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/queryables", ["platform", "constellation"]),
             (ROUTER_PREFIX_AUXIP, "/auxip/queryables", ["product:type", "platform", "constellation"]),
+            (ROUTER_PREFIX_PRIP,  "/prip/queryables",  ["product:type", "platform", "constellation"]),
         ],
         indirect=["fastapi_app"],
     )
@@ -305,6 +317,7 @@ class TestQueryablesEndpoints:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_satellite/queryables", []),
             (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/queryables", ["product:type"]),
+            (ROUTER_PREFIX_PRIP,  "/prip/collections/S1A_L0_IW_RAW/queryables", ["product:type"]),
         ],
         indirect=["fastapi_app"],
     )
