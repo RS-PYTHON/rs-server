@@ -202,6 +202,8 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
         else:
             return await call_next(request)
 
+        return response
+
 
 def get_link_title(link: dict, entity: dict) -> str:
     """
