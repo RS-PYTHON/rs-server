@@ -556,6 +556,24 @@ def adgs_pickup_response():
         return json.loads(file.read())
 
 
+@pytest.fixture(name="prip_feature")
+@lru_cache(maxsize=1)
+def prip_feature():
+    """Expected STAC Item for PRIP mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_feature.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+@pytest.fixture(name="prip_response")
+@lru_cache(maxsize=1)
+def prip_pickup_response():
+    """Mock PRIP OData pickup response used by the mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_pickup_response.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
 @pytest.fixture(name="mock_token_dict")
 def get_mock_token_dict():
     """Setup a mock for the token dictionary"""

@@ -1,0 +1,40 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[[-1.0, 51.0], [-1.0, 52.0], [0.0, 52.0], [0.0, 51.0], [-1.0, 51.0]]]
+  },
+  "properties": {
+    "datetime": "2024-08-01T00:00:00Z",
+    "created": "2024-08-01T00:00:00Z",
+    "start_datetime": "2024-08-01T00:00:00Z",
+    "end_datetime": "2024-08-01T00:06:00Z",
+    "platform": "sentinel-1a",
+    "constellation": "sentinel-1",
+    "prip:id": "11111111-2222-3333-4444-555555555555",
+    "published": "2024-08-01T00:00:00Z",
+    "product:type": "IW_RAW__0N",
+    "processing:datetime": "2024-08-01T00:00:00Z"
+  },
+  "assets": {
+    "file": {
+      "href": "http://127.0.0.1:5000/Products(11111111-2222-3333-4444-555555555555)/$value",
+      "type": "application/octet-stream",
+      "roles": ["data", "metadata"]
+    }
+  },
+  "links": [
+    {
+      "rel": "self",
+      "type": "application/geo+json",
+      "title": "This collection",
+      "href": "http://testserver/prip/collections/S1A_L0_IW_RAW/items/ABCD"
+    }
+  ],
+  "stac_extensions": [
+    "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+  ],
+  "collection": "S1A_L0_IW_RAW",
+  "id": "ABCD"
+}

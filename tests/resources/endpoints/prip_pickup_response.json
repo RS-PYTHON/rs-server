@@ -1,0 +1,46 @@
+{
+  "value": [
+    {
+      "Id": "11111111-2222-3333-4444-555555555555",
+      "Name": "ABCD",
+      "ContentType": "application/octet-stream",
+      "ContentLength": "1234567",
+      "OriginDate": "2024-08-01T00:00:00Z",
+      "PublicationDate": "2024-08-01T00:00:00Z",
+      "EvictionDate": "2024-08-08T00:00:00Z",
+      "Checksum": [
+        {
+          "Algorithm": "MD5",
+          "Value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "ChecksumDate": "2024-08-01T00:00:00Z"
+        }
+      ],
+      "Attributes": [
+        {
+          "@odata.type": "#OData.CSC.StringAttribute",
+          "Name": "productType",
+          "ValueType": "String",
+          "Value": "IW_RAW__0N"
+        },
+        {
+          "@odata.type": "#OData.CSC.StringAttribute",
+          "Name": "missionId",
+          "ValueType": "String",
+          "Value": "S1A"
+        },
+        {
+          "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
+          "Name": "beginningDateTime",
+          "ValueType": "DateTimeOffset",
+          "Value": "2024-08-01T00:00:00Z"
+        },
+        {
+          "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
+          "Name": "endingDateTime",
+          "ValueType": "DateTimeOffset",
+          "Value": "2024-08-01T00:06:00Z"
+        }
+      ]
+    }
+  ]
+}

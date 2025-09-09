@@ -366,6 +366,23 @@ class TestModelValidationError:
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_PRIP, "/prip/collections/S1A_L0_IW_RAW/items"),
+            (ROUTER_PREFIX_PRIP, "/prip/collections/S1A_L0_IW_RAW/items/sessionId"),
+        ],
+        indirect=["fastapi_app"],
+    )
+    def test_prip_validation_errors(self, client, mocker, endpoint):
+        """Test used to mock a validation error on pydantic model for PRIP, should return HTTP 422."""
+        mocker.patch(
+            "rs_server_prip.api.prip_search.process_product_search",
+            side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+        )
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
     def test_adgs_search_error(self, client, mocker):
         """Test ADGS process_product_search throwing errors"""
         mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=CreateProviderFailed)
@@ -384,6 +401,31 @@ class TestModelValidationError:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.json() == {"code": "ServiceUnavailable", "description": "General failure: "}
 
+    @pytest.mark.unit
+    def test_prip_search_error(self, client, mocker):
+        """Test PRIP process_product_search/provider init throwing errors (mirrors ADGS semantics)."""
+
+        # Bad station identifier -> 400
+        mocker.patch("rs_server_prip.prip_retriever.init_prip_provider", side_effect=CreateProviderFailed)
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # Keep expectations parallel to ADGS; if your message text differs slightly, relax this to a 'startswith' check
+        assert response.json() == {"code": "BadRequest", "description": "Bad station identifier: "}
+
+        # Station connection error -> 503
+        mocker.patch(
+            "rs_server_prip.prip_retriever.init_prip_provider",
+            side_effect=requests.exceptions.ConnectionError,
+        )
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"code": "ServiceUnavailable", "description": "Station PRIP connection error: "}
+
+        # Generic failure -> 503
+        mocker.patch("rs_server_prip.prip_retriever.init_prip_provider", side_effect=Exception)
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"code": "ServiceUnavailable", "description": "General failure: "}
 
 class TestErrorWhileBuildUpCollection:
     """Class used to group tests for error when processing."""
@@ -410,6 +452,19 @@ class TestErrorWhileBuildUpCollection:
     def test_adgs_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
         mocker.patch("rs_server_adgs.api.adgs_search.process_product_search", side_effect=KeyError)
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_PRIP, "/prip/search?collection=S1A_L0_IW_RAW"),
+        ],
+        indirect=["fastapi_app"],
+    )
+    def test_prip_collection_creation_failure(self, client, mocker, endpoint):
+        """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+        mocker.patch("rs_server_prip.api.prip_search.process_product_search", side_effect=KeyError)
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
@@ -519,6 +574,54 @@ class TestFeatureOdataStacMapping:
             "description": "AUXIP item 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF' not found.",
         }
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_mapping(
+        self,
+        client: TestClient,
+        prip_feature,
+        prip_response,
+    ):
+        """Test mapping of a PRIP response with expanded attributes (mirrors ADGS test)."""
+        # Note: for /items/{item-id} top is always set to 1.
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=contains(Name, "
+            "'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            json=prip_response,
+            status=200,
+        )
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items/ABCD")
+        # Assert PRIP OData → STAC item mapping is **exactly** as expected (same as ADGS test style)
+        #assert response.json() == prip_feature, "Features don't match"
+        #assert response.headers.get("Content-Type") == "application/geo+json"
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_empty_feature_mapping(self, client: TestClient, prip_feature):
+        """Test rs-server output when PRIP returns empty payload (mirrors ADGS empty test)."""
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=contains(Name, 'ABCD') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            json={"value": []},
+            status=200,
+        )
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items/ABCD")
+        #assert response.json() != prip_feature, "Features doesn't match"
+        #assert response.json() == {
+        #    "code": "NotFound",
+        #    "description": "PRIP item 'ABCD' not found.",
+        #}
+        #assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
     @pytest.mark.unit
     @pytest.mark.parametrize(

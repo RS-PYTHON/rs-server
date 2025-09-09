@@ -23,11 +23,12 @@ import os.path as osp
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import requests
 import stac_pydantic
 from fastapi import APIRouter, Body, HTTPException, Request, status
+from fastapi import Path as FPath
 from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -223,6 +224,74 @@ async def get_prip_collection_items(
         limit=limit,
         page=page,
     )
+
+
+@router.get(path="/prip/collections/{collection_id}/items/{item_id}", response_class=GeoJSONResponse)
+@handle_exceptions
+async def get_adgs_collection_specific_item(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="PRIP{} collection ID.", description="E.G. ")],
+    item_id: Annotated[
+        str,
+        FPath(
+            title="PRIP Id",
+            description="E.G. S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+        ),
+    ],
+) -> list[dict] | dict:
+    """
+    Retrieve a specific item from a specified PRIP collection.
+
+    This endpoint fetches details of a specific item within the given PRIP collection
+    by its unique item ID. It utilizes the provided collection ID and item ID to
+    validate access and return item information.
+
+    Args:
+    - collection_id (str): PRIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1').
+    - item_id (str): PRIP item ID. Must be a valid item identifier
+            (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
+
+    Returns:
+    - dict: A JSON object containing details of the specified item, or an error
+            message if the item is not found.
+
+    Raises:
+    - HTTPException: If the authentication fails, or if the specified item is
+                    not found in the collection.
+
+    Example:
+    A successful response will return: \n
+        {
+            "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+            "type": "Feature",
+            "properties": {
+                ...  # Detailed properties of the item
+            },
+            "geometry": {
+                ...  # Geometry details of the item
+            },
+            "links": [
+                ...  # Links associated with the item
+            ]
+        }
+
+    """
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+
+    # Search all the collection items then search manually for the right one.
+    # TODO: allow the search function to take the item ID instead.
+    try:
+        item = await request.app.state.pgstac_client.get_item(item_id, collection_id, request)
+    except HTTPException:  # validation error, just forward it
+        raise
+    except Exception as exc:  # stac_fastapi.types.errors.NotFoundError
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"AUXIP item {item_id!r} not found.",
+        ) from exc
+    return item
 
 
 @router.post("/prip/search", response_class=GeoJSONResponse)
