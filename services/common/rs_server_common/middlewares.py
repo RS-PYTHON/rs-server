@@ -163,7 +163,7 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
             elif request.method == "POST":
                 query = await request.json()
 
-                first_link["body"] = {"datetime": query["datetime"], "limit": query["limit"]}
+                first_link["body"] = {"datetime": query["datetime"], "limit": query["limit"]}  # type: ignore
 
             response = await call_next(request)
             response_body = b""
@@ -189,7 +189,7 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                     headers=headers,
                     media_type="application/json",
                 )
-            except Exception:
+            except Exception:  # pylint: disable = broad-exception-caught
                 headers = dict(response.headers)
                 headers.pop("content-length", None)
 
@@ -201,6 +201,8 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                 )
         else:
             return await call_next(request)
+
+
 def get_link_title(link: dict, entity: dict) -> str:
     """
     Determine a human-readable STAC link title based on the link relation and context.
