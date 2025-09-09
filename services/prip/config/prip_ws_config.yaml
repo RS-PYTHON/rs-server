@@ -141,10 +141,12 @@ prip_s1a:
         wrapper: '{}'
         operations:
           and:
-          # ---- Name-based matches (from tests: contains/startswith/endswith) ----
-          - "contains(Name, {Name_contains})"
-          - "startswith(Name, {Name_startswith})"
-          - "endswith(Name, {Name_endswith})"
+          # ---- Name-based matches (fcontains/startswith/endswith) ----
+          - "Name eq '{Name_eq}'"
+          - "contains(Name, '{Name}')"
+          - "contains(Name, '{Name_contains}')"
+          - "startswith(Name, '{Name_startswith}')"
+          - "endswith(Name, '{Name_endswith}')"
           # ---- Id match (existing) ----
           - "contains(Id, {prip:id})"
           # ---- Time on PublicationDate (existing) ----
@@ -351,6 +353,7 @@ prip_s2b:
         wrapper: '{}'
         operations:
           and:
+          - "Name eq {Name_eq}"
           - contains(Name, '{Name}')
           - contains(Id, '{prip:id}')
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate

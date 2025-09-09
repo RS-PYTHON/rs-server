@@ -27,8 +27,9 @@ from typing import Annotated, Any, Literal
 
 import requests
 import stac_pydantic
-from fastapi import APIRouter, Body, HTTPException, Request, status
+from fastapi import APIRouter, Body, HTTPException
 from fastapi import Path as FPath
+from fastapi import Request, status
 from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -228,7 +229,7 @@ async def get_prip_collection_items(
 
 @router.get(path="/prip/collections/{collection_id}/items/{item_id}", response_class=GeoJSONResponse)
 @handle_exceptions
-async def get_adgs_collection_specific_item(
+async def get_prip_collection_specific_item(
     request: Request,
     collection_id: Annotated[str, FPath(title="PRIP{} collection ID.", description="E.G. ")],
     item_id: Annotated[
@@ -289,7 +290,7 @@ async def get_adgs_collection_specific_item(
     except Exception as exc:  # stac_fastapi.types.errors.NotFoundError
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"AUXIP item {item_id!r} not found.",
+            detail=f"PRIP item {item_id!r} not found.",
         ) from exc
     return item
 

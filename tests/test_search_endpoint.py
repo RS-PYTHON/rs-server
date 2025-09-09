@@ -427,6 +427,7 @@ class TestModelValidationError:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.json() == {"code": "ServiceUnavailable", "description": "General failure: "}
 
+
 class TestErrorWhileBuildUpCollection:
     """Class used to group tests for error when processing."""
 
@@ -596,9 +597,8 @@ class TestFeatureOdataStacMapping:
             status=200,
         )
         response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items/ABCD")
-        # Assert PRIP OData → STAC item mapping is **exactly** as expected (same as ADGS test style)
-        #assert response.json() == prip_feature, "Features don't match"
-        #assert response.headers.get("Content-Type") == "application/geo+json"
+        assert response.json() == prip_feature, "Features don't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
     @responses.activate
@@ -615,13 +615,12 @@ class TestFeatureOdataStacMapping:
             status=200,
         )
         response = client.get("/prip/collections/S1A_L0_IW_RAW/items/ABCD")
-        #assert response.json() != prip_feature, "Features doesn't match"
-        #assert response.json() == {
-        #    "code": "NotFound",
-        #    "description": "PRIP item 'ABCD' not found.",
-        #}
-        #assert response.status_code == status.HTTP_404_NOT_FOUND
-
+        assert response.json() != prip_feature, "Features doesn't match"
+        assert response.json() == {
+            "code": "NotFound",
+            "description": "PRIP item 'ABCD' not found.",
+        }
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.unit
     @pytest.mark.parametrize(

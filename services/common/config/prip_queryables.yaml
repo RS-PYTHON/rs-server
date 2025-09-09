@@ -39,6 +39,21 @@ Name:
   title: Name
   format: string
   description: string
+Name_contains:
+  type: string
+  title: Name_contains
+  format: string
+  description: "substring of product Name"
+Name_startswith:
+  type: string
+  title: Name_startswith
+  format: string
+  description: "prefix of product Name"
+Name_endswith:
+  type: string
+  title: Name_endswith
+  format: string
+  description: "suffix of product Name"
 prip:id:
   type: string
   title: prip:id
