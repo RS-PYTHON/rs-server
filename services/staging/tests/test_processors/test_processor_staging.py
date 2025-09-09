@@ -315,7 +315,7 @@ class TestStagingMainExecution:
         mocker.patch.dict(
             os.environ,
             {
-                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY_ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
                 "RSPY_DASK_STAGING_CLUSTER_NAME": str(
@@ -375,7 +375,7 @@ class TestStagingMainExecution:
         mocker.patch.dict(
             os.environ,
             {
-                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY_ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
                 "RSPY_DASK_STAGING_CLUSTER_NAME": non_existent_cluster,
@@ -411,7 +411,7 @@ class TestStagingMainExecution:
         mocker.patch.dict(
             os.environ,
             {
-                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY_ADDRESS": "gateway-address",
             },
         )
 
@@ -606,7 +606,7 @@ class TestStagingMainExecution:
         mocker.patch.dict(
             os.environ,
             {
-                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY_ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
                 "RSPY_DASK_STAGING_CLUSTER_NAME": str(
