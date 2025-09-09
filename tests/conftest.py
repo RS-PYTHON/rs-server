@@ -210,6 +210,7 @@ def use_module_for_station_token(monkeypatch):
     # Restore default value = False at the end of the test function
     monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
     reload(adgs_retriever)
+    reload(prip_retriever)
     reload(cadip_retriever)
 
 
