@@ -29,8 +29,8 @@ from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.middlewares import (
-    AddFirstLinkMiddleware,
     HandleExceptionsMiddleware,
+    PaginationLinksMiddleware,
 )
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.settings import docs_params
@@ -226,7 +226,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.add_middleware(ProxyHeaderMiddleware)
 
     # Middleware for implementing first and last buttons in STAC Browser
-    app.add_middleware(AddFirstLinkMiddleware)
+    app.add_middleware(PaginationLinksMiddleware)
 
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:

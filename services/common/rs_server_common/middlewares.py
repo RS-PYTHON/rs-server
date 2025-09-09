@@ -113,40 +113,44 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         )
 
 
-class AddFirstLinkMiddleware(BaseHTTPMiddleware):
+class PaginationLinksMiddleware(BaseHTTPMiddleware):
     """
-    Middleware to implement 'first' and 'last' buttons in STAC Browser for endpoints:
-        - /search
-        - /collections/<collectionId>/items
+    Middleware to implement 'first' and 'last' buttons in STAC Browser
     """
 
     async def dispatch(self, request: Request, call_next: Callable):
 
         # Only for /search in auxip, prip, cadip
-        if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search"]:
+        if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search", "/catalog/search"]:
 
-            # parse query params to remove any 'prev' or 'next' and set page=1
-            # without this the button 'first' would not redirect to first page
-            query_dict = dict(request.query_params)
-            query_dict.pop("token", None)
-            if "page" in query_dict:
-                query_dict["page"] = '1'
-            new_query_string = urlencode(query_dict, doseq=True)
+            first_link = {
+                "rel": "first",
+                "type": "application/geo+json",
+                "method": request.method,
+                "href": f"{str(request.base_url).rstrip('/')}{request.url.path}",
+                "title": "First link",
+            }
+
+            if request.method == "GET":
+                # parse query params to remove any 'prev' or 'next' and set page=1
+                # without this the button 'first' would not redirect to first page
+                query_dict = dict(request.query_params)
+
+                query_dict.pop("token", None)
+                if "page" in query_dict:
+                    query_dict["page"] = "1"
+                new_query_string = urlencode(query_dict, doseq=True)
+                first_link["href"] += f"?{new_query_string}"
+
+            elif request.method == "POST":
+                query = await request.json()
+
+                first_link["body"] = {"datetime": query["datetime"], "limit": query["limit"]}
 
             response = await call_next(request)
             response_body = b""
             async for chunk in response.body_iterator:
                 response_body += chunk
-
-            # reconstruct 'first' link
-            href = f"{str(request.base_url).rstrip('/')}{request.url.path}?{new_query_string}"
-            first_link = {
-                "rel": "first",
-                "type": "application/geo+json",
-                "method": "GET",
-                "title": "First page",
-                "href": href,
-            }
 
             try:
                 data = json.loads(response_body)
