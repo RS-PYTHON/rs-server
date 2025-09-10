@@ -585,7 +585,7 @@ class TestFeatureOdataStacMapping:
         prip_feature,
         prip_response,
     ):
-        """Test mapping of a PRIP response with expanded attributes (mirrors ADGS test)."""
+        """Test mapping of an prip reponse with expanded attributes"""
         # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,
@@ -633,6 +633,10 @@ class TestFeatureOdataStacMapping:
             (
                 "/cadip/collections/INVALID_COLLECTION/items/S1A_20200105072204051312",
                 {"code": "NotFound", "description": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
+            ),
+            (
+                "/prip/collections/INVALID_COLLECTION/items/ABCD",
+                {"code": "NotFound", "description": "Unknown PRIP collection: 'INVALID_COLLECTION'"},
             ),
         ],
     )
