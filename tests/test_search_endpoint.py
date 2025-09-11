@@ -33,6 +33,8 @@ from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils2 import read_response_error
+from rs_server_prip import prip_utils
+from rs_server_prip.prip_utils import prip_map_mission
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
 
@@ -1794,8 +1796,8 @@ class TestCollection:
 @pytest.mark.parametrize("method", ("GET", "POST"))
 @pytest.mark.parametrize(
     "fastapi_app, service",
-    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_AUXIP, "adgs")),
-    ids=["cadip", "adgs"],
+    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_PRIP, "prip")),
+    ids=["cadip", "adgs", "prip"],
     indirect=["fastapi_app"],
 )
 def test_search_parameters(
@@ -1807,10 +1809,12 @@ def test_search_parameters(
     adgs_response,
     cadip_file_response,
     cadip_session_response,
+    prip_response,
 ):
     """Test all search parameters"""
 
     adgs = service == "adgs"
+    prip = service == "prip"
     cadip = service == "cadip"
 
     spy_search = mocker.spy(Provider, "search")
@@ -1821,6 +1825,9 @@ def test_search_parameters(
     elif cadip:
         service_utils = cadip_utils
         expected_response = cadip_session_response
+    elif prip:
+        service_utils = prip_utils
+        expected_response = prip_response
     else:
         raise NotImplementedError
 
@@ -1848,6 +1855,15 @@ def test_search_parameters(
         }
         query3 = {
             "Satellite": "S1A, S2A",
+        }
+    elif prip:
+        query2 = {
+            "productType": "IW_RAW__0N",
+            "platformShortName": "SENTINEL-1",
+        }
+        query3 = {
+            "productType": "IW_RAW__0N, EW_RAW__0N",
+            "platformShortName": "SENTINEL-1, SENTINEL-2",
         }
     else:
         raise NotImplementedError
@@ -1901,9 +1917,11 @@ def test_search_parameters(
         user_sortby = "created"
     if cadip:
         user_sortby = "published"
+    if prip:
+        user_sortby = "published"
 
     # cql or query filter, for get or post requests
-    if adgs:
+    if adgs or prip:
         get_cql = f" AND product:type='{user_product_type}'"
         get_query = f""","product:type": {{"eq": "{user_product_type}"}}"""
         post_cql = [{"args": [{"property": "product:type"}, user_product_type], "op": "="}]
@@ -1996,7 +2014,7 @@ def test_search_parameters(
             # TODO after fixing rs-server, these parameters should appear in the OData request:
             #  - sortBy (RSPY-131)
 
-            if adgs:
+            if adgs or prip:
                 uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
