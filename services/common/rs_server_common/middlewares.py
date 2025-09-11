@@ -17,9 +17,10 @@ import json
 import os
 import traceback
 from collections.abc import Callable
-from typing import ParamSpec, TypedDict
+from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+import brotli
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
@@ -136,12 +137,12 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
     Middleware to implement 'first' and 'last' buttons in STAC Browser
     """
 
-    async def dispatch(self, request: Request, call_next: Callable):
+    async def dispatch(self, request: Request, call_next: Callable):  # pylint: disable=too-many-branches
 
         # Only for /search in auxip, prip, cadip
         if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search", "/catalog/search"]:
 
-            first_link = {
+            first_link: dict[str, Any] = {
                 "rel": "first",
                 "type": "application/geo+json",
                 "method": request.method,
@@ -162,13 +163,30 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
 
             elif request.method == "POST":
                 query = await request.json()
+                body = {}
 
-                first_link["body"] = {"datetime": query["datetime"], "limit": query["limit"]}  # type: ignore
+                for key in ["datetime", "limit"]:
+                    if key in query and query[key] is not None:
+                        body[key] = query[key]
+
+                if "token" in query and request.url.path != "/catalog/search":
+                    body["token"] = "page=1"
+
+                first_link["body"] = json.dumps(body)
 
             response = await call_next(request)
-            response_body = b""
-            async for chunk in response.body_iterator:
-                response_body += chunk
+
+            encoding = response.headers.get("content-encoding", "")
+            if encoding == "br":
+                body_bytes = b"".join([section async for section in response.body_iterator])
+                response_body = brotli.decompress(body_bytes)
+
+                if request.url.path == "/catalog/search":
+                    first_link["auth:refs"] = ["apikey", "openid", "oauth2"]
+            else:
+                response_body = b""
+                async for chunk in response.body_iterator:
+                    response_body += chunk
 
             try:
                 data = json.loads(response_body)
@@ -183,8 +201,13 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                 headers = dict(response.headers)
                 headers.pop("content-length", None)
 
+                if encoding == "br":
+                    new_body = brotli.compress(json.dumps(data).encode("utf-8"))
+                else:
+                    new_body = json.dumps(data).encode("utf-8")
+
                 response = Response(
-                    content=json.dumps(data).encode("utf-8"),
+                    content=new_body,
                     status_code=response.status_code,
                     headers=headers,
                     media_type="application/json",
