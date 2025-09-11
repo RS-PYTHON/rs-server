@@ -439,7 +439,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 validate_inputs_format(datetime, raise_errors=True)
                 if self.auxip:
                     stac_params["created"] = datetime
-                elif self.cadip:
+                elif self.cadip or self.prip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
                 raise log_http_exception(

@@ -658,9 +658,17 @@ class TestFeatureOdataStacMapping:
                 "'AUX_OBMEMC')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
                 {"code": "NotFound", "description": "AUXIP item 'INVALID_ITEM' not found."},
             ),
+            (
+                "/prip/collections/S1A_L0_IW_RAW/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'INVALID_ITEM') and Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq "
+                "'IW_RAW__0N')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                {"code": "NotFound", "description": "PRIP item 'INVALID_ITEM' not found."},
+            ),
         ],
+        ids=["auxip-invalid-item", "prip-invalid-item"],
     )
-    def test_adgs_invalid_item_mapping(self, client, endpoint, odata_url, response_body):
+    def test_adgs_prip_invalid_item_mapping(self, client, endpoint, odata_url, response_body):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         responses.add(
             responses.GET,
@@ -780,6 +788,33 @@ class TestFeatureCollectionOdataStacMapping:
         assert items["features"][0]["properties"] == adgs_feature["properties"], "properties doesn't match"
         assert items["features"][0]["assets"] == adgs_feature["assets"], "assets doesn't match"
         assert items["features"][0]["id"] == adgs_feature["id"], "id doesn't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping(
+        self,
+        client: TestClient,
+        prip_feature,
+        prip_response,
+    ):
+        """Test mapping of an prip reponse with expanded attributes"""
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=prip_response,
+            status=200,
+        )
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert items["type"] == "FeatureCollection", "Type doesn't match"
+        assert items["features"][0]["properties"] == prip_feature["properties"], "properties doesn't match"
+        assert items["features"][0]["assets"] == prip_feature["assets"], "assets doesn't match"
+        assert items["features"][0]["id"] == prip_feature["id"], "id doesn't match"
         assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
@@ -922,6 +957,10 @@ class TestFeatureCollectionOdataStacMapping:
                 {"code": "NotFound", "description": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
             ),
             (
+                "/prip/collections/INVALID_COLLECTION/items",
+                {"code": "NotFound", "description": "Unknown PRIP collection: 'INVALID_COLLECTION'"},
+            ),
+            (
                 "/cadip/collections/INVALID_COLLECTION/items",
                 {"code": "NotFound", "description": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
             ),
@@ -1058,6 +1097,9 @@ class TestFeatureCollectionOdataStacMapping:
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='invalid_value'",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='-5'",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=0",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit='invalid_value'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit='-5'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=0",
             "/cadip/collections/cadip_session_by_id/items?limit='invalid_value'",
             "/cadip/collections/cadip_session_by_id/items?limit='-5'",
             "/cadip/collections/cadip_session_by_id/items?limit=0",
@@ -1080,6 +1122,12 @@ class TestFeatureCollectionOdataStacMapping:
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=10000000",
                 "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
+                "desc&$top=9999&$skip=0&$expand=Attributes",
+            ),
+            (
+                "/prip/collections/S1A_L0_IW_RAW/items?limit=10000000",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+                "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')&$orderby=PublicationDate "
                 "desc&$top=9999&$skip=0&$expand=Attributes",
             ),
             (
@@ -1108,6 +1156,9 @@ class TestFeatureCollectionOdataStacMapping:
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='invalid'",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=-5",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='0'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page='invalid'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page=-5",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page='0'",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page='invalid'",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page=-5",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page='0'",
@@ -1124,6 +1175,7 @@ class TestFeatureCollectionOdataStacMapping:
         "endpoint",
         [
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=1&sortby='invalid'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page=1&sortby='invalid'",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page=1&sortby='invalid'",
         ],
     )
@@ -1192,6 +1244,59 @@ class TestFeatureCollectionOdataStacMapping:
                 status.HTTP_200_OK,
             ),
             (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50.888Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=../2018-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (ROUTER_PREFIX_PRIP, "/prip/search?collections=prip&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=invalid/..",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=../invalid",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            # datime without miliseconds
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50.777Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777Z"
@@ -1245,7 +1350,32 @@ class TestFeatureCollectionOdataStacMapping:
             ),
         ],
         indirect=["fastapi_app"],
-        ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
+        ids=[
+            "adgs1",
+            "adgs2",
+            "adgs3",
+            "adgs4",
+            "adgs5",
+            "adgs6",
+            "adgs7",
+            "adgs8",
+            "prip1",
+            "prip2",
+            "prip3",
+            "prip4",
+            "prip5",
+            "prip6",
+            "prip7",
+            "prip8",
+            "cadip1",
+            "cadip2",
+            "cadip3",
+            "cadip4",
+            "cadip5",
+            "cadip6",
+            "cadip7",
+            "cadip8",
+        ],
     )
     @responses.activate
     def test_valid_datetime(self, client, endpoint, odata, expected_code):
@@ -1576,6 +1706,19 @@ class TestCollection:
                     "title": "This collection",
                 },
             ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/collections/S1A_L0_IW_RAW",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att"
+                "/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'IW_RAW__0N')%22&"
+                "$top=1000&$expand=Attributes",
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/prip/collections/S1A_L0_IW_RAW",
+                    "title": "This collection",
+                },
+            ),
         ],
         indirect=["fastapi_app"],
     )
@@ -1621,6 +1764,18 @@ class TestCollection:
                 {
                     "href": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
                     "rel": "license",
+                    "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
+                },
+            ),
+            (
+                "/prip/collections/S1A_L0_IW_RAW",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+                "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'IW_RAW__0N')%22&$top=1000"
+                "&$expand=Attributes",
+                {
+                    "href": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
+                    "rel": "license",
+                    "type": "application/pdf",
                     "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
                 },
             ),

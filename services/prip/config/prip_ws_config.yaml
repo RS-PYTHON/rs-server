@@ -141,26 +141,27 @@ prip_s1a:
         wrapper: '{}'
         operations:
           and:
-          # ---- Name-based matches (fcontains/startswith/endswith) ----
+          # ---- Name-based matches (contains/startswith/endswith) ----
           - "Name eq '{Name_eq}'"
           - "contains(Name, '{Name}')"
           - "contains(Name, '{Name_contains}')"
           - "startswith(Name, '{Name_startswith}')"
           - "endswith(Name, '{Name_endswith}')"
           # ---- Id match (existing) ----
-          - "contains(Id, {prip:id})"
-          # ---- Time on PublicationDate (existing) ----
+          - "contains(Id, '{prip:id}')"
+          # ---- Time on PublicationDate ----
           - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
           - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
           - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
-          # ---- Exact equality on other top-level PRIP fields (from tests) ----
+          # ---- Exact equality on other top-level PRIP fields ----
           - "EvictionDate eq {EvictionDate#to_iso_utc_datetime}"
           - "ModificationDate eq {ModificationDate#to_iso_utc_datetime}"
           - "OriginDate eq {OriginDate#to_iso_utc_datetime}"
           - "Online eq {Online}"
-          - "ContentDate/Start eq {ContentStart#to_iso_utc_datetime}"
-          - "ContentDate/End eq {ContentEnd#to_iso_utc_datetime}"
-          # ---- Spatial Intersects (from tests) ----
+          - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
+          - "ContentDate/Start eq {Start#to_iso_utc_datetime}"
+          - "ContentDate/End eq {End#to_iso_utc_datetime}"
+          # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
           - "OData.CSC.Intersects(area=geography'SRID=4326;{intersects_wkt}')"
           # ---- Attributes[...] == value (StringAttribute) ----

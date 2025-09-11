@@ -21,7 +21,6 @@
         "datetime": "PLACEHOLDER",
         "start_datetime": "PLACEHOLDER",
         "end_datetime": "PLACEHOLDER",
-        "created": "PLACEHOLDER",
         "product:type": "PLACEHOLDER",
         "processing:lineage": "PLACEHOLDER",
         "processing:version": "PLACEHOLDER",
