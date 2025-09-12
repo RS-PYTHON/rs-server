@@ -180,6 +180,10 @@ jobs:
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
+      - name: Copy layer-cleanup.sh script
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+        shell: bash
+
       - name: Debug docker_tag value
         run: echo "docker_tag=${{ needs.set-env.outputs.docker_tag }}"
         shell: bash
