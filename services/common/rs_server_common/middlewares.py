@@ -150,6 +150,9 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                 "title": "First link",
             }
 
+            if common_settings.CLUSTER_MODE:
+                first_link["href"] = f"https://{str(request.base_url.hostname).rstrip('/')}{request.url.path}"
+
             if request.method == "GET":
                 # parse query params to remove any 'prev' or 'next' and set page=1
                 # without this the button 'first' would not redirect to first page
@@ -172,7 +175,7 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                 if "token" in query and request.url.path != "/catalog/search":
                     body["token"] = "page=1"
 
-                first_link["body"] = json.dumps(body)
+                first_link["body"] = body
 
             response = await call_next(request)
 
