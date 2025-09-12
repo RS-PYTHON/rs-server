@@ -23,14 +23,14 @@ RUN apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
+# Install rs-server-common dependency from the "develop" branch before the osam wheel.
+RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common" && layer-cleanup.sh
+
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
 # We copy them into a /tmp directory that we can clean at the end.
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
-
-# Install rs-server-common dependency from the "develop" branch before the osam wheel.
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common" && layer-cleanup.sh
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
