@@ -14,11 +14,17 @@
 
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
+COPY ./layer-cleanup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+
 # Install dependencies for compilation
-RUN apt update && apt upgrade -y && apt install -y git
+RUN apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
 
 # Update pip version
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
+
+# Install rs-server-common dependency from the "develop" branch before the osam wheel.
+RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common" && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -26,30 +32,28 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
-# Install rs-server-common dependency from the "develop" branch before the osam wheel.
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common"
-
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    rs_osam-*.whl
+    rs_osam-*.whl && \
+    layer-cleanup.sh
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
+COPY ./layer-cleanup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+
 # Reinstall git since this is a new image layer
-RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y git && layer-cleanup.sh
 
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
 COPY --from=builder /usr/local /usr/local
 
 # Install opentelemetry instrumentation packages for dependencies
-RUN opentelemetry-bootstrap -a install
-
-# Clean everything
-RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+RUN opentelemetry-bootstrap -a install && layer-cleanup.sh
 
 # Add a default user
 RUN useradd -m user
