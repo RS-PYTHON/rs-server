@@ -16,11 +16,14 @@
 # Build stage for multi stage build.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
+COPY ./layer-cleanup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+
 # Install dependencies
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
+RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc && layer-cleanup.sh
 
 # Update pip version
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -30,13 +33,16 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl && layer-cleanup.sh
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
+COPY ./layer-cleanup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+
 # Update dependencies
-RUN apt update && apt upgrade -y
+RUN apt update && apt upgrade -y && layer-cleanup.sh
 
 # Copy the python installation from the build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -52,9 +58,6 @@ ADD ./entrypoint_frontend.sh /scripts
 RUN chmod ugo+x /scripts/entrypoint_frontend.sh
 # Give write permissions to the parent directory so sed can work.
 RUN chmod -R ugo+w $(dirname "${RSPY_OPENAPI_FILE}")
-
-# Clean everything
-RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
 
 # Add a default user
 RUN useradd -m user
