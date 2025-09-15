@@ -132,9 +132,9 @@ prip_s1a:
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
       downloadLink: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
-      intersects_wkt:
+      intersects:
       - null
-      - $.intersects_wkt
+      - $.intersects
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -163,7 +163,7 @@ prip_s1a:
           - "ContentDate/End eq {End#to_iso_utc_datetime}"
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
-          - "OData.CSC.Intersects(area=geography'SRID=4326;{intersects_wkt}')"
+          - "OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')"
           # ---- Attributes[...] == value (StringAttribute) ----
           - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})"
           - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))"
@@ -213,7 +213,7 @@ prip_s1a:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        created: PublicationDate
+        published: PublicationDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
       sort_order_mapping:
@@ -346,41 +346,67 @@ prip_s2b:
       href:
       - null
       - http://127.0.0.1:5000/Products({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
       downloadLink: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
+      intersects:
+      - null
+      - $.intersects
     free_text_search_operations:
       $filter:
         union: ' OR '
         wrapper: '{}'
         operations:
           and:
-          - "Name eq {Name_eq}"
-          - contains(Name, '{Name}')
-          - contains(Id, '{prip:id}')
-          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
-            eq {StartPublicationDate#to_iso_utc_datetime})
-          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
-            eq {StopPublicationDate#to_iso_utc_datetime})
-          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
-            and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
-            and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
-            and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
-            and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
-            and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
-            and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
-            and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
-          - ContentDate/Start gt {Start#to_iso_utc_datetime}
-          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          # ---- Name-based matches (contains/startswith/endswith) ----
+          - "Name eq '{Name_eq}'"
+          - "contains(Name, '{Name}')"
+          - "contains(Name, '{Name_contains}')"
+          - "startswith(Name, '{Name_startswith}')"
+          - "endswith(Name, '{Name_endswith}')"
+          # ---- Id match (existing) ----
+          - "contains(Id, '{prip:id}')"
+          # ---- Time on PublicationDate ----
+          - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
+          - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
+          - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
+          # ---- Exact equality on other top-level PRIP fields ----
+          - "EvictionDate eq {EvictionDate#to_iso_utc_datetime}"
+          - "ModificationDate eq {ModificationDate#to_iso_utc_datetime}"
+          - "OriginDate eq {OriginDate#to_iso_utc_datetime}"
+          - "Online eq {Online}"
+          - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
+          - "ContentDate/Start eq {Start#to_iso_utc_datetime}"
+          - "ContentDate/End eq {End#to_iso_utc_datetime}"
+          # ---- Spatial Intersects  ----
+          # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
+          - "OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')"
+          # ---- Attributes[...] == value (StringAttribute) ----
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq {processing:datetime#to_iso_utc_datetime})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq {processing:facility})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName' and att/OData.CSC.StringAttribute/Value eq {instrumentShortName#to_upper})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels' and att/OData.CSC.StringAttribute/Value eq {sar:polarization})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass' and att/OData.CSC.StringAttribute/Value eq {productClass})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.StringAttribute/Value eq {sat:absolute_orbit})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.StringAttribute/Value eq {sat:relative_orbit})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.StringAttribute/Value eq {sat:orbit_cycle})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and att/OData.CSC.StringAttribute/Value eq {sat:orbit_state#to_upper})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.StringAttribute/Value eq {eopf:datatake_id})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productConsolidation' and att/OData.CSC.StringAttribute/Value eq {productConsolidation})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'qualityDataObjectID' and att/OData.CSC.StringAttribute/Value eq {qualityDataObjectID})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates' and att/OData.CSC.StringAttribute/Value eq {coordinates})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'sliceProductFlag' and att/OData.CSC.StringAttribute/Value eq {sliceProductFlag})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.StringAttribute/Value eq {instrumentConfigurationID})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'startTimeFromAscendingNode' and att/OData.CSC.StringAttribute/Value eq {startTimeFromAscendingNode})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'completionTimeFromAscendingNode' and att/OData.CSC.StringAttribute/Value eq {completionTimeFromAscendingNode})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and att/OData.CSC.StringAttribute/Value eq {start_datetime#to_iso_utc_datetime})"
+          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' and att/OData.CSC.StringAttribute/Value eq {end_datetime#to_iso_utc_datetime})"
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
@@ -404,7 +430,7 @@ prip_s2b:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        created: PublicationDate
+        published: PublicationDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
       sort_order_mapping:

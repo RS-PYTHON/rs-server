@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
-from typing import Any, cast
+from typing import Any
 
 from dateutil.parser import isoparse
 from eodag import EOProduct
@@ -180,13 +180,13 @@ def odata_to_stac(
                 feature_template["id"] = odata_dict[eodag_key]
             elif stac_key == "geometry":
                 feature_template["geometry"] = odata_dict[eodag_key]
-                # compute bbox from geometry
-                geom: dict[Any, Any] = cast(dict[Any, Any], feature_template["geometry"])
-                feature_template["bbox"] = _bbox_from_geometry(geom)
+                feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
         elif stac_key in feature_template["properties"]:
             feature_template["properties"].pop(stac_key, None)
+
+    _apply_product_facets(feature_template, odata_dict)
 
     # to pass pydantic validation, make sure we don't have a single timerange value
     check_and_fix_timerange(feature_template)
@@ -198,38 +198,8 @@ def odata_to_stac(
     return feature_template
 
 
-def _wkt_to_geojson(wkt: str) -> dict:
-    """Very small WKT -> GeoJSON for POLYGON/MULTIPOLYGON (lon,lat order)."""
-    s = wkt.strip()
-    if s.upper().startswith("POLYGON"):
-        coords_txt = s[s.find("((") + 2 : s.rfind("))")]
-        ring = []
-        for pair in coords_txt.split(","):
-            x, y = (p for p in pair.strip().split())
-            ring.append([float(x), float(y)])
-        # ensure ring closed
-        if ring and ring[0] != ring[-1]:
-            ring.append(ring[0])
-        return {"type": "Polygon", "coordinates": [ring]}
-    if s.upper().startswith("MULTIPOLYGON"):
-        polys_txt = s[s.find("(") + 1 : s.rfind(")")]
-        parts = []
-        # split top-level polygons: "))," separators
-        for poly_txt in polys_txt.split(")),"):
-            poly_txt = poly_txt.strip().lstrip("(").rstrip(")")
-            ring = []
-            for pair in poly_txt.split(","):
-                x, y = (p for p in pair.strip().split())
-                ring.append([float(x), float(y)])
-            if ring and ring[0] != ring[-1]:
-                ring.append(ring[0])
-            parts.append([ring])
-        return {"type": "MultiPolygon", "coordinates": parts}
-    raise ValueError(f"Unsupported WKT: {wkt[:32]}...")
-
-
 def _bbox_from_geometry(geom: dict) -> list[float]:
-    """Compute [minLon, minLat, maxLon, maxLat] from GeoJSON Polygon/MultiPolygon."""
+    """Compute [minLon, minLat, maxLon, maxLat] from GeoJSON Polygon."""
     t = (geom.get("type") or "").lower()
 
     def _extrema(points):
@@ -240,15 +210,6 @@ def _bbox_from_geometry(geom: dict) -> list[float]:
     if t == "polygon":
         ring = (geom.get("coordinates") or [[]])[0] or []
         return _extrema(ring) if ring else []
-    if t == "multipolygon":
-        xs, ys = [], []
-        for poly in geom.get("coordinates") or []:
-            ring = poly[0] if poly else []
-            if ring:
-                b = _extrema(ring)
-                xs += [b[0], b[2]]
-                ys += [b[1], b[3]]
-        return [min(xs), min(ys), max(xs), max(ys)] if xs else []
     return []
 
 
@@ -274,6 +235,35 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
         {item.get("Name", None): item.get("Value", None) for item in eo_product.properties.get("attrs", [])},
     )
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
+
+
+def _apply_product_facets(feature: dict, _odata: dict) -> None:
+    """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
+
+    product_type_data = {
+        "product:type": "S01SIWSLC",
+        "processing:level": "L1",
+        "instrument_mode": "IW",
+        "mission": "S1",
+    }
+
+    props = feature["properties"]
+    if not (
+        all(k in props for k in ("product:type", "processing:level"))
+        and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
+    ):
+        return
+
+    props["product:type"] = product_type_data["product:type"]
+    props["processing:level"] = product_type_data["processing:level"]
+
+    instrument_mode_key = "eopf:instrument_mode" if product_type_data["mission"] == "S2" else "sar:instrument_mode"
+
+    # Remove any previous/generic instrument_mode keys, then set the selected one
+    for k in ("instrument_mode", "sar:instrument_mode", "eopf:instrument_mode"):
+        props.pop(k, None)
+
+    props[instrument_mode_key] = product_type_data["instrument_mode"]
 
 
 def validate_sort_input(sortby: str):

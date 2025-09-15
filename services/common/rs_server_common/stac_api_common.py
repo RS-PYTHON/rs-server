@@ -471,23 +471,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON)
         def _geojson_to_wkt(geom: dict) -> str:
-            # Expects lon/lat coordinates; supports Polygon and MultiPolygon
-            gtype = (geom.get("type") or "").lower()
-            coords = geom.get("coordinates")
-            if gtype == "polygon":
-                ring = coords[0]  # type: ignore[index]
-                if ring and ring[0] != ring[-1]:
-                    ring = ring + [ring[0]]
-                return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
-            if gtype == "multipolygon":
-                parts = []
-                for poly in coords:  # type: ignore[union-attr]
-                    ring = poly[0]
-                    if ring and ring[0] != ring[-1]:
-                        ring = ring + [ring[0]]
-                    parts.append("((" + ", ".join(f"{x} {y}" for x, y in ring) + "))")
-                return "MULTIPOLYGON(" + ",".join(parts) + ")"
-            raise ValueError(f"Unsupported geometry type: {geom.get('type')}")
+            # supports Polygon
+            t = geom.get("type")
+            if str(t).lower() != "polygon":
+                raise log_http_exception(422, f"Unsupported geometry type {t}. Only Polygon is supported (SRID=4326).")
+            ring = geom["coordinates"][0]  # type: ignore[index]
+            if ring and ring[0] != ring[-1]:
+                ring = ring + [ring[0]]
+            return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
 
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
@@ -504,10 +495,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         f"Invalid intersects: {format_dict(filt)}",
                     )
                 geom = args[1]
-                if isinstance(geom, dict) and geom.get("type") and geom.get("coordinates"):
-                    stac_params["intersects_wkt"] = _geojson_to_wkt(geom)
+                if isinstance(geom, dict):
+                    if not geom.get("type") or geom.get("coordinates") is None:
+                        raise log_http_exception(422, "Geometry must include 'type' and 'coordinates'.")
+                    stac_params["intersects"] = _geojson_to_wkt(geom)
                 else:
-                    stac_params["intersects_wkt"] = str(geom).strip("'\"")
+                    stac_params["intersects"] = str(geom).strip("'\"")
                 return
 
             # Read a single property
@@ -546,17 +539,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 conditions = [c.strip() for c in re.split(r"\bAND\b", query_arg, flags=re.IGNORECASE)]
                 for condition in conditions:
                     read_query(condition)
-                return
-
-            # ADD: simple CQL2-text helper: intersects(POLYGON((...)))
-            m = re.search(r"^\s*intersects\s*\((.+)\)\s*$", query_arg, re.IGNORECASE)
-            if m:
-                arg = m.group(1)
-                if "," in arg:  # allow intersects(geometry, POLYGON(...))
-                    _, rhs = arg.split(",", 1)
-                else:
-                    rhs = arg
-                stac_params["intersects_wkt"] = rhs.strip().strip("'\"")
                 return
 
             # Handle '='
@@ -598,17 +580,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     ", only {'<property>': {'eq': <value>}} is allowed",
                 )
             read_property(prop, value)
-
-        # read 'intersects' from POST body (GeoJSON or WKT)
-        gj = post_json_body.get("intersects") if post_json_body else None
-        if gj:
-            try:
-                stac_params["intersects_wkt"] = _geojson_to_wkt(gj) if isinstance(gj, dict) else str(gj).strip("'\"")
-            except Exception as exc:
-                raise log_http_exception(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid 'intersects' geometry: {exc}",
-                ) from exc
 
         # map stac platform/constellation values to odata values...
         mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))

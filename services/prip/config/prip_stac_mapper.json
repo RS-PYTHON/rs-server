@@ -26,8 +26,6 @@
     "sar:polarizations": "polarisationChannels",
     "eopf:datatake_id": "datatakeID",
     "eopf:instrument_configuration_id": "instrumentConfigurationID",
-    "sar:instrument_mode": "instrumentMode",
-    "eopf:instrument_mode": "instrumentMode",
     "eopf:origin_datetime": "OriginDate",
     "geometry": "GeoFootprint"
 }

@@ -64,12 +64,6 @@ product:type:
   title: product:type
   format: string
   description: string
-processing:level:
-  type: string
-  title: processing:level
-  format: string
-  description: string
-  enum: [L1, L1B, L1C, L2, L2A]
 processing:version:
   type: string
   title: processing:version
@@ -121,18 +115,8 @@ sat:orbit_state:
   format: string
   description: string
   enum: [ascending, descending]
-sar:instrument_mode:
+intersects:
   type: string
-  title: sar:instrument_mode
-  format: string
-  description: string
-eopf:instrument_mode:
-  type: string
-  title: eopf:instrument_mode
-  format: string
-  description: string
-intersects_wkt:
-  type: string
-  title: intersects_wkt
+  title: intersects
   format: wkt
-  description: "WKT Polygon/MultiPolygon"
+  description: "WKT Polygon"

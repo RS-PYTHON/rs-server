@@ -17,7 +17,7 @@
 """Unittests for rs-server search endpoints."""
 import os
 from copy import deepcopy
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import pytest
 import requests
@@ -33,10 +33,12 @@ from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils2 import read_response_error
-from rs_server_prip import prip_utils
-from rs_server_prip.prip_utils import prip_map_mission
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
+
+# from rs_server_prip import prip_utils
+# from rs_server_prip.prip_utils import prip_map_mission
+
 
 # pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
 # pylint: disable=too-many-branches, too-many-lines, too-many-statements
@@ -2172,6 +2174,58 @@ def test_search_parameters(
                     assert spy_search.call_count == 0
                     assert len(features) == 0
                 spy_search.reset_mock()
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], ids=["prip"], indirect=["fastapi_app"])
+def test_search_parameters_prip(client, mocker, prip_response):
+    """Test searching all collections at the same time."""
+    expected_odata = (
+        "http://127.0.0.1:5000/Products?"
+        "$filter=contains(Name, 'ABCD') and "
+        "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+        "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+        "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes"
+    )
+
+    spy_search = mocker.spy(Provider, "search")
+
+    responses.add(
+        responses.POST,
+        "http://127.0.0.1:5000/oauth2/token",
+        status=200,
+        json={
+            "access_token": "fake",
+            "refresh_token": "fake_refresh",
+            "token_type": "Bearer",
+            "expires_in": 3600,
+        },
+    )
+    responses.add(responses.GET, expected_odata, status=200, json=prip_response)
+
+    r = client.get("/prip/collections/S1A_L0_IW_RAW/items?filter=Name=ABCD&limit=1")
+    assert r.status_code == status.HTTP_200_OK, r.text
+
+    # Make URLs explicitly str to satisfy mypy (request.url is Optional[str] in stubs)
+    urls: list[str] = [str(getattr(c.request, "url", "") or "") for c in responses.calls]
+
+    # Token + Products called
+    assert any(u.startswith("http://127.0.0.1:5000/oauth2/token") for u in urls), urls
+    products = [u for u in urls if u.startswith("http://127.0.0.1:5000/Products?")]
+    assert products, urls
+
+    # Compare decoded URL to canonical string
+    prod_url: str = products[0]
+    assert unquote(prod_url) == expected_odata, f"\nExpected:\n{expected_odata}\nGot:\n{unquote(prod_url)}"
+
+    # Minimal STAC: one feature; asset keyed by id with $value link
+    fc = r.json()
+    item = fc["features"][0]
+    asset = item["assets"][item["id"]]
+    assert asset["href"].endswith(")/$value")
+
+    assert spy_search.call_count == 1
 
 
 @pytest.mark.parametrize(

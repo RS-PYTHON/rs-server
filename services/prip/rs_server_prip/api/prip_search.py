@@ -93,7 +93,7 @@ class MockPgstacPrip(MockPgstac):
                 "end_datetime": "ContentDate/End",
             },
         )
-        self.sortby = "-created"
+        self.sortby = "-published"
 
     @handle_exceptions
     def process_search(
