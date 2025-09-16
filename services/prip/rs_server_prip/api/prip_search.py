@@ -23,11 +23,11 @@ import os.path as osp
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 import requests
 import stac_pydantic
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Request, status
 from fastapi.responses import RedirectResponse
@@ -293,22 +293,6 @@ async def get_prip_collection_specific_item(
             detail=f"PRIP item {item_id!r} not found.",
         ) from exc
     return item
-
-
-@router.post("/prip/search", response_class=GeoJSONResponse)
-async def post_prip_search(
-    request: Request,
-    body: dict = Body(...),  # STAC-like POST: {collections, filter, filter-lang, intersects, limit, sortby, page, ...}
-) -> dict[str, Any]:
-    """
-    Accepts STAC POST payload and reuses the same pgstac-like search pipeline.
-    Authorization is enforced per collection id, like the GET endpoint.
-    """
-    logger.info(f"Starting {request.url.path}")
-    for coll in body.get("collections", []):
-        auth_validation(request, coll, "read")
-    # Delegate to the common MockPgstac handler:
-    return await request.app.state.pgstac_client.search(body)
 
 
 def process_product_search(  # pylint: disable=too-many-locals
