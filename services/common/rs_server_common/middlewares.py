@@ -137,7 +137,11 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
     Middleware to implement 'first' and 'last' buttons in STAC Browser
     """
 
-    async def dispatch(self, request: Request, call_next: Callable):  # pylint: disable=too-many-branches
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable,
+    ):  # pylint: disable=too-many-branches,too-many-statements
 
         # Only for /search in auxip, prip, cadip
         if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search", "/catalog/search"]:
@@ -165,17 +169,20 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                 first_link["href"] += f"?{new_query_string}"
 
             elif request.method == "POST":
-                query = await request.json()
-                body = {}
+                try:
+                    query = await request.json()
+                    body = {}
 
-                for key in ["datetime", "limit"]:
-                    if key in query and query[key] is not None:
-                        body[key] = query[key]
+                    for key in ["datetime", "limit"]:
+                        if key in query and query[key] is not None:
+                            body[key] = query[key]
 
-                if "token" in query and request.url.path != "/catalog/search":
-                    body["token"] = "page=1"
+                    if "token" in query and request.url.path != "/catalog/search":
+                        body["token"] = "page=1"  # nosec
 
-                first_link["body"] = body
+                    first_link["body"] = body
+                except Exception:  # pylint: disable = broad-exception-caught
+                    logger.error(traceback.format_exc())
 
             response = await call_next(request)
 
