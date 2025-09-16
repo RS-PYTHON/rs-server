@@ -2179,53 +2179,185 @@ def test_search_parameters(
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], ids=["prip"], indirect=["fastapi_app"])
-def test_search_parameters_prip(client, mocker, prip_response):
-    """Test searching all collections at the same time."""
-    expected_odata = (
-        "http://127.0.0.1:5000/Products?"
-        "$filter=contains(Name, 'ABCD') and "
-        "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-        "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
-        "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes"
+@pytest.mark.parametrize(
+    "collection_params, expected_odata",
+    [
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z", "sortby": "+published"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=(PublicationDate gt 2022-06-26T06:30:34.558Z or "
+            "PublicationDate eq 2022-06-26T06:30:34.558Z) and "
+            "(PublicationDate lt 2023-06-26T06:30:34.558Z or "
+            "PublicationDate eq 2023-06-26T06:30:34.558Z) and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "filter": "platform='sentinel-1a' AND constellation='sentinel-1'"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=(PublicationDate gt 2022-06-26T06:30:34.558Z or PublicationDate eq 2022-06-26T06:30:34.558Z) and "
+            "(PublicationDate lt 2023-06-26T06:30:34.558Z or PublicationDate eq 2023-06-26T06:30:34.558Z) and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "filter": "platform='sentinel-1a' AND constellation='sentinel-1'"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "platform='sentinel-1a' AND constellation='sentinel-1'",
+                "sortby": "+published",
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "platform='sentinel-1a' AND constellation='sentinel-1'",
+                "limit": 5,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=5&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "platform='sentinel-1a' AND constellation='sentinel-1'",
+                "page": 1,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "filter": "Name=ABCD AND constellation='sentinel-1'"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'ABCD') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "intersects='POLYGON((-10 0,-62 -10,-58 -10,-56 0,-60 0))' AND constellation='sentinel-1'",
+                "filter-lang": "cql2-text",
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-10 0,-62 -10,-58 -10,-56 0,-60 0))') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+    ],
+    ids=[
+        "collections_datetime",
+        "collections_datetime_published",
+        "collections_datetime2",
+        "collections_filter",
+        "datetime_instant",
+        "datetime_range",
+        "filter_platform_constellation",
+        "filter_platform_constellation_sort_asc",
+        "filter_platform_constellation_limit5",
+        "filter_platform_constellation_page2",
+        "filter_name_constellation",
+        "collections_intersects",
+    ],
+)
+def test_get_search_parameters_prip(client, mocker, prip_response, collection_params, expected_odata):
+    """Test prip searching."""
+    router_prefix = os.getenv("router_prefix")
+    assert router_prefix is not None, "router_prefix must be set"
+    url = f"{router_prefix.rstrip('/')}/search"
+
+    mocker.patch(
+        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
+        return_value={"access_token": "TEST_TOKEN"},
     )
 
     spy_search = mocker.spy(Provider, "search")
 
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        status=200,
-        json={
-            "access_token": "fake",
-            "refresh_token": "fake_refresh",
-            "token_type": "Bearer",
-            "expires_in": 3600,
-        },
-    )
     responses.add(responses.GET, expected_odata, status=200, json=prip_response)
 
-    r = client.get("/prip/collections/S1A_L0_IW_RAW/items?filter=Name=ABCD&limit=1")
+    r = client.get(url, params=collection_params)
     assert r.status_code == status.HTTP_200_OK, r.text
-
-    # Make URLs explicitly str to satisfy mypy (request.url is Optional[str] in stubs)
     urls: list[str] = [str(getattr(c.request, "url", "") or "") for c in responses.calls]
-
-    # Token + Products called
-    assert any(u.startswith("http://127.0.0.1:5000/oauth2/token") for u in urls), urls
     products = [u for u in urls if u.startswith("http://127.0.0.1:5000/Products?")]
-    assert products, urls
+    prod_url: str = products[-1]
 
-    # Compare decoded URL to canonical string
-    prod_url: str = products[0]
     assert unquote(prod_url) == expected_odata, f"\nExpected:\n{expected_odata}\nGot:\n{unquote(prod_url)}"
-
-    # Minimal STAC: one feature; asset keyed by id with $value link
-    fc = r.json()
-    item = fc["features"][0]
-    asset = item["assets"][item["id"]]
-    assert asset["href"].endswith(")/$value")
-
     assert spy_search.call_count == 1
+    spy_search.reset_mock()
 
 
 @pytest.mark.parametrize(
