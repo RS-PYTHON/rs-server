@@ -26,7 +26,8 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker images
-echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -cs) main universe" > /etc/apt/sources.list
+. /etc/os-release
+echo "deb http://deb.debian.org/debian $VERSION_CODENAME main" > /etc/apt/sources.list
 apt update
 apt install -y git vim emacs-nox
 
