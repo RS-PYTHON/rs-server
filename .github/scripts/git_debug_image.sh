@@ -26,6 +26,7 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker images
+echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -cs) main universe" > /etc/apt/sources.list
 apt update
 apt install -y git vim emacs-nox
 
@@ -73,4 +74,4 @@ done
 chown -R user:user /home/user/rs-server
 
 # Clean everything
-rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/* /etc/apt/sources.list
