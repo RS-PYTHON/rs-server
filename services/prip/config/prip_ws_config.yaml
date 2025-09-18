@@ -102,34 +102,60 @@ prip_s1a:
       attr_ptypes:
       - null
       - $.attr_ptype
-      platformSerialIdentifier:
+      geometry:
       - null
-      - $.platformSerialIdentifier
-      platformSerialIdentifiers:
+      - POLYGON EMPTY
+      productType:
       - null
-      - $.platformSerialIdentifier
-      platformShortName:
+      - $.Attributes[?(@.Name=='productType')].Value
+      processingDate:
       - null
-      - $.platformShortName
-      platformShortNames:
-      - null
-      - $.platformShortName
-      processing:datetime:
-      - null
-      - $.processing:datetime
+      - $.Attributes[?(@.Name=='processingDate')].Value
       processingCenter:
       - null
-      - $.processingCenter
+      - $.Attributes[?(@.Name=='processingCenter')].Value
       processorVersion:
       - null
       - $.Attributes[?(@.Name=='processorVersion')].Value
-      attrs:
+      platformShortName:
       - null
-      - $.Attributes
+      - $.Attributes[?(@.Name=='platformShortName')].Value
+      platformSerialIdentifier:
+      - null
+      - $.Attributes[?(@.Name=='platformSerialIdentifier')].Value
+      instrumentShortName:
+      - null
+      - $.Attributes[?(@.Name=='instrumentShortName')].Value
+      orbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='orbitNumber')].Value
+      relativeOrbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='relativeOrbitNumber')].Value
+      cycleNumber:
+      - null
+      - $.Attributes[?(@.Name=='cycleNumber')].Value
+      orbitDirection:
+      - null
+      - $.Attributes[?(@.Name=='orbitDirection')].Value
+      polarisationChannels:
+      - null
+      - $.Attributes[?(@.Name=='polarisationChannels')].Value
+      datatakeID:
+      - null
+      - $.Attributes[?(@.Name=='datatakeID')].Value
+      instrumentConfigurationID:
+      - null
+      - $.Attributes[?(@.Name=='instrumentConfigurationID')].Value
+      platformSerialIdentifiers:
+      - null
+      - $.platformSerialIdentifier
+      platformShortNames:
+      - null
+      - $.platformShortName
       href:
       - null
       - http://127.0.0.1:5000/Products({id})/$value
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
       downloadLink: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
       intersects:
@@ -142,54 +168,45 @@ prip_s1a:
         operations:
           and:
           # ---- Name-based matches (contains/startswith/endswith) ----
-          - "Name eq '{Name_eq}'"
-          - "contains(Name, '{Name}')"
-          - "contains(Name, '{Name_contains}')"
-          - "startswith(Name, '{Name_startswith}')"
-          - "endswith(Name, '{Name_endswith}')"
+          - contains(Name, '{Name}')
           # ---- Id match (existing) ----
-          - "contains(Id, '{prip:id}')"
+          - contains(Id, '{prip:id}')
           # ---- Time on PublicationDate ----
-          - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
-          - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
-          - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           # ---- Exact equality on other top-level PRIP fields ----
-          - "EvictionDate eq {EvictionDate#to_iso_utc_datetime}"
-          - "ModificationDate eq {ModificationDate#to_iso_utc_datetime}"
-          - "OriginDate eq {OriginDate#to_iso_utc_datetime}"
-          - "Online eq {Online}"
-          - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
-          - "ContentDate/Start eq {Start#to_iso_utc_datetime}"
-          - "ContentDate/End eq {End#to_iso_utc_datetime}"
+          - EvictionDate eq {EvictionDate#to_iso_utc_datetime}
+          - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
+          - OriginDate eq {OriginDate#to_iso_utc_datetime}
+          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
+          - ContentDate/Start eq {Start#to_iso_utc_datetime}
+          - ContentDate/End eq {End#to_iso_utc_datetime}
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
-          - "OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')"
+          - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')
           # ---- Attributes[...] == value (StringAttribute) ----
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq {processing:datetime#to_iso_utc_datetime})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq {processing:facility})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName' and att/OData.CSC.StringAttribute/Value eq {instrumentShortName#to_upper})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels' and att/OData.CSC.StringAttribute/Value eq {sar:polarization})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass' and att/OData.CSC.StringAttribute/Value eq {productClass})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.StringAttribute/Value eq {sat:absolute_orbit})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.StringAttribute/Value eq {sat:relative_orbit})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.StringAttribute/Value eq {sat:orbit_cycle})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and att/OData.CSC.StringAttribute/Value eq {sat:orbit_state#to_upper})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.StringAttribute/Value eq {eopf:datatake_id})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productConsolidation' and att/OData.CSC.StringAttribute/Value eq {productConsolidation})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'qualityDataObjectID' and att/OData.CSC.StringAttribute/Value eq {qualityDataObjectID})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates' and att/OData.CSC.StringAttribute/Value eq {coordinates})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'sliceProductFlag' and att/OData.CSC.StringAttribute/Value eq {sliceProductFlag})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.StringAttribute/Value eq {instrumentConfigurationID})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'startTimeFromAscendingNode' and att/OData.CSC.StringAttribute/Value eq {startTimeFromAscendingNode})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'completionTimeFromAscendingNode' and att/OData.CSC.StringAttribute/Value eq {completionTimeFromAscendingNode})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and att/OData.CSC.StringAttribute/Value eq {start_datetime#to_iso_utc_datetime})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' and att/OData.CSC.StringAttribute/Value eq {end_datetime#to_iso_utc_datetime})"
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processingCenter}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and att/OData.CSC.StringAttribute/Value eq '{processorVersion}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName' and att/OData.CSC.StringAttribute/Value eq '{instrumentShortName#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels' and att/OData.CSC.StringAttribute/Value eq '{polarisationChannels}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass' and att/OData.CSC.StringAttribute/Value eq {productClass})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.StringAttribute/Value eq '{orbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.StringAttribute/Value eq '{relativeOrbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.StringAttribute/Value eq '{cycleNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and att/OData.CSC.StringAttribute/Value eq '{orbitDirection#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.StringAttribute/Value eq '{datatakeID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates' and att/OData.CSC.StringAttribute/Value eq {coordinates})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and att/OData.CSC.StringAttribute/Value eq '{Start#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' and att/OData.CSC.StringAttribute/Value eq '{End#to_iso_utc_datetime}')
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
@@ -319,34 +336,60 @@ prip_s2b:
       attr_ptypes:
       - null
       - $.attr_ptype
-      platformSerialIdentifier:
+      geometry:
       - null
-      - $.platformSerialIdentifier
-      platformSerialIdentifiers:
+      - POLYGON EMPTY
+      productType:
       - null
-      - $.platformSerialIdentifier
-      platformShortName:
+      - $.Attributes[?(@.Name=='productType')].Value
+      processingDate:
       - null
-      - $.platformShortName
-      platformShortNames:
-      - null
-      - $.platformShortName
-      processing:datetime:
-      - null
-      - $.processing:datetime
+      - $.Attributes[?(@.Name=='processingDate')].Value
       processingCenter:
       - null
-      - $.processingCenter
+      - $.Attributes[?(@.Name=='processingCenter')].Value
       processorVersion:
       - null
       - $.Attributes[?(@.Name=='processorVersion')].Value
-      attrs:
+      platformShortName:
       - null
-      - $.Attributes
+      - $.Attributes[?(@.Name=='platformShortName')].Value
+      platformSerialIdentifier:
+      - null
+      - $.Attributes[?(@.Name=='platformSerialIdentifier')].Value
+      instrumentShortName:
+      - null
+      - $.Attributes[?(@.Name=='instrumentShortName')].Value
+      orbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='orbitNumber')].Value
+      relativeOrbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='relativeOrbitNumber')].Value
+      cycleNumber:
+      - null
+      - $.Attributes[?(@.Name=='cycleNumber')].Value
+      orbitDirection:
+      - null
+      - $.Attributes[?(@.Name=='orbitDirection')].Value
+      polarisationChannels:
+      - null
+      - $.Attributes[?(@.Name=='polarisationChannels')].Value
+      datatakeID:
+      - null
+      - $.Attributes[?(@.Name=='datatakeID')].Value
+      instrumentConfigurationID:
+      - null
+      - $.Attributes[?(@.Name=='instrumentConfigurationID')].Value
+      platformSerialIdentifiers:
+      - null
+      - $.platformSerialIdentifier
+      platformShortNames:
+      - null
+      - $.platformShortName
       href:
       - null
       - http://127.0.0.1:5000/Products({id})/$value
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
       downloadLink: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
       intersects:
@@ -359,54 +402,45 @@ prip_s2b:
         operations:
           and:
           # ---- Name-based matches (contains/startswith/endswith) ----
-          - "Name eq '{Name_eq}'"
-          - "contains(Name, '{Name}')"
-          - "contains(Name, '{Name_contains}')"
-          - "startswith(Name, '{Name_startswith}')"
-          - "endswith(Name, '{Name_endswith}')"
+          - contains(Name, '{Name}')
           # ---- Id match (existing) ----
-          - "contains(Id, '{prip:id}')"
+          - contains(Id, '{prip:id}')
           # ---- Time on PublicationDate ----
-          - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
-          - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
-          - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           # ---- Exact equality on other top-level PRIP fields ----
-          - "EvictionDate eq {EvictionDate#to_iso_utc_datetime}"
-          - "ModificationDate eq {ModificationDate#to_iso_utc_datetime}"
-          - "OriginDate eq {OriginDate#to_iso_utc_datetime}"
-          - "Online eq {Online}"
-          - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
-          - "ContentDate/Start eq {Start#to_iso_utc_datetime}"
-          - "ContentDate/End eq {End#to_iso_utc_datetime}"
+          - EvictionDate eq {EvictionDate#to_iso_utc_datetime}
+          - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
+          - OriginDate eq {OriginDate#to_iso_utc_datetime}
+          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
+          - ContentDate/Start eq {Start#to_iso_utc_datetime}
+          - ContentDate/End eq {End#to_iso_utc_datetime}
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
-          - "OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')"
+          - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')
           # ---- Attributes[...] == value (StringAttribute) ----
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq {processing:datetime#to_iso_utc_datetime})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq {processing:facility})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName' and att/OData.CSC.StringAttribute/Value eq {instrumentShortName#to_upper})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels' and att/OData.CSC.StringAttribute/Value eq {sar:polarization})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass' and att/OData.CSC.StringAttribute/Value eq {productClass})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.StringAttribute/Value eq {sat:absolute_orbit})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.StringAttribute/Value eq {sat:relative_orbit})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.StringAttribute/Value eq {sat:orbit_cycle})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and att/OData.CSC.StringAttribute/Value eq {sat:orbit_state#to_upper})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.StringAttribute/Value eq {eopf:datatake_id})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productConsolidation' and att/OData.CSC.StringAttribute/Value eq {productConsolidation})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'qualityDataObjectID' and att/OData.CSC.StringAttribute/Value eq {qualityDataObjectID})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates' and att/OData.CSC.StringAttribute/Value eq {coordinates})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'sliceProductFlag' and att/OData.CSC.StringAttribute/Value eq {sliceProductFlag})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.StringAttribute/Value eq {instrumentConfigurationID})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'startTimeFromAscendingNode' and att/OData.CSC.StringAttribute/Value eq {startTimeFromAscendingNode})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'completionTimeFromAscendingNode' and att/OData.CSC.StringAttribute/Value eq {completionTimeFromAscendingNode})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and att/OData.CSC.StringAttribute/Value eq {start_datetime#to_iso_utc_datetime})"
-          - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' and att/OData.CSC.StringAttribute/Value eq {end_datetime#to_iso_utc_datetime})"
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processingCenter}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and att/OData.CSC.StringAttribute/Value eq '{processorVersion}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName' and att/OData.CSC.StringAttribute/Value eq '{instrumentShortName#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels' and att/OData.CSC.StringAttribute/Value eq '{polarisationChannels}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass' and att/OData.CSC.StringAttribute/Value eq {productClass})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.StringAttribute/Value eq '{orbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.StringAttribute/Value eq '{relativeOrbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.StringAttribute/Value eq '{cycleNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and att/OData.CSC.StringAttribute/Value eq '{orbitDirection#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.StringAttribute/Value eq '{datatakeID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates' and att/OData.CSC.StringAttribute/Value eq {coordinates})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and att/OData.CSC.StringAttribute/Value eq '{Start#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' and att/OData.CSC.StringAttribute/Value eq '{End#to_iso_utc_datetime}')
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'

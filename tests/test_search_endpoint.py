@@ -182,7 +182,7 @@ class TestLandingPagesEndpoints:
         "endpoint, roles",
         [
             ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
-            ("/auxip/collections", ["rs_adgs_landing_page", "rs_auxip_authTest_read"]),
+            ("/auxip/collections", ["rs_auxip_landing_page", "rs_auxip_authTest_read"]),
             ("/prip/collections", ["rs_prip_landing_page", "rs_prip_authTest_read"]),
         ],
     )
@@ -245,7 +245,7 @@ class TestLandingPagesEndpoints:
         "endpoint, roles, request_path",
         [
             ("/cadip/collections", ["rs_cadip_landing_page"], "rs_server_cadip.api.cadip_search.Request.state"),
-            ("/auxip/collections", ["rs_adgs_landing_page"], "rs_server_adgs.api.adgs_search.Request.state"),
+            ("/auxip/collections", ["rs_auxip_landing_page"], "rs_server_adgs.api.adgs_search.Request.state"),
             ("/prip/collections", ["rs_prip_landing_page"], "rs_server_prip.api.prip_search.Request.state"),
         ],
     )
@@ -2383,12 +2383,37 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "collections": ["S1A_L0_IW_RAW"],
                 "limit": 10,
                 "filter-lang": "cql2-json",
-                "filter": {"op": "=", "args": [{"property": "datetime"}, {"value": "2022-06-26T06:30:34.558Z"}]},
+                "filter": {"op": "=", "args": [{"property": "datetime"}, "2022-06-26T06:30:34.558Z"]},
                 "sortby": [{"field": "published", "direction": "desc"}],
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "limit": 10,
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "start_datetime"}, "2020-06-26T06:30:34.558Z"]},
+                        {"op": "=", "args": [{"property": "end_datetime"}, "2023-06-26T06:30:34.558Z"]},
+                    ],
+                },
+                "sortby": [{"field": "published", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=ContentDate/Start eq 2020-06-26T06:30:34.558Z and ContentDate/End eq 2023-06-26T06:30:34.558Z "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and "
+            "att/OData.CSC.StringAttribute/Value eq '2020-06-26T06:30:34.558Z') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' "
+            "and att/OData.CSC.StringAttribute/Value eq '2023-06-26T06:30:34.558Z')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2485,14 +2510,126 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "limit": 10,
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {
+                            "op": "=",
+                            "args": [
+                                {"property": "id"},
+                                "S1A_IW_RAW__0NSH_20220626T050533_20220626T051038_043829_053B7F_203C",
+                            ],
+                        },
+                        {"op": "=", "args": [{"property": "processing:facility"}, "S1 Production Service-SERCO"]},
+                    ],
+                },
+                "sortby": [{"field": "published", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'S1A_IW_RAW__0NSH_20220626T050533_20220626T051038_043829_053B7F_203C') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
+            "att/OData.CSC.StringAttribute/Value eq 'S1 Production Service-SERCO')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "platform"}, "sentinel-1a"]},
+                        {"op": "=", "args": [{"property": "created"}, "2022-06-26T06:30:34.558Z"]},
+                    ],
+                },
+                "limit": 10,
+                "sortby": [{"field": "file:size", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and "
+            "att/OData.CSC.StringAttribute/Value eq '2022-06-26T06:30:34.558Z')"
+            "&$orderby=ContentLength desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "platform"}, "sentinel-1a"]},
+                        {"op": "=", "args": [{"property": "sat:absolute_orbit"}, 10000]},
+                        {"op": "=", "args": [{"property": "sat:orbit_state"}, "descending"]},
+                        {"op": "=", "args": [{"property": "processing:version"}, "2.0"]},
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
+            "att/OData.CSC.StringAttribute/Value eq '2.0') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.StringAttribute/Value eq '10000') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
+            "att/OData.CSC.StringAttribute/Value eq 'DESCENDING')&$orderby=PublicationDate desc"
+            "&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "sat:absolute_orbit"}, "43829"]},
+                        {"op": "=", "args": [{"property": "processing:version"}, "2.0"]},
+                        {"op": "=", "args": [{"property": "sat:orbit_state"}, "ascending"]},
+                        {"op": "=", "args": [{"property": "sat:relative_orbit"}, "43829"]},
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
+            "att/OData.CSC.StringAttribute/Value eq '2.0') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.StringAttribute/Value eq '43829') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and "
+            "att/OData.CSC.StringAttribute/Value eq '43829') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
+            "att/OData.CSC.StringAttribute/Value eq 'ASCENDING')&$orderby=PublicationDate desc"
+            "&$top=10&$skip=0&$expand=Attributes",
+        ),
     ],
     ids=[
         "collections_Name",
         "collections_datetime_published",
+        "collections_start_end_datetime",
         "collections_Name_platform",
         "collections_Name_constellation",
         "collections_constellation_geometry",
         "collections_constellation_geometry2",
+        "collections_id",
+        "collections_platform_created",
+        "collections_platform_orbit",
+        "collections_platform_orbit2",
     ],
 )
 def test_post_search_parameters_prip(client, mocker, prip_response, collection_params, expected_odata):

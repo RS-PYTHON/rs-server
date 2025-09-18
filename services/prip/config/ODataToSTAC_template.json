@@ -20,7 +20,7 @@
     "properties": {
         "prip:id": "PLACEHOLDER",
         "published": "PLACEHOLDER",
-        "updated": "PLACEHOLDER",
+        "created": "PLACEHOLDER",
         "expires": "PLACEHOLDER",
         "eopf:origin_datetime": "PLACEHOLDER",
         "datetime": "PLACEHOLDER",

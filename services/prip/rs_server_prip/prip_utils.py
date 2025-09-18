@@ -139,7 +139,7 @@ def get_prip_queryables() -> dict[str, QueryableField]:
         "processingDate": QueryableField(
             title="Processing Date",
             type="DateTimeOffset",
-            description="Auxip processing date",
+            description="Prip processing date",
             format="2019-02-16T12:00:00.000Z",
         ),
         "platformSerialIdentifier": QueryableField(

@@ -2,7 +2,7 @@
     "id": "Name",
     "prip:id": "id",
     "published": "PublicationDate",
-    "updated": "processingDate",
+    "created": "processingDate",
     "expires": "EvictionDate",
     "datetime": "DatetimeStart",
     "start_datetime": "Start",
