@@ -332,11 +332,16 @@ jobs:
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
+
       - name: Download .whl dependencies
         uses: actions/download-artifact@v5
         with:
           name: ${{ needs.services-prip-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Copy layer-cleanup.sh script
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+        shell: bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
