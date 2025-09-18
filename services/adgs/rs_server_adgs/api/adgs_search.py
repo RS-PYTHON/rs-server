@@ -136,7 +136,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     station = collection["station"]
 
     # Call the authentication function from the authentication module
-    authentication.auth_validation("adgs", access_type, request=request, station=station)
+    authentication.auth_validation("auxip", access_type, request=request, station=station)
 
 
 @router.get("/", include_in_schema=False)
@@ -173,14 +173,14 @@ async def get_root_catalog(request: Request):
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
     logger.info(f"Starting {request.url.path}")
-    authentication.auth_validation("adgs", "landing_page", request=request)
+    authentication.auth_validation("auxip", "landing_page", request=request)
     return await request.app.state.pgstac_client.landing_page(request=request)
 
 
 @router.get("/auxip/conformance")
 async def get_conformance(request: Request):
     """Return the STAC/OGC conformance classes implemented by this server."""
-    authentication.auth_validation("adgs", "landing_page", request=request)
+    authentication.auth_validation("auxip", "landing_page", request=request)
     return await request.app.state.pgstac_client.conformance()
 
 
@@ -189,7 +189,7 @@ async def get_conformance(request: Request):
 async def get_allowed_adgs_collections(request: Request):
     """Return the ADGS collections to which the user has access to."""
     logger.info(f"Starting {request.url.path}")
-    authentication.auth_validation("adgs", "landing_page", request=request)
+    authentication.auth_validation("auxip", "landing_page", request=request)
     return await request.app.state.pgstac_client.all_collections(request=request)
 
 

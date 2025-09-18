@@ -221,7 +221,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     roles = [
         "rs_auxip_adgs_read",
         "rs_auxip_adgs_download",
-        "rs_adgs_landing_page",
+        "rs_auxip_landing_page",
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
         "rs_cadip_landing_page",
@@ -378,14 +378,14 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_cadip_{station}_read",
         ],
-        [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
+        [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_auxip_landing_page"],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
             "/auxip/collections",
             "GET",
             ADGS_STATIONS,
             NAME_PARAM,
-            "rs_adgs_landing_page",
+            "rs_auxip_landing_page",
         ],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
