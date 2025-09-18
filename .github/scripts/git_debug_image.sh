@@ -29,12 +29,13 @@ BRANCH_NAME="$1" # git branch name
 . /etc/os-release
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME main" > /etc/apt/sources.list
 apt update
-apt install -y git vim emacs-nox
+apt install -y --no-install-recommends git vim-tiny mg
 
 # Add aliases to bash
 cat << EOF >> /home/user/.bashrc
 alias ll='ls -alFh'
 alias ls='ls --color=auto'
+alias vim='vim.tiny'
 EOF
 
 # Git clone the project branch with HTTP authentication so we don't need any
