@@ -15,11 +15,14 @@
 # Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
+COPY ./layer-cleanup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+
 # Install git to install dependencies from forked repositories
-RUN apt update && apt upgrade -y && apt install -y git
+RUN apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
 
 # Update pip version
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -32,16 +35,14 @@ ADD ./*.whl /tmp/whl
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    rs_server_common-*.whl rs_server_prip-*.whl
+    rs_server_common-*.whl rs_server_prip-*.whl && \
+    layer-cleanup.sh
 
 # Install opentelemetry instrumentation packages for dependencies
-RUN opentelemetry-bootstrap -a install
+RUN opentelemetry-bootstrap -a install && layer-cleanup.sh
 
 # Remove dependencies that are need only for compilation, not execution
-RUN apt autoremove -y git
-
-# Clean everything
-RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+RUN apt autoremove -y git && layer-cleanup.sh
 
 # Add a default user
 RUN useradd -m user
