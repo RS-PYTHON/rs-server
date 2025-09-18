@@ -15,7 +15,6 @@
 """
 Module for interacting with ADGS system through a FastAPI APIRouter.
 """
-# pylint: disable=duplicate-code
 import json
 import os
 import os.path as osp
