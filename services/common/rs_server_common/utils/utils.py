@@ -170,21 +170,23 @@ def odata_to_stac(
     if not all(item in feature_template.keys() for item in ["properties", "id", "assets"]):
         raise ValueError("Invalid stac feature template")
     for stac_key, eodag_key in odata_stac_mapper.items():
-        if eodag_key in odata_dict:
+        if eodag_key not in odata_dict:
             if stac_key in feature_template["properties"]:
-                if stac_key == "instruments":
-                    feature_template["properties"][stac_key] = [odata_dict[eodag_key]]
-                else:
-                    feature_template["properties"][stac_key] = odata_dict[eodag_key]
-            elif stac_key == "id":
-                feature_template["id"] = odata_dict[eodag_key]
-            elif stac_key == "geometry":
-                feature_template["geometry"] = odata_dict[eodag_key]
-                feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
-            elif stac_key in feature_template["assets"]["file"]:
-                feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
-        elif stac_key in feature_template["properties"]:
-            feature_template["properties"].pop(stac_key, None)
+                feature_template["properties"].pop(stac_key, None)
+            continue
+        value = odata_dict[eodag_key]
+        if stac_key in feature_template["properties"]:
+            feature_template["properties"][stac_key] = [value] if stac_key == "instruments" else value
+            continue
+        if stac_key == "id":
+            feature_template["id"] = value
+            continue
+        if stac_key == "geometry":
+            feature_template["geometry"] = value
+            feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
+            continue
+        if stac_key in feature_template["assets"]["file"]:
+            feature_template["assets"]["file"][stac_key] = value
 
     _apply_product_facets(feature_template, odata_dict)
 

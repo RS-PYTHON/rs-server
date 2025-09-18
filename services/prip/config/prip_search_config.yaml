@@ -19,7 +19,7 @@
 
 collections:
 - id: S1A_L0_IW_RAW
-  station: prip_s1a
+  station: s1a
   query:
     productType: IW_RAW__0N
   stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json", "https://stac-extensions.github.io/sar/v1.3.0/schema.json", "https://stac-extensions.github.io/sat/v1.1.0/schema.json", "https://stac-extensions.github.io/processing/v1.2.0/schema.json", "https://stac-extensions.github.io/product/v1.0.0/schema.json", "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json", "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json" ]
@@ -51,7 +51,7 @@ collections:
         - host
       url: 'https://home.rs-python.eu/'
 - id: S2B_L0_DS
-  station: prip_s2b
+  station: s2b
   query:
     productType: OPER_MSI
   stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json", "https://stac-extensions.github.io/sar/v1.3.0/schema.json", "https://stac-extensions.github.io/sat/v1.1.0/schema.json", "https://stac-extensions.github.io/processing/v1.2.0/schema.json", "https://stac-extensions.github.io/product/v1.0.0/schema.json", "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json", "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json" ]
@@ -83,7 +83,7 @@ collections:
         - host
       url: 'https://home.rs-python.eu/'
 - id: S2B_L0_GR
-  station: prip_s2b
+  station: s2b
   query:
     productType: OPER_MSI_L0
   stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json", "https://stac-extensions.github.io/sar/v1.3.0/schema.json", "https://stac-extensions.github.io/sat/v1.1.0/schema.json", "https://stac-extensions.github.io/processing/v1.2.0/schema.json", "https://stac-extensions.github.io/product/v1.0.0/schema.json", "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json", "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json" ]
@@ -115,7 +115,7 @@ collections:
         - host
       url: 'https://home.rs-python.eu/'
 - id: S2B_L2A_TL
-  station: prip_s2b
+  station: s2b
   query:
     productType: OPER_MSI_L2A
   stac_extensions: [ "https://stac-extensions.github.io/eo/v2.0.0/schema.json", "https://stac-extensions.github.io/projection/v2.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json", "https://stac-extensions.github.io/sar/v1.3.0/schema.json", "https://stac-extensions.github.io/sat/v1.1.0/schema.json", "https://stac-extensions.github.io/processing/v1.2.0/schema.json", "https://stac-extensions.github.io/product/v1.0.0/schema.json", "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json", "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json" ]

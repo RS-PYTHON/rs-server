@@ -25,7 +25,7 @@ from pathlib import Path
 import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import QueryableField, map_stac_platform
+from rs_server_common.stac_api_common import map_stac_platform
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
@@ -84,42 +84,6 @@ def serialize_adgs_asset(feature_collection, products):
         feature.assets[feature.id] = feature.assets.pop("file")
         feature.id = feature.id.rsplit(".", 1)[0]  # remove extension if any
     return feature_collection
-
-
-def get_adgs_queryables() -> dict[str, QueryableField]:
-    """Function to list all available queryables for ADGS file search."""
-    return {
-        "PublicationDate": QueryableField(
-            title="PublicationDate",
-            type="Interval",
-            description="File Publication Date",
-            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
-        ),
-        "processingDate": QueryableField(
-            title="Processing Date",
-            type="DateTimeOffset",
-            description="Auxip processing date",
-            format="2019-02-16T12:00:00.000Z",
-        ),
-        "platformSerialIdentifier": QueryableField(
-            title="Platform Serial Identifier",
-            type="StringAttribute",
-            description="Mission identifier (A/B/C)",
-            format="A / B / C",
-        ),
-        "platformShortName": QueryableField(
-            title="Platform Short Name",
-            type="StringAttribute",
-            description="Platform Short name",
-            format="SENTINEL-2 / SENTINEL-1",
-        ),
-        "constellation": QueryableField(
-            title="constellation",
-            type="StringAttribute",
-            description="constellation name",
-            format="SENTINEL-2 / SENTINEL-1",
-        ),
-    }
 
 
 def auxip_map_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:

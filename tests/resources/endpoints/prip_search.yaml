@@ -40,7 +40,7 @@ collections:
         url: "https://home.rs-python.eu/"
 
   - id: S1A_L0_IW_RAW
-    station: prip_s1a
+    station: s1a
     query:
       productType: IW_RAW__0N
     stac_extensions:
@@ -78,7 +78,7 @@ collections:
         url: "https://home.rs-python.eu/"
 
   - id: S2B_L0_DS
-    station: prip_s2b
+    station: s2b
     query:
       productType: OPER_MSI
     stac_extensions:
@@ -115,7 +115,7 @@ collections:
         url: "https://home.rs-python.eu/"
 
   - id: S2B_L0_GR
-    station: prip_s2b
+    station: s2b
     query:
       productType: OPER_MSI_L0
     stac_extensions:
@@ -152,7 +152,7 @@ collections:
         url: "https://home.rs-python.eu/"
 
   - id: S2B_L2A_TL
-    station: prip_s2b
+    station: s2b
     query:
       productType: OPER_MSI_L2A
     stac_extensions:
@@ -188,7 +188,7 @@ collections:
         roles: [host]
         url: "https://home.rs-python.eu/"
   - id: _INVALID_PRIP_COLLECTION
-    station: prip_s1a           # valid station, but this collection is disabled
+    station: s1a           # valid station, but this collection is disabled
     disabled: true              # <-- service should ignore disabled collections on landing pages
     query:
       productType: INVALID_PT   # intentionally bogus; even if parsed, should never be listed

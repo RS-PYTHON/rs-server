@@ -14,10 +14,10 @@
 
 """
 Create / cache an EODAG provider for a given PRIP station
-(prip_s1a, prip_s1c, prip_s2a …).
+(s1a, s1c, s2a …).
 
 Usage:
-    provider = init_prip_provider("prip_s1a")
+    provider = init_prip_provider("s1a")
 """
 
 import os
@@ -61,7 +61,7 @@ def init_prip_provider(station: str) -> EodagProvider:
     station = station.lower()
 
     try:
-        # Get the adgs_ws_config.yaml file path for eodag.
+        # Get the prip_ws_config.yaml file path for eodag.
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_PRIP_CONFIG", DEFAULT_EODAG_CONFIG))
 

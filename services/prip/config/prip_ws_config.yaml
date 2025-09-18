@@ -17,7 +17,7 @@
 #  - rs-server/resources/sync_config_files.py
 # DON'T MODIFY IT DIRECTLY !
 
-prip_s1a:
+s1a:
   auth:
     type: TokenAuth
     auth_uri: PLACEHOLDER
@@ -247,7 +247,7 @@ prip_s1a:
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5000/Products({uid})/$value
-prip_s2b:
+s2b:
   auth:
     type: TokenAuth
     auth_uri: PLACEHOLDER

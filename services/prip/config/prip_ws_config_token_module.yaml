@@ -17,7 +17,7 @@
 #  - rs-server/resources/sync_config_files.py
 # DON'T MODIFY IT DIRECTLY !
 
-prip_s1a:
+s1a:
   auth:
     type: HTTPHeaderAuth
     headers:

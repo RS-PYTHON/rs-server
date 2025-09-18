@@ -14,14 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Module for interacting with ADGS system through a FastAPI APIRouter.
-
-This module mirrors rs_server_adgs.adgs_utils but adapts for PRIP:
-- different env/config names (RSPY_PRIP_*), default config file: `prip_search_config.yaml`
-- PRIP-specific STAC→OData mapper file name: `prip_stac_mapper.json` (falls back to `adgs_stac_mapper.json`)
-- asset serialization emits a single asset (named after the item id) with roles ["data","metadata"]
-  and an href that points to the OData $value endpoint.
-- platform/constellation mapping helpers reuse the common `map_stac_platform()` table.
+Module for interacting with PRIP system through a FastAPI APIRouter.
 """
 # pylint: disable=duplicate-code
 from __future__ import annotations
@@ -37,7 +30,7 @@ from typing import Any
 import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import QueryableField, map_stac_platform
+from rs_server_common.stac_api_common import map_stac_platform
 
 PRIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = PRIP_CONFIG / "prip_search_config.yaml"
@@ -48,7 +41,7 @@ search_yaml = PRIP_CONFIG / "prip_search_config.yaml"
 # ----------------------
 @lru_cache
 def read_conf():
-    """Used each time to read RSPY_ADGS_SEARCH_CONFIG config yaml."""
+    """Used each time to read RSPY_PRIP_SEARCH_CONFIG config yaml."""
     prip_search_config = os.environ.get("RSPY_PRIP_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(prip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
@@ -65,7 +58,7 @@ def prip_odata_to_stac_template():
 
 @lru_cache
 def prip_stac_mapper():
-    """Used each time to read the adgs_stac_mapper config yaml."""
+    """Used each time to read the prip_stac_mapper config yaml."""
     with open(PRIP_CONFIG / "prip_stac_mapper.json", encoding="utf-8") as stac_map:
         config = json.loads(stac_map.read())
     return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
@@ -125,42 +118,6 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
         feature.id = new_key
 
     return feature_collection
-
-
-def get_prip_queryables() -> dict[str, QueryableField]:
-    """Function to list all available queryables for PRIP file search."""
-    return {
-        "PublicationDate": QueryableField(
-            title="PublicationDate",
-            type="Interval",
-            description="File Publication Date",
-            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
-        ),
-        "processingDate": QueryableField(
-            title="Processing Date",
-            type="DateTimeOffset",
-            description="Prip processing date",
-            format="2019-02-16T12:00:00.000Z",
-        ),
-        "platformSerialIdentifier": QueryableField(
-            title="Platform Serial Identifier",
-            type="StringAttribute",
-            description="Mission identifier (A/B/C)",
-            format="A / B / C",
-        ),
-        "platformShortName": QueryableField(
-            title="Platform Short Name",
-            type="StringAttribute",
-            description="Platform Short name",
-            format="SENTINEL-2 / SENTINEL-1",
-        ),
-        "constellation": QueryableField(
-            title="constellation",
-            type="StringAttribute",
-            description="constellation name",
-            format="SENTINEL-2 / SENTINEL-1",
-        ),
-    }
 
 
 # ----------------------

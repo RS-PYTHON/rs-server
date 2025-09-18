@@ -48,36 +48,6 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
-  prip_s1a:
-    domain: mockup-station-prip-s1a.processing.svc.cluster.local
-    service:
-      name: prip
-      url: http://127.0.0.1:5000
-    authentication:
-      auth_type: oauth2
-      token_url: http://127.0.0.1:5000/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: Basic test
-  prip_s2b:
-    domain: mockup-station-prip-s2b.processing.svc.cluster.local
-    service:
-      name: prip
-      url: http://127.0.0.1:5000
-    authentication:
-      auth_type: oauth2
-      token_url: http://127.0.0.1:5000/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: Basic test
   cadip:
     domain: mockup-station-cadip-cadip.processing.svc.cluster.local
     service:
@@ -274,13 +244,13 @@ external_data_sources:
       client_secret: client_secret
       authorization: Basic test
   s1a:
-    domain: mockup-prip-s1a.processing.svc.cluster.local
+    domain: mockup-station-prip-s1a.processing.svc.cluster.local
     service:
       name: prip
-      url: http://127.0.0.1:5007
+      url: http://127.0.0.1:5000
     authentication:
       auth_type: oauth2
-      token_url: http://127.0.0.1:5007/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
       grant_type: password
       scope: null
       username: test
@@ -288,14 +258,14 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
-  s2a:
-    domain: mockup-prip-s2a.processing.svc.cluster.local
+  s2b:
+    domain: mockup-station-prip-s2b.processing.svc.cluster.local
     service:
       name: prip
-      url: http://127.0.0.1:5008
+      url: http://127.0.0.1:5000
     authentication:
       auth_type: oauth2
-      token_url: http://127.0.0.1:5008/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
       grant_type: password
       scope: null
       username: test

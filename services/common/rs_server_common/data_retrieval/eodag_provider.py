@@ -228,15 +228,12 @@ class EodagProvider(Provider):
             logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
-            if "adgs" in self.provider.lower():
-                dataset_key = "CAMS_GRF_AUX"
-            else:
-                try:
-                    prov_cfg = self.client.providers_config[self.provider]
-                    products_cfg = getattr(prov_cfg, "products", {}) or {}
-                    dataset_key = next(iter(products_cfg.keys()))
-                except Exception:  # pylint: disable=broad-exception-caught
-                    dataset_key = "S1_SAR_RAW"  # last-resort fallback
+            try:
+                prov_cfg = self.client.providers_config[self.provider]
+                products_cfg = getattr(prov_cfg, "products", {})
+                dataset_key = next(iter(products_cfg.keys()))
+            except Exception:  # pylint: disable=broad-exception-caught
+                dataset_key = "S1_SAR_RAW"  # last-resort fallback
             products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,

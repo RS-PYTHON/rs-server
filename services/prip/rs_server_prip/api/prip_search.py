@@ -123,8 +123,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific PRIP collection and access type.
 
     Args:
-        collection_id (str): Used to find the PRIP station ("ADGS1, ADGS2")
-                            from the RSPY_PRIP_SEARCH_CONFIG config yaml file.
+        collection_id (str): Used to find the PRIP station from the RSPY_PRIP_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
 
@@ -336,9 +335,9 @@ def process_product_search(  # pylint: disable=too-many-locals
         )
         collection = create_stac_collection(
             products,
-            prip_odata_to_stac_template(),  # PRIP template (OData->STAC skeleton)
-            prip_stac_mapper(),  # PRIP mapper (field mapping)
-            collection_provider,  # SAME pattern as ADGS
+            prip_odata_to_stac_template(),
+            prip_stac_mapper(),
+            collection_provider,
         )
 
         # Attach PRIP assets/download links, contentType, rels, etc.
