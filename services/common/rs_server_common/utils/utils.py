@@ -14,6 +14,7 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import os
 import os.path as osp
 import traceback
 from collections.abc import Callable, Iterable, Sequence
@@ -31,7 +32,8 @@ from rs_server_common.utils.logging import Logging
 
 # pylint: disable=too-few-public-methods
 logger = Logging.default(__name__)
-PTYPE_MAPPING_FILE = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "product_type_mapping.yaml"
+LOCAL_PTYPE_MAPPING_FILE = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "product_type_mapping.yaml"
+PTYPE_MAPPING_FILE = Path(os.environ.get("PTYPE_MAPPING_CONFIG", LOCAL_PTYPE_MAPPING_FILE))
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -245,7 +247,7 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 def _apply_product_facets(feature: dict, _odata: dict) -> None:
     """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
 
-    with PTYPE_MAPPING_FILE.open("r") as f:
+    with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
         product_type_data = yaml.safe_load(f)["types"]
 
     props = feature["properties"]
