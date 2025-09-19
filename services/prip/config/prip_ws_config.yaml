@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2025 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -230,6 +230,7 @@ s1a:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
+        created: processingDate
         published: PublicationDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
@@ -464,6 +465,7 @@ s2b:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
+        created: processingDate
         published: PublicationDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End

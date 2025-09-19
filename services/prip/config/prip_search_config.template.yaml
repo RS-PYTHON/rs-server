@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2025 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@ template:
       title: "Legal notice on the use of Copernicus Sentinel Data and Service Information"
       type: "application/pdf"
     - rel: describedby
-      href: "https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-AuxiliaryDataGathering"
-      title: "Auxiliary Data"
+      href: "https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction"
+      title: "Production Service"
       type: "text/html"
   providers:
     - name: "European Union/ESA/Copernicus"
@@ -51,21 +51,42 @@ collections:
 
   # All stations deployed in the CS cluster, without queries
 
-  - id: adgs
-    station: adgs
-    title: "All from 'adgs' station"
-    description: "All from 'adgs' station"
+  - id: s1a
+    station: s1a
+    title: "All from 's1a' station"
+    description: "All from 's1a' station"
 
-  - id: adgs2
-    station: adgs2
-    title: "All from 'adgs2' station"
-    description: "All from 'adgs2' station"
+  - id: s2b
+    station: s2b
+    title: "All from 's2b' station"
+    description: "All from 's2b' station"
 
   # Idem with one collection per product type
 
-  - id: adgs_aux_pp2
-    station: adgs
+  - id: S1A_L0_IW_RAW
+    station: s1a
     query:
-      productType: AUX_PP2
-    title: "AUX_PP2 'adgs' station"
-    description: "AUX_PP2 'adgs' station"
+      productType: IW_RAW__0N
+    title: "s1a 'prip' station"
+    description: "s1a 'prip' station"
+
+  - id: S2B_L0_DS
+    station: s2b
+    query:
+      productType: OPER_MSI
+    title: "s2b 'prip' station"
+    description: "s2b 'prip' station"
+
+  - id: S2B_L0_GR
+    station: s2b
+    query:
+      productType: OPER_MSI_L0
+    title: "S2B_L0_GR 'prip' station"
+    description: "S2B_L0_GR 'prip' station"
+
+  - id: S2B_L2A_TL
+    station: s2b
+    query:
+      productType: OPER_MSI_L2A
+    title: "S2B_L2A_TL 'prip' station"
+    description: "S2B_L2A_TL 'prip' station"
