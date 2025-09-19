@@ -49,11 +49,14 @@ from rs_server_common.stac_api_common import (
     split_multiple_values,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
+from rs_server_common.utils.utils import (
+    map_auxip_prip_mission,
+    validate_inputs_format,
+    validate_sort_input,
+)
 from rs_server_prip import prip_retriever, prip_tags
 from rs_server_prip.prip_utils import (
     prepare_collection,
-    prip_map_mission,
     prip_odata_to_stac_template,
     prip_stac_mapper,
     read_conf,
@@ -87,7 +90,7 @@ class MockPgstacPrip(MockPgstac):
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,
-            map_mission=prip_map_mission,
+            map_mission=map_auxip_prip_mission,
             temporal_mapping={
                 "start_datetime": "ContentDate/Start",
                 "end_datetime": "ContentDate/End",

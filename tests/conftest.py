@@ -51,6 +51,7 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import map_stac_platform
 from rs_server_prip import prip_retriever, prip_utils
 
 from tests.app import init_app
@@ -189,7 +190,7 @@ def clear_caches():
     cadip_utils.read_conf.cache_clear()
     cadip_utils.cadip_stac_mapper.cache_clear()
     CustomEODataAccessGateway.create.cache_clear()
-    stac_api_common.map_stac_platform.cache_clear()
+    map_stac_platform.cache_clear()
     stac_api_common.get_cadip_queryables.cache_clear()
     stac_api_common.get_adgs_queryables.cache_clear()
 
