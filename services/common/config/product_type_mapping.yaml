@@ -324,3 +324,21 @@ types:
     instrumentMode: XX=01,02,03,etc
     processingLevel: L0 acquisition report
     legacyType: REP_PASS
+
+  - productType: OPER_MSI
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L2
+    legacyType: OPER_MSI_L2A
+
+  - productType: OPER_MSI
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L0
+    legacyType: OPER_MSI_L0
+
+  - productType: OPER_MSI
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L1
+    legacyType: OPER_MSI
