@@ -252,13 +252,16 @@ def _apply_product_facets(feature: dict, _odata: dict) -> None:
     with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
         product_type_data = yaml.safe_load(f)["types"]
 
-    props = feature["properties"]
+    props: dict[str, str] = feature["properties"]
     if not (
         all(k in props for k in ("product:type", "processing:level"))
         and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
     ):
         return
-    legacy_type = next((item for item in product_type_data if item.get("legacyType") == props["product:type"]), None)
+    legacy_type: dict[str, str] = next(
+        (item for item in product_type_data if item.get("legacyType") == props["product:type"]),
+        {},
+    )
     props["product:type"] = legacy_type["productType"]
     props["processing:level"] = legacy_type["processingLevel"]
 
