@@ -14,21 +14,24 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import os.path as osp
 import traceback
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 from threading import Thread
 from typing import Any
 
+import yaml
 from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
 # pylint: disable=too-few-public-methods
-
 logger = Logging.default(__name__)
+PTYPE_MAPPING_FILE = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "product_type_mapping.yaml"
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -242,12 +245,8 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 def _apply_product_facets(feature: dict, _odata: dict) -> None:
     """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
 
-    product_type_data = {
-        "product:type": "S01SIWSLC",
-        "processing:level": "L1",
-        "instrument_mode": "IW",
-        "mission": "S1",
-    }
+    with PTYPE_MAPPING_FILE.open("r") as f:
+        product_type_data = yaml.safe_load(f)["types"]
 
     props = feature["properties"]
     if not (
