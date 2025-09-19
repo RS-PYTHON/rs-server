@@ -32,7 +32,9 @@ from rs_server_common.utils.logging import Logging
 
 # pylint: disable=too-few-public-methods
 logger = Logging.default(__name__)
-LOCAL_PTYPE_MAPPING_FILE = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "product_type_mapping.yaml"
+LOCAL_PTYPE_MAPPING_FILE = (
+    Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config" / "product_type_mapping.yaml"
+)
 PTYPE_MAPPING_FILE = Path(os.environ.get("PTYPE_MAPPING_CONFIG", LOCAL_PTYPE_MAPPING_FILE))
 
 
@@ -256,17 +258,17 @@ def _apply_product_facets(feature: dict, _odata: dict) -> None:
         and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
     ):
         return
+    legacy_type = next((item for item in product_type_data if item.get("legacyType") == props["product:type"]), None)
+    props["product:type"] = legacy_type["productType"]
+    props["processing:level"] = legacy_type["processingLevel"]
 
-    props["product:type"] = product_type_data["product:type"]
-    props["processing:level"] = product_type_data["processing:level"]
-
-    instrument_mode_key = "eopf:instrument_mode" if product_type_data["mission"] == "S2" else "sar:instrument_mode"
+    instrument_mode_key = "eopf:instrument_mode" if legacy_type["mission"] == "S2" else "sar:instrument_mode"
 
     # Remove any previous/generic instrument_mode keys, then set the selected one
     for k in ("instrument_mode", "sar:instrument_mode", "eopf:instrument_mode"):
         props.pop(k, None)
 
-    props[instrument_mode_key] = product_type_data["instrument_mode"]
+    props[instrument_mode_key] = legacy_type["instrumentMode"]
 
 
 def validate_sort_input(sortby: str):
