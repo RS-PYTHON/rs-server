@@ -196,6 +196,25 @@ def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | Non
     return platform_short_name, platform_serial_identifier
 
 
+def reverse_adgs_prip_map_mission(
+    platform: str | None,
+    constellation: str | None,
+) -> tuple[str | None, str | None]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not (constellation or platform):
+        return None, None
+
+    if constellation:
+        constellation = constellation.lower()  # type: ignore
+
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            # Check for matching serialid and constellation
+            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                return key, info.get("constellation")
+    return None, None
+
+
 def odata_to_stac(
     feature_template: dict,
     odata_dict: dict,
