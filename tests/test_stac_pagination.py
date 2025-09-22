@@ -15,12 +15,16 @@
 """Unit tests for the stac pagination."""
 
 import json
+
+import brotli
+import httpx
 import pytest
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
-from rs_server_common.middlewares import PaginationLinksMiddleware, HandleExceptionsMiddleware
-import httpx
-import brotli
+from rs_server_common.middlewares import (
+    HandleExceptionsMiddleware,
+    PaginationLinksMiddleware,
+)
 
 
 @pytest.mark.anyio
@@ -63,10 +67,11 @@ async def test_pagination_links_middleware_catalog_authrefs(use_br):
             data = resp.json()
             assert any(l.get("rel") == "first" for l in data.get("links", []))
 
+
 @pytest.mark.anyio
 def test_pagination_links_middleware_handles_malformed_json():
     """
-    Test case with a malformed JSON 
+    Test case with a malformed JSON
     """
     app = FastAPI()
     app.add_middleware(HandleExceptionsMiddleware)
