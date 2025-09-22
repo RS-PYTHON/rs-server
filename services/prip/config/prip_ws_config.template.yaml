@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2025 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -178,6 +178,16 @@ template:
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Start eq {Start#to_iso_utc_datetime}
           - ContentDate/End eq {End#to_iso_utc_datetime}
+          # ---- ContentLength (numeric) ----
+          - ContentLength eq {ContentLength#to_int}
+          - ContentLength gt {ContentLengthMin#to_int}
+          - ContentLength lt {ContentLengthMax#to_int}
+          - (ContentLength ge {ContentLengthMin#to_int} and ContentLength le {ContentLengthMax#to_int})
+          # ---- ContentType (string) ----
+          - ContentType eq '{ContentType}'
+          - ContentType in ({ContentTypes})
+          # ---- ProductionType (string) ----
+          - ProductionType eq '{ProductionType}'
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
           - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')

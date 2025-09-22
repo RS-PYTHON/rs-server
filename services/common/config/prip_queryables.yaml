@@ -105,6 +105,66 @@ sat:orbit_state:
   format: string
   description: string
   enum: [ascending, descending]
+processing:lineage:
+  type: string
+  title: processing:lineage
+  format: string
+  description: string
+eopf:origin_datetime:
+  type: datetime
+  title: eopf:origin_datetime
+  format: datetime
+  description: string
+eopf:datatake_id:
+  type: string
+  title: eopf:datatake_id
+  format: string
+  description: string
+eopf:instrument_configuration_id:
+  type: string
+  title: eopf:instrument_configuration_id
+  format: string
+  description: string
+expires:
+  type: datetime
+  title: expires
+  format: datetime
+  description: string
+eviction_datetime:
+  type: datetime
+  title: eviction_datetime
+  format: datetime
+  description: string
+file:size:
+  type: integer
+  title: file:size
+  format: integer
+  description: string
+type:
+  type: string
+  title: type
+  format: string
+  description: string
+file:checksum:
+  type: string
+  title: file:checksum
+  format: string
+  description: string
+instruments:
+  type: string
+  title: instruments
+  format: string
+  description: string
+sat:orbit_cycle:
+  type: integer
+  title: sat:orbit_cycle
+  format: integer
+  description: string
+sar:polarizations:
+  type: string
+  title: sar:polarizations
+  format: string
+  description: string
 intersects:
   type: string
   title: intersects

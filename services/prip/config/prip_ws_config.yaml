@@ -167,7 +167,7 @@ s1a:
         wrapper: '{}'
         operations:
           and:
-          # ---- Name-based matches (contains/startswith/endswith) ----
+          # ---- Name-based matches (contains) ----
           - contains(Name, '{Name}')
           # ---- Id match (existing) ----
           - contains(Id, '{prip:id}')
@@ -182,6 +182,16 @@ s1a:
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Start eq {Start#to_iso_utc_datetime}
           - ContentDate/End eq {End#to_iso_utc_datetime}
+          # ---- ContentLength (numeric) ----
+          - ContentLength eq {ContentLength#to_int}
+          - ContentLength gt {ContentLengthMin#to_int}
+          - ContentLength lt {ContentLengthMax#to_int}
+          - (ContentLength ge {ContentLengthMin#to_int} and ContentLength le {ContentLengthMax#to_int})
+          # ---- ContentType (string) ----
+          - ContentType eq '{ContentType}'
+          - ContentType in ({ContentTypes})
+          # ---- ProductionType (string) ----
+          - ProductionType eq '{ProductionType}'
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
           - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')
@@ -402,7 +412,7 @@ s2b:
         wrapper: '{}'
         operations:
           and:
-          # ---- Name-based matches (contains/startswith/endswith) ----
+          # ---- Name-based matches ----
           - contains(Name, '{Name}')
           # ---- Id match (existing) ----
           - contains(Id, '{prip:id}')
@@ -417,6 +427,16 @@ s2b:
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Start eq {Start#to_iso_utc_datetime}
           - ContentDate/End eq {End#to_iso_utc_datetime}
+          # ---- ContentLength (numeric) ----
+          - ContentLength eq {ContentLength#to_int}
+          - ContentLength gt {ContentLengthMin#to_int}
+          - ContentLength lt {ContentLengthMax#to_int}
+          - (ContentLength ge {ContentLengthMin#to_int} and ContentLength le {ContentLengthMax#to_int})
+          # ---- ContentType (string) ----
+          - ContentType eq '{ContentType}'
+          - ContentType in ({ContentTypes})
+          # ---- ProductionType (string) ----
+          - ProductionType eq '{ProductionType}'
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
           - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')
