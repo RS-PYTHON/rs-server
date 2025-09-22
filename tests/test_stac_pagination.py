@@ -51,7 +51,6 @@ async def test_pagination_links_middleware_catalog_authrefs(use_br):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         if use_br:
-            #'encoding == "br"' + if path == "/catalog/search" (sets auth:refs).
             # checks if the headers were kept
             async with client.stream("POST", "/catalog/search", json={"limit": 1}) as resp:
                 assert resp.status_code == 200
@@ -65,7 +64,7 @@ async def test_pagination_links_middleware_catalog_authrefs(use_br):
 
             # checks if 'first' was added when there is 'previous'
             data = resp.json()
-            assert any(l.get("rel") == "first" for l in data.get("links", []))
+            assert any(rel.get("rel") == "first" for rel in data.get("links", []))
 
 
 @pytest.mark.anyio
