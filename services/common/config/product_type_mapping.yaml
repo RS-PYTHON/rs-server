@@ -1,0 +1,344 @@
+# pylint: disable=too-many-lines
+
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+types:
+  - productType: S01SIWRAWS
+    mission: S1
+    instrumentMode: IW
+    processingLevel: RAW
+    legacyType: IW_RAW__0S
+
+  - productType: S01SIWRAW
+    mission: S1
+    instrumentMode: IW
+    processingLevel: RAW
+    legacyType: IW_RAW__0N
+
+  - productType: S01SEWRAW
+    mission: S1
+    instrumentMode: EW
+    processingLevel: RAW
+    legacyType: EW_RAW__0S
+
+  - productType: S01SSMRAW
+    mission: S1
+    instrumentMode: SM
+    processingLevel: RAW
+    legacyType: SM_RAW__0S
+
+  - productType: S01SWVRAW
+    mission: S1
+    instrumentMode: WV
+    processingLevel: RAW
+    legacyType: WV_RAW__0S
+
+  - productType: S01SIWANC
+    mission: S1
+    instrumentMode: IW
+    processingLevel: ANC
+    legacyType: IW_RAW__0A
+
+  - productType: S01SEWANC
+    mission: S1
+    instrumentMode: EW
+    processingLevel: ANC
+    legacyType: EW_RAW__0C
+
+  - productType: S01SWVANC
+    mission: S1
+    instrumentMode: WV
+    processingLevel: ANC
+    legacyType: WV_RAW__0N
+
+  - productType: S01SEWGRD
+    mission: S1
+    instrumentMode: EW
+    processingLevel: GRD
+    legacyType: EW_GRDH_1S
+
+  - productType: S01SIWGRD
+    mission: S1
+    instrumentMode: IW
+    processingLevel: GRD
+    legacyType: IW_GRDH_1S
+
+  - productType: S01SIWOCN
+    mission: S1
+    instrumentMode: IW
+    processingLevel: OCN
+    legacyType: IW_OCN__2S
+
+  - productType: S01SSMOCN
+    mission: S1
+    instrumentMode: SM
+    processingLevel: OCN
+    legacyType: SM_OCN__2S
+
+  - productType: S01SEWSLC
+    mission: S1
+    instrumentMode: EW
+    processingLevel: SLC
+    legacyType: EW_SLC__1S
+
+  - productType: S01SIWSLC
+    mission: S1
+    instrumentMode: IW
+    processingLevel: SLC
+    legacyType: IW_SLC__1S
+
+  - productType: S01SWVOCN
+    mission: S1
+    instrumentMode: WV
+    processingLevel: OCN
+    legacyType: WV_OCN__2S
+
+  - productType: S01GPSRAW
+    mission: S1
+    instrumentMode: GPS
+    processingLevel: RAW
+    legacyType: GP_RAW__0_
+
+  - productType: S01HKMRAW
+    mission: S1
+    instrumentMode: HKTM
+    processingLevel: RAW
+    legacyType: HK_RAW__0_
+
+  - productType: S01AISRAW
+    mission: S1
+    instrumentMode: AIS
+    processingLevel: RAW
+    legacyType: RAW
+
+  - productType: S02MSIL0_
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L0
+    legacyType: MSI_L0__DS
+
+  - productType: S02MSIL1A
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L1A
+    legacyType: MSI_L1A_DS
+
+  - productType: S02MSIL1B
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L1B
+    legacyType: MSI_L1B_DS
+
+  - productType: S02MSIL1C
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L1C
+    legacyType: MSI_L1C_DS
+
+  - productType: S02MSIL2A
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L2A
+    legacyType: MSI_L2A_DS
+
+  - productType: S02MSISCA
+    mission: S2
+    instrumentMode: ABSR
+    processingLevel: Sun Calibration
+    legacyType:
+
+  - productType: S02MSIDCA
+    mission: S2
+    instrumentMode: DASC
+    processingLevel: Dark Calibration
+    legacyType:
+
+  - productType: S03SRAL0_
+    mission: S3
+    instrumentMode: SRAL
+    processingLevel: L0 observation
+    legacyType: SR_0_SRA___
+
+  - productType: S03SRAL0C
+    mission: S3
+    instrumentMode: SRAL
+    processingLevel: L0 calibration
+    legacyType: SR_0_CAL___
+
+  - productType: S03ALT1A
+    mission: S3
+    instrumentMode: HR
+    processingLevel: L1A
+    legacyType: SR_1_SRA_A_
+
+  - productType: S03ALT1B
+    mission: S3
+    instrumentMode: HR
+    processingLevel: L1B
+    legacyType: SR_1_SRA_BS
+
+  - productType: S03ALT2H
+    mission: S3
+    instrumentMode: HR
+    processingLevel: Hydrology
+    legacyType: SR_2_LAN_HY
+
+  - productType: S03ALTCAL
+    mission: S3
+    instrumentMode: SRAL
+    processingLevel: CAL1/CAL2
+    legacyType: SR_1_CAL
+
+  - productType: S03MWRL0_
+    mission: S3
+    instrumentMode: MWR
+    processingLevel: L0
+    legacyType: MW_0_MWR
+
+  - productType: S03MWRL1_
+    mission: S3
+    instrumentMode: MWR
+    processingLevel: L1
+    legacyType: MW_1_MWR
+
+  - productType: S03MWRCAL
+    mission: S3
+    instrumentMode: MWR
+    processingLevel: CAL
+    legacyType: MW_1_CAL
+
+  - productType: S03OLCL0_
+    mission: S3
+    instrumentMode: OLCI
+    processingLevel: L0
+    legacyType: OL_0_EFR
+
+  - productType: S03OLCEFR
+    instrumentMode: OLCI
+    processingLevel: EFR
+    legacyType: OL_1_EFR
+
+  - productType: S03OLCERR
+    instrumentMode: OLCI
+    processingLevel: ERR
+    legacyType: OL_1_ERR
+
+  - productType: S03OLCRAC
+    mission: S3
+    instrumentMode: OLCI
+    processingLevel: RAC
+    legacyType: OL_1_RAC
+
+  - productType: S03OLCSPC
+    mission: S3
+    instrumentMode: OLCI
+    processingLevel: SPC
+    legacyType: OL_1_SPC
+
+  - productType: S03OLCLFR
+    mission: S3
+    instrumentMode: OLCI
+    processingLevel: LFR
+    legacyType: OL_2_LFR
+
+  - productType: S03OLCLRR
+    mission: S3
+    instrumentMode: OLCI
+    processingLevel: LRR
+    legacyType: OL_2_LRR
+
+  - productType: S03SLSL0_
+    mission: S3
+    instrumentMode: SLSTR
+    processingLevel: L0
+    legacyType: SL_0_SLT
+
+  - productType: S03SLSRBT
+    mission: S3
+    instrumentMode: SLSTR
+    processingLevel: RBT
+    legacyType: SL_1_RBT
+
+  - productType: S03SLSLST
+    mission: S3
+    instrumentMode: SLSTR
+    processingLevel: LST
+    legacyType: SL_2_LST
+
+  - productType: S03SLSFRP
+    mission: S3
+    instrumentMode: SLSTR
+    processingLevel: FRP
+    legacyType: SL_2_FRP
+
+  - productType: S03SYNSDR
+    mission: S3
+    instrumentMode: SYNERGY
+    processingLevel: L2
+    legacyType: SY_2_SYN
+
+  - productType: S03SYNAOD
+    mission: S3
+    instrumentMode: SYNERGY
+    processingLevel: L2
+    legacyType: SY_2_AOD
+
+  - productType: S03SYNVGT
+    mission: S3
+    instrumentMode: SYNERGY
+    processingLevel: L2
+    legacyType: SY_2_VGT
+
+  - productType: S03SYNVGK
+    mission: S3
+    instrumentMode: SYNERGY
+    processingLevel: L2
+    legacyType: SY_2_VGK
+
+  - productType: S03SYNV01
+    mission: S3
+    instrumentMode: SYNERGY
+    processingLevel: L2
+    legacyType: SY_2_VG1
+
+  - productType: S03SYNV10
+    mission: S3
+    instrumentMode: SYNERGY
+    processingLevel: L2
+    legacyType: SY_2_V10
+
+  - productType: SXXACQREP
+    mission: S3
+    instrumentMode: XX=01,02,03,etc
+    processingLevel: L0 acquisition report
+    legacyType: REP_PASS
+
+  - productType: OPER_MSI
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L2
+    legacyType: OPER_MSI_L2A
+
+  - productType: OPER_MSI
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L0
+    legacyType: OPER_MSI_L0
+
+  - productType: OPER_MSI
+    mission: S2
+    instrumentMode: MSI
+    processingLevel: L1
+    legacyType: OPER_MSI

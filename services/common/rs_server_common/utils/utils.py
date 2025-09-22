@@ -14,6 +14,8 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import os
+import os.path as osp
 import traceback
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -30,8 +32,11 @@ from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
 # pylint: disable=too-few-public-methods
-
 logger = Logging.default(__name__)
+LOCAL_PTYPE_MAPPING_FILE = (
+    Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config" / "product_type_mapping.yaml"
+)
+PTYPE_MAPPING_FILE = Path(os.environ.get("PTYPE_MAPPING_CONFIG", LOCAL_PTYPE_MAPPING_FILE))
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -312,30 +317,29 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 def _apply_product_facets(feature: dict, _odata: dict) -> None:
     """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
 
-    product_type_data = {
-        "product:type": "S01SIWSLC",
-        "processing:level": "L1",
-        "instrument_mode": "IW",
-        "mission": "S1",
-    }
+    with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
+        product_type_data = yaml.safe_load(f)["types"]
 
-    props = feature["properties"]
+    props: dict[str, str] = feature["properties"]
     if not (
         all(k in props for k in ("product:type", "processing:level"))
         and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
     ):
         return
+    legacy_type: dict[str, str] = next(
+        (item for item in product_type_data if item.get("legacyType") == props["product:type"]),
+        {},
+    )
+    props["product:type"] = legacy_type["productType"]
+    props["processing:level"] = legacy_type["processingLevel"]
 
-    props["product:type"] = product_type_data["product:type"]
-    props["processing:level"] = product_type_data["processing:level"]
-
-    instrument_mode_key = "eopf:instrument_mode" if product_type_data["mission"] == "S2" else "sar:instrument_mode"
+    instrument_mode_key = "eopf:instrument_mode" if legacy_type["mission"] == "S2" else "sar:instrument_mode"
 
     # Remove any previous/generic instrument_mode keys, then set the selected one
     for k in ("instrument_mode", "sar:instrument_mode", "eopf:instrument_mode"):
         props.pop(k, None)
 
-    props[instrument_mode_key] = product_type_data["instrument_mode"]
+    props[instrument_mode_key] = legacy_type["instrumentMode"]
 
 
 def validate_sort_input(sortby: str):
