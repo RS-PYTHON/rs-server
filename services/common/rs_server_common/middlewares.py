@@ -134,7 +134,7 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
 
 class PaginationLinksMiddleware(BaseHTTPMiddleware):
     """
-    Middleware to implement 'first' and 'last' buttons in STAC Browser
+    Middleware to implement 'first' button's functionality in STAC Browser
     """
 
     async def dispatch(
@@ -158,8 +158,7 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
                 first_link["href"] = f"https://{str(request.base_url.hostname).rstrip('/')}{request.url.path}"
 
             if request.method == "GET":
-                # parse query params to remove any 'prev' or 'next' and set page=1
-                # without this the button 'first' would not redirect to first page
+                # parse query params to remove any 'prev' or 'next'
                 query_dict = dict(request.query_params)
 
                 query_dict.pop("token", None)
