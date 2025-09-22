@@ -32,7 +32,6 @@ from fastapi import Request, status
 from fastapi.responses import RedirectResponse
 from rs_server_adgs import adgs_retriever, adgs_tags
 from rs_server_adgs.adgs_utils import (
-    auxip_map_mission,
     auxip_odata_to_stac_template,
     auxip_stac_mapper,
     prepare_collection,
@@ -59,7 +58,11 @@ from rs_server_common.stac_api_common import (
     split_multiple_values,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
+from rs_server_common.utils.utils import (
+    map_auxip_prip_mission,
+    validate_inputs_format,
+    validate_sort_input,
+)
 from stac_fastapi.api.models import GeoJSONResponse
 
 # pylint: disable=duplicate-code # with cadip_search
@@ -89,7 +92,7 @@ class MockPgstacAdgs(MockPgstac):
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,
-            map_mission=auxip_map_mission,
+            map_mission=map_auxip_prip_mission,
             temporal_mapping={"start_datetime": "ContentDate/Start", "end_datetime": "ContentDate/End"},
         )
 

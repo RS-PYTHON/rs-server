@@ -49,11 +49,14 @@ from rs_server_common.stac_api_common import (
     split_multiple_values,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
+from rs_server_common.utils.utils import (
+    map_auxip_prip_mission,
+    validate_inputs_format,
+    validate_sort_input,
+)
 from rs_server_prip import prip_retriever, prip_tags
 from rs_server_prip.prip_utils import (
     prepare_collection,
-    prip_map_mission,
     prip_odata_to_stac_template,
     prip_stac_mapper,
     read_conf,
@@ -87,7 +90,7 @@ class MockPgstacPrip(MockPgstac):
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,
-            map_mission=prip_map_mission,
+            map_mission=map_auxip_prip_mission,
             temporal_mapping={
                 "start_datetime": "ContentDate/Start",
                 "end_datetime": "ContentDate/End",
@@ -202,7 +205,30 @@ async def get_prip_collection_items(
     Args:
         collection_id (str): PRIP collection ID. Must be a valid collection identifier
                              (e.g., 'ins_s1').
+        bbox (BBoxType, optional): Bounding box filter as four or six numbers
+            [west, south, east, north] or [west, south, minz, east, north, maxz].
+            Defaults to None. If provided, items intersecting the bbox are returned.
 
+        datetime (DateTimeType, optional): Temporal filter. Either a single RFC 3339
+            timestamp/interval (e.g., "2024-01-01T00:00:00Z") or a closed/open interval
+            (e.g., "2024-01-01T00:00:00Z/2024-01-31T23:59:59Z", "../2024-01-01T00:00:00Z").
+            Defaults to None.
+
+        filter_ (FilterType, optional): CQL2 filter expression (text or JSON depending
+            on `filter_lang`). Defaults to None.
+
+        filter_lang (FilterLangType, optional): CQL2 language for `filter_`. One of
+            "cql2-text" or "cql2-json". Defaults to "cql2-text".
+
+        sortby (SortByType, optional): Sort specification. Single field or list of fields
+            with optional direction, e.g., {"field": "published", "direction": "desc"}.
+            Defaults to None (implementation default ordering).
+
+        limit (LimitType, optional): Page size (maximum number of items to return).
+            Defaults to None (service default / configured max).
+
+        page (PageType, optional): 1-based page index.
+            Defaults to None (first page).
     Returns:
         list[dict]: A FeatureCollection of items belonging to the specified collection, or an
                     error message if the collection is not found.

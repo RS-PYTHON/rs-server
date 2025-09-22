@@ -228,12 +228,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             return queryables
 
-        if self.prip:  # pylint: disable=too-many-branches
-            can_query = True
-            if can_query:  # pylint: disable=too-many-branches
-                for queryable_name, queryable_data in get_prip_queryables().items():
-                    queryables.update({queryable_name: QueryableField(**queryable_data)})
-
+        if self.prip:
+            for queryable_name, queryable_data in get_prip_queryables().items():
+                queryables.update({queryable_name: QueryableField(**queryable_data)})
             return queryables
 
         # Idem for satellite or platform
@@ -1157,13 +1154,6 @@ def filter_allowed_collections(all_collections: list[dict], role: ServiceRole | 
             else:
                 raise
     return stac_collections
-
-
-@lru_cache
-def map_stac_platform() -> dict:
-    """Function used to read and interpret from constellation.yaml"""
-    with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
-        return yaml.safe_load(cf)
 
 
 @lru_cache

@@ -30,9 +30,8 @@ import eodag
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.rspy_models import Item
-from rs_server_common.stac_api_common import map_stac_platform
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import strftime_millis
+from rs_server_common.utils.utils import map_stac_platform, strftime_millis
 from stac_pydantic import ItemCollection, ItemProperties
 from stac_pydantic.shared import Asset
 

@@ -28,17 +28,13 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
-from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
+from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
-
-# from rs_server_prip import prip_utils
-# from rs_server_prip.prip_utils import prip_map_mission
-
 
 # pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
 # pylint: disable=too-many-branches, too-many-lines, too-many-statements
@@ -85,7 +81,7 @@ class TestConstellationMapping:
     )
     def test_valid_adgs_mapping(self, platform, constellation, short_name, serial_id):
         """Pytest with only valid inputs, output is verified."""
-        assert auxip_map_mission(platform, constellation) == (short_name, serial_id)
+        assert map_auxip_prip_mission(platform, constellation) == (short_name, serial_id)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -101,7 +97,7 @@ class TestConstellationMapping:
     def test_invalid_adgs_mapping(self, platform, constellation):
         """Pytest using only invalid inputs, output is not verified, function should raise exception."""
         with pytest.raises(HTTPException):
-            auxip_map_mission(platform, constellation)
+            map_auxip_prip_mission(platform, constellation)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(

@@ -20,6 +20,7 @@ import traceback
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from threading import Thread
 from typing import Any
@@ -150,6 +151,73 @@ def validate_inputs_format(
     #     stop_date_dt = stop_date_dt.replace(microsecond=999999)  # type: ignore
 
     return fixed_date_dt, start_date_dt, stop_date_dt
+
+
+@lru_cache
+def map_stac_platform() -> dict:
+    """Function used to read and interpret from constellation.yaml"""
+    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
+    """
+    Custom function for ADGS/PRIP, to read constellation mapper and return propper
+    values for platform and serial.
+    Eodag maps this values to platformShortName, platformSerialIdentifier
+
+    Input: platform = sentinel-1a       Output: sentinel-1, A
+    Input: platform = sentinel-5P       Output: sentinel-5p, None
+    Input: constellation = sentinel-1   Output: sentinel-1, None
+    """
+    data = map_stac_platform()
+    platform_short_name: str | None = None
+    platform_serial_identifier: str | None = None
+    try:
+        if platform:
+            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
+            platform_short_name = config.get("constellation", None)
+            platform_serial_identifier = config.get("serialid", None)
+        if constellation:
+            if platform_short_name and platform_short_name != constellation:
+                # Inconsistent combination of platform / constellation case
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid combination of platform-constellation",
+                )
+            if any(
+                satellite[list(satellite.keys())[0]]["constellation"] == constellation
+                for satellite in data["satellites"]
+            ):
+                platform_short_name = constellation
+                platform_serial_identifier = None
+            else:
+                raise KeyError
+    except (KeyError, IndexError, StopIteration) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot map platform/constellation",
+        ) from exc
+    return platform_short_name, platform_serial_identifier
+
+
+def reverse_adgs_prip_map_mission(
+    platform: str | None,
+    constellation: str | None,
+) -> tuple[str | None, str | None]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not (constellation or platform):
+        return None, None
+
+    if constellation:
+        constellation = constellation.lower()  # type: ignore
+
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            # Check for matching serialid and constellation
+            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                return key, info.get("constellation")
+    return None, None
 
 
 def odata_to_stac(
