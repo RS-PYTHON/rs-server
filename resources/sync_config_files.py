@@ -669,6 +669,9 @@ if __name__ == "__main__":
             "services/cadip/config/cadip_ws_config.template.yaml",
             "services/cadip/config/cadip_ws_config.template_session.yaml",
         ],
+        ["services/prip/config/prip_search_config.template.yaml"],
+        ["services/prip/config/prip_ws_config_token_module.template.yaml"],
+        ["services/prip/config/prip_ws_config.template.yaml"],
     ):
         create_from_template(templates)
 
@@ -677,8 +680,10 @@ if __name__ == "__main__":
         "services/common/config/rs-server.yaml",
         "services/adgs/config/adgs_ws_config.yaml",
         "services/cadip/config/cadip_ws_config.yaml",
+        "services/prip/config/prip_ws_config.yaml",
         "services/adgs/config/adgs_ws_config_token_module.yaml",
         "services/cadip/config/cadip_ws_config_token_module.yaml",
+        "services/prip/config/prip_ws_config_token_module.yaml",
     ):
         copy_to_demo(config_path_relative)
 
@@ -701,7 +706,6 @@ if __name__ == "__main__":
         remove_session_stations,
     )
     copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
-    copy_to_helm_or_infra([station_params], rs_deploy_dir / "apps/01-rs-server-station-secrets/values.yaml")
 
     copy_to_helm_or_infra(
         [
@@ -791,4 +795,38 @@ if __name__ == "__main__":
             ),
         ],
         rs_helm_dir / "charts/rs-server-cadip/templates/configmap.yaml",
+    )
+
+    copy_to_helm_or_infra(
+        [
+            HelmOrInfraParams(
+                "services/prip/config/prip_ws_config.yaml",
+                ["s1a"],  # use the first input station values for all other stations
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                0,  # output doc index
+            ),
+            HelmOrInfraParams(
+                "services/prip/config/prip_ws_config_token_module.yaml",
+                ["s1a"],  # use the first input station values for all other stations
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                1,
+            ),
+            HelmOrInfraParams(
+                "services/prip/config/prip_search_config.yaml",
+                [],
+                ["data", f"{DCB_OPEN} .Values.app.pripSearchConfigFile {DCB_CLOSE}"],
+                2,
+            ),
+        ],
+        rs_helm_dir / "charts/rs-server-prip/templates/configmap.yaml",
     )
