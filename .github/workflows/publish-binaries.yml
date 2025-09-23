@@ -371,7 +371,7 @@ jobs:
       - name: Copy layer-cleanup.sh script
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
         shell: bash
-        
+
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
@@ -417,7 +417,7 @@ jobs:
       - name: Copy layer-cleanup.sh script
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
         shell: bash
-        
+
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
@@ -464,7 +464,7 @@ jobs:
       - name: Copy layer-cleanup.sh script
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
         shell: bash
-        
+
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
@@ -511,7 +511,7 @@ jobs:
       - name: Copy layer-cleanup.sh script
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
         shell: bash
-        
+
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:

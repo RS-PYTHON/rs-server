@@ -30,6 +30,7 @@ from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
+    PaginationLinksMiddleware,
     StacLinksTitleMiddleware,
 )
 from rs_server_common.schemas.health_schema import HealthSchema
@@ -224,6 +225,10 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)
+
+    # Middleware for implementing first and last buttons in STAC Browser
+    app.add_middleware(PaginationLinksMiddleware)
+
     app.add_middleware(StacLinksTitleMiddleware, title="My STAC Title")
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:
