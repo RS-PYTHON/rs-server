@@ -244,13 +244,13 @@ external_data_sources:
       client_secret: client_secret
       authorization: Basic test
   s1a:
-    domain: mockup-station-prip-s1a.processing.svc.cluster.local
+    domain: mockup-prip-s1a.processing.svc.cluster.local
     service:
       name: prip
-      url: http://127.0.0.1:5000
+      url: http://127.0.0.1:5007
     authentication:
       auth_type: oauth2
-      token_url: http://127.0.0.1:5000/oauth2/token
+      token_url: http://127.0.0.1:5007/oauth2/token
       grant_type: password
       scope: null
       username: test
@@ -259,13 +259,13 @@ external_data_sources:
       client_secret: client_secret
       authorization: Basic test
   s2b:
-    domain: mockup-station-prip-s2b.processing.svc.cluster.local
+    domain: mockup-prip-s2b.processing.svc.cluster.local
     service:
       name: prip
-      url: http://127.0.0.1:5000
+      url: http://127.0.0.1:5008
     authentication:
       auth_type: oauth2
-      token_url: http://127.0.0.1:5000/oauth2/token
+      token_url: http://127.0.0.1:5008/oauth2/token
       grant_type: password
       scope: null
       username: test
