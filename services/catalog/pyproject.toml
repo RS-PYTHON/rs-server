@@ -64,7 +64,7 @@ pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy
 black = ">=24.8,<26.0"
 # Testing
 pytest = "^8.3.5"
-pytest-cov = "^6.2.1"
+pytest-cov = ">=6.2.1,<8.0.0"
 pytest-error-for-skips = "^2.0.2"
 pytest-docker = "^3.2.2"
 pytest-dotenv = "^0.5.2"
