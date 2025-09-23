@@ -63,7 +63,7 @@ class Stations:  # pylint: disable=too-few-public-methods
         elif any(station == s for s in ("lta",)):
             self.lta = True
             self.value = station
-        elif any(station == s for s in ("s1a", "s2a")):
+        elif any(station == s for s in ("s1a", "s2b")):
             self.prip = True
             self.value = station
 
