@@ -35,6 +35,7 @@ from rs_server_common.authentication.apikey import (
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    PaginationLinksMiddleware,
     apply_middlewares,
     insert_middleware_after,
 )
@@ -126,6 +127,7 @@ insert_middleware_after(
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
+app.add_middleware(PaginationLinksMiddleware)
 
 logger.debug(f"Middlewares: {app.user_middleware}")
 

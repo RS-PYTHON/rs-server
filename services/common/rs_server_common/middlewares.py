@@ -17,9 +17,10 @@ import json
 import os
 import traceback
 from collections.abc import Callable
-from typing import ParamSpec, TypedDict
+from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+import brotli
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
@@ -129,6 +130,111 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         return "bbox" in request.query_params and (
             str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
         )
+
+
+class PaginationLinksMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to implement 'first' button's functionality in STAC Browser
+    """
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable,
+    ):  # pylint: disable=too-many-branches,too-many-statements
+
+        # Only for /search in auxip, prip, cadip
+        if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search", "/catalog/search"]:
+
+            first_link: dict[str, Any] = {
+                "rel": "first",
+                "type": "application/geo+json",
+                "method": request.method,
+                "href": f"{str(request.base_url).rstrip('/')}{request.url.path}",
+                "title": "First link",
+            }
+
+            if common_settings.CLUSTER_MODE:
+                first_link["href"] = f"https://{str(request.base_url.hostname).rstrip('/')}{request.url.path}"
+
+            if request.method == "GET":
+                # parse query params to remove any 'prev' or 'next'
+                query_dict = dict(request.query_params)
+
+                query_dict.pop("token", None)
+                if "page" in query_dict:
+                    query_dict["page"] = "1"
+                new_query_string = urlencode(query_dict, doseq=True)
+                first_link["href"] += f"?{new_query_string}"
+
+            elif request.method == "POST":
+                try:
+                    query = await request.json()
+                    body = {}
+
+                    for key in ["datetime", "limit"]:
+                        if key in query and query[key] is not None:
+                            body[key] = query[key]
+
+                    if "token" in query and request.url.path != "/catalog/search":
+                        body["token"] = "page=1"  # nosec
+
+                    first_link["body"] = body
+                except Exception:  # pylint: disable = broad-exception-caught
+                    logger.error(traceback.format_exc())
+
+            response = await call_next(request)
+
+            encoding = response.headers.get("content-encoding", "")
+            if encoding == "br":
+                body_bytes = b"".join([section async for section in response.body_iterator])
+                response_body = brotli.decompress(body_bytes)
+
+                if request.url.path == "/catalog/search":
+                    first_link["auth:refs"] = ["apikey", "openid", "oauth2"]
+            else:
+                response_body = b""
+                async for chunk in response.body_iterator:
+                    response_body += chunk
+
+            try:
+                data = json.loads(response_body)
+
+                links = data.get("links", [])
+                has_prev = any(link.get("rel") == "previous" for link in links)
+
+                if has_prev is True:
+                    links.append(first_link)
+                    data["links"] = links
+
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+
+                if encoding == "br":
+                    new_body = brotli.compress(json.dumps(data).encode("utf-8"))
+                else:
+                    new_body = json.dumps(data).encode("utf-8")
+
+                response = Response(
+                    content=new_body,
+                    status_code=response.status_code,
+                    headers=headers,
+                    media_type="application/json",
+                )
+            except Exception:  # pylint: disable = broad-exception-caught
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+
+                response = Response(
+                    content=response_body,
+                    status_code=response.status_code,
+                    headers=headers,
+                    media_type=response.headers.get("content-type"),
+                )
+        else:
+            return await call_next(request)
+
+        return response
 
 
 def get_link_title(link: dict, entity: dict) -> str:
