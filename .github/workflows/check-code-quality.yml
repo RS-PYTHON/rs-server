@@ -266,7 +266,7 @@ jobs:
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
 
       - name: Run SonarCloud Scanner
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
