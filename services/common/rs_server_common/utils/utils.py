@@ -37,6 +37,8 @@ LOCAL_PTYPE_MAPPING_FILE = (
     Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config" / "product_type_mapping.yaml"
 )
 PTYPE_MAPPING_FILE = Path(os.environ.get("PTYPE_MAPPING_CONFIG", LOCAL_PTYPE_MAPPING_FILE))
+with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
+    product_type_data = yaml.safe_load(f)["types"]
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -316,10 +318,6 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 
 def _apply_product_facets(feature: dict, _odata: dict) -> None:
     """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
-
-    with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
-        product_type_data = yaml.safe_load(f)["types"]
-
     props: dict[str, str] = feature["properties"]
     if not (
         all(k in props for k in ("product:type", "processing:level"))
