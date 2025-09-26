@@ -14,21 +14,31 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import os
+import os.path as osp
 import traceback
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 from threading import Thread
 from typing import Any
 
+import yaml
 from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
 # pylint: disable=too-few-public-methods
-
 logger = Logging.default(__name__)
+LOCAL_PTYPE_MAPPING_FILE = (
+    Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config" / "product_type_mapping.yaml"
+)
+PTYPE_MAPPING_FILE = Path(os.environ.get("PTYPE_MAPPING_CONFIG", LOCAL_PTYPE_MAPPING_FILE))
+with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
+    product_type_data = yaml.safe_load(f)["types"]
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -145,6 +155,73 @@ def validate_inputs_format(
     return fixed_date_dt, start_date_dt, stop_date_dt
 
 
+@lru_cache
+def map_stac_platform() -> dict:
+    """Function used to read and interpret from constellation.yaml"""
+    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
+    """
+    Custom function for ADGS/PRIP, to read constellation mapper and return propper
+    values for platform and serial.
+    Eodag maps this values to platformShortName, platformSerialIdentifier
+
+    Input: platform = sentinel-1a       Output: sentinel-1, A
+    Input: platform = sentinel-5P       Output: sentinel-5p, None
+    Input: constellation = sentinel-1   Output: sentinel-1, None
+    """
+    data = map_stac_platform()
+    platform_short_name: str | None = None
+    platform_serial_identifier: str | None = None
+    try:
+        if platform:
+            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
+            platform_short_name = config.get("constellation", None)
+            platform_serial_identifier = config.get("serialid", None)
+        if constellation:
+            if platform_short_name and platform_short_name != constellation:
+                # Inconsistent combination of platform / constellation case
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid combination of platform-constellation",
+                )
+            if any(
+                satellite[list(satellite.keys())[0]]["constellation"] == constellation
+                for satellite in data["satellites"]
+            ):
+                platform_short_name = constellation
+                platform_serial_identifier = None
+            else:
+                raise KeyError
+    except (KeyError, IndexError, StopIteration) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot map platform/constellation",
+        ) from exc
+    return platform_short_name, platform_serial_identifier
+
+
+def reverse_adgs_prip_map_mission(
+    platform: str | None,
+    constellation: str | None,
+) -> tuple[str | None, str | None]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not (constellation or platform):
+        return None, None
+
+    if constellation:
+        constellation = constellation.lower()  # type: ignore
+
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            # Check for matching serialid and constellation
+            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                return key, info.get("constellation")
+    return None, None
+
+
 def odata_to_stac(
     feature_template: dict,
     odata_dict: dict,
@@ -170,15 +247,26 @@ def odata_to_stac(
     if not all(item in feature_template.keys() for item in ["properties", "id", "assets"]):
         raise ValueError("Invalid stac feature template")
     for stac_key, eodag_key in odata_stac_mapper.items():
-        if eodag_key in odata_dict:
+        if eodag_key not in odata_dict:
             if stac_key in feature_template["properties"]:
-                feature_template["properties"][stac_key] = odata_dict[eodag_key]
-            elif stac_key == "id":
-                feature_template["id"] = odata_dict[eodag_key]
-            elif stac_key in feature_template["assets"]["file"]:
-                feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
-        elif stac_key in feature_template["properties"]:
-            feature_template["properties"].pop(stac_key, None)
+                feature_template["properties"].pop(stac_key, None)
+            continue
+        value = odata_dict[eodag_key]
+        if stac_key in feature_template["properties"]:
+            feature_template["properties"][stac_key] = [value] if stac_key == "instruments" else value
+            continue
+        if stac_key == "id":
+            feature_template["id"] = value
+            continue
+        if stac_key == "geometry":
+            feature_template["geometry"] = value
+            feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
+            continue
+        if stac_key in feature_template["assets"]["file"]:
+            feature_template["assets"]["file"][stac_key] = value
+
+    _apply_product_facets(feature_template, odata_dict)
+
     # to pass pydantic validation, make sure we don't have a single timerange value
     check_and_fix_timerange(feature_template)
     # determine item collection
@@ -187,6 +275,21 @@ def odata_to_stac(
         if not feature_template["collection"]:
             logger.warning(f"Unable to determine collection for {odata_dict}")
     return feature_template
+
+
+def _bbox_from_geometry(geom: dict) -> list[float]:
+    """Compute [minLon, minLat, maxLon, maxLat] from GeoJSON Polygon."""
+    t = (geom.get("type") or "").lower()
+
+    def _extrema(points):
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        return [min(xs), min(ys), max(xs), max(ys)]
+
+    if t == "polygon":
+        ring = (geom.get("coordinates") or [[]])[0] or []
+        return _extrema(ring) if ring else []
+    return []
 
 
 def check_and_fix_timerange(item: dict):
@@ -211,6 +314,30 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
         {item.get("Name", None): item.get("Value", None) for item in eo_product.properties.get("attrs", [])},
     )
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
+
+
+def _apply_product_facets(feature: dict, _odata: dict) -> None:
+    """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
+    props: dict[str, str] = feature["properties"]
+    if not (
+        all(k in props for k in ("product:type", "processing:level"))
+        and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
+    ):
+        return
+    legacy_type: dict[str, str] = next(
+        (item for item in product_type_data if item.get("legacyType") == props["product:type"]),
+        {},
+    )
+    props["product:type"] = legacy_type["productType"]
+    props["processing:level"] = legacy_type["processingLevel"]
+
+    instrument_mode_key = "eopf:instrument_mode" if legacy_type["mission"] == "S2" else "sar:instrument_mode"
+
+    # Remove any previous/generic instrument_mode keys, then set the selected one
+    for k in ("instrument_mode", "sar:instrument_mode", "eopf:instrument_mode"):
+        props.pop(k, None)
+
+    props[instrument_mode_key] = legacy_type["instrumentMode"]
 
 
 def validate_sort_input(sortby: str):

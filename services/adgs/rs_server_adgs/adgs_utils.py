@@ -15,7 +15,6 @@
 """
 Module for interacting with ADGS system through a FastAPI APIRouter.
 """
-
 import json
 import os
 import os.path as osp
@@ -26,7 +25,7 @@ from pathlib import Path
 import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import QueryableField, map_stac_platform
+from rs_server_common.utils.utils import reverse_adgs_prip_map_mission
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
@@ -87,106 +86,10 @@ def serialize_adgs_asset(feature_collection, products):
     return feature_collection
 
 
-def get_adgs_queryables() -> dict[str, QueryableField]:
-    """Function to list all available queryables for ADGS file search."""
-    return {
-        "PublicationDate": QueryableField(
-            title="PublicationDate",
-            type="Interval",
-            description="File Publication Date",
-            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
-        ),
-        "processingDate": QueryableField(
-            title="Processing Date",
-            type="DateTimeOffset",
-            description="Auxip processing date",
-            format="2019-02-16T12:00:00.000Z",
-        ),
-        "platformSerialIdentifier": QueryableField(
-            title="Platform Serial Identifier",
-            type="StringAttribute",
-            description="Mission identifier (A/B/C)",
-            format="A / B / C",
-        ),
-        "platformShortName": QueryableField(
-            title="Platform Short Name",
-            type="StringAttribute",
-            description="Platform Short name",
-            format="SENTINEL-2 / SENTINEL-1",
-        ),
-        "constellation": QueryableField(
-            title="constellation",
-            type="StringAttribute",
-            description="constellation name",
-            format="SENTINEL-2 / SENTINEL-1",
-        ),
-    }
-
-
-def auxip_map_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
-    """
-    Custom function for ADGS, to read constellation mapper and return propper
-    values for platform and serial.
-    Eodag maps this values to platformShortName, platformSerialIdentifier
-
-    Input: platform = sentinel-1a       Output: sentinel-1, A
-    Input: platform = sentinel-5P       Output: sentinel-5p, None
-    Input: constellation = sentinel-1   Output: sentinel-1, None
-    """
-    data = map_stac_platform()
-    platform_short_name: str | None = None
-    platform_serial_identifier: str | None = None
-    try:
-        if platform:
-            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
-            platform_short_name = config.get("constellation", None)
-            platform_serial_identifier = config.get("serialid", None)
-        if constellation:
-            if platform_short_name and platform_short_name != constellation:
-                # Inconsistent combination of platform / constellation case
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Invalid combination of platform-constellation",
-                )
-            if any(
-                satellite[list(satellite.keys())[0]]["constellation"] == constellation
-                for satellite in data["satellites"]
-            ):
-                platform_short_name = constellation
-                platform_serial_identifier = None
-            else:
-                raise KeyError
-    except (KeyError, IndexError, StopIteration) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Cannot map platform/constellation",
-        ) from exc
-    return platform_short_name, platform_serial_identifier
-
-
-def adgs_reverse_map_mission(
-    platform: str | None,
-    constellation: str | None,
-) -> tuple[str | None, str | None]:
-    """Function used to re-map platform and constellation based on satellite value."""
-    if not (constellation or platform):
-        return None, None
-
-    if constellation:
-        constellation = constellation.lower()  # type: ignore
-
-    for satellite in map_stac_platform()["satellites"]:
-        for key, info in satellite.items():
-            # Check for matching serialid and constellation
-            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
-                return key, info.get("constellation")
-    return None, None
-
-
 def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
     """Used to create a more complex mapping on platform/constallation from odata to stac."""
     for feature in collection.features:
-        feature.properties.platform, feature.properties.constellation = adgs_reverse_map_mission(
+        feature.properties.platform, feature.properties.constellation = reverse_adgs_prip_map_mission(
             feature.properties.platform,
             feature.properties.constellation,
         )

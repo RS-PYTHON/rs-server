@@ -1,0 +1,208 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# THIS FILE WAS AUTOMATICALLY CREATED FROM:
+#  - rs-server/services/prip/config/prip_search_config.template.yaml
+#  - rs-server/resources/sync_config_files.py
+# DON'T MODIFY IT DIRECTLY !
+
+collections:
+- id: S1A_L0_IW_RAW
+  station: s1a
+  query:
+    productType: IW_RAW__0N
+  stac_extensions:
+  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
+  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
+  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
+  - https://stac-extensions.github.io/product/v1.0.0/schema.json
+  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
+  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
+  title: S1A L0 RAW products
+  description: S1A L0 RAW products
+  license: other
+  extent:
+    spatial:
+      bbox:
+      - - -180
+        - -82.85
+        - 180
+        - 82.82
+    temporal:
+      interval:
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/s1-mission
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+- id: S2B_L0_DS
+  station: s2b
+  query:
+    productType: OPER_MSI
+  stac_extensions:
+  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
+  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
+  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
+  - https://stac-extensions.github.io/product/v1.0.0/schema.json
+  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
+  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
+  title: L0 datastrips
+  description: Sentinel-2B Level-0 Datastrip
+  license: other
+  extent:
+    spatial:
+      bbox:
+      - - -180
+        - -82.85
+        - 180
+        - 82.82
+    temporal:
+      interval:
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/s1-mission
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+- id: S2B_L0_GR
+  station: s2b
+  query:
+    productType: OPER_MSI_L0
+  stac_extensions:
+  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
+  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
+  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
+  - https://stac-extensions.github.io/product/v1.0.0/schema.json
+  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
+  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
+  title: L0 granules
+  description: Sentinel-2B Level-0 Granule
+  license: other
+  extent:
+    spatial:
+      bbox:
+      - - -180
+        - -82.85
+        - 180
+        - 82.82
+    temporal:
+      interval:
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/s1-mission
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+- id: S2B_L2A_TL
+  station: s2b
+  query:
+    productType: OPER_MSI_L2A
+  stac_extensions:
+  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
+  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
+  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
+  - https://stac-extensions.github.io/product/v1.0.0/schema.json
+  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
+  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
+  title: L2A tile products
+  description: Sentinel-2B Level-2A Tile
+  license: other
+  extent:
+    spatial:
+      bbox:
+      - - -180
+        - -82.85
+        - 180
+        - 82.82
+    temporal:
+      interval:
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/s1-mission
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/

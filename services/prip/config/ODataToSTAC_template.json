@@ -1,0 +1,59 @@
+{
+    "stac_version": "1.1.0",
+    "stac_extensions": [
+        "https://stac-extensions.github.io/sat/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/product/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/processing/v1.2.0/schema.json",
+        "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+        "https://stac-extensions.github.io/grid/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/view/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/sar/v1.3.0/schema.json",
+        "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json",
+        "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+    ],
+    "id": "PLACEHOLDER",
+    "type": "Feature",
+    "geometry": null,
+    "bbox": null,
+    "properties": {
+        "prip:id": "PLACEHOLDER",
+        "published": "PLACEHOLDER",
+        "created": "PLACEHOLDER",
+        "expires": "PLACEHOLDER",
+        "eopf:origin_datetime": "PLACEHOLDER",
+        "datetime": "PLACEHOLDER",
+        "start_datetime": "PLACEHOLDER",
+        "end_datetime": "PLACEHOLDER",
+        "product:type": "PLACEHOLDER",
+        "product:timeliness": null,
+        "product:timeliness_category": null,
+        "processing:lineage": "PLACEHOLDER",
+        "processing:version": "PLACEHOLDER",
+        "processing:datetime": "PLACEHOLDER",
+        "processing:facility": "PLACEHOLDER",
+        "processing:level": "PLACEHOLDER",
+        "instrument_mode": "PLACEHOLDER",
+        "constellation": "PLACEHOLDER",
+        "instruments": "PLACEHOLDER",
+        "platform": "PLACEHOLDER",
+        "sat:absolute_orbit": "PLACEHOLDER",
+        "sat:relative_orbit": "PLACEHOLDER",
+        "sat:orbit_state": "PLACEHOLDER",
+        "sat:orbit_cycle": "PLACEHOLDER",
+        "eopf:datatake_id": "PLACEHOLDER",
+        "eopf:instrument_configuration_id": "PLACEHOLDER",
+        "sar:polarizations": "PLACEHOLDER"
+    },
+    "links": [],
+    "assets": {
+        "file": {
+            "href": "PLACEHOLDER",
+            "type": "PLACEHOLDER",
+            "file:size": "PLACEHOLDER",
+            "file:checksum": "PLACEHOLDER",
+            "eviction_datetime": "PLACEHOLDER"
+      }
+    }
+}

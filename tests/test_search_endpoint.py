@@ -17,7 +17,7 @@
 """Unittests for rs-server search endpoints."""
 import os
 from copy import deepcopy
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import pytest
 import requests
@@ -28,13 +28,13 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
-from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
+from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
 
-from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
 
 # pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
 # pylint: disable=too-many-branches, too-many-lines, too-many-statements
@@ -81,7 +81,7 @@ class TestConstellationMapping:
     )
     def test_valid_adgs_mapping(self, platform, constellation, short_name, serial_id):
         """Pytest with only valid inputs, output is verified."""
-        assert auxip_map_mission(platform, constellation) == (short_name, serial_id)
+        assert map_auxip_prip_mission(platform, constellation) == (short_name, serial_id)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -97,7 +97,7 @@ class TestConstellationMapping:
     def test_invalid_adgs_mapping(self, platform, constellation):
         """Pytest using only invalid inputs, output is not verified, function should raise exception."""
         with pytest.raises(HTTPException):
-            auxip_map_mission(platform, constellation)
+            map_auxip_prip_mission(platform, constellation)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -141,7 +141,11 @@ class TestLandingPagesEndpoints:
     @pytest.mark.unit
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, collection_link",
-        [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections")],
+        [
+            (ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"),
+            (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections"),
+            (ROUTER_PREFIX_PRIP, "/prip", "/prip/collections"),
+        ],
         indirect=["fastapi_app"],
     )
     def test_local_landing_pages(self, client: TestClient, endpoint, collection_link):
@@ -174,7 +178,8 @@ class TestLandingPagesEndpoints:
         "endpoint, roles",
         [
             ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
-            ("/auxip/collections", ["rs_adgs_landing_page", "rs_auxip_authTest_read"]),
+            ("/auxip/collections", ["rs_auxip_landing_page", "rs_auxip_authTest_read"]),
+            ("/prip/collections", ["rs_prip_landing_page", "rs_prip_authTest_read"]),
         ],
     )
     def test_cluster_landing_page_with_roles(self, client, mocker, endpoint, roles):
@@ -215,6 +220,11 @@ class TestLandingPagesEndpoints:
             new_callable=mocker.PropertyMock,
             return_value=mock_request_state,
         )
+        mocker.patch(
+            "rs_server_prip.api.prip_search.Request.state",
+            new_callable=mocker.PropertyMock,
+            return_value=mock_request_state,
+        )
         response = client.get(endpoint).json()
         # Check links and collections.
         assert isinstance(response["links"], list)
@@ -231,7 +241,8 @@ class TestLandingPagesEndpoints:
         "endpoint, roles, request_path",
         [
             ("/cadip/collections", ["rs_cadip_landing_page"], "rs_server_cadip.api.cadip_search.Request.state"),
-            ("/auxip/collections", ["rs_adgs_landing_page"], "rs_server_adgs.api.adgs_search.Request.state"),
+            ("/auxip/collections", ["rs_auxip_landing_page"], "rs_server_adgs.api.adgs_search.Request.state"),
+            ("/prip/collections", ["rs_prip_landing_page"], "rs_server_prip.api.prip_search.Request.state"),
         ],
     )
     def test_cluster_landing_page_without_roles(self, client, mocker, endpoint, roles, request_path):
@@ -254,7 +265,11 @@ class TestLandingPagesEndpoints:
     @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint, local_config",
-        [("/cadip/collections", "RSPY_CADIP_SEARCH_CONFIG"), ("/auxip/collections", "RSPY_ADGS_SEARCH_CONFIG")],
+        [
+            ("/cadip/collections", "RSPY_CADIP_SEARCH_CONFIG"),
+            ("/auxip/collections", "RSPY_ADGS_SEARCH_CONFIG"),
+            ("/prip/collections", "RSPY_PRIP_SEARCH_CONFIG"),
+        ],
     )
     def test_local_landing_page(self, client, endpoint, local_config):
         """On local mode, /collections should return all defined collections."""
@@ -286,6 +301,7 @@ class TestQueryablesEndpoints:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/queryables", ["platform", "constellation"]),
             (ROUTER_PREFIX_AUXIP, "/auxip/queryables", ["product:type", "platform", "constellation"]),
+            (ROUTER_PREFIX_PRIP, "/prip/queryables", ["product:type", "platform", "constellation"]),
         ],
         indirect=["fastapi_app"],
     )
@@ -301,6 +317,7 @@ class TestQueryablesEndpoints:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_satellite/queryables", []),
             (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/queryables", ["product:type"]),
+            (ROUTER_PREFIX_PRIP, "/prip/collections/S1A_L0_IW_RAW/queryables", ["product:type"]),
         ],
         indirect=["fastapi_app"],
     )
@@ -349,6 +366,23 @@ class TestModelValidationError:
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_PRIP, "/prip/collections/S1A_L0_IW_RAW/items"),
+            (ROUTER_PREFIX_PRIP, "/prip/collections/S1A_L0_IW_RAW/items/sessionId"),
+        ],
+        indirect=["fastapi_app"],
+    )
+    def test_prip_validation_errors(self, client, mocker, endpoint):
+        """Test used to mock a validation error on pydantic model for PRIP, should return HTTP 422."""
+        mocker.patch(
+            "rs_server_prip.api.prip_search.process_product_search",
+            side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+        )
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
     def test_adgs_search_error(self, client, mocker):
         """Test ADGS process_product_search throwing errors"""
         mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=CreateProviderFailed)
@@ -364,6 +398,32 @@ class TestModelValidationError:
         assert response.json() == {"code": "ServiceUnavailable", "description": "Station ADGS connection error: "}
         mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=Exception)
         response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"code": "ServiceUnavailable", "description": "General failure: "}
+
+    @pytest.mark.unit
+    def test_prip_search_error(self, client, mocker):
+        """Test PRIP process_product_search/provider init throwing errors (mirrors ADGS semantics)."""
+
+        # Bad station identifier -> 400
+        mocker.patch("rs_server_prip.prip_retriever.init_prip_provider", side_effect=CreateProviderFailed)
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # Keep expectations parallel to ADGS; if your message text differs slightly, relax this to a 'startswith' check
+        assert response.json() == {"code": "BadRequest", "description": "Bad station identifier: "}
+
+        # Station connection error -> 503
+        mocker.patch(
+            "rs_server_prip.prip_retriever.init_prip_provider",
+            side_effect=requests.exceptions.ConnectionError,
+        )
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"code": "ServiceUnavailable", "description": "Station PRIP connection error: "}
+
+        # Generic failure -> 503
+        mocker.patch("rs_server_prip.prip_retriever.init_prip_provider", side_effect=Exception)
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.json() == {"code": "ServiceUnavailable", "description": "General failure: "}
 
@@ -393,6 +453,19 @@ class TestErrorWhileBuildUpCollection:
     def test_adgs_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
         mocker.patch("rs_server_adgs.api.adgs_search.process_product_search", side_effect=KeyError)
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_PRIP, "/prip/search?collection=S1A_L0_IW_RAW"),
+        ],
+        indirect=["fastapi_app"],
+    )
+    def test_prip_collection_creation_failure(self, client, mocker, endpoint):
+        """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+        mocker.patch("rs_server_prip.api.prip_search.process_product_search", side_effect=KeyError)
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
@@ -504,6 +577,52 @@ class TestFeatureOdataStacMapping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_mapping(
+        self,
+        client: TestClient,
+        prip_feature,
+        prip_response,
+    ):
+        """Test mapping of an prip reponse with expanded attributes"""
+        # Note: for /items/{item-id} top is always set to 1.
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=contains(Name, "
+            "'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            json=prip_response,
+            status=200,
+        )
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items/ABCD")
+        assert response.json() == prip_feature, "Features don't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_empty_feature_mapping(self, client: TestClient, prip_feature):
+        """Test rs-server output when PRIP returns empty payload (mirrors ADGS empty test)."""
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=contains(Name, 'ABCD') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            json={"value": []},
+            status=200,
+        )
+        response = client.get("/prip/collections/S1A_L0_IW_RAW/items/ABCD")
+        assert response.json() != prip_feature, "Features doesn't match"
+        assert response.json() == {
+            "code": "NotFound",
+            "description": "PRIP item 'ABCD' not found.",
+        }
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint, response_body",
         [
@@ -514,6 +633,10 @@ class TestFeatureOdataStacMapping:
             (
                 "/cadip/collections/INVALID_COLLECTION/items/S1A_20200105072204051312",
                 {"code": "NotFound", "description": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
+            ),
+            (
+                "/prip/collections/INVALID_COLLECTION/items/ABCD",
+                {"code": "NotFound", "description": "Unknown PRIP collection: 'INVALID_COLLECTION'"},
             ),
         ],
     )
@@ -535,9 +658,17 @@ class TestFeatureOdataStacMapping:
                 "'AUX_OBMEMC')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
                 {"code": "NotFound", "description": "AUXIP item 'INVALID_ITEM' not found."},
             ),
+            (
+                "/prip/collections/S1A_L0_IW_RAW/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'INVALID_ITEM') and Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq "
+                "'IW_RAW__0N')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                {"code": "NotFound", "description": "PRIP item 'INVALID_ITEM' not found."},
+            ),
         ],
+        ids=["auxip-invalid-item", "prip-invalid-item"],
     )
-    def test_adgs_invalid_item_mapping(self, client, endpoint, odata_url, response_body):
+    def test_adgs_prip_invalid_item_mapping(self, client, endpoint, odata_url, response_body):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         responses.add(
             responses.GET,
@@ -657,6 +788,33 @@ class TestFeatureCollectionOdataStacMapping:
         assert items["features"][0]["properties"] == adgs_feature["properties"], "properties doesn't match"
         assert items["features"][0]["assets"] == adgs_feature["assets"], "assets doesn't match"
         assert items["features"][0]["id"] == adgs_feature["id"], "id doesn't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping(
+        self,
+        client: TestClient,
+        prip_feature,
+        prip_response,
+    ):
+        """Test mapping of an prip reponse with expanded attributes"""
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=prip_response,
+            status=200,
+        )
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert items["type"] == "FeatureCollection", "Type doesn't match"
+        assert items["features"][0]["properties"] == prip_feature["properties"], "properties doesn't match"
+        assert items["features"][0]["assets"] == prip_feature["assets"], "assets doesn't match"
+        assert items["features"][0]["id"] == prip_feature["id"], "id doesn't match"
         assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
@@ -799,6 +957,10 @@ class TestFeatureCollectionOdataStacMapping:
                 {"code": "NotFound", "description": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
             ),
             (
+                "/prip/collections/INVALID_COLLECTION/items",
+                {"code": "NotFound", "description": "Unknown PRIP collection: 'INVALID_COLLECTION'"},
+            ),
+            (
                 "/cadip/collections/INVALID_COLLECTION/items",
                 {"code": "NotFound", "description": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
             ),
@@ -935,6 +1097,9 @@ class TestFeatureCollectionOdataStacMapping:
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='invalid_value'",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='-5'",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=0",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit='invalid_value'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit='-5'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=0",
             "/cadip/collections/cadip_session_by_id/items?limit='invalid_value'",
             "/cadip/collections/cadip_session_by_id/items?limit='-5'",
             "/cadip/collections/cadip_session_by_id/items?limit=0",
@@ -957,6 +1122,12 @@ class TestFeatureCollectionOdataStacMapping:
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=10000000",
                 "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
+                "desc&$top=9999&$skip=0&$expand=Attributes",
+            ),
+            (
+                "/prip/collections/S1A_L0_IW_RAW/items?limit=10000000",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+                "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')&$orderby=PublicationDate "
                 "desc&$top=9999&$skip=0&$expand=Attributes",
             ),
             (
@@ -985,6 +1156,9 @@ class TestFeatureCollectionOdataStacMapping:
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='invalid'",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=-5",
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='0'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page='invalid'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page=-5",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page='0'",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page='invalid'",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page=-5",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page='0'",
@@ -1001,6 +1175,7 @@ class TestFeatureCollectionOdataStacMapping:
         "endpoint",
         [
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=1&sortby='invalid'",
+            "/prip/collections/S1A_L0_IW_RAW/items?limit=1&page=1&sortby='invalid'",
             "/cadip/collections/cadip_session_by_id/items?limit=1&page=1&sortby='invalid'",
         ],
     )
@@ -1069,6 +1244,59 @@ class TestFeatureCollectionOdataStacMapping:
                 status.HTTP_200_OK,
             ),
             (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50.888Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=../2018-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (ROUTER_PREFIX_PRIP, "/prip/search?collections=prip&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=invalid/..",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=../invalid",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            # datime without miliseconds
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/search?collections=prip&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50.777Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777Z"
@@ -1122,7 +1350,32 @@ class TestFeatureCollectionOdataStacMapping:
             ),
         ],
         indirect=["fastapi_app"],
-        ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
+        ids=[
+            "adgs1",
+            "adgs2",
+            "adgs3",
+            "adgs4",
+            "adgs5",
+            "adgs6",
+            "adgs7",
+            "adgs8",
+            "prip1",
+            "prip2",
+            "prip3",
+            "prip4",
+            "prip5",
+            "prip6",
+            "prip7",
+            "prip8",
+            "cadip1",
+            "cadip2",
+            "cadip3",
+            "cadip4",
+            "cadip5",
+            "cadip6",
+            "cadip7",
+            "cadip8",
+        ],
     )
     @responses.activate
     def test_valid_datetime(self, client, endpoint, odata, expected_code):
@@ -1453,6 +1706,19 @@ class TestCollection:
                     "title": "This collection",
                 },
             ),
+            (
+                ROUTER_PREFIX_PRIP,
+                "/prip/collections/S1A_L0_IW_RAW",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att"
+                "/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'IW_RAW__0N')%22&"
+                "$top=1000&$expand=Attributes",
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/prip/collections/S1A_L0_IW_RAW",
+                    "title": "This collection",
+                },
+            ),
         ],
         indirect=["fastapi_app"],
     )
@@ -1498,6 +1764,18 @@ class TestCollection:
                 {
                     "href": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
                     "rel": "license",
+                    "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
+                },
+            ),
+            (
+                "/prip/collections/S1A_L0_IW_RAW",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+                "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'IW_RAW__0N')%22&$top=1000"
+                "&$expand=Attributes",
+                {
+                    "href": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
+                    "rel": "license",
+                    "type": "application/pdf",
                     "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
                 },
             ),
@@ -1892,6 +2170,489 @@ def test_search_parameters(
                     assert spy_search.call_count == 0
                     assert len(features) == 0
                 spy_search.reset_mock()
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], ids=["prip"], indirect=["fastapi_app"])
+@pytest.mark.parametrize(
+    "collection_params, expected_odata",
+    [
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z", "sortby": "+published"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=(PublicationDate gt 2022-06-26T06:30:34.558Z or "
+            "PublicationDate eq 2022-06-26T06:30:34.558Z) and "
+            "(PublicationDate lt 2023-06-26T06:30:34.558Z or "
+            "PublicationDate eq 2023-06-26T06:30:34.558Z) and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "filter": "platform='sentinel-1a' AND constellation='sentinel-1'"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=(PublicationDate gt 2022-06-26T06:30:34.558Z or PublicationDate eq 2022-06-26T06:30:34.558Z) and "
+            "(PublicationDate lt 2023-06-26T06:30:34.558Z or PublicationDate eq 2023-06-26T06:30:34.558Z) and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "filter": "platform='sentinel-1a' AND constellation='sentinel-1'"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "platform='sentinel-1a' AND constellation='sentinel-1'",
+                "sortby": "+published",
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "platform='sentinel-1a' AND constellation='sentinel-1'",
+                "limit": 5,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=5&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "platform='sentinel-1a' AND constellation='sentinel-1'",
+                "page": 1,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {"collections": "S1A_L0_IW_RAW", "filter": "Name=ABCD AND constellation='sentinel-1'"},
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'ABCD') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": "S1A_L0_IW_RAW",
+                "filter": "intersects='POLYGON((-10 0,-62 -10,-58 -10,-56 0,-60 0))' AND constellation='sentinel-1'",
+                "filter-lang": "cql2-text",
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-10 0,-62 -10,-58 -10,-56 0,-60 0))') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+    ],
+    ids=[
+        "collections_datetime",
+        "collections_datetime_published",
+        "collections_datetime2",
+        "collections_filter",
+        "datetime_instant",
+        "datetime_range",
+        "filter_platform_constellation",
+        "filter_platform_constellation_sort_asc",
+        "filter_platform_constellation_limit5",
+        "filter_platform_constellation_page2",
+        "filter_name_constellation",
+        "collections_intersects",
+    ],
+)
+def test_get_search_parameters_prip(client, mocker, prip_response, collection_params, expected_odata):
+    """Test prip searching."""
+    router_prefix = os.getenv("router_prefix")
+    assert router_prefix is not None, "router_prefix must be set"
+    url = f"{router_prefix.rstrip('/')}/search"
+
+    mocker.patch(
+        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
+        return_value={"access_token": "TEST_TOKEN"},
+    )
+
+    spy_search = mocker.spy(Provider, "search")
+
+    responses.add(responses.GET, expected_odata, status=200, json=prip_response)
+
+    r = client.get(url, params=collection_params)
+    assert r.status_code == status.HTTP_200_OK, r.text
+    urls: list[str] = [str(getattr(c.request, "url", "") or "") for c in responses.calls]
+    products = [u for u in urls if u.startswith("http://127.0.0.1:5000/Products?")]
+    prod_url: str = products[-1]
+
+    assert unquote(prod_url) == expected_odata, f"\nExpected:\n{expected_odata}\nGot:\n{unquote(prod_url)}"
+    assert spy_search.call_count == 1
+    spy_search.reset_mock()
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], ids=["prip"], indirect=["fastapi_app"])
+@pytest.mark.parametrize(
+    "collection_params, expected_odata",
+    [
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {"op": "and", "args": [{"op": "=", "args": [{"property": "Name"}, "ABCD"]}]},
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "limit": 10,
+                "filter-lang": "cql2-json",
+                "filter": {"op": "=", "args": [{"property": "datetime"}, "2022-06-26T06:30:34.558Z"]},
+                "sortby": [{"field": "published", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "limit": 10,
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "start_datetime"}, "2020-06-26T06:30:34.558Z"]},
+                        {"op": "=", "args": [{"property": "end_datetime"}, "2023-06-26T06:30:34.558Z"]},
+                    ],
+                },
+                "sortby": [{"field": "published", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=ContentDate/Start eq 2020-06-26T06:30:34.558Z and ContentDate/End eq 2023-06-26T06:30:34.558Z "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and "
+            "att/OData.CSC.StringAttribute/Value eq '2020-06-26T06:30:34.558Z') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' "
+            "and att/OData.CSC.StringAttribute/Value eq '2023-06-26T06:30:34.558Z')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "Name"}, "ABCD"]},
+                        {"op": "=", "args": [{"property": "platform"}, "sentinel-1a"]},
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' "
+            "and att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "Name"}, "ABCD"]},
+                        {"op": "=", "args": [{"property": "constellation"}, "sentinel-1"]},
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
+            "and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "constellation"}, "sentinel-1"]},
+                        {
+                            "op": "intersects",
+                            "args": [{"property": "geometry"}, "POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))"],
+                        },
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name "
+            "eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "constellation"}, "sentinel-1"]},
+                        {
+                            "op": "intersects",
+                            "args": [
+                                {"property": "geometry"},
+                                {
+                                    "type": "polygon",
+                                    "coordinates": [[[-60, 0], [-62, -10], [-58, -10], [-56, 0], [-60, 0]]],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-60 0, -62 -10, -58 -10, -56 0, -60 0))') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name "
+            "eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "limit": 10,
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {
+                            "op": "=",
+                            "args": [
+                                {"property": "id"},
+                                "S1A_IW_RAW__0NSH_20220626T050533_20220626T051038_043829_053B7F_203C",
+                            ],
+                        },
+                        {"op": "=", "args": [{"property": "processing:facility"}, "S1 Production Service-SERCO"]},
+                    ],
+                },
+                "sortby": [{"field": "published", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=contains(Name, 'S1A_IW_RAW__0NSH_20220626T050533_20220626T051038_043829_053B7F_203C') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
+            "att/OData.CSC.StringAttribute/Value eq 'S1 Production Service-SERCO')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "platform"}, "sentinel-1a"]},
+                        {"op": "=", "args": [{"property": "created"}, "2022-06-26T06:30:34.558Z"]},
+                    ],
+                },
+                "limit": 10,
+                "sortby": [{"field": "file:size", "direction": "desc"}],
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and "
+            "att/OData.CSC.StringAttribute/Value eq '2022-06-26T06:30:34.558Z')"
+            "&$orderby=ContentLength desc&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "platform"}, "sentinel-1a"]},
+                        {"op": "=", "args": [{"property": "sat:absolute_orbit"}, 10000]},
+                        {"op": "=", "args": [{"property": "sat:orbit_state"}, "descending"]},
+                        {"op": "=", "args": [{"property": "processing:version"}, "2.0"]},
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
+            "att/OData.CSC.StringAttribute/Value eq '2.0') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.StringAttribute/Value eq '10000') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
+            "att/OData.CSC.StringAttribute/Value eq 'DESCENDING')&$orderby=PublicationDate desc"
+            "&$top=10&$skip=0&$expand=Attributes",
+        ),
+        (
+            {
+                "collections": ["S1A_L0_IW_RAW"],
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "sat:absolute_orbit"}, "43829"]},
+                        {"op": "=", "args": [{"property": "processing:version"}, "2.0"]},
+                        {"op": "=", "args": [{"property": "sat:orbit_state"}, "ascending"]},
+                        {"op": "=", "args": [{"property": "sat:relative_orbit"}, "43829"]},
+                    ],
+                },
+                "limit": 10,
+            },
+            "http://127.0.0.1:5000/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
+            "att/OData.CSC.StringAttribute/Value eq '2.0') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.StringAttribute/Value eq '43829') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and "
+            "att/OData.CSC.StringAttribute/Value eq '43829') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
+            "att/OData.CSC.StringAttribute/Value eq 'ASCENDING')&$orderby=PublicationDate desc"
+            "&$top=10&$skip=0&$expand=Attributes",
+        ),
+    ],
+    ids=[
+        "collections_Name",
+        "collections_datetime_published",
+        "collections_start_end_datetime",
+        "collections_Name_platform",
+        "collections_Name_constellation",
+        "collections_constellation_geometry",
+        "collections_constellation_geometry2",
+        "collections_id",
+        "collections_platform_created",
+        "collections_platform_orbit",
+        "collections_platform_orbit2",
+    ],
+)
+def test_post_search_parameters_prip(client, mocker, prip_response, collection_params, expected_odata):
+    """Test prip searching."""
+    router_prefix = os.getenv("router_prefix")
+    assert router_prefix is not None, "router_prefix must be set"
+    url = f"{router_prefix.rstrip('/')}/search"
+
+    mocker.patch(
+        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
+        return_value={"access_token": "TEST_TOKEN"},
+    )
+
+    spy_search = mocker.spy(Provider, "search")
+
+    responses.add(responses.GET, expected_odata, status=200, json=prip_response)
+
+    r = client.post(url, json=collection_params)
+
+    assert r.status_code == status.HTTP_200_OK, r.text
+    urls: list[str] = [str(getattr(c.request, "url", "") or "") for c in responses.calls]
+    products = [u for u in urls if u.startswith("http://127.0.0.1:5000/Products?")]
+    prod_url: str = products[-1]
+
+    assert unquote(prod_url) == expected_odata, f"\nExpected:\n{expected_odata}\nGot:\n{unquote(prod_url)}"
+    assert spy_search.call_count == 1
+    spy_search.reset_mock()
 
 
 @pytest.mark.parametrize(

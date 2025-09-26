@@ -51,14 +51,18 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import map_stac_platform
+from rs_server_prip import prip_retriever, prip_utils
 
 from tests.app import init_app
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
+PRIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "prip_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
+os.environ["RSPY_PRIP_SEARCH_CONFIG"] = str(PRIP_SEARCH.absolute())
 
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
@@ -180,11 +184,13 @@ def clear_caches():
     yield
     adgs_retriever.init_adgs_provider.cache_clear()
     adgs_utils.read_conf.cache_clear()
+    prip_retriever.init_prip_provider.cache_clear()
+    prip_utils.read_conf.cache_clear()
     cadip_retriever.init_cadip_provider.cache_clear()
     cadip_utils.read_conf.cache_clear()
     cadip_utils.cadip_stac_mapper.cache_clear()
     CustomEODataAccessGateway.create.cache_clear()
-    stac_api_common.map_stac_platform.cache_clear()
+    map_stac_platform.cache_clear()
     stac_api_common.get_cadip_queryables.cache_clear()
     stac_api_common.get_adgs_queryables.cache_clear()
 
@@ -197,6 +203,7 @@ def use_module_for_station_token(monkeypatch):
     """
     monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
     reload(adgs_retriever)
+    reload(prip_retriever)
     reload(cadip_retriever)
 
     yield
@@ -204,6 +211,7 @@ def use_module_for_station_token(monkeypatch):
     # Restore default value = False at the end of the test function
     monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
     reload(adgs_retriever)
+    reload(prip_retriever)
     reload(cadip_retriever)
 
 
@@ -548,6 +556,24 @@ def adgs_pickup_response():
     adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response.json"
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
+
+
+@pytest.fixture(name="prip_feature")
+@lru_cache(maxsize=1)
+def prip_feature():
+    """Expected STAC Item for PRIP mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_feature.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+@pytest.fixture(name="prip_response")
+@lru_cache(maxsize=1)
+def prip_pickup_response():
+    """Mock PRIP OData pickup response used by the mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_pickup_response.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
 
 
 @pytest.fixture(name="mock_token_dict")

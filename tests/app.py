@@ -25,9 +25,12 @@ from rs_server_common.authentication.oauth2 import SWAGGER_HOMEPAGE
 from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
 from rs_server_common.utils.error_handlers import register_stac_exception_handlers
+from rs_server_prip.api.prip_search import MockPgstacPrip
+from rs_server_prip.fastapi.prip_routers import prip_routers
 
 ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
 ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
+ROUTER_PREFIX_PRIP = {"router_prefix": "/prip"}
 
 
 class MockPgstacTest(MockPgstac):
@@ -39,6 +42,8 @@ class MockPgstacTest(MockPgstac):
         endpoint = request.url.path if request else ""
         if (router_prefix == "/auxip") or endpoint.startswith(("/adgs", "/auxip")):
             return MockPgstacAdgs(request, *args, **kwargs)
+        if (router_prefix == "/prip") or endpoint.startswith("/prip"):
+            return MockPgstacPrip(request, *args, **kwargs)
         if (router_prefix == "/cadip") or endpoint.startswith("/cadip"):
             return MockPgstacCadip(request, *args, **kwargs)
         raise RuntimeError(f"Invalid router_prefix or endpoint: {router_prefix!r} / {endpoint!r}")
@@ -58,7 +63,7 @@ def swagger_router() -> APIRouter:
 
 def init_app(router_prefix: str = "") -> FastAPI:
     """Run all routers for the tests."""
-    routers = adgs_routers + cadip_routers + [swagger_router()]
+    routers = adgs_routers + cadip_routers + prip_routers + [swagger_router()]
     app: FastAPI = init_app_with_args(
         api_version="test",
         routers=routers,

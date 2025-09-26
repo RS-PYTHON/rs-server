@@ -258,8 +258,8 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
-  s2a:
-    domain: mockup-prip-s2a.processing.svc.cluster.local
+  s2b:
+    domain: mockup-prip-s2b.processing.svc.cluster.local
     service:
       name: prip
       url: http://127.0.0.1:5008

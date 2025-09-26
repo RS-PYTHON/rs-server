@@ -114,7 +114,7 @@ LimitType = Annotated[
     ),
 ]
 PageType = Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")]
-ServiceRole: TypeAlias = Literal["auxip", "cadip"]
+ServiceRole: TypeAlias = Literal["auxip", "cadip", "prip"]
 
 
 class Queryables(BaseModel):
@@ -168,6 +168,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     # Is the service auxip or cadip ?
     auxip: bool = False
     cadip: bool = False
+    prip: bool = False
 
     # Current page
     page: int = 1
@@ -178,6 +179,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     def __post_init__(self):
         self.auxip = self.service == "auxip"
         self.cadip = self.service == "cadip"
+        self.prip = self.service == "prip"
 
     @classmethod
     @asynccontextmanager
@@ -202,7 +204,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Mock the readpool function."""
         return cls.ReadPool(cls)
 
-    def get_queryables(self, collection_id: str | None = None) -> dict[str, QueryableField]:
+    # pylint: disable=too-many-branches
+    def get_queryables(
+        self,
+        collection_id: str | None = None,
+    ) -> dict[str, QueryableField]:
         """Function to list all available queryables for CADIP session search."""
 
         # Note: the queryables contain stac keys
@@ -220,6 +226,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 for queryable_name, queryable_data in get_adgs_queryables().items():
                     queryables.update({queryable_name: QueryableField(**queryable_data)})
 
+            return queryables
+
+        if self.prip:
+            for queryable_name, queryable_data in get_prip_queryables().items():
+                queryables.update({queryable_name: QueryableField(**queryable_data)})
             return queryables
 
         # Idem for satellite or platform
@@ -425,7 +436,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 validate_inputs_format(datetime, raise_errors=True)
                 if self.auxip:
                     stac_params["created"] = datetime
-                elif self.cadip:
+                elif self.cadip or self.prip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
                 raise log_http_exception(
@@ -455,12 +466,39 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 value = value.strip()
             stac_params[prop] = value
 
+        # helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON)
+        def _geojson_to_wkt(geom: dict) -> str:
+            # supports Polygon
+            t = geom.get("type")
+            if str(t).lower() != "polygon":
+                raise log_http_exception(422, f"Unsupported geometry type {t}. Only Polygon is supported (SRID=4326).")
+            ring = geom["coordinates"][0]  # type: ignore[index]
+            if ring and ring[0] != ring[-1]:
+                ring = ring + [ring[0]]
+            return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
+
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
             if not filt:
                 return
             op: str = filt.get("op")  # type: ignore
             args = filt.get("args", [])
+
+            # ADD: CQL2-JSON op: {"op":"intersects","args":[{"property":"geometry"}, <geom>]}
+            if op and op.lower() == "intersects":
+                if len(args) != 2:
+                    raise log_http_exception(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Invalid intersects: {format_dict(filt)}",
+                    )
+                geom = args[1]
+                if isinstance(geom, dict):
+                    if not geom.get("type") or geom.get("coordinates") is None:
+                        raise log_http_exception(422, "Geometry must include 'type' and 'coordinates'.")
+                    stac_params["intersects"] = _geojson_to_wkt(geom)
+                else:
+                    stac_params["intersects"] = str(geom).strip("'\"")
+                return
 
             # Read a single property
             if op == "=":
@@ -499,6 +537,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 for condition in conditions:
                     read_query(condition)
                 return
+
             # Handle '='
             if "=" in query_arg:
                 kv = query_arg.split("=")
@@ -1118,13 +1157,6 @@ def filter_allowed_collections(all_collections: list[dict], role: ServiceRole | 
 
 
 @lru_cache
-def map_stac_platform() -> dict:
-    """Function used to read and interpret from constellation.yaml"""
-    with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
-        return yaml.safe_load(cf)
-
-
-@lru_cache
 def get_cadip_queryables() -> dict:
     """Function used to read and interpret from cadip_queryables.yaml"""
     with open(Path(__file__).parent.parent / "config" / "cadip_queryables.yaml", encoding="utf-8") as cf:
@@ -1135,6 +1167,13 @@ def get_cadip_queryables() -> dict:
 def get_adgs_queryables() -> dict:
     """Function used to read and interpret from adgs_queryables.yaml"""
     with open(Path(__file__).parent.parent / "config" / "adgs_queryables.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+@lru_cache
+def get_prip_queryables() -> dict:
+    """Function used to read and interpret from prip_queryables.yaml"""
+    with open(Path(__file__).parent.parent / "config" / "prip_queryables.yaml", encoding="utf-8") as cf:
         return yaml.safe_load(cf)
 
 
