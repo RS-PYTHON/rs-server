@@ -20,7 +20,7 @@ git checkout develop || exit 20
 git pull || exit 30
 git clean -f || exit 40
 git checkout -b "updates-$d" || exit 60
-for s in common adgs cadip catalog staging frontend ; do cd $s && poetry lock --regenerate && poetry show -o && cd - ; done
+for s in common adgs cadip prip catalog staging frontend ; do cd $s && poetry lock --regenerate && poetry show -o && cd - ; done
 cd .. || exit 70
 poetry lock --regenerate || exit 80
 poetry show -o || exit 85
