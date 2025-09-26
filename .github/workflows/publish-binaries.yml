@@ -631,8 +631,9 @@ jobs:
           docker_tag="${{ needs.set-env.outputs.docker_tag }}"
           docker_tag="${docker_tag:-latest}" # latest by default
           ./test-docker-tag.sh "$docker_tag"
-          docker compose -f docker-compose-test-tag.yml up -d
-          ./run-notebooks.sh "$docker_tag"
+          docker compose -f docker-compose-test-tag.yml up cicd -d
+          ./run-notebooks.sh
+          docker compose down -v
 
         shell: bash
 
