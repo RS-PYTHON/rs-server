@@ -24,6 +24,23 @@ Changed
 
 None
 
+[1.0a2] - Sprint 28 - 2025-09-24
+================================
+
+## Added
+
+- RSPY-324: Implement STAC view of PRIP products
+- RSPY-519: Implement "First" button in STAC Browser
+- RSPY-612: CADIP/AUXIP: Fill titles in STAC links
+- RSPY-742: Create a prefect @task to record 'product_realised'
+- RSPY-760: Create product mapping configuration map
+- RSPY-761: Implement staging of PRIP products
+- RSPY-762: Deploy Wazuh on the Publication service node
+- RSPY-764: Update timeout mechanism for staging feature
+- RSPY-766: Add s1-l12-rp processor 0.2.1 (for S1 ARD)
+- RSPY-769: ARD step1: CSLC product (calibration)
+- RSPY-790: S1-L0 : deliver some integration test results.
+
 [1.0a1] - Sprint 27 - 2025-08-27
 ================================
 
