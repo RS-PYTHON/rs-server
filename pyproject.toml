@@ -98,7 +98,7 @@ flake8-pyproject = "^1.2.3"
 httpx = "^0.28.1"
 sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
-sqlalchemy-utils = "^0.41.2"
+sqlalchemy-utils = "^0.42.0"
 click = "8.3.0"
 responses = "^0.25.8"
 
