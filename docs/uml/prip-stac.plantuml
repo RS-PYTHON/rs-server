@@ -1,0 +1,42 @@
+@startuml prip-stac
+
+actor John
+collections RS_Server_PRIP
+activate RS_Server_PRIP
+
+note over John, RS_Server_PRIP: John has access to 2 PRIP delivery points: prip_s1a and prip_s1c
+
+John -> RS_Server_PRIP: GET /prip
+RS_Server_PRIP --> John: STAC landing page
+
+John -> RS_Server_PRIP: GET /prip/collections
+RS_Server_PRIP --> John: {S1A_L1_EW_SLC, S1A_L1_IW_SLC, S1A_L1_SM_SLC, S1C_L1_EW_SLC, S1C_L1_IW_SLC, S1C_L1_SM_SLC}
+
+newpage
+
+John -> RS_Server_PRIP: GET /prip/collections/S1A_L1_IW_SLC/items
+RS_Server_PRIP -> prip_s1a ++ : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'productType' and\natt/OData.CSC.StringAttribute/Value eq 'IW_SLC__1S')\n&$expand=Attributes&$orderby=PublicationDate desc
+prip_s1a --> RS_Server_PRIP : <OData response/>
+RS_Server_PRIP -> RS_Server_PRIP : OData > STAC mapping
+RS_Server_PRIP --> John : {STAC response}
+
+John -> RS_Server_PRIP: GET /prip/collections/S1C_L1_IW_SLC/items
+RS_Server_PRIP -> prip_s1c ++ : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'productType' and\natt/OData.CSC.StringAttribute/Value eq 'IW_SLC__1S')\n&$expand=Attributes&$orderby=PublicationDate desc
+prip_s1c --> RS_Server_PRIP : <OData response/>
+RS_Server_PRIP -> RS_Server_PRIP : OData > STAC mapping
+RS_Server_PRIP --> John : {STAC response}
+
+newpage
+
+John -> RS_Server_PRIP: POST /prip/search?platform=sentinel-1a
+RS_Server_PRIP -> prip_s1a : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'platformShortName' and\natt/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and any(\natt:att/Name eq 'platformSerialIdentifier' and\natt/OData.CSC.StringAttribute/Value eq 'A')\n&$expand=Attributes&$orderby=PublicationDate desc
+RS_Server_PRIP -> prip_s1c : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'platformShortName' and\natt/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and any(\natt:att/Name eq 'platformSerialIdentifier' and\natt/OData.CSC.StringAttribute/Value eq 'A')\n&$expand=Attributes&$orderby=PublicationDate desc
+RS_Server_PRIP -> RS_Server_PRIP : OData > STAC mapping
+RS_Server_PRIP --> John : {STAC response}
+
+newpage
+
+John -> RS_Server_PRIP: GET /prip/queryables
+RS_Server_PRIP --> John: {platform}
+
+@enduml
