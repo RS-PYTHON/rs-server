@@ -177,7 +177,7 @@ jobs:
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
-        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy layer-cleanup.sh script
