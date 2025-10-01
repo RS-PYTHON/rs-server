@@ -15,7 +15,6 @@
 
 apt-get autoclean --yes
 apt-get autoremove --yes
-pip cache purge
 
 rm -rf /var/lib/apt/lists/*
 rm -rf /usr/local/src/*
@@ -23,6 +22,7 @@ rm -rf /usr/local/src/*
 rm -rf /var/cache/apt/*
 rm -rf /root/.cache/*
 # including /root/.cache/pip
+rm -rf /home/*/.cache/*
 rm -rf /usr/local/share/.cache/*
 # including /usr/local/share/.cache/yarn
 
