@@ -15,6 +15,7 @@
 
 apt-get autoclean --yes
 apt-get autoremove --yes
+pip cache purge
 
 rm -rf /var/lib/apt/lists/*
 rm -rf /usr/local/src/*
