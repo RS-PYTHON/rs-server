@@ -18,6 +18,7 @@ import getpass
 import os
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.utils.logging import Logging
@@ -227,7 +228,14 @@ def add_user_prefix(  # pylint: disable=too-many-return-statements
     return new_path
 
 
-def remove_user_from_feature(feature: dict, user: str) -> dict:
+def extract_user_from_collection(collection) -> str:
+    """ """
+    if "_" in collection:
+        return collection.split("_")[0]
+    return ""
+
+
+def remove_user_from_feature(feature: dict) -> dict | str:
     """Remove the user ID from the collection name in the feature.
 
     Args:
@@ -238,12 +246,15 @@ def remove_user_from_feature(feature: dict, user: str) -> dict:
     Returns:
         dict: the feature with a new collection name without the user ID.
     """
-    if user in feature["collection"]:
+    if not "collection" in feature:
+        return feature, ""
+    user = extract_user_from_collection(feature["collection"])
+    if user:
         feature["collection"] = feature["collection"].removeprefix(f"{user}_")
-    return feature
+    return feature, user
 
 
-def remove_user_from_collection(collection: dict, user: str) -> dict:
+def remove_user_from_collection(collection: dict) -> dict | str:
     """Remove the user ID from the id section in the collection.
 
     Args:
@@ -254,9 +265,10 @@ def remove_user_from_collection(collection: dict, user: str) -> dict:
     Returns:
         dict: The collection without the user ID in the id section.
     """
+    user = extract_user_from_collection(collection["id"])
     if user and (user in collection.get("id", "")):
         collection["id"] = collection["id"].removeprefix(f"{user}_")
-    return collection
+    return collection, user
 
 
 def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
@@ -270,3 +282,37 @@ def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
         list[dict]: The list of collections corresponding to the prefix
     """
     return [collection for collection in collections if collection["id"].startswith(prefix)]
+
+
+def adapt_object_links(object_content: dict) -> dict:
+
+    user = collection_id = feature_id = ""
+    if "properties" in object_content and "collection" in object_content:  # If object is an item
+        object_content, user = remove_user_from_feature(object_content)
+        collection_id = object_content["collection"]
+        feature_id = object_content["id"]
+    elif "id" in object_content:  # If object is a collection
+        object_content, user = remove_user_from_collection(object_content)
+        collection_id = object_content["id"]
+
+    links = object_content.get("links", [])
+    for j, link in enumerate(links):
+        link_parser = urlparse(link["href"])
+        new_path = add_user_prefix(link_parser.path, user, collection_id, feature_id)
+        links[j]["href"] = link_parser._replace(path=new_path).geturl()
+    return object_content
+
+
+def adapt_links(content: dict, current_user: str | None, current_collection_id: str | None, object_name: str) -> dict:
+
+    # Adapt links outside of objects with current user/collection situation
+    links = content["links"]
+    for link in links:
+        link_parser = urlparse(link["href"])
+        new_path = add_user_prefix(link_parser.path, current_user, current_collection_id)
+        link["href"] = link_parser._replace(path=new_path).geturl()
+
+    # Go through each item and apply corrections to the links
+    for i in range(len(content[object_name])):
+        content[object_name][i] = adapt_object_links(content[object_name][i])
+    return content
