@@ -34,7 +34,7 @@ class TestCatalogPublishCollectionEndpoint:
             "type": "Collection",
             "description": "test_description",
             "stac_version": "1.0.0",
-            "owner": "test_owner",
+            "owner": "testowner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
@@ -47,15 +47,15 @@ class TestCatalogPublishCollectionEndpoint:
         assert response.status_code == fastapi.status.HTTP_201_CREATED
         # Check that internal collection id is set to owner_collection
         assert json.loads(response.content)["id"] == "test_collection"
-        assert json.loads(response.content)["owner"] == "test_owner"
+        assert json.loads(response.content)["owner"] == "testowner"
 
         # # Call search endpoint to verify presence of collection in catalog
-        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='test_owner'"}
+        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='testowner'"}
         # response = client.get("/catalog/search", params=test_params)
         # assert response.status_code == fastapi.status.HTTP_200_OK
 
         # Test that /catalog/collection GET endpoint returns the correct collection id
-        response = client.get("/catalog/collections/test_owner:test_collection")
+        response = client.get("/catalog/collections/testowner:test_collection")
         assert response.status_code == fastapi.status.HTTP_200_OK
         response_content = json.loads(response.content)
         # Check that values are correctly written in catalogDB
@@ -90,7 +90,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert json.loads(response.content)["owner"] == getpass.getuser()
 
         # # Call search endpoint to verify presence of collection in catalog
-        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='test_owner'"}
+        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner=''"}
         # response = client.get("/catalog/search", params=test_params)
         # assert response.status_code == fastapi.status.HTTP_200_OK
 
@@ -172,7 +172,7 @@ class TestCatalogPublishCollectionEndpoint:
             "type": "Collection",
             "description": "not_updated_test_description",
             "stac_version": "1.0.0",
-            "owner": "second_test_owner",
+            "owner": "secondtestowner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
@@ -184,25 +184,25 @@ class TestCatalogPublishCollectionEndpoint:
         post_collection_response = client.post("/catalog/collections", json=minimal_collection)
         assert post_collection_response.status_code == fastapi.status.HTTP_201_CREATED
         # test if is ok written in catalogDB
-        get_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
+        get_collection_response = client.get("/catalog/collections/secondtestowner:second_test_collection")
         response_content = json.loads(get_collection_response.content)
         assert response_content["description"] == "not_updated_test_description"
 
         # Update the collection description and PUT
         minimal_collection["description"] = "the_updated_test_description"
         updated_collection_response = client.put(
-            "/catalog/collections/second_test_owner:second_test_collection",
+            "/catalog/collections/secondtestowner:second_test_collection",
             json=minimal_collection,
         )
         assert updated_collection_response.status_code == fastapi.status.HTTP_200_OK
 
         # Check that collection is correctly updated
-        get_check_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
+        get_check_collection_response = client.get("/catalog/collections/secondtestowner:second_test_collection")
         response_content = json.loads(get_check_collection_response.content)
         assert response_content["description"] == "the_updated_test_description"
 
         # cleanup
-        client.delete("/catalog/collections/second_test_owner:second_test_collection")
+        client.delete("/catalog/collections/secondtestowner:second_test_collection")
 
     def test_update_more_than_a_collection(self, client):
         """
@@ -248,7 +248,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == "Cannot create or update more than one collection !"
 
-    @patch("rs_server_catalog.user_catalog.remove_user_from_collection")
+    @patch("rs_server_catalog.user_handler.remove_user_from_collection")
     def test_failure_to_create_collection_generic_exception(self, mock_remove_user_from_collection, client):
         """
         Test endpoint POST /catalog/collections with an generic exception raised.
@@ -262,7 +262,7 @@ class TestCatalogPublishCollectionEndpoint:
             "type": "Collection",
             "description": "test_description",
             "stac_version": "1.0.0",
-            "owner": "test_owner",
+            "owner": "",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
@@ -277,7 +277,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == f"Bad request: {mock_exc}"
 
-    @patch("rs_server_catalog.user_catalog.remove_user_from_collection")
+    @patch("rs_server_catalog.user_handler.remove_user_from_collection")
     def test_failure_to_create_collection_runtime_error(self, mock_remove_user_from_collection, client):
         """
         Test endpoint POST /catalog/collections with an RuntimeError exception raised.
@@ -291,7 +291,7 @@ class TestCatalogPublishCollectionEndpoint:
             "type": "Collection",
             "description": "test_description",
             "stac_version": "1.0.0",
-            "owner": "test_owner",
+            "owner": "",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
