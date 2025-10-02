@@ -360,7 +360,7 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
         assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"
 
 
-class TestRemoveUserFromCollection:  # pylint: disable=missing-function-docstring
+class TestRemoveUserFromObject:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function remove_user_from_collection."""
 
     def test_remove_the_user_in_the_collection_id_property(
@@ -369,10 +369,6 @@ class TestRemoveUserFromCollection:  # pylint: disable=missing-function-docstrin
         collection_toto_1_output: dict,
     ):
         assert remove_user_from_collection(collection_toto_1) == (collection_toto_1_output, "toto")
-
-
-class TestRemoveUserFromFeature:  # pylint: disable=missing-function-docstring
-    """This Class contains unit tests for the function remove_user_from_feature."""
 
     def test_remove_the_user_in_the_feature_id_property(self, feature: dict, feature_output: dict):
         assert remove_user_from_feature(feature) == (feature_output, "titi")

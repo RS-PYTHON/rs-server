@@ -257,7 +257,7 @@ def remove_user_from_feature(feature: dict) -> dict | str:
         dict: the feature with a new collection name without the user ID.
         str: the user ID removed.
     """
-    if not "collection" in feature:
+    if "collection" not in feature:
         return feature, ""
     user = extract_user_from_collection(feature["collection"])
     if user:
