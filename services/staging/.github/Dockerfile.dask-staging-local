@@ -55,6 +55,9 @@ RUN apt autoremove -y gcc git && layer-cleanup.sh
 # Install dependencies necessary for execution not compilation
 RUN restore-apt.sh && apt install -y libexpat1 && layer-cleanup.sh
 
+# Remove apt repository list and custom scripts
+RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+
 USER $USER
 
 # Set labels based on the Open Containers Initiative (OCI):
