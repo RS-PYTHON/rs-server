@@ -47,7 +47,7 @@ class TestOperatorDefinedCollections:
     @pytest.mark.parametrize(
         "endpoint, code",
         [
-            ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
+            ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_422_UNPROCESSABLE_CONTENT),
             ("/cadip/collections/cadip_session_incomplete_no_stop/items", status.HTTP_400_BAD_REQUEST),
             ("/cadip/collections/cadip_session_incomplete_no_start/items", status.HTTP_400_BAD_REQUEST),
             ("/auxip/collections/adgs_invalid_no_start/items", status.HTTP_400_BAD_REQUEST),
@@ -346,7 +346,7 @@ class TestModelValidationError:
             "rs_server_cadip.api.cadip_search.process_session_search",
             side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
         )
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -363,7 +363,7 @@ class TestModelValidationError:
             "rs_server_adgs.api.adgs_search.process_product_search",
             side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
         )
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -380,7 +380,7 @@ class TestModelValidationError:
             "rs_server_prip.api.prip_search.process_product_search",
             side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
         )
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     @pytest.mark.unit
     def test_adgs_search_error(self, client, mocker):
@@ -442,7 +442,7 @@ class TestErrorWhileBuildUpCollection:
     def test_cadip_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
         mocker.patch("rs_server_cadip.api.cadip_search.process_session_search", side_effect=KeyError)
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -453,7 +453,7 @@ class TestErrorWhileBuildUpCollection:
     def test_adgs_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
         mocker.patch("rs_server_adgs.api.adgs_search.process_product_search", side_effect=KeyError)
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -466,7 +466,7 @@ class TestErrorWhileBuildUpCollection:
     def test_prip_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
         mocker.patch("rs_server_prip.api.prip_search.process_product_search", side_effect=KeyError)
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class TestFeatureOdataStacMapping:
@@ -859,7 +859,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=should_be_bool",
                 "no_odata",
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
             ),
             (
                 ROUTER_PREFIX_CADIP,
@@ -873,7 +873,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_satellite/items?filter=invalid='x'",
                 "No odata for this",
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
@@ -915,13 +915,13 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=invalid='x'",
                 "No odata",
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=published=invalid_date_format2020",
                 "No odata",
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
             ),
         ],
         indirect=["fastapi_app"],
@@ -1167,7 +1167,7 @@ class TestFeatureCollectionOdataStacMapping:
     def test_invalid_page_values(self, client, endpoint):
         """Test endpoint call with invalid pages (str, negative, 0)"""
         response = client.get(endpoint)
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert "Invalid page value" in response.json()["description"]
 
     @pytest.mark.unit

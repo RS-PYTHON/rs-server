@@ -244,7 +244,7 @@ def extract_user_from_collection(collection) -> str:
     return ""
 
 
-def remove_user_from_feature(feature: dict) -> dict | str:
+def remove_user_from_feature(feature: dict) -> tuple[dict, str]:
     """Remove the user ID from the collection name in the feature.
     Assumes that the collection name has the format "[USER_ID]_[COLLECTION_ID]"
     to remove the user ID.
@@ -265,7 +265,7 @@ def remove_user_from_feature(feature: dict) -> dict | str:
     return feature, user
 
 
-def remove_user_from_collection(collection: dict) -> dict | str:
+def remove_user_from_collection(collection: dict) -> tuple[dict, str]:
     """Remove the user ID from the id section in the collection.
     Assumes that the collection name has the format "[USER_ID]_[COLLECTION_ID]"
     to remove the user ID.

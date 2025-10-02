@@ -42,7 +42,7 @@ from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_422_UNPROCESSABLE_CONTENT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -1572,7 +1572,7 @@ async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMoc
                 assert response.status_code not in (
                     HTTP_401_UNAUTHORIZED,
                     HTTP_403_FORBIDDEN,
-                    HTTP_422_UNPROCESSABLE_ENTITY,  # with 422, the authentication is not called and not tested
+                    HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
                 )
 
                 # With a wrong apikey, we should have a 403 error
