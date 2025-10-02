@@ -14,8 +14,28 @@
 # limitations under the License.
 
 # Restore the apt repository list.
-# WARNING: works only in Debian !
+# WARNING: works only in Debian/Ubuntu !
+
+# Source OS release info
 . /etc/os-release
-echo "deb http://deb.debian.org/debian $VERSION_CODENAME main" > /etc/apt/sources.list
+
+if [[ "$ID" == "debian" ]]; then
+    cat > /etc/apt/sources.list <<EOF
+deb http://deb.debian.org/debian $VERSION_CODENAME main
+deb http://security.debian.org/debian-security $VERSION_CODENAME-security main
+deb http://deb.debian.org/debian $VERSION_CODENAME-updates main
+deb http://deb.debian.org/debian $VERSION_CODENAME-backports main
+EOF
+elif [[ "$ID" == "ubuntu" ]]; then
+    cat > /etc/apt/sources.list <<EOF
+deb http://archive.ubuntu.com/ubuntu $VERSION_CODENAME main
+deb http://security.ubuntu.com/ubuntu $VERSION_CODENAME-security main
+deb http://archive.ubuntu.com/ubuntu $VERSION_CODENAME-updates main
+deb http://archive.ubuntu.com/ubuntu $VERSION_CODENAME-backports main
+EOF
+else
+    echo "Unsupported distribution: $ID"
+    exit 1
+fi
 
 exit 0
