@@ -292,8 +292,8 @@ jobs:
           name: ${{ needs.services-adgs-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -339,8 +339,8 @@ jobs:
           name: ${{ needs.services-prip-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -386,8 +386,8 @@ jobs:
           name: ${{ needs.services-cadip-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -432,8 +432,8 @@ jobs:
           name: ${{ needs.services-catalog-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -478,8 +478,8 @@ jobs:
         run: cp ./services/frontend/.github/entrypoint_frontend.sh ./build_context_path
         shell: bash
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -525,8 +525,8 @@ jobs:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -572,8 +572,8 @@ jobs:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - id: publish-docker
