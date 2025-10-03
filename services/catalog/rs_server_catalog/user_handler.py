@@ -244,43 +244,45 @@ def extract_user_from_collection(collection) -> str:
     return ""
 
 
-def remove_user_from_feature(feature: dict) -> tuple[dict, str]:
+def remove_user_from_feature(feature: dict, user: str = "") -> tuple[dict, str]:
     """Remove the user ID from the collection name in the feature.
     Assumes that the collection name has the format "[USER_ID]_[COLLECTION_ID]"
     to remove the user ID.
 
     Args:
         feature (dict): a geojson that contains georeferenced
-        data and metadata like the collection name.
+            data and metadata like the collection name.
+        user (str): User name to remove from the collection name.
+            If not given, will be extracted from collection name
 
     Returns:
         dict: the feature with a new collection name without the user ID.
         str: the user ID removed.
     """
-    if "collection" not in feature:
-        return feature, ""
-    user = extract_user_from_collection(feature["collection"])
-    if user:
-        feature["collection"] = feature["collection"].removeprefix(f"{user}_")
+    if not user:
+        user = extract_user_from_collection(feature["collection"])
+    feature["collection"] = feature["collection"].removeprefix(f"{user}_")
     return feature, user
 
 
-def remove_user_from_collection(collection: dict) -> tuple[dict, str]:
+def remove_user_from_collection(collection: dict, user: str = "") -> tuple[dict, str]:
     """Remove the user ID from the id section in the collection.
     Assumes that the collection name has the format "[USER_ID]_[COLLECTION_ID]"
     to remove the user ID.
 
     Args:
         collection (dict): A dictionary that contains metadata
-        about the collection content like the id of the collection.
+            about the collection content like the id of the collection.
+        user (str): User name to remove from the collection name.
+            If not given, will be extracted from collection name
 
     Returns:
         dict: The collection without the user ID in the id section.
         str: the user ID removed.
     """
-    user = extract_user_from_collection(collection["id"])
-    if user and (user in collection.get("id", "")):
-        collection["id"] = collection["id"].removeprefix(f"{user}_")
+    if not user:
+        user = extract_user_from_collection(collection["id"])
+    collection["id"] = collection["id"].removeprefix(f"{user}_")
     return collection, user
 
 
@@ -310,7 +312,9 @@ def adapt_object_links(object_content: dict) -> dict:
 
     user = collection_id = feature_id = ""
     if "properties" in object_content and "collection" in object_content:  # If object is an item
-        object_content, user = remove_user_from_feature(object_content)
+        if "owner" in object_content["properties"]:
+            user = object_content["properties"]["owner"]
+        object_content, user = remove_user_from_feature(object_content, user)
         collection_id = object_content["collection"]
         feature_id = object_content["id"]
     elif "id" in object_content:  # If object is a collection
