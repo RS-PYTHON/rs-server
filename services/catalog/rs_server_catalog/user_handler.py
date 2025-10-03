@@ -228,19 +228,19 @@ def add_user_prefix(  # pylint: disable=too-many-return-statements
     return new_path
 
 
-def extract_user_from_collection(collection) -> str:
+def extract_user_from_collection(collection_name: str) -> str:
     """Extracts user (or owner) name from collection name and returns it.
     We assume that every collection name follows the format "[USER_NAME]_[COLLECTION_ID]",
     so we only extract the characters before the first "_" as the user name.
 
     Args:
-        collection: Collection name (assumed to follow the format "[USER_NAME]_[COLLECTION_ID]")
+        collection_name (str): Collection name (assumed to follow the format "[USER_NAME]_[COLLECTION_ID]")
 
     Returns:
         str: User name extracted from collection name
     """
-    if "_" in collection:
-        return collection.split("_")[0]
+    if "_" in collection_name:
+        return collection_name.split("_")[0]
     return ""
 
 
@@ -311,21 +311,29 @@ def adapt_object_links(object_content: dict) -> dict:
     """
 
     user = collection_id = feature_id = ""
-    if "properties" in object_content and "collection" in object_content:  # If object is an item
+
+    # Case when object is an item
+    if "properties" in object_content and "collection" in object_content:
         if "owner" in object_content["properties"]:
             user = object_content["properties"]["owner"]
         object_content, user = remove_user_from_feature(object_content, user)
         collection_id = object_content["collection"]
         feature_id = object_content["id"]
-    elif "id" in object_content:  # If object is a collection
-        object_content, user = remove_user_from_collection(object_content)
+
+    # Case when object is a collection
+    elif "id" in object_content:
+        if "owner" in object_content:
+            user = object_content["owner"]
+        object_content, user = remove_user_from_collection(object_content, user)
         collection_id = object_content["id"]
 
+    # Update links with user, collection and feature values retrieved from previous steps
     links = object_content.get("links", [])
     for j, link in enumerate(links):
         link_parser = urlparse(link["href"])
         new_path = add_user_prefix(link_parser.path, user, collection_id, feature_id)
         links[j]["href"] = link_parser._replace(path=new_path).geturl()
+
     return object_content
 
 
@@ -351,7 +359,8 @@ def adapt_links(content: dict, current_user: str | None, current_collection_id: 
         new_path = add_user_prefix(link_parser.path, current_user, current_collection_id)
         link["href"] = link_parser._replace(path=new_path).geturl()
 
-    # Go through each item and apply corrections to the links
+    # Go through each object and apply corrections to the links using the object's info
     for i in range(len(content[object_name])):
         content[object_name][i] = adapt_object_links(content[object_name][i])
+
     return content
