@@ -22,10 +22,10 @@ ARG USER=dask:dask
 # Install dependencies for compilation
 USER root
 
-COPY ./layer-cleanup.sh /usr/local/bin/
-RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc git && layer-cleanup.sh
+RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y libpq-dev gcc git && layer-cleanup.sh
 USER $USER
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
@@ -53,7 +53,10 @@ USER root
 RUN apt autoremove -y gcc git && layer-cleanup.sh
 
 # Install dependencies necessary for execution not compilation
-RUN apt install -y libexpat1 && layer-cleanup.sh
+RUN restore-apt.sh && apt install -y libexpat1 && layer-cleanup.sh
+
+# Remove apt repository list and custom scripts
+RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
 USER $USER
 

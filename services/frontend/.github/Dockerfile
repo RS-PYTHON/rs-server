@@ -60,15 +60,18 @@ RUN chmod ugo+x /scripts/entrypoint_frontend.sh
 RUN chmod -R ugo+w $(dirname "${RSPY_OPENAPI_FILE}")
 
 # Add a default user
-RUN useradd -m user
-USER user
-WORKDIR /home/user
+ARG USER=user
+RUN useradd -m $USER
+USER $USER
+WORKDIR /home/$USER
 
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
-# After this, make sure we're still non-root
-USER user
+# Remove apt repository list and custom scripts
+USER root
+RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+USER $USER
 
 ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh [DEBUG_MODE_RELOAD_FRONTEND]" ]
 
