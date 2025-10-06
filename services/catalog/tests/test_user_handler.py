@@ -368,10 +368,12 @@ class TestRemoveUserFromObject:  # pylint: disable=missing-function-docstring
         collection_toto_1: dict,
         collection_toto_1_output: dict,
     ):
-        assert remove_user_from_collection(collection_toto_1) == (collection_toto_1_output, "toto")
+        assert remove_user_from_collection(collection_toto_1, "baduser") == collection_toto_1
+        assert remove_user_from_collection(collection_toto_1, "toto") == collection_toto_1_output
 
     def test_remove_the_user_in_the_feature_id_property(self, feature: dict, feature_output: dict):
-        assert remove_user_from_feature(feature) == (feature_output, "titi")
+        assert remove_user_from_feature(feature, "baduser") == feature
+        assert remove_user_from_feature(feature, "titi") == feature_output
 
 
 class TestFilterCollections:  # pylint: disable=missing-function-docstring
