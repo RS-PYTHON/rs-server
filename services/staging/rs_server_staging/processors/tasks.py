@@ -72,10 +72,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
     Retry Mechanism:
         - Retries occur for network-related errors (`RequestException`) or S3 client errors
         (`ClientError`, `BotoCoreError`).
-        - The function waits before retrying, with the delay time increasing exponentially
-        (based on the `backoff_factor`).
-        - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively
-        longer wait times between retries.
+        - The function waits S3_RETRY_TIMEOUT seconds before retrying
+        - It keeps trying for S3_MAX_RETRIES times
     """
 
     logger_dask = logging.getLogger(__name__)
@@ -84,7 +82,6 @@ def streaming_task(  # pylint: disable=R0913, R0917
     product_url = asset_info.product_url
     s3_file = asset_info.s3_file
     bucket = asset_info.s3_bucket
-    # time.sleep(5)
     # get the retry timeout
     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
     # get the number of retries in case of failure
