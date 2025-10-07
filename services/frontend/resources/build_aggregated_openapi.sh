@@ -118,6 +118,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # Use postgres database
     run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
     run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
+    run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health"
     RSPY_LOCAL_MODE=1 \
         run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
 

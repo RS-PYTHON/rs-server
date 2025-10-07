@@ -37,6 +37,7 @@ info:
 
     <a href="${STAC_BROWSER_URL_ADGS}" target="_blank">ADGS</a> /
     <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
+    <a href="${STAC_BROWSER_URL_PRIP}" target="_blank">PRIP</a> /
     <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
 
     ---
@@ -51,6 +52,11 @@ services:
     change_tags:
       "": CADIP stations
       Filter Extension: CADIP (Filter Extension)
+  prip:
+    openapi_url: http://localhost:8005/prip/api
+    change_tags:
+      "": PRIP stations
+      Filter Extension: PRIP (Filter Extension)
   catalog:
     openapi_url: http://localhost:8003/catalog/api
     change_tags:
