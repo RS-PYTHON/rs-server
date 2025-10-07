@@ -30,7 +30,7 @@ from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_422_UNPROCESSABLE_CONTENT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -547,7 +547,7 @@ async def test_execute_staging(
     resource_name = "staging"
     # ----- Test case where we have a staging body uncompliant with ogc
     response = staging_client.post(f"/processes/{resource_name}/execution", json=wrong_staging_body)
-    assert response.status_code == HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == HTTP_422_UNPROCESSABLE_CONTENT
 
     mock_db_table = mocker.MagicMock()
     mocker.patch(
