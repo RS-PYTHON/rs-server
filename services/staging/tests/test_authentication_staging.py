@@ -28,7 +28,7 @@ from rs_server_staging.utils.asset_info import AssetInfo
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
-    HTTP_422_UNPROCESSABLE_CONTENT,
+    HTTP_422_UNPROCESSABLE_ENTITY,
 )
 
 from .resources.sample_data import sample_process_metadata_model
@@ -93,7 +93,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
                 assert response.status_code not in (
                     HTTP_401_UNAUTHORIZED,
                     HTTP_403_FORBIDDEN,
-                    HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
+                    HTTP_422_UNPROCESSABLE_ENTITY,  # with 422, the authentication is not called and not tested
                 )
                 # With a wrong apikey, we should have a 403 error
                 if test_apikey:
