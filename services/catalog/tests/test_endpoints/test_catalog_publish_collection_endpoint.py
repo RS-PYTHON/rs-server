@@ -90,7 +90,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert json.loads(response.content)["owner"] == getpass.getuser()
 
         # # Call search endpoint to verify presence of collection in catalog
-        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner=''"}
+        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='test_owner'"}
         # response = client.get("/catalog/search", params=test_params)
         # assert response.status_code == fastapi.status.HTTP_200_OK
 
@@ -299,7 +299,7 @@ class TestCatalogPublishCollectionEndpoint:
             "type": "Collection",
             "description": "test_description",
             "stac_version": "1.0.0",
-            "owner": "",
+            "owner": "test_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
