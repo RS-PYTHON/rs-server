@@ -266,7 +266,7 @@ class TestCatalogPublishCollectionEndpoint:
             "type": "Collection",
             "description": "test_description",
             "stac_version": "1.0.0",
-            "owner": "",
+            "owner": "test_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
