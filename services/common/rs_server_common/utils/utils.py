@@ -117,7 +117,7 @@ def validate_inputs_format(
             fixed_date = date_time
     except ValueError as exc:
         logger.error("Missing start or stop in endpoint call!")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Missing start/stop") from exc
 
     def is_valid_date(date: str) -> bool:
         """Check if the string can be converted to a valid datetime."""
@@ -184,7 +184,7 @@ def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | Non
             if platform_short_name and platform_short_name != constellation:
                 # Inconsistent combination of platform / constellation case
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="Invalid combination of platform-constellation",
                 )
             if any(
@@ -197,7 +197,7 @@ def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | Non
                 raise KeyError
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Cannot map platform/constellation",
         ) from exc
     return platform_short_name, platform_serial_identifier

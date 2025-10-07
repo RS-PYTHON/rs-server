@@ -18,6 +18,7 @@ import getpass
 import os
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.utils.logging import Logging
@@ -227,40 +228,62 @@ def add_user_prefix(  # pylint: disable=too-many-return-statements
     return new_path
 
 
-def remove_user_from_feature(feature: dict, user: str) -> dict:
-    """Remove the user ID from the collection name in the feature.
+def remove_owner_from_collection_name_in_feature(feature: dict, current_user: str = "") -> tuple[dict, str]:
+    """Remove the owner name from the collection name in the feature.
+    The owner name used is the "owner" field of the properties if there is any,
+    or by default the currently connected user.
+    Returns the updated feature and the owner name actually removed.
+    If nothing was removed, returns the original feature and an empty owner name.
 
     Args:
         feature (dict): a geojson that contains georeferenced
-        data and metadata like the collection name.
-        user (str): The user ID.
+            data and metadata like the collection name.
+        current_user (str): current user connected (optional)
 
     Returns:
-        dict: the feature with a new collection name without the user ID.
+        dict: the feature with a new collection name without the owner name.
+        str: the name removed, if any.
     """
-    if user in feature["collection"]:
+    if "owner" in feature["properties"]:
+        user = feature["properties"]["owner"]
+    else:
+        user = current_user
+
+    if feature["collection"].startswith(f"{user}_"):
         feature["collection"] = feature["collection"].removeprefix(f"{user}_")
-    return feature
+        return feature, user
+    return feature, ""
 
 
-def remove_user_from_collection(collection: dict, user: str) -> dict:
-    """Remove the user ID from the id section in the collection.
+def remove_owner_from_collection_name_in_collection(collection: dict, current_user: str = "") -> tuple[dict, str]:
+    """Remove the owner name from the given collection name.
+    The owner name used is the "owner" field of the collection if there is any,
+    or by default the currently connected user.
+    Returns the updated collection and the owner name actually removed.
+    If nothing was removed, returns the original collection and an empty owner name.
 
     Args:
         collection (dict): A dictionary that contains metadata
-        about the collection content like the id of the collection.
-        user (str): The user ID.
+            about the collection content like the id of the collection.
+        current_user (str): current user connected (optional)
 
     Returns:
-        dict: The collection without the user ID in the id section.
+        dict: The collection without the owner name in the id section.
+        str: the name removed, if any.
     """
-    if user and (user in collection.get("id", "")):
+    if "owner" in collection:
+        user = collection["owner"]
+    else:
+        user = current_user
+
+    if collection["id"].startswith(f"{user}_"):
         collection["id"] = collection["id"].removeprefix(f"{user}_")
-    return collection
+        return collection, user
+    return collection, ""
 
 
 def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
-    """filter the collections according to the prefix.
+    """Filter the collections according to the prefix.
 
     Args:
         collections (list[dict]): The list of collections available.
@@ -270,3 +293,64 @@ def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
         list[dict]: The list of collections corresponding to the prefix
     """
     return [collection for collection in collections if collection["id"].startswith(prefix)]
+
+
+def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
+    """Adapt all the links from a collection using the user and collection name they already contain,
+    so the user can access them correctly
+
+    Args:
+        object (dict): The collection
+
+    Returns:
+        dict: The collection passed in parameter with adapted links
+    """
+    user = collection_id = feature_id = ""
+
+    # Case when object is an item
+    if "properties" in object_content and "collection" in object_content:
+        object_content, user = remove_owner_from_collection_name_in_feature(object_content, current_user)
+        collection_id = object_content["collection"]
+        feature_id = object_content["id"]
+
+    # Case when object is a collection
+    elif "id" in object_content:
+        object_content, user = remove_owner_from_collection_name_in_collection(object_content, current_user)
+        collection_id = object_content["id"]
+
+    # Update links with user, collection and feature values retrieved from previous steps
+    links = object_content.get("links", [])
+    for j, link in enumerate(links):
+        link_parser = urlparse(link["href"])
+        new_path = add_user_prefix(link_parser.path, user, collection_id, feature_id)
+        links[j]["href"] = link_parser._replace(path=new_path).geturl()
+
+    return object_content
+
+
+def adapt_links(content: dict, object_name: str, current_user: str = "", current_collection_id: str = "") -> dict:
+    """Adapt all the links that are outside from the collection section with the given user and collection name,
+    then the ones inside with the user and collection names they already contain.
+
+    Args:
+        content (dict): The response content from the middleware
+        'call_next' loaded in json format.
+        current_user (str): The user id that is currently connected.
+        current_collection (str): The current collection name.
+        object_name (str): Type of object we want to also update.
+
+    Returns:
+        dict: The content passed in parameter with adapted links
+    """
+    # Adapt links outside of objects with current user/collection situation
+    links = content["links"]
+    for link in links:
+        link_parser = urlparse(link["href"])
+        new_path = add_user_prefix(link_parser.path, current_user, current_collection_id)
+        link["href"] = link_parser._replace(path=new_path).geturl()
+
+    # Go through each object and apply corrections to the links using the object's info
+    for i in range(len(content[object_name])):
+        content[object_name][i] = adapt_object_links(content[object_name][i], current_user)
+
+    return content

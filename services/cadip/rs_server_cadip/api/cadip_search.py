@@ -561,7 +561,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     except ValueError as exception:
         logger.error(exception)
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exception),
         ) from exception
     except Exception as exception:  # pylint: disable=broad-exception-caught
@@ -611,7 +611,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         queryables["SessionId"] = split_multiple_values(session_id)
 
     if limit < 1:  # type: ignore
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
         products = cadip_retriever.init_cadip_provider(station).search(

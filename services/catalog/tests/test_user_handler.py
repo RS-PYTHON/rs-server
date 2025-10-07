@@ -21,8 +21,8 @@ from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
     get_user,
-    remove_user_from_collection,
-    remove_user_from_feature,
+    remove_owner_from_collection_name_in_collection,
+    remove_owner_from_collection_name_in_feature,
     reroute_url,
 )
 from starlette.requests import Request
@@ -101,6 +101,7 @@ def feature_fixture() -> dict:
     return {
         "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
         "collection": "titi_S1_L1",
+        "properties": {"owner": "titi"},
     }
 
 
@@ -110,6 +111,7 @@ def feature_output_fixture() -> dict:
     return {
         "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
         "collection": "S1_L1",
+        "properties": {"owner": "titi"},
     }
 
 
@@ -360,28 +362,22 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
         assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"
 
 
-class TestRemoveUserFromCollection:  # pylint: disable=missing-function-docstring
-    """This Class contains unit tests for the function remove_user_from_collection."""
+class TestRemoveUserFromObject:  # pylint: disable=missing-function-docstring
+    """This Class contains unit tests for the function remove_owner_from_collection_name_in_collection."""
 
     def test_remove_the_user_in_the_collection_id_property(
         self,
         collection_toto_1: dict,
         collection_toto_1_output: dict,
     ):
-        assert remove_user_from_collection(collection_toto_1, "toto") == collection_toto_1_output
-
-    def test_does_nothing_if_user_is_not_found(self, collection_toto_1: dict):
-        assert remove_user_from_collection(collection_toto_1, "titi") == collection_toto_1
-
-
-class TestRemoveUserFromFeature:  # pylint: disable=missing-function-docstring
-    """This Class contains unit tests for the function remove_user_from_feature."""
+        assert remove_owner_from_collection_name_in_collection(collection_toto_1, "baduser") == (collection_toto_1, "")
+        assert remove_owner_from_collection_name_in_collection(collection_toto_1, "toto") == (
+            collection_toto_1_output,
+            "toto",
+        )
 
     def test_remove_the_user_in_the_feature_id_property(self, feature: dict, feature_output: dict):
-        assert remove_user_from_feature(feature, "titi") == feature_output
-
-    def test_does_nothing_if_user_is_not_found(self, feature: dict):  # This behavior is to be determined
-        assert remove_user_from_feature(feature, "toto") == feature
+        assert remove_owner_from_collection_name_in_feature(feature, "baduser") == (feature_output, "titi")
 
 
 class TestFilterCollections:  # pylint: disable=missing-function-docstring
