@@ -49,11 +49,11 @@ from rs_server_catalog.landing_page import (
     manage_landing_page,
 )
 from rs_server_catalog.user_handler import (
+    adapt_links,
+    adapt_object_links,
     add_user_prefix,
     filter_collections,
     get_user,
-    remove_user_from_collection,
-    remove_user_from_feature,
     reroute_url,
 )
 from rs_server_catalog.utils import (
@@ -137,28 +137,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         self.client = client
         self.s3_files_to_be_deleted: list[str] = []
 
-    def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
-        """Remove the user id from the object.
-
-        Args:
-            content (dict): The response content from the middleware
-            'call_next' loaded in json format.
-            user (str): The user id to remove.
-            object_name (str): Precise the object type in the content.
-            It can be collections or features.
-
-        Returns:
-            dict: The content with the user id removed.
-        """
-        objects = content[object_name]
-        nb_objects = len(objects)
-        for i in range(nb_objects):
-            if object_name == "collections":
-                objects[i] = remove_user_from_collection(objects[i], user)
-            else:
-                objects[i] = remove_user_from_feature(objects[i], user)
-        return content
-
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
         if not self.s3_handler:
@@ -173,47 +151,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             file_key = content["assets"][asset]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
                 self.s3_handler.delete_file_from_s3(bucket_name, file_key)
-
-    def adapt_object_links(self, my_object: dict, user: str | None) -> dict:
-        """adapt all the links from a collection so the user can use them correctly
-
-        Args:
-            object (dict): The collection
-            user (str): The user id
-
-        Returns:
-            dict: The collection passed in parameter with adapted links
-        """
-        links = my_object.get("links", [])
-        for j, link in enumerate(links):
-            link_parser = urlparse(link["href"])
-            if "properties" in my_object:  # If my_object is an item
-                new_path = add_user_prefix(link_parser.path, user, my_object["collection"], my_object["id"])
-            else:  # If my_object is a collection
-                new_path = add_user_prefix(link_parser.path, user, my_object["id"])
-            links[j]["href"] = link_parser._replace(path=new_path).geturl()
-        return my_object
-
-    def adapt_links(self, content: dict, user: str | None, collection_id: str | None, object_name: str) -> dict:
-        """adapt all the links that are outside from the collection section
-
-        Args:
-            content (dict): The response content from the middleware
-            'call_next' loaded in json format.
-            user (str): The user id.
-
-        Returns:
-            dict: The content passed in parameter with adapted links
-        """
-        links = content["links"]
-        for link in links:
-            link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, collection_id)
-            link["href"] = link_parser._replace(path=new_path).geturl()
-        # Go through each item and apply corrections to the links
-        for i in range(len(content[object_name])):
-            content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
-        return content
 
     async def get_item_from_collection(self, request: Request):
         """Get an item from the collection.
@@ -692,10 +629,9 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
         content = json.loads(dec_content)
-        content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "features")
-        content = self.adapt_links(content, None, None, "features")
+        content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
-            content = self.adapt_links(content, self.request_ids["owner_id"], collection_id, "features")
+            content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
@@ -1012,21 +948,18 @@ field is not permitted also."
         elif (
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
-            content = remove_user_from_collection(content, self.request_ids["owner_id"])
-            content = self.adapt_object_links(content, self.request_ids["owner_id"])
+            content = adapt_object_links(content, self.request_ids["owner_id"])
         elif (
             "/items" in request.scope["path"] and not self.request_ids["item_id"]
         ):  # /catalog/owner_id/collections/collection_id/items
-            content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "features")
-            content = self.adapt_links(
+            content = adapt_links(
                 content,
+                "features",
                 self.request_ids["owner_id"],
                 self.request_ids["collection_ids"][0],
-                "features",
             )
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
-            content = remove_user_from_feature(content, self.request_ids["owner_id"])
-            content = self.adapt_object_links(content, self.request_ids["owner_id"])
+            content = adapt_object_links(content, self.request_ids["owner_id"])
         else:
             logger.debug(f"No link adaptation performed for {request.scope}")
 
@@ -1102,15 +1035,13 @@ field is not permitted also."
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             # Don't display geometry and bbox for default case since it was added just for compliance.
             if request.scope["path"] == CATALOG_COLLECTIONS:
-                response_content = remove_user_from_collection(response_content, user)
-                response_content = self.adapt_object_links(response_content, user)
+                response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
             elif (
                 request.scope["path"]
                 == CATALOG_COLLECTIONS
                 + f"/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
             ):
-                response_content = remove_user_from_feature(response_content, user)
-                response_content = self.adapt_object_links(response_content, user)
+                response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
                 if response_content.get("geometry") == DEFAULT_GEOM:
                     response_content["geometry"] = None
                 if response_content.get("bbox") == DEFAULT_BBOX:
