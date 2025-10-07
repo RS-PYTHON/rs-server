@@ -228,36 +228,58 @@ def add_user_prefix(  # pylint: disable=too-many-return-statements
     return new_path
 
 
-def remove_user_from_feature(feature: dict, user: str) -> dict:
-    """Remove the user ID from the collection name in the feature.
-    Assumes that the collection name has the format "[USER_ID]_[COLLECTION_ID]"
-    to remove the user ID.
+def remove_owner_from_collection_name_in_feature(feature: dict, current_user: str = "") -> tuple[dict, str]:
+    """Remove the owner name from the collection name in the feature.
+    The owner name used is the "owner" field of the properties if there is any,
+    or by default the currently connected user.
+    Returns the updated feature and the owner name actually removed.
+    If nothing was removed, returns the original feature and an empty owner name.
 
     Args:
         feature (dict): a geojson that contains georeferenced
             data and metadata like the collection name.
+        current_user (str): current user connected (optional)
 
     Returns:
-        dict: the feature with a new collection name without the user ID.
+        dict: the feature with a new collection name without the owner name.
+        str: the name removed, if any.
     """
-    feature["collection"] = feature["collection"].removeprefix(f"{user}_")
-    return feature
+    if "owner" in feature["properties"]:
+        user = feature["properties"]["owner"]
+    else:
+        user = current_user
+
+    if feature["collection"].startswith(f"{user}_"):
+        feature["collection"] = feature["collection"].removeprefix(f"{user}_")
+        return feature, user
+    return feature, ""
 
 
-def remove_user_from_collection(collection: dict, user: str) -> dict:
-    """Remove the user ID from the id section in the collection.
-    Assumes that the collection name has the format "[USER_ID]_[COLLECTION_ID]"
-    to remove the user ID.
+def remove_owner_from_collection_name_in_collection(collection: dict, current_user: str = "") -> tuple[dict, str]:
+    """Remove the owner name from the given collection name.
+    The owner name used is the "owner" field of the collection if there is any,
+    or by default the currently connected user.
+    Returns the updated collection and the owner name actually removed.
+    If nothing was removed, returns the original collection and an empty owner name.
 
     Args:
         collection (dict): A dictionary that contains metadata
             about the collection content like the id of the collection.
+        current_user (str): current user connected (optional)
 
     Returns:
-        dict: The collection without the user ID in the id section.
+        dict: The collection without the owner name in the id section.
+        str: the name removed, if any.
     """
-    collection["id"] = collection["id"].removeprefix(f"{user}_")
-    return collection
+    if "owner" in collection:
+        user = collection["owner"]
+    else:
+        user = current_user
+
+    if collection["id"].startswith(f"{user}_"):
+        collection["id"] = collection["id"].removeprefix(f"{user}_")
+        return collection, user
+    return collection, ""
 
 
 def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
@@ -273,7 +295,7 @@ def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
     return [collection for collection in collections if collection["id"].startswith(prefix)]
 
 
-def adapt_object_links(object_content: dict) -> dict:
+def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
     """Adapt all the links from a collection using the user and collection name they already contain,
     so the user can access them correctly
 
@@ -287,17 +309,13 @@ def adapt_object_links(object_content: dict) -> dict:
 
     # Case when object is an item
     if "properties" in object_content and "collection" in object_content:
-        if "owner" in object_content["properties"]:
-            user = object_content["properties"]["owner"]
-        object_content = remove_user_from_feature(object_content, user)
+        object_content, user = remove_owner_from_collection_name_in_feature(object_content, current_user)
         collection_id = object_content["collection"]
         feature_id = object_content["id"]
 
     # Case when object is a collection
     elif "id" in object_content:
-        if "owner" in object_content:
-            user = object_content["owner"]
-        object_content = remove_user_from_collection(object_content, user)
+        object_content, user = remove_owner_from_collection_name_in_collection(object_content, current_user)
         collection_id = object_content["id"]
 
     # Update links with user, collection and feature values retrieved from previous steps
@@ -310,7 +328,7 @@ def adapt_object_links(object_content: dict) -> dict:
     return object_content
 
 
-def adapt_links(content: dict, current_user: str | None, current_collection_id: str | None, object_name: str) -> dict:
+def adapt_links(content: dict, object_name: str, current_user: str = "", current_collection_id: str = "") -> dict:
     """Adapt all the links that are outside from the collection section with the given user and collection name,
     then the ones inside with the user and collection names they already contain.
 
@@ -333,6 +351,6 @@ def adapt_links(content: dict, current_user: str | None, current_collection_id: 
 
     # Go through each object and apply corrections to the links using the object's info
     for i in range(len(content[object_name])):
-        content[object_name][i] = adapt_object_links(content[object_name][i])
+        content[object_name][i] = adapt_object_links(content[object_name][i], current_user)
 
     return content

@@ -629,9 +629,9 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
         content = json.loads(dec_content)
-        content = adapt_links(content, None, None, "features")
+        content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
-            content = adapt_links(content, self.request_ids["owner_id"], collection_id, "features")
+            content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
@@ -948,18 +948,18 @@ field is not permitted also."
         elif (
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
-            content = adapt_object_links(content)
+            content = adapt_object_links(content, self.request_ids["owner_id"])
         elif (
             "/items" in request.scope["path"] and not self.request_ids["item_id"]
         ):  # /catalog/owner_id/collections/collection_id/items
             content = adapt_links(
                 content,
+                "features",
                 self.request_ids["owner_id"],
                 self.request_ids["collection_ids"][0],
-                "features",
             )
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
-            content = adapt_object_links(content)
+            content = adapt_object_links(content, self.request_ids["owner_id"])
         else:
             logger.debug(f"No link adaptation performed for {request.scope}")
 
@@ -1035,13 +1035,13 @@ field is not permitted also."
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             # Don't display geometry and bbox for default case since it was added just for compliance.
             if request.scope["path"] == CATALOG_COLLECTIONS:
-                response_content = adapt_object_links(response_content)
+                response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
             elif (
                 request.scope["path"]
                 == CATALOG_COLLECTIONS
                 + f"/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
             ):
-                response_content = adapt_object_links(response_content)
+                response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
                 if response_content.get("geometry") == DEFAULT_GEOM:
                     response_content["geometry"] = None
                 if response_content.get("bbox") == DEFAULT_BBOX:

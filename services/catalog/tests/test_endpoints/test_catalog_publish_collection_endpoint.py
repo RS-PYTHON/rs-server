@@ -248,14 +248,18 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == "Cannot create or update more than one collection !"
 
-    @patch("rs_server_catalog.user_handler.remove_user_from_collection")
-    def test_failure_to_create_collection_generic_exception(self, mock_remove_user_from_collection, client):
+    @patch("rs_server_catalog.user_handler.remove_owner_from_collection_name_in_collection")
+    def test_failure_to_create_collection_generic_exception(
+        self,
+        mock_remove_owner_from_collection_name_in_collection,
+        client,
+    ):
         """
         Test endpoint POST /catalog/collections with an generic exception raised.
         Endpoint: POST /catalog/collections
         """
         mock_exc = "ValueError"
-        mock_remove_user_from_collection.side_effect = ValueError(mock_exc)
+        mock_remove_owner_from_collection_name_in_collection.side_effect = ValueError(mock_exc)
 
         minimal_collection = {
             "id": "test_collection_01",
@@ -277,14 +281,18 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == f"Bad request: {mock_exc}"
 
-    @patch("rs_server_catalog.user_handler.remove_user_from_collection")
-    def test_failure_to_create_collection_runtime_error(self, mock_remove_user_from_collection, client):
+    @patch("rs_server_catalog.user_handler.remove_owner_from_collection_name_in_collection")
+    def test_failure_to_create_collection_runtime_error(
+        self,
+        mock_remove_owner_from_collection_name_in_collection,
+        client,
+    ):
         """
         Test endpoint POST /catalog/collections with an RuntimeError exception raised.
         Endpoint: POST /catalog/collections
         """
         mock_exc = "RuntimeError"
-        mock_remove_user_from_collection.side_effect = RuntimeError(mock_exc)
+        mock_remove_owner_from_collection_name_in_collection.side_effect = RuntimeError(mock_exc)
 
         minimal_collection = {
             "id": "test_collection_02",
