@@ -551,7 +551,7 @@ jobs:
   dask-staging-local-img:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    name: "'dask-gateway-server/staging/local' Docker image"
+    name: "Dask staging Docker image"
     needs: [set-env, services-common-whl, services-staging-whl]
     permissions: write-all
     outputs:
@@ -600,7 +600,15 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "Test rs-demo"
-    needs: [set-env, services-adgs-img, services-prip-img, services-cadip-img, services-catalog-img, services-frontend-img]
+    needs:
+      - set-env
+      - services-adgs-img
+      - services-prip-img
+      - services-cadip-img
+      - services-catalog-img
+      - services-frontend-img
+      - services-staging-img
+      - dask-staging-local-img
     steps:
       - name: Log into Docker registry
         uses: docker/login-action@v3
@@ -643,7 +651,7 @@ jobs:
 
   # See https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
   trigger-rs-infra-core:
-    needs: [set-env, services-common-whl, services-staging-whl]
+    needs: [set-env, test-demo] # this must be the last job to run
     if: (github.actor != 'dependabot[bot]') && (needs.set-env.outputs.branch_name == 'develop')
     runs-on: ubuntu-latest
     name: "Trigger rs-infra-core workflow"
