@@ -144,6 +144,7 @@ class Staging(
         self.server_url = [
             os.getenv("RSPY_HOST_CADIP", "http://127.0.0.1:8002"),
             os.getenv("RSPY_HOST_ADGS", "http://127.0.0.1:8001"),
+            os.getenv("RSPY_HOST_PRIP", "http://127.0.0.1:8005"),
         ]
 
         self.catalog_url: str = os.environ.get(
