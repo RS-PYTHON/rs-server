@@ -260,7 +260,8 @@ def odata_to_stac(
             continue
         if stac_key == "geometry":
             feature_template["geometry"] = value
-            feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
+            if feature_template["geometry"]:
+                feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
             continue
         if stac_key in feature_template["assets"]["file"]:
             feature_template["assets"]["file"][stac_key] = value
