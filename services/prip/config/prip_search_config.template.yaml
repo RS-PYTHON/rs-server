@@ -89,3 +89,10 @@ collections:
       productType: OPER_MSI_L2A
     title: "L2A tile products"
     description: "Sentinel-2B Level-2A Tile"
+
+  - id: IW_SLC__1S
+    station: s1a
+    query:
+      productType: IW_SLC__1S
+    title: "IW 1S SLC tile products"
+    description: "Sentinel-1A Level-1 Tile"
