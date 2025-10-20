@@ -8,19 +8,37 @@
       "OriginDate": "2024-08-01T00:00:00Z",
       "PublicationDate": "2024-08-01T00:00:00Z",
       "EvictionDate": "2024-08-08T00:00:00Z",
-
       "ContentDate": {
         "Start": "2024-08-01T00:00:00Z",
-        "End":   "2024-08-01T00:06:00Z"
+        "End": "2024-08-01T00:06:00Z"
       },
-
       "GeoFootprint": {
         "type": "Polygon",
         "coordinates": [
-          [[-1.0, 51.0], [-1.0, 52.0], [0.0, 52.0], [0.0, 51.0], [-1.0, 51.0]]
+          [
+            [
+              -1.0,
+              51.0
+            ],
+            [
+              -1.0,
+              52.0
+            ],
+            [
+              0.0,
+              52.0
+            ],
+            [
+              0.0,
+              51.0
+            ],
+            [
+              -1.0,
+              51.0
+            ]
+          ]
         ]
       },
-
       "Checksum": [
         {
           "Algorithm": "MD5",
@@ -28,7 +46,47 @@
           "ChecksumDate": "2024-08-01T00:00:00Z"
         }
       ],
-
+      "Attributes": [
+        {
+          "@odata.type": "#OData.CSC.StringAttribute",
+          "Name": "productType",
+          "ValueType": "String",
+          "Value": "IW_RAW__0N"
+        },
+        {
+          "@odata.type": "#OData.CSC.StringAttribute",
+          "Name": "platformShortName",
+          "ValueType": "String",
+          "Value": "SENTINEL-1"
+        },
+        {
+          "@odata.type": "#OData.CSC.StringAttribute",
+          "Name": "platformSerialIdentifier",
+          "ValueType": "String",
+          "Value": "A"
+        }
+      ]
+    },
+    {
+      "Id": "21111111-2222-3333-4444-555555555555",
+      "Name": "WITHOUT-GEOFOOTPRINT",
+      "ContentType": "application/octet-stream",
+      "ContentLength": "1234567",
+      "OriginDate": "2024-08-01T00:00:00Z",
+      "PublicationDate": "2024-08-01T00:00:00Z",
+      "EvictionDate": "2024-08-08T00:00:00Z",
+      "ContentDate": {
+        "Start": "2024-08-01T00:00:00Z",
+        "End": "2024-08-01T00:06:00Z"
+      },
+      "GeoFootprint": null,
+      "Checksum": [
+        {
+          "Algorithm": "MD5",
+          "Value": "8277e0910d750195b448797616e091ad",
+          "ChecksumDate": "2024-08-01T00:00:00Z"
+        }
+      ],
       "Attributes": [
         {
           "@odata.type": "#OData.CSC.StringAttribute",

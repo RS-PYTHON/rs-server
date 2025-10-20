@@ -567,6 +567,15 @@ def prip_feature():
         return json.loads(f.read())
 
 
+@pytest.fixture(name="prip_feature_no_geom")
+@lru_cache(maxsize=1)
+def prip_feature_no_geom():
+    """Expected STAC Item for PRIP mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_feature_no_geometry.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
 @pytest.fixture(name="prip_response")
 @lru_cache(maxsize=1)
 def prip_pickup_response():

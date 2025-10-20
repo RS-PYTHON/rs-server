@@ -721,6 +721,35 @@ class TestFeatureOdataStacMapping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == response_body
 
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_mapping_no_geometry(
+        self,
+        client: TestClient,
+        prip_feature_no_geom,
+        prip_response,
+    ):
+        """Test mapping of an prip reponse with expanded attributes"""
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=contains(Name, "
+            "'WITHOUT-GEOFOOTPRINT') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            json={"value": [prip_response["value"][1]]},
+            status=200,
+        )
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items/WITHOUT-GEOFOOTPRINT")
+
+        returned_feature = response.json()
+        assert returned_feature == prip_feature_no_geom, "Features don't match"
+
+        # geometry is None or missing → bbox should not be added
+        assert returned_feature.get("geometry") is None, "Expected geometry to be None"
+
+        assert "bbox" not in returned_feature, "Expected bbox to be absent when geometry is missing"
+
 
 class TestFeatureCollectionOdataStacMapping:
     """Class that group unittests for /*/collections/{collection-id}/items mapping from odata to stac."""
