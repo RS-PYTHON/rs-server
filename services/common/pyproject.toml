@@ -59,7 +59,7 @@ sqlalchemy = "^2.0.43"
 eodag = "==v3.9.0"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
-pydantic = ">=2.9.2,<2.12.0" # see https://github.com/pyupio/safety/issues/673
+pydantic = ">=2.9.2,<2.13.0" # see https://github.com/pyupio/safety/issues/673
 markdown = "^3.8.2"
 python-dotenv = "^1.0.0"
 filelock = ">=3.16.1"
