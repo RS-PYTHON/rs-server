@@ -113,7 +113,8 @@ def compute_values(values: list[str | int | float], operator: str = "+") -> str:
     accepted templates, and returns a datetime matching the same template if one is in the inputs.
 
     Args:
-        values (list[str|int|float]): List of values to compute. Can be datetimes (as str) or numbers (as str, int or float).
+        values (list[str|int|float]): List of values to compute. Can be datetimes (as str)
+            or numbers (as str, int or float).
         operator (str): Operator to use for the calculation. Currently supports "+" and "-"
 
     Returns:
