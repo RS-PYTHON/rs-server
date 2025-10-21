@@ -324,14 +324,14 @@ files = [
 
 [[package]]
 name = "brotli-asgi"
-version = "1.4.0"
+version = "1.5.0"
 description = "A compression AGSI middleware using brotli"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "brotli-asgi-1.4.0.tar.gz", hash = "sha256:e2d6eca4b97af19716af05bbe0d4d79cffb0b0947100c188da9ed089f5b7bc2f"},
-    {file = "brotli_asgi-1.4.0-py3-none-any.whl", hash = "sha256:bc18bcb20803dc9d11abdd14ac4242f2f09ebb9d2a67f4d3a7fe4cb8bedcd226"},
+    {file = "brotli_asgi-1.5.0-py3-none-any.whl", hash = "sha256:f5e573095a42e19b9a9d298abc14c1669afdbaf962fc497e94e227ae443b9042"},
+    {file = "brotli_asgi-1.5.0.tar.gz", hash = "sha256:9f089678469d88650f7aebc38cd541959c6e6480c06b4c963d7d751d59cc64a1"},
 ]
 
 [package.dependencies]

@@ -4161,6 +4161,7 @@ files = [
     {file = "psycopg2-2.9.11-cp313-cp313-win_amd64.whl", hash = "sha256:8dc379166b5b7d5ea66dcebf433011dfc51a7bb8a5fc12367fa05668e5fc53c8"},
     {file = "psycopg2-2.9.11-cp314-cp314-win_amd64.whl", hash = "sha256:f10a48acba5fe6e312b891f290b4d2ca595fc9a06850fe53320beac353575578"},
     {file = "psycopg2-2.9.11-cp39-cp39-win_amd64.whl", hash = "sha256:6ecddcf573777536bddfefaea8079ce959287798c8f5804bee6933635d538924"},
+    {file = "psycopg2-2.9.11.tar.gz", hash = "sha256:964d31caf728e217c697ff77ea69c2ba0865fa41ec20bb00f0977e62fdcc52e3"},
 ]
 
 [[package]]
@@ -5593,7 +5594,7 @@ dask-gateway = "2024.1.0"
 flask = "^3.1.1"
 geoalchemy2 = ">=0.18"
 openapi-core = "^0.19.5"
-psycopg2 = "^2.9.10"
+psycopg2 = "^2.9.11"
 pygeoapi = "^0.21"
 rs-server-common = "*"
 SQLAlchemy = "^2.0.42"

@@ -370,14 +370,14 @@ files = [
 
 [[package]]
 name = "brotli-asgi"
-version = "1.4.0"
+version = "1.5.0"
 description = "A compression AGSI middleware using brotli"
 optional = false
 python-versions = ">=3.7"
 groups = ["main", "dev"]
 files = [
-    {file = "brotli-asgi-1.4.0.tar.gz", hash = "sha256:e2d6eca4b97af19716af05bbe0d4d79cffb0b0947100c188da9ed089f5b7bc2f"},
-    {file = "brotli_asgi-1.4.0-py3-none-any.whl", hash = "sha256:bc18bcb20803dc9d11abdd14ac4242f2f09ebb9d2a67f4d3a7fe4cb8bedcd226"},
+    {file = "brotli_asgi-1.5.0-py3-none-any.whl", hash = "sha256:f5e573095a42e19b9a9d298abc14c1669afdbaf962fc497e94e227ae443b9042"},
+    {file = "brotli_asgi-1.5.0.tar.gz", hash = "sha256:9f089678469d88650f7aebc38cd541959c6e6480c06b4c963d7d751d59cc64a1"},
 ]
 
 [package.dependencies]
@@ -2661,6 +2661,7 @@ files = [
     {file = "psycopg2-2.9.11-cp313-cp313-win_amd64.whl", hash = "sha256:8dc379166b5b7d5ea66dcebf433011dfc51a7bb8a5fc12367fa05668e5fc53c8"},
     {file = "psycopg2-2.9.11-cp314-cp314-win_amd64.whl", hash = "sha256:f10a48acba5fe6e312b891f290b4d2ca595fc9a06850fe53320beac353575578"},
     {file = "psycopg2-2.9.11-cp39-cp39-win_amd64.whl", hash = "sha256:6ecddcf573777536bddfefaea8079ce959287798c8f5804bee6933635d538924"},
+    {file = "psycopg2-2.9.11.tar.gz", hash = "sha256:964d31caf728e217c697ff77ea69c2ba0865fa41ec20bb00f0977e62fdcc52e3"},
 ]
 
 [[package]]
@@ -4350,4 +4351,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "0eb77a020a39e5968512d2aa6f90dd30bc9d2e443e6683874ab9676379d40df2"
+content-hash = "8af5b2c796ae845cd8089f38ca344ecdea9744b7fc6b79d8db62478ae6a08519"
