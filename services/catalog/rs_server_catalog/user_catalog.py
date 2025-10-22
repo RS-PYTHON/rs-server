@@ -75,7 +75,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils import utils2
-from rs_server_common.utils.cql2_filter_extension import process_filter
+from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.models import GeoJSONResponse
 from stac_fastapi.pgstac.core import CoreCrudClient
@@ -514,7 +514,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             # Pre-processing of filter extensions
             if "filter" in content:
-                content["filter"] = process_filter(content["filter"])
+                content["filter"] = process_filter_extensions(content["filter"])
 
             # Management of priority for the assignation of the owner_id
             if not self.request_ids["owner_id"]:

@@ -24,7 +24,7 @@ ACCEPTED_OPERATORS = ["+", "-"]
 logger = logging.getLogger(__name__)
 
 
-def process_filter(cql2_filter: dict | list) -> dict | list:
+def process_filter_extensions(cql2_filter: dict | list) -> dict | list:
     """
     Recursive function, to process a filter and compute any operation subfilter existing in an 'interval' field.
     This kind of operation is not supported in native CQL2, so it replaces the subfilters with actual
@@ -46,7 +46,7 @@ def process_filter(cql2_filter: dict | list) -> dict | list:
     if isinstance(cql2_filter, list):
         for i, val in enumerate(cql2_filter):
             if isinstance(val, dict):
-                cql2_filter[i] = process_filter(val)
+                cql2_filter[i] = process_filter_extensions(val)
 
     # If the filter is a dict: look for the 'interval' value that can contain a subfilter to process.
     # Iterate in case of any other value that is a dict or a list
@@ -55,7 +55,7 @@ def process_filter(cql2_filter: dict | list) -> dict | list:
             if field == "interval":
                 cql2_filter[field] = process_interval_field(cql2_filter[field])
             elif isinstance(cql2_filter[field], (dict, list)):
-                cql2_filter[field] = process_filter(cql2_filter[field])
+                cql2_filter[field] = process_filter_extensions(cql2_filter[field])
 
     return cql2_filter
 

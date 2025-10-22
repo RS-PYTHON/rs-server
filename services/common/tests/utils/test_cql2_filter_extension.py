@@ -17,7 +17,7 @@
 import pytest
 from rs_server_common.utils.cql2_filter_extension import (
     Cql2FilterFormattingError,
-    process_filter,
+    process_filter_extensions,
 )
 
 
@@ -67,9 +67,9 @@ def test_filter_processing_with_correct_subfilters():
         ],
     }
 
-    assert process_filter(input_filter_1) == expected_filter_1
-    assert process_filter(input_filter_2) == expected_filter_2
-    assert process_filter(input_filter_3) == input_filter_3
+    assert process_filter_extensions(input_filter_1) == expected_filter_1
+    assert process_filter_extensions(input_filter_2) == expected_filter_2
+    assert process_filter_extensions(input_filter_3) == input_filter_3
 
 
 def test_filter_processing_error_cases():
@@ -84,7 +84,7 @@ def test_filter_processing_error_cases():
         ],
     }
     with pytest.raises(Cql2FilterFormattingError) as error1:
-        process_filter(input_filter_1)
+        process_filter_extensions(input_filter_1)
     assert error1.value.args[0] == "Missing field 'op' or 'args' in operation filter: {'op': '+', 'somefield': 1000}"
 
     # Case 2: wrong number of args
@@ -96,7 +96,7 @@ def test_filter_processing_error_cases():
         ],
     }
     with pytest.raises(Cql2FilterFormattingError) as error2:
-        process_filter(input_filter_2)
+        process_filter_extensions(input_filter_2)
     assert error2.value.args[0] == "Expected exactly two values in field 'args': {'op': '+', 'args': [1000]}"
 
     # Case 3: unsupported operator
@@ -108,7 +108,7 @@ def test_filter_processing_error_cases():
         ],
     }
     with pytest.raises(Cql2FilterFormattingError) as error3:
-        process_filter(input_filter_3)
+        process_filter_extensions(input_filter_3)
     assert error3.value.args[0] == "Unknown operator: >. Accepted operators are: ['+', '-']."
 
     # Case 4: invalid datetime
@@ -120,7 +120,7 @@ def test_filter_processing_error_cases():
         ],
     }
     with pytest.raises(Cql2FilterFormattingError) as error4:
-        process_filter(input_filter_4)
+        process_filter_extensions(input_filter_4)
     assert (
         error4.value.args[0]
         == "Cannot process value 22/10/2025:17.00.00: only int, float or valid datetimes are allowed."

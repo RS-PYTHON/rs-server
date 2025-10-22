@@ -49,7 +49,7 @@ from rs_server_common import settings
 from rs_server_common.rspy_models import Item, ItemCollection
 from rs_server_common.stac_cql2 import temporal_op_query, temporal_operations
 from rs_server_common.utils import utils2
-from rs_server_common.utils.cql2_filter_extension import process_filter
+from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     extract_eo_product,
@@ -568,7 +568,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Pre-process filter extensions
         if "filter" in params:
-            params["filter"] = process_filter(params["filter"])
+            params["filter"] = process_filter_extensions(params["filter"])
 
         # Read filter
         read_cql(params.pop("filter", {}))
