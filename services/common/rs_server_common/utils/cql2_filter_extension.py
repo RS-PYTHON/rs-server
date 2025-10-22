@@ -93,13 +93,13 @@ def process_operation(operation: dict) -> str:
     Raises:
         Cql2FilterFormattingError: If the given dictionary doesn't have the expected format.
     """
-    if ("op" or "args") not in operation:
-        raise Cql2FilterFormattingError(f"Missing field 'op' or 'args' in operation filter: f{operation}")
+    if ("op" and "args") not in operation:
+        raise Cql2FilterFormattingError(f"Missing field 'op' or 'args' in operation filter: {operation}")
 
-    if not isinstance(operation["args"], dict) and len(operation["args"]) != 2:
+    if not isinstance(operation["args"], list) or len(operation["args"]) != 2:
         raise Cql2FilterFormattingError(f"Expected exactly two values in field 'args': {operation}")
 
-    if not isinstance(operation["op"], str) and operation["op"] not in ACCEPTED_OPERATORS:
+    if not isinstance(operation["op"], str) or operation["op"] not in ACCEPTED_OPERATORS:
         raise Cql2FilterFormattingError(
             f"Unknown operator: {operation['op']}. Accepted operators are: {ACCEPTED_OPERATORS}.",
         )
