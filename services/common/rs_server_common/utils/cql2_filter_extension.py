@@ -119,7 +119,7 @@ def compute_values(values: list[str | int | float], operator: str = "+") -> str:
     """
     # If any of the input values is a datetime the operation will return a new datetime
     return_datetime = False
-    dateformat = ""
+    return_dateformat = ""
     logger.debug(f"Computing values {values} with operator '{operator}'")
 
     # All "datetime" values are converted into POSIX timestamps
@@ -128,6 +128,7 @@ def compute_values(values: list[str | int | float], operator: str = "+") -> str:
             date, dateformat = parse_datetime(val)
             if date:
                 return_datetime = True
+                return_dateformat = dateformat
                 values[i] = date.timestamp()
             else:
                 try:
@@ -148,7 +149,7 @@ def compute_values(values: list[str | int | float], operator: str = "+") -> str:
 
     # Convert again into a datetime if necessary
     if return_datetime:
-        new_datetime = datetime.fromtimestamp(result).strftime(dateformat)  # type: ignore
+        new_datetime = datetime.fromtimestamp(result).strftime(return_dateformat)  # type: ignore
         logger.debug(f"Computed new datetime: {new_datetime}.")
         return new_datetime
     logger.debug(f"Computed new value: {result}")
