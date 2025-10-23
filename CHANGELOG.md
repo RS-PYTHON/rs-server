@@ -24,6 +24,34 @@ Changed
 
 None
 
+[1.0a3] - Sprint 29 - 2025-10-23
+================================
+
+## Added
+
+- RSPY-226: Enable HA for pgstac catalog database
+- RSPY-738: Create a prefect @task to record 'product_expected' for S3 Level-0
+- RSPY-743: Create a prefect @task to record missing and unexpected products
+- RSPY-759: Deploy stac-browser for PRIP
+- RSPY-773: ARD step1: CSLC product (reference DEM)
+- RSPY-774: ARD step1: CSLC product (reference geometry)
+- RSPY-775: ARD step1: CSLC product (co-registration)
+- RSPY-797: Update dpr-processing to retrieve processing units list
+- RSPY-798: Update the generic prefect flow “auxip-staging” to call CQL2 query
+- RSPY-799: invoke “auxip-staging” to retrieve auxiliary files from “dpr-process”
+- RSPY-801: Update to latest stable version of Oauth2-Proxy to remove Bitnami chart
+- RSPY-805: Invalid catalog URL displayed via stac browser
+- RSPY-810: Sprint 29 corrections of issues
+- RSPY-816: Improve rs-infra-core CI/CD
+- RSPY-822: Update prip mockup to support s3 stored products
+
+## Fixed
+
+- RSPY-792: Not enough resources in rs-testmeans [1pt]
+- RSPY-793: Ansible 12 is not compatible with rs-infra-core [1pt]
+- RSPY-806: CORS error when accessing Stac browser catalog locally [1pt]
+- RSPY-819: PRIP: error for products without geometry [1 pt]
+
 [1.0a2] - Sprint 28 - 2025-09-24
 ================================
 
