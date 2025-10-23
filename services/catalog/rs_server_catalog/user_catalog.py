@@ -798,8 +798,13 @@ field is not permitted also."
                         ),
                     )
 
+        # Add collections for current user
         accessible_collections.extend(filter_collections(collections, user_login))
-        return sorted(accessible_collections, key=lambda c: c["id"])
+
+        # Convert to dict then back to list to only keep unique ids
+        accessible_collections = list({col["id"]: col for col in accessible_collections}.values())
+
+        return sorted(accessible_collections, key=lambda col: col["id"])
 
     def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
         """Update the links for the endpoint /catalog/collections.
