@@ -39,9 +39,6 @@ def process_filter_extensions(cql2_filter: dict | list) -> dict | list:
     Raises:
         Cql2FilterFormattingError: if the subfilter to be processed is faulty
     """
-    if not cql2_filter:
-        return None
-
     # If the filter is a list: treat each of its elements being a dict as a subfilter, ignore the other ones
     if isinstance(cql2_filter, list):
         for i, val in enumerate(cql2_filter):
@@ -144,21 +141,21 @@ def compute_values(values: list[str | int | float], operator: str = "+") -> str:
     result = values[0]
     if operator == "+":
         for val in values[1:]:
-            result = result + val
+            result = result + val  # type: ignore
     elif operator == "-":
         for val in values[1:]:
-            result = result - val
+            result = result - val  # type: ignore
 
     # Convert again into a datetime if necessary
     if return_datetime:
-        new_datetime = datetime.fromtimestamp(result).strftime(dateformat)
+        new_datetime = datetime.fromtimestamp(result).strftime(dateformat)  # type: ignore
         logger.debug(f"Computed new datetime: {new_datetime}.")
         return new_datetime
     logger.debug(f"Computed new value: {result}")
     return str(result)
 
 
-def parse_datetime(value: str) -> tuple[datetime, str]:
+def parse_datetime(value: str) -> tuple[datetime | None, str]:
     """Returns the given value as a 'datetime' object if it matches any of the accepted templates.
 
     Args:
