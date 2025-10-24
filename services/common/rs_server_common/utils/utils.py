@@ -353,11 +353,6 @@ def find_product_type(product_type: str):
     for item in product_type_data:
         pattern = item.get("legacyType", "")
 
-        # Skip items with no legacyType
-        if not pattern or not isinstance(pattern, str):
-            logger.info(f"Skipping {item['productType']} with no legacyType.")
-            continue
-
         try:
             # Try regex full match first
             if re.fullmatch(pattern, product_type):

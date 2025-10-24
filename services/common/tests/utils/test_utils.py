@@ -198,8 +198,26 @@ def test_all_legacy_types_match():
         assert legacy_type_entry["processingLevel"] == "GRD"
 
 
-def test_regex_exception_fallback():
-    """Test that if the regex pattern is invalid, the fallback to equality is used."""
+def test_regex_error_fallback_branch(monkeypatch):
+    """Covers: invalid regex raises re.error → equality fallback → returns item"""
+    broken_entry = {
+        "productType": "BROKEN",
+        "mission": "S0",
+        "instrumentMode": "XX",
+        "processingLevel": "TEST",
+        "legacyType": "[invalid_regex",
+    }
 
-    result = find_product_type("IW_RAW__0N")  # exact string
-    assert result == product_type_data, "Fallback equality did not work"
+    # Monkeypatch product_type_data with a list containing both
+    if isinstance(product_type_data, list):
+        temp_data = product_type_data + [broken_entry]
+    else:
+        temp_data = [product_type_data, broken_entry]
+
+    monkeypatch.setattr("rs_server_common.utils.utils.product_type_data", temp_data)
+
+    result = find_product_type("[invalid_regex")
+    assert result == broken_entry, "Expected equality fallback match"
+
+    result = find_product_type("NO_MATCH_TYPE")
+    assert result == {}, "Expected empty dict for unmatched input"
