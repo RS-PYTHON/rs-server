@@ -75,7 +75,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils import utils2
-from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.models import GeoJSONResponse
 from stac_fastapi.pgstac.core import CoreCrudClient
@@ -512,10 +511,6 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         if request.method == "POST":
             content = await request.json()
 
-            # Pre-processing of filter extensions
-            if "filter" in content:
-                content["filter"] = process_filter_extensions(content["filter"])
-
             # Management of priority for the assignation of the owner_id
             if not self.request_ids["owner_id"]:
                 filters = parse_cql2_json(content["filter"]) if "filter" in content else None
@@ -540,7 +535,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(content["collections"]):
                     if not await self.collection_exists(request, collection):
-                        content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
+                        content["collections"][i] = owner_id_and_collection_id(self.request_ids["owner_id"], collection)
                         logger.debug(f"Using collection name: {content['collections'][i]}")
 
                 self.request_ids["collection_ids"] = content["collections"]
@@ -570,7 +565,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(coll_list):
                     if not await self.collection_exists(request, collection):
-                        coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
+                        coll_list[i] = owner_id_and_collection_id(self.request_ids["owner_id"], collection)
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
