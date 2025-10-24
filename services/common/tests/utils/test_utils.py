@@ -137,15 +137,13 @@ def test_validate_inputs_format(date_time: str, expected: tuple[str, str, str]):
         assert stop_dt is None
 
 
-product_type_data = [
-    {
-        "productType": "S01SSMGRD",
-        "mission": "S1",
-        "instrumentMode": "SM",
-        "processingLevel": "GRD",
-        "legacyType": "S[1-6]_GRD[FHM]_1[AS]",
-    },
-]
+product_type_data = {
+    "productType": "S01SIWRAW",
+    "mission": "S1",
+    "instrumentMode": "IW",
+    "processingLevel": "RAW",
+    "legacyType": "IW_RAW__0N",
+}
 
 # All 36 legacyType values
 all_legacy_types = [
@@ -198,3 +196,10 @@ def test_all_legacy_types_match():
         assert legacy_type_entry["mission"] == "S1"
         assert legacy_type_entry["instrumentMode"] == "SM"
         assert legacy_type_entry["processingLevel"] == "GRD"
+
+
+def test_regex_exception_fallback():
+    """Test that if the regex pattern is invalid, the fallback to equality is used."""
+
+    result = find_product_type("IW_RAW__0N")  # exact string
+    assert result == product_type_data, "Fallback equality did not work"
