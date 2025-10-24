@@ -182,7 +182,7 @@ class MockPgstacCadip(MockPgstac):
 
             # eopf:origin_datetime is required for the PI computing.
             # It has the same value than the end_datetime.
-            feature.properties.__setattr__("eopf:origin_datetime", feature.properties.end_datetime)
+            setattr(feature.properties, "eopf:origin_datetime", feature.properties.end_datetime)
 
     def process_files(self, empty_sessions_data: dict) -> dict:
         """
