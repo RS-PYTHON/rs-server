@@ -341,15 +341,17 @@ def _apply_product_facets(feature: dict, _odata: dict) -> None:
 
 def find_product_type(product_type: str):
     """
-    Finds the first product type entry whose 'legacyType' matches the given productType.
+    Finds the first product type entry whose 'legacyType' matches the given product_type.
     Works with both exact strings and regex patterns.
 
     Args:
-        productType: The string to test.
+        product_type: The string to test.
 
     Returns:
-        The first matching dictionary entry, or {} if no match.
+        The first matching dictionary entry, or a default item if no match.
     """
+
+    default = {key: None for key in product_type_data[0]}
     for item in product_type_data:
         pattern = item.get("legacyType", "")
 
@@ -357,12 +359,12 @@ def find_product_type(product_type: str):
             # Try regex full match first
             if re.fullmatch(pattern, product_type):
                 return item
-        except re.error:
+        except (TypeError, re.error):
             # If regex fails (invalid pattern), fall back to plain equality
             if pattern == product_type:
                 return item
 
-    return {}
+    return default
 
 
 def validate_sort_input(sortby: str):

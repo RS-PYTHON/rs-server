@@ -220,4 +220,4 @@ def test_regex_error_fallback_branch(monkeypatch):
     assert result == broken_entry, "Expected equality fallback match"
 
     result = find_product_type("NO_MATCH_TYPE")
-    assert result == {}, "Expected empty dict for unmatched input"
+    assert result == {key: None for key in broken_entry}, "Expected default value for unmatched input"
