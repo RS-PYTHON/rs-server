@@ -16,7 +16,10 @@
 
 """Unit tests for the authentication."""
 
+import itertools
 import json
+from dataclasses import dataclass
+from typing import Literal
 
 import pytest
 import requests
@@ -53,6 +56,13 @@ from .helpers import (  # pylint: disable=no-name-in-module
 
 logger = Logging.default(__name__)
 
+# Run tests by authenticating with either an apikey or oauth2 cookie
+AUTH_PARAM = pytest.mark.parametrize(
+    "test_apikey, test_oauth2",
+    [[True, False], [False, True]],
+    ids=["apikey", "oauth2"],
+)
+
 COMMON_FIELDS = {
     "extent": {
         "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
@@ -68,163 +78,292 @@ COMMON_FIELDS = {
 # pylint: disable=too-many-lines, too-many-arguments
 
 
-@pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
-async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-    """
-    Test that the http endpoints are protected and return 401 or 403 if not authenticated,
-    and test the response contents.
-    """
-    iam_roles = [
-        "rs_catalog_toto:*_read",
-        "rs_catalog_titi:S2_L1_read",
-        "rs_catalog_darius:*_write",
-    ]
-    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, True)
-    header = VALID_APIKEY_HEADER if test_apikey else {}
+class TestAuthentication:
+    """Test that the user must be authenticated to access catalog endpoints."""
 
-    #
-    # Test contents returned by the /catalog endpoint
-    #
+    @AUTH_PARAM
+    async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
+        """
+        Test that the http endpoints are protected and return 401 or 403 if not authenticated,
+        and test the response contents.
+        """
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_titi:S2_L1_read",
+            "rs_catalog_darius:*_write",
+        ]
+        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, True)
+        header = VALID_APIKEY_HEADER if test_apikey else {}
 
-    base_links = [
-        {
-            "rel": "self",
-            "type": "application/json",
-            "title": "This document",
-            "href": "http://testserver/catalog/",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "root",
-            "type": "application/json",
-            "title": "Root",
-            "href": "http://testserver/catalog/",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "data",
-            "type": "application/json",
-            "title": "Collections available for this Catalog",
-            "href": "http://testserver/catalog/collections",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "conformance",
-            "type": "application/json",
-            "title": "STAC/OGC conformance classes implemented by this server",
-            "href": "http://testserver/catalog/conformance",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search [GET]",
-            "href": "http://testserver/catalog/search",
-            "method": "GET",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search [POST]",
-            "href": "http://testserver/catalog/search",
-            "method": "POST",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-            "type": "application/schema+json",
-            "title": "Queryables available for this Catalog",
-            "href": "http://testserver/catalog/queryables",
-            "method": "GET",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "service-desc",
-            "type": "application/vnd.oai.openapi+json;version=3.0",
-            "title": "OpenAPI service description",
-            "href": "http://testserver/catalog/api",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "service-doc",
-            "type": "text/html",
-            "title": "OpenAPI service documentation",
-            "href": "http://testserver/catalog/api.html",
-            **AUTH_REFS,
-        },
-    ]
+        #
+        # Test contents returned by the /catalog landing page endpoint
+        #
 
-    static_child_links = [
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "S1_L1",
-            "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "S2_L3",
-            "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "S2_L1",
-            "href": "http://testserver/catalog/collections/titi:S2_L1",
-            **AUTH_REFS,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "S1_L1",
-            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-            **AUTH_REFS,
-        },
-    ]
+        base_links = [
+            {
+                "rel": "self",
+                "type": "application/json",
+                "title": "This document",
+                "href": "http://testserver/catalog/",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "root",
+                "type": "application/json",
+                "title": "Root",
+                "href": "http://testserver/catalog/",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "data",
+                "type": "application/json",
+                "title": "Collections available for this Catalog",
+                "href": "http://testserver/catalog/collections",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "conformance",
+                "type": "application/json",
+                "title": "STAC/OGC conformance classes implemented by this server",
+                "href": "http://testserver/catalog/conformance",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "search",
+                "type": "application/geo+json",
+                "title": "STAC search [GET]",
+                "href": "http://testserver/catalog/search",
+                "method": "GET",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "search",
+                "type": "application/geo+json",
+                "title": "STAC search [POST]",
+                "href": "http://testserver/catalog/search",
+                "method": "POST",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                "type": "application/schema+json",
+                "title": "Queryables available for this Catalog",
+                "href": "http://testserver/catalog/queryables",
+                "method": "GET",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "service-desc",
+                "type": "application/vnd.oai.openapi+json;version=3.0",
+                "title": "OpenAPI service description",
+                "href": "http://testserver/catalog/api",
+                **AUTH_REFS,
+            },
+            {
+                "rel": "service-doc",
+                "type": "text/html",
+                "title": "OpenAPI service documentation",
+                "href": "http://testserver/catalog/api.html",
+                **AUTH_REFS,
+            },
+        ]
 
-    landing_page_response = client.request("GET", "/catalog/", **header)
-    assert landing_page_response.status_code == HTTP_200_OK
-    content = json.loads(landing_page_response.content)
-    assert content["links"] == base_links + sorted(
-        static_child_links,
-        key=lambda link: link["href"],  # type: ignore
-    )
+        static_child_links = [
+            {
+                "rel": "child",
+                "type": "application/json",
+                "title": id,
+                "href": f"http://testserver/catalog/collections/{owner}:{id}",
+                **AUTH_REFS,
+            }
+            for owner, id in [
+                ["toto", "S1_L1"],
+                ["toto", "S2_L3"],
+                ["titi", "S2_L1"],
+                ["pyteam", "S1_L1"],
+            ]
+        ]
 
-    # Add a collection
-    post_response = add_collection(client, Collection("pyteam", "S2_L1"), **header)
-    assert post_response.status_code == HTTP_201_CREATED
+        landing_page_response = client.request("GET", "/catalog/", **header)
+        assert landing_page_response.status_code == HTTP_200_OK
+        content = json.loads(landing_page_response.content)
+        assert content["links"] == base_links + sorted(
+            static_child_links,
+            key=lambda link: link["href"],  # type: ignore
+        )
 
-    # Check the returned collection contents
-    valid_collections = [
-        Collection("toto", "S1_L1").as_returned(cluster_mode=True),
-        Collection("toto", "S2_L3").as_returned(cluster_mode=True),
-        Collection("titi", "S2_L1").as_returned(cluster_mode=True),
-        Collection("pyteam", "S1_L1").as_returned(cluster_mode=True),
-        Collection("pyteam", "S2_L1").as_returned(cluster_mode=True),
-    ]
-    all_collections = client.request("GET", "/catalog/collections", **header)
+        # Add a collection
+        post_response = add_collection(client, Collection("pyteam", "S2_L1"), **header)
+        assert post_response.status_code == HTTP_201_CREATED
 
-    assert all_collections.status_code == HTTP_200_OK
-    content = json.loads(all_collections.content)
-    assert content["collections"] == sorted(valid_collections, key=lambda link: link["id"])  # type: ignore
+        # Check the returned collection contents
+        valid_collections = [
+            Collection("toto", "S1_L1").as_returned(cluster_mode=True),
+            Collection("toto", "S2_L3").as_returned(cluster_mode=True),
+            Collection("titi", "S2_L1").as_returned(cluster_mode=True),
+            Collection("pyteam", "S1_L1").as_returned(cluster_mode=True),
+            Collection("pyteam", "S2_L1").as_returned(cluster_mode=True),
+        ]
+        all_collections = client.request("GET", "/catalog/collections", **header)
 
-    # Test a wrong apikey
-    if test_apikey:
-        wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
-        assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
+        assert all_collections.status_code == HTTP_200_OK
+        content = json.loads(all_collections.content)
+        assert content["collections"] == sorted(valid_collections, key=lambda link: link["id"])  # type: ignore
 
-    # Delete the added collection so we're back to the initial test state
-    assert client.delete("/catalog/collections/pyteam:S2_L1", **header).is_success
+        # Test a wrong apikey
+        if test_apikey:
+            wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
+            assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
+
+        # Delete the added collection so we're back to the initial test state
+        assert client.delete("/catalog/collections/pyteam:S2_L1", **header).is_success
+
+    @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
+    @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
+    @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
+    async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
+        """
+        Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
+        """
+        owner_id = "pyteam"
+        await init_test(
+            mocker,
+            httpx_mock,
+            client,
+            test_apikey,
+            test_oauth2,
+            [],
+            mock_wrong_apikey=True,
+            user_login=owner_id,
+        )
+        header = VALID_APIKEY_HEADER if test_apikey else {}
+
+        # For each route and method from the openapi specification i.e. with the /catalog/ prefixes
+        for path, methods in app.openapi()["paths"].items():
+            if not must_be_authenticated(path):
+                continue
+            for method in methods.keys():
+
+                endpoint = path.format(collection_id="collection_id", item_id="item_id", owner_id=owner_id)
+                logger.debug(f"Test the {endpoint!r} [{method}] authentication")
+
+                # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
+                # We have other errors on many endpoints because we didn't give the right arguments,
+                # but it's OK it is not what we are testing here.
+                if test_apikey or test_oauth2:
+                    response = client.request(method, endpoint, **header)
+                    logger.debug(response)
+                    assert response.status_code not in (
+                        HTTP_401_UNAUTHORIZED,
+                        HTTP_403_FORBIDDEN,
+                        HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
+                    )
+
+                    # With a wrong apikey, we should have a 403 error
+                    if test_apikey:
+                        assert client.request(method, endpoint, **WRONG_APIKEY_HEADER).status_code == HTTP_403_FORBIDDEN
+
+                # Check that without authentication, the endpoint is protected and we receive a 401
+                else:
+                    assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
+
+    def test_authenticated_endpoints():
+        """Test that the catalog endpoints need authentication."""
+        for route_path in [
+            "/catalog/_mgmt/health",
+            "/catalog/_mgmt/ping",
+            "/catalog/api",
+            "/catalog/api.html",
+            "/auth/",
+        ]:
+            assert not must_be_authenticated(route_path)
+        for route_path in [
+            "/catalog",
+            "/catalog/",
+            "/catalog/conformance",
+            "/catalog/collections",
+            "/catalog/search",
+            "/catalog/queryables",
+        ]:
+            assert must_be_authenticated(route_path)
 
 
-class TestAuthenticationGetOneCollection:
-    """Contains authentication tests when the user wants to get a single collection."""
+@dataclass
+class AuthorizationInfo:
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    owner_id: str
+    collection_id: str
+    action: Literal["read", "write", "download"]
+
+
+def get_test_cases(endpoints: AuthorizationInfo | list[AuthorizationInfo]):
+
+    param_names = ["implicit_owner", "user_roles", "should_succeed"]
+    param_values = []
+    param_ids = []
+
+    if isinstance(endpoints, AuthorizationInfo):
+        endpoints = [endpoints]
+
+    param_values.append([True, [], True])
+    param_ids.append("implicit-owner")
+
+    for owner_case, col_case, action_case in itertools.product(["*", "ok", "ko"], ["*", "ok", "ko"], ["ok", "ko"]):
+
+        should_succeed = True
+
+        if owner_case == "*":
+            role_owners = ["*"]
+        elif owner_case == "ok":
+            role_owners = {endpoint.owner_id for endpoint in endpoints}
+        else:
+            role_owners = ["unauth"]
+            should_succeed = False
+
+        if col_case == "*":
+            role_cols = ["*"]
+        elif col_case == "ok":
+            role_cols = {endpoint.collection_id for endpoint in endpoints}
+        else:
+            role_cols = ["unauth"]
+            should_succeed = False
+
+        if action_case == "ok":
+            role_actions = {endpoint.action for endpoint in endpoints}
+        else:
+            role_actions = ["unauth"]
+            should_succeed = False
+
+        roles = [
+            f"rs_catalog_{role_owner}:{role_col}_{role_action}"
+            for role_owner, role_col, role_action in itertools.product(role_owners, role_cols, role_actions)
+        ]
+
+        param_values.append([False, roles, should_succeed])
+        param_ids.append(f"owner={owner_case}|col={col_case}|action={action_case}")
+
+    return param_names, param_values, param_ids
+
+
+param_names, param_values, param_ids = get_test_cases(
+    [
+        AuthorizationInfo("user1", "col1", "read"),
+        AuthorizationInfo("user1", "col1", "write"),
+        AuthorizationInfo("user1", "col2", "write"),
+        AuthorizationInfo("user2", "col2", "write"),
+    ],
+)
+
+
+@pytest.mark.parametrize(param_names, param_values, ids=param_ids)
+def test_my_params1(implicit_owner: bool, user_roles, should_succeed):
+    logger.debug(f"implicit: {implicit_owner}, user_roles: {user_roles}, shoud_succeed: {should_succeed}")
+
+
+class TestAuthorizationGetOneCollection:
+    """Contains authorization tests when the user wants to get a single collection."""
+
+    @AUTH_PARAM
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call"),
         [
@@ -306,7 +445,7 @@ class TestAuthenticationGetOneCollection:
         assert response.status_code == HTTP_200_OK
         assert collection == json.loads(response.content)
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
         when he does a good request without the right authorisations."""
@@ -326,10 +465,10 @@ class TestAuthenticationGetOneCollection:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationGetItems:
-    """Contains authentication tests when the user wants to get items."""
+class TestAuthorizationGetItems:
+    """Contains authorization tests when the user wants to get items."""
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call"),
         [
@@ -361,7 +500,7 @@ class TestAuthenticationGetItems:
         )
         assert response.status_code == HTTP_200_OK
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user get a HTTP_401_UNAUTHORIZED status code response
         when he does a good requests without the right authorisations.
@@ -382,10 +521,10 @@ class TestAuthenticationGetItems:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationGetOneItem:
-    """Contains authentication tests when the user wants to one item."""
+class TestAuthorizationGetOneItem:
+    """Contains authorization tests when the user wants to one item."""
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call", "feature"),
         [
@@ -415,46 +554,46 @@ class TestAuthenticationGetOneItem:
 
         feature_s1_l1_0 = {
             "id": feature,
-            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
-            "type": "Feature",
-            "assets": {
-                "may24C355000e4102500n.tif": {
-                    "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
-                    "type": "image/tiff; application=geotiff; profile=cloud-optimized",
-                    "title": "NOAA STORM COG",
-                    **AUTH_REFS,
-                },
-            },
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-94.6334839, 37.0595608],
-                        [-94.6334839, 37.0332547],
-                        [-94.6005249, 37.0332547],
-                        [-94.6005249, 37.0595608],
-                        [-94.6334839, 37.0595608],
-                    ],
-                ],
-            },
-            "collection": "S1_L1",
-            "properties": {
-                "gsd": 0.5971642834779395,
-                "owner": user,
-                "width": 2500,
-                "height": 2500,
-                "datetime": "2000-02-02T00:00:00Z",
-                "owner_id": user,
-                "proj:epsg": 3857,
-                "orientation": "nadir",
-                **AUTH_SCHEME,
-            },
-            "stac_version": "1.0.0",
-            "stac_extensions": [
-                "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
-                "https://stac-extensions.github.io/projection/v2.0.0/schema.json",
-                AUTH_EXTENSION,
-            ],
+            # "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
+            # "type": "Feature",
+            # "assets": {
+            #     "may24C355000e4102500n.tif": {
+            #         "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
+            #         "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            #         "title": "NOAA STORM COG",
+            #         **AUTH_REFS,
+            #     },
+            # },
+            # "geometry": {
+            #     "type": "Polygon",
+            #     "coordinates": [
+            #         [
+            #             [-94.6334839, 37.0595608],
+            #             [-94.6334839, 37.0332547],
+            #             [-94.6005249, 37.0332547],
+            #             [-94.6005249, 37.0595608],
+            #             [-94.6334839, 37.0595608],
+            #         ],
+            #     ],
+            # },
+            # "collection": "S1_L1",
+            # "properties": {
+            #     "gsd": 0.5971642834779395,
+            #     "owner": user,
+            #     "width": 2500,
+            #     "height": 2500,
+            #     "datetime": "2000-02-02T00:00:00Z",
+            #     "owner_id": user,
+            #     "proj:epsg": 3857,
+            #     "orientation": "nadir",
+            #     **AUTH_SCHEME,
+            # },
+            # "stac_version": "1.0.0",
+            # "stac_extensions": [
+            #     "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+            #     "https://stac-extensions.github.io/projection/v2.0.0/schema.json",
+            #     AUTH_EXTENSION,
+            # ],
         }
 
         response = client.request(
@@ -466,7 +605,7 @@ class TestAuthenticationGetOneItem:
         feature_id = json.loads(response.content)["id"]
         assert feature_id == feature_s1_l1_0["id"]
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
         when he does a good request without the right permissions.
@@ -487,8 +626,8 @@ class TestAuthenticationGetOneItem:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationPostOneCollection:
-    """Contains authentication tests when a user wants to post one collection."""
+class TestAuthorizationPostOneCollection:
+    """Contains authorization tests when a user wants to post one collection."""
 
     collection_to_post = {
         "id": "MY_SPECIAL_COLLECTION",
@@ -516,7 +655,7 @@ class TestAuthenticationPostOneCollection:
         **COMMON_FIELDS,
     }
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_http201_with_good_authentication(
         self,
         mocker,
@@ -549,7 +688,7 @@ class TestAuthenticationPostOneCollection:
             **header,
         ).is_success
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
         when he does a good request without the right permissions."""
@@ -566,7 +705,7 @@ class TestAuthenticationPostOneCollection:
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_user_creates_collection_owned_by_another_user(
         self,
         mocker,
@@ -620,8 +759,8 @@ class TestAuthenticationPostOneCollection:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationPutOneCollection:
-    """Contains authentication tests when a user wants to update one collection."""
+class TestAuthorizationPutOneCollection:
+    """Contains authorization tests when a user wants to update one collection."""
 
     updated_collection = {
         "id": "S1_L1",
@@ -650,7 +789,7 @@ class TestAuthenticationPutOneCollection:
         **COMMON_FIELDS,
     }
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_http200_with_good_authentication(
         self,
         mocker,
@@ -688,7 +827,7 @@ class TestAuthenticationPutOneCollection:
         )
         assert response.status_code == HTTP_200_OK
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
         when he does a good request without the right permissions."""
@@ -705,7 +844,7 @@ class TestAuthenticationPutOneCollection:
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_user_updates_collection_owned_by_another_user(
         self,
         mocker,
@@ -758,8 +897,8 @@ class TestAuthenticationPutOneCollection:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationSearch:
-    """Contains authentication tests when a user wants to do a search request."""
+class TestAuthorizationSearch:
+    """Contains authorization tests when a user wants to do a search request."""
 
     # Search request using one collection
     search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
@@ -792,7 +931,7 @@ class TestAuthenticationSearch:
         },
     }
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_http200_with_good_authentication(
         self,
         mocker,
@@ -821,7 +960,7 @@ class TestAuthenticationSearch:
         response = client.request("POST", "/catalog/search", json=self.test_json, **header)
         assert response.status_code == HTTP_200_OK
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_several_collections_http200_with_good_authentication(
         self,
         mocker,
@@ -851,7 +990,7 @@ class TestAuthenticationSearch:
         response = client.request("POST", "/catalog/search", json=self.test_json_several_coll, **header)
         assert response.status_code == HTTP_200_OK
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_several_collections_fails_without_good_perms(
         self,
         mocker,
@@ -882,10 +1021,10 @@ class TestAuthenticationSearch:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationDownload:
-    """Contains authentication tests when a user wants to do a download."""
+class TestAuthorizationDownload:
+    """Contains authorization tests when a user wants to do a download."""
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_http200_with_good_authentication(
         self,
         mocker,
@@ -975,7 +1114,7 @@ class TestAuthenticationDownload:
         assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
         assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test used to verify the generation of a presigned url for a download."""
 
@@ -1019,10 +1158,10 @@ class TestAuthenticationDownload:
             clear_aws_credentials()
 
 
-class TestAuthenticationDelete:
-    """Contains authentication tests when a user wants to delete a collection."""
+class TestAuthorizationDelete:
+    """Contains authorization tests when a user wants to delete a collection."""
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_http200_with_good_authentication(
         self,
         mocker,
@@ -1079,7 +1218,7 @@ class TestAuthenticationDelete:
         )
         assert response.status_code == HTTP_200_OK
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
         when he tries to delete a collection without right permissions."""
@@ -1102,8 +1241,8 @@ class TestAuthenticationDelete:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
-    """Contains authentication tests when a user wants to post one item."""
+class TestAuthorizationPostOneItem:  # pylint: disable=duplicate-code
+    """Contains authorization tests when a user wants to post one item."""
 
     item_id = "S1SIWOCN_20220412T054447_0024_S139"
     feature_to_post = {
@@ -1157,7 +1296,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         "collection": "S1_L1",
     }
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_http201_with_good_authentication(
         self,
         mocker,
@@ -1194,7 +1333,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         # check if the item was deleted from the collection
         assert response.status_code == HTTP_200_OK
 
-    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    @AUTH_PARAM
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
         when he does a good request without right permissions."""
@@ -1210,68 +1349,3 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
             **header,
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
-
-
-@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-@pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
-@pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
-async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
-    """
-    Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
-    """
-    owner_id = "pyteam"
-    await init_test(
-        mocker,
-        httpx_mock,
-        client,
-        test_apikey,
-        test_oauth2,
-        [],
-        mock_wrong_apikey=True,
-        user_login=owner_id,
-    )
-    header = VALID_APIKEY_HEADER if test_apikey else {}
-
-    # For each route and method from the openapi specification i.e. with the /catalog/ prefixes
-    for path, methods in app.openapi()["paths"].items():
-        if not must_be_authenticated(path):
-            continue
-        for method in methods.keys():
-
-            endpoint = path.format(collection_id="collection_id", item_id="item_id", owner_id=owner_id)
-            logger.debug(f"Test the {endpoint!r} [{method}] authentication")
-
-            # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
-            # We have other errors on many endpoints because we didn't give the right arguments,
-            # but it's OK it is not what we are testing here.
-            if test_apikey or test_oauth2:
-                response = client.request(method, endpoint, **header)
-                logger.debug(response)
-                assert response.status_code not in (
-                    HTTP_401_UNAUTHORIZED,
-                    HTTP_403_FORBIDDEN,
-                    HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
-                )
-
-                # With a wrong apikey, we should have a 403 error
-                if test_apikey:
-                    assert client.request(method, endpoint, **WRONG_APIKEY_HEADER).status_code == HTTP_403_FORBIDDEN
-
-            # Check that without authentication, the endpoint is protected and we receive a 401
-            else:
-                assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
-
-
-def test_authenticated_endpoints():
-    """Test that the catalog endpoints need authentication."""
-    for route_path in ["/catalog/_mgmt/health", "/catalog/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/"]:
-        assert not must_be_authenticated(route_path)
-    for route_path in [
-        "/catalog",
-        "/catalog/",
-        "/catalog/conformance",
-        "/catalog/collections",
-        "/catalog/search",
-        "/catalog/queryables",
-    ]:
-        assert must_be_authenticated(route_path)
