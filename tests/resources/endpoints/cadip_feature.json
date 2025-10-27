@@ -5,6 +5,7 @@
         "datetime": "2020-01-05T18:52:26.165Z",
         "start_datetime": "2020-01-05T07:22:04.051Z",
         "end_datetime": "2020-01-05T18:52:32.165Z",
+        "eopf:origin_datetime": "2020-01-05T18:52:32.165Z",
         "platform": "sentinel-1a",
         "constellation": "sentinel-1",
         "published": "2020-01-05T18:52:26.165Z",
