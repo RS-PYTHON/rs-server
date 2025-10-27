@@ -535,15 +535,17 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     "filter": stac_filter,
                 }  # The "filter_lang" field has to be placed BEFORE the filter.
 
+            def _norm_server(collection: str) -> str:
+                if ":" in collection:
+                    o, c = collection.split(":", 1)
+                    return owner_id_and_collection_id(o, c)
+                return collection
+
             # ----- Call /catalog/search with POST method endpoint
             if "collections" in content:
-                # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
-                for i, collection in enumerate(content["collections"]):
-                    if not await self.collection_exists(request, collection):
-                        content["collections"][i] = owner_id_and_collection_id(self.request_ids["owner_id"], collection)
-                        logger.debug(f"Using collection name: {content['collections'][i]}")
-
+                content["collections"] = [_norm_server(c) for c in content["collections"]]
                 self.request_ids["collection_ids"] = content["collections"]
+                logger.debug(f"Using collections: {content['collections']}")
                 request = self.override_request_body(request, content)
 
         # ---------- GET requests
