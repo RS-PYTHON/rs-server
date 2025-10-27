@@ -47,6 +47,8 @@ from starlette.status import (
 )
 
 from .helpers import (  # pylint: disable=no-name-in-module
+    a_collection,
+    add_collection,
     clear_aws_credentials,
     export_aws_credentials,
 )
@@ -225,45 +227,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         key=lambda link: link["href"],  # type: ignore
     )
 
-    pyteam_collection = {
-        "id": "S2_L1",
-        "type": "Collection",
-        "links": [
-            {
-                "rel": "items",
-                "type": "application/geo+json",
-                "href": "http://testserver/collections/S2_L1/items",
-            },
-            {
-                "rel": "parent",
-                "type": "application/json",
-                "href": "http://testserver/",
-            },
-            {
-                "rel": "root",
-                "type": "application/json",
-                "href": "http://testserver/",
-            },
-            {
-                "rel": "self",
-                "type": "application/json",
-                "href": "http://testserver/collections/S2_L1",
-            },
-            {
-                "rel": "items",
-                "href": "http://localhost:8082/collections/S2_L1/items",
-                "type": "application/geo+json",
-            },
-            {
-                "rel": "license",
-                "href": "https://creativecommons.org/licenses/publicdomain/",
-                "title": "public domain",
-            },
-        ],
-        "owner": "pyteam",
-        **COMMON_FIELDS,
-    }
-    post_response = client.post("/catalog/collections", json=pyteam_collection, **header)
+    post_response = add_collection(client, a_collection("pyteam", "S2_L1"), **header)
     assert post_response.status_code == HTTP_201_CREATED
     valid_collections = [
         {
@@ -496,12 +460,6 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "items",
-                    "href": "http://testserver/catalog/collections/pyteam:S2_L1/items/",
-                    "type": "application/geo+json",
                     **AUTHENT_REF,
                 },
                 {

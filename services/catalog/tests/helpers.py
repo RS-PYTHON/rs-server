@@ -23,6 +23,7 @@ from typing import Any
 
 import yaml
 from fastapi.testclient import TestClient
+from requests import Response
 from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
@@ -149,7 +150,7 @@ def a_collection(user: str | None, name: str) -> Collection:
     return Collection(user, name)
 
 
-def add_collection(client: TestClient, collection: Collection):
+def add_collection(client: TestClient, collection: Collection, **kwargs) -> Response:
     """Add the given collection in the STAC catalog.
 
     Args:
@@ -162,11 +163,9 @@ def add_collection(client: TestClient, collection: Collection):
     Raises:
         Error if the collection addition failed.
     """
-    response = client.post(
-        "/catalog/collections",
-        json=collection.properties,
-    )
+    response = client.post("/catalog/collections", json=collection.properties, **kwargs)
     response.raise_for_status()
+    return response
 
 
 def add_collection_from_dict(client: TestClient, collection: dict) -> tuple[str, str]:
