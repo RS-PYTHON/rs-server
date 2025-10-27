@@ -26,11 +26,6 @@ from rs_server_catalog.app import app, must_be_authenticated
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
-    OAUTH2_AUTHORIZATION_ENDPOINT,
-    OAUTH2_TOKEN_ENDPOINT,
-    OIDC_ENDPOINT,
-    OIDC_REALM,
-    RSPY_UAC_HOMEPAGE,
     VALID_APIKEY_HEADER,
     WRONG_APIKEY_HEADER,
     init_test,
@@ -47,7 +42,10 @@ from starlette.status import (
 )
 
 from .helpers import (  # pylint: disable=no-name-in-module
-    a_collection,
+    AUTH_EXTENSION,
+    AUTH_REFS,
+    AUTH_SCHEME,
+    Collection,
     add_collection,
     clear_aws_credentials,
     export_aws_credentials,
@@ -55,41 +53,6 @@ from .helpers import (  # pylint: disable=no-name-in-module
 
 logger = Logging.default(__name__)
 
-AUTHENT_EXTENSION = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
-AUTHENT_SCHEME = {
-    "auth:schemes": {
-        "apikey": {
-            "type": "apiKey",
-            "description": f"API key generated using {RSPY_UAC_HOMEPAGE}"
-            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
-            "name": "x-api-key",
-            "in": "header",
-        },
-        "openid": {
-            "type": "openIdConnect",
-            "description": "OpenID Connect",
-            "openIdConnectUrl": f"{OIDC_ENDPOINT}/realms/{OIDC_REALM}/.well-known/openid-configuration",
-        },
-        "oauth2": {
-            "type": "oauth2",
-            "description": "OAuth2+PKCE Authorization Code Flow",
-            "flows": {
-                "authorizationCode": {
-                    "authorizationUrl": OAUTH2_AUTHORIZATION_ENDPOINT,
-                    "tokenUrl": OAUTH2_TOKEN_ENDPOINT,
-                    "scopes": {},
-                },
-            },
-        },
-        "s3": {
-            "type": "s3",
-            "description": "S3",
-        },
-    },
-}
-AUTHENT_REF = {
-    "auth:refs": ["apikey", "openid", "oauth2"],
-}
 COMMON_FIELDS = {
     "extent": {
         "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
@@ -98,8 +61,8 @@ COMMON_FIELDS = {
     "license": "public-domain",
     "description": "Some description",
     "stac_version": "1.0.0",
-    "stac_extensions": [AUTHENT_EXTENSION],
-    **AUTHENT_SCHEME,
+    "stac_extensions": [AUTH_EXTENSION],
+    **AUTH_SCHEME,
 }
 
 # pylint: disable=too-many-lines, too-many-arguments
@@ -119,34 +82,38 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
     await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, True)
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
+    #
+    # Test contents returned by the /catalog endpoint
+    #
+
     base_links = [
         {
             "rel": "self",
             "type": "application/json",
             "title": "This document",
             "href": "http://testserver/catalog/",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "root",
             "type": "application/json",
             "title": "Root",
             "href": "http://testserver/catalog/",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "data",
             "type": "application/json",
             "title": "Collections available for this Catalog",
             "href": "http://testserver/catalog/collections",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "conformance",
             "type": "application/json",
             "title": "STAC/OGC conformance classes implemented by this server",
             "href": "http://testserver/catalog/conformance",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "search",
@@ -154,7 +121,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "title": "STAC search [GET]",
             "href": "http://testserver/catalog/search",
             "method": "GET",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "search",
@@ -162,7 +129,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "title": "STAC search [POST]",
             "href": "http://testserver/catalog/search",
             "method": "POST",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
@@ -170,21 +137,21 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "title": "Queryables available for this Catalog",
             "href": "http://testserver/catalog/queryables",
             "method": "GET",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
             "href": "http://testserver/catalog/api",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "service-doc",
             "type": "text/html",
             "title": "OpenAPI service documentation",
             "href": "http://testserver/catalog/api.html",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
     ]
 
@@ -194,28 +161,28 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "type": "application/json",
             "title": "S1_L1",
             "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "S2_L3",
             "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "S2_L1",
             "href": "http://testserver/catalog/collections/titi:S2_L1",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "S1_L1",
             "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-            **AUTHENT_REF,
+            **AUTH_REFS,
         },
     ]
 
@@ -227,264 +194,17 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         key=lambda link: link["href"],  # type: ignore
     )
 
-    post_response = add_collection(client, a_collection("pyteam", "S2_L1"), **header)
+    # Add a collection
+    post_response = add_collection(client, Collection("pyteam", "S2_L1"), **header)
     assert post_response.status_code == HTTP_201_CREATED
+
+    # Check the returned collection contents
     valid_collections = [
-        {
-            "id": "toto_S1_L1",
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": "http://testserver/catalog/collections/toto:S1_L1/items",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/collections/toto:S1_L1",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "items",
-                    "href": "http://localhost:8082/catalog/collections/toto:S1_L1/items/",
-                    "type": "application/geo+json",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    "type": "application/schema+json",
-                    "title": "Queryables",
-                    "href": "http://testserver/catalog/collections/toto:S1_L1/queryables",
-                    **AUTHENT_REF,
-                },
-            ],
-            "owner": "toto",
-            **COMMON_FIELDS,
-        },
-        {
-            "id": "toto_S2_L3",
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": "http://testserver/catalog/collections/toto:S2_L3/items",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/collections/toto:S2_L3",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "items",
-                    "href": "http://localhost:8082/catalog/collections/toto:S2_L3/items/",
-                    "type": "application/geo+json",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    "type": "application/schema+json",
-                    "title": "Queryables",
-                    "href": "http://testserver/catalog/collections/toto:S2_L3/queryables",
-                    **AUTHENT_REF,
-                },
-            ],
-            "owner": "toto",
-            **COMMON_FIELDS,
-        },
-        {
-            "id": "titi_S2_L1",
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": "http://testserver/catalog/collections/titi:S2_L1/items",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/collections/titi:S2_L1",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "items",
-                    "href": "http://localhost:8082/catalog/collections/titi:S2_L1/items/",
-                    "type": "application/geo+json",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    "type": "application/schema+json",
-                    "title": "Queryables",
-                    "href": "http://testserver/catalog/collections/titi:S2_L1/queryables",
-                    **AUTHENT_REF,
-                },
-            ],
-            "owner": "titi",
-            **COMMON_FIELDS,
-        },
-        {
-            "id": "pyteam_S1_L1",
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": "http://testserver/catalog/collections/pyteam:S1_L1/items",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "items",
-                    "href": "http://localhost:8082/catalog/collections/pyteam:S1_L1/items/",
-                    "type": "application/geo+json",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    "type": "application/schema+json",
-                    "title": "Queryables",
-                    "href": "http://testserver/catalog/collections/pyteam:S1_L1/queryables",
-                    **AUTHENT_REF,
-                },
-            ],
-            "owner": "pyteam",
-            **COMMON_FIELDS,
-        },
-        {
-            "id": "pyteam_S2_L1",
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": "http://testserver/catalog/collections/pyteam:S2_L1/items",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/collections/pyteam:S2_L1",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "items",
-                    "href": "http://localhost:8082/catalog/collections/pyteam:S2_L1/items/",
-                    "type": "application/geo+json",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                    **AUTHENT_REF,
-                },
-                {
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    "type": "application/schema+json",
-                    "title": "Queryables",
-                    "href": "http://testserver/catalog/collections/pyteam:S2_L1/queryables",
-                    **AUTHENT_REF,
-                },
-            ],
-            "owner": "pyteam",
-            **COMMON_FIELDS,
-        },
+        Collection("toto", "S1_L1").as_returned(cluster_mode=True),
+        Collection("toto", "S2_L3").as_returned(cluster_mode=True),
+        Collection("titi", "S2_L1").as_returned(cluster_mode=True),
+        Collection("pyteam", "S1_L1").as_returned(cluster_mode=True),
+        Collection("pyteam", "S2_L1").as_returned(cluster_mode=True),
     ]
     all_collections = client.request("GET", "/catalog/collections", **header)
 
@@ -497,7 +217,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
         assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
-    # Delete the created collections so we're back to the initial test state
+    # Delete the added collection so we're back to the initial test state
     assert client.delete("/catalog/collections/pyteam:S2_L1", **header).is_success
 
 
@@ -535,44 +255,44 @@ class TestAuthenticationGetOneCollection:
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1/items",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
                 {
                     "rel": "parent",
                     "type": "application/json",
                     "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
                     "href": "http://testserver/catalog/",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
                 {
                     "rel": "items",
-                    "href": f"http://localhost:8082/catalog/collections/{user}:S1_L1/items/",
+                    "href": f"http://testserver/catalog/collections/{user}:S1_L1/items/",
                     "type": "application/geo+json",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
                 {
                     "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                     "type": "application/schema+json",
                     "title": "Queryables",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1/queryables",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
             ],
             "owner": user,
@@ -702,7 +422,7 @@ class TestAuthenticationGetOneItem:
                     "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
-                    **AUTHENT_REF,
+                    **AUTH_REFS,
                 },
             },
             "geometry": {
@@ -727,13 +447,13 @@ class TestAuthenticationGetOneItem:
                 "owner_id": user,
                 "proj:epsg": 3857,
                 "orientation": "nadir",
-                **AUTHENT_SCHEME,
+                **AUTH_SCHEME,
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v2.0.0/schema.json",
-                AUTHENT_EXTENSION,
+                AUTH_EXTENSION,
             ],
         }
 
@@ -778,14 +498,14 @@ class TestAuthenticationPostOneCollection:
             {
                 "rel": "items",
                 "type": "application/geo+json",
-                "href": "http://localhost:8082/collections/toto/items",
+                "href": "http://testserver/collections/toto/items",
             },
-            {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
-            {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
+            {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
+            {"rel": "root", "type": "application/json", "href": "http://testserver/"},
             {
                 "rel": "self",
                 "type": "application/json",
-                "href": """http://localhost:8082/collections/toto""",
+                "href": """http://testserver/collections/toto""",
             },
             {
                 "rel": "license",
@@ -917,7 +637,7 @@ class TestAuthenticationPutOneCollection:
             {"rel": "self", "type": "application/json", "href": "http://testserver/collections/pyteam_S1_L1"},
             {
                 "rel": "items",
-                "href": "http://localhost:8082/collections/S1_L1/items",
+                "href": "http://testserver/collections/S1_L1/items",
                 "type": "application/geo+json",
             },
             {
