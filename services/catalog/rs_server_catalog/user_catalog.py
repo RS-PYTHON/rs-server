@@ -103,6 +103,7 @@ from .user_handler import (
     CATALOG_COLLECTIONS,
     CATALOG_PREFIX,
     owner_id_and_collection_id,
+    resolve_collection_id,
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
@@ -535,15 +536,9 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     "filter": stac_filter,
                 }  # The "filter_lang" field has to be placed BEFORE the filter.
 
-            def _norm_server(collection: str) -> str:
-                if ":" in collection:
-                    o, c = collection.split(":", 1)
-                    return owner_id_and_collection_id(o, c)
-                return collection
-
             # ----- Call /catalog/search with POST method endpoint
             if "collections" in content:
-                content["collections"] = [_norm_server(c) for c in content["collections"]]
+                content["collections"] = [resolve_collection_id(c) for c in content["collections"]]
                 self.request_ids["collection_ids"] = content["collections"]
                 logger.debug(f"Using collections: {content['collections']}")
                 request = self.override_request_body(request, content)
@@ -568,12 +563,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
                 coll_list = query_params_dict["collections"].split(",")
-
-                # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
-                for i, collection in enumerate(coll_list):
-                    if not await self.collection_exists(request, collection):
-                        coll_list[i] = owner_id_and_collection_id(self.request_ids["owner_id"], collection)
-
+                coll_list = [resolve_collection_id(c) for c in coll_list]
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
                 request = self.override_request_query_string(request, query_params_dict)
