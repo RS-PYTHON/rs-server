@@ -177,6 +177,13 @@ class MockPgstacCadip(MockPgstac):
             ),
         )
 
+        # Customize sessions
+        for feature in session_features:
+
+            # eopf:origin_datetime is required for the PI computing.
+            # It has the same value than the end_datetime.
+            setattr(feature.properties, "eopf:origin_datetime", feature.properties.end_datetime)
+
     def process_files(self, empty_sessions_data: dict) -> dict:
         """
         Search cadip files for each input cadip session. Update the sessions data with their files data.
