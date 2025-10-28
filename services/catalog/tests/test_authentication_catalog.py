@@ -75,14 +75,12 @@ COMMON_FIELDS = {
     **AUTH_SCHEME,
 }
 
-# pylint: disable=too-many-lines, too-many-arguments
-
 
 class TestAuthentication:
     """Test that the user must be authenticated to access catalog endpoints."""
 
     @AUTH_PARAM
-    async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
+    async def test_authentication_and_contents(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
         """
         Test that the http endpoints are protected and return 401 or 403 if not authenticated,
         and test the response contents.
@@ -208,7 +206,7 @@ class TestAuthentication:
 
         assert all_collections.status_code == HTTP_200_OK
         content = json.loads(all_collections.content)
-        assert content["collections"] == sorted(valid_collections, key=lambda link: link["id"])  # type: ignore
+        assert content["collections"] == sorted(valid_collections, key=lambda col: f"{col['owner']}:{col['id']}")
 
         # Test a wrong apikey
         if test_apikey:
@@ -221,7 +219,7 @@ class TestAuthentication:
     @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
     @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
     @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
-    async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
+    async def test_error_when_not_authenticated(self, mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
         """
         Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
         """
@@ -267,7 +265,7 @@ class TestAuthentication:
                 else:
                     assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
 
-    def test_authenticated_endpoints():
+    def test_authenticated_endpoints(self):
         """Test that the catalog endpoints need authentication."""
         for route_path in [
             "/catalog/_mgmt/health",
@@ -288,6 +286,9 @@ class TestAuthentication:
             assert must_be_authenticated(route_path)
 
 
+# TODO add comments
+
+
 @dataclass
 class AuthorizationInfo:
 
@@ -296,68 +297,112 @@ class AuthorizationInfo:
     action: Literal["read", "write", "download"]
 
 
-def get_test_cases(endpoints: AuthorizationInfo | list[AuthorizationInfo]):
+def get_test_cases(requested_collections: AuthorizationInfo | list[AuthorizationInfo]) -> pytest.MarkDecorator:
 
-    param_names = ["implicit_owner", "user_roles", "should_succeed"]
-    param_values = []
+    # note: iam = identity and access management
+    param_names = ["requested_collections", "user_login", "iam_roles", "should_succeed"]
     param_ids = []
+    param_values = []
 
-    if isinstance(endpoints, AuthorizationInfo):
-        endpoints = [endpoints]
+    if isinstance(requested_collections, AuthorizationInfo):
+        requested_collections = [requested_collections]
 
-    param_values.append([True, [], True])
-    param_ids.append("implicit-owner")
+    requested_col_owners = sorted({col.owner_id for col in requested_collections})
+    requested_col_ids = sorted({col.collection_id for col in requested_collections})
+    requested_col_actions = sorted({col.action for col in requested_collections})
 
-    for owner_case, col_case, action_case in itertools.product(["*", "ok", "ko"], ["*", "ok", "ko"], ["ok", "ko"]):
+    ko_actions = sorted({"read", "write", "download"} - set(requested_col_actions))
+    if not ko_actions:
+        ko_actions = ["unauth"]
+
+    if len(requested_col_owners) == 1:
+        param_ids.append("implicit-owner")
+        param_values.append([requested_collections, requested_col_owners[0], [], True])
+
+    param_ids.append("no-roles")
+    param_values.append([requested_collections, "anybody", [], False])
+
+    for test_owner, test_col_id, test_action in itertools.product(["*", "ok", "ko"], ["*", "ok", "ko"], ["ok", "ko"]):
 
         should_succeed = True
 
-        if owner_case == "*":
-            role_owners = ["*"]
-        elif owner_case == "ok":
-            role_owners = {endpoint.owner_id for endpoint in endpoints}
+        if test_owner == "*":
+            iam_role_owners = ["*"]
+        elif test_owner == "ok":
+            iam_role_owners = requested_col_owners
         else:
-            role_owners = ["unauth"]
+            iam_role_owners = ["unauth"]
             should_succeed = False
 
-        if col_case == "*":
-            role_cols = ["*"]
-        elif col_case == "ok":
-            role_cols = {endpoint.collection_id for endpoint in endpoints}
+        if test_col_id == "*":
+            iam_role_col_ids = ["*"]
+        elif test_col_id == "ok":
+            iam_role_col_ids = requested_col_ids
         else:
-            role_cols = ["unauth"]
+            iam_role_col_ids = ["unauth"]
             should_succeed = False
 
-        if action_case == "ok":
-            role_actions = {endpoint.action for endpoint in endpoints}
+        if test_action == "ok":
+            iam_role_actions = requested_col_actions
         else:
-            role_actions = ["unauth"]
+            iam_role_actions = ko_actions
             should_succeed = False
 
         roles = [
             f"rs_catalog_{role_owner}:{role_col}_{role_action}"
-            for role_owner, role_col, role_action in itertools.product(role_owners, role_cols, role_actions)
+            for role_owner, role_col, role_action in itertools.product(
+                iam_role_owners,
+                iam_role_col_ids,
+                iam_role_actions,
+            )
         ]
 
-        param_values.append([False, roles, should_succeed])
-        param_ids.append(f"owner={owner_case}|col={col_case}|action={action_case}")
+        param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
+        param_values.append([requested_collections, "anybody", roles, should_succeed])
 
-    return param_names, param_values, param_ids
-
-
-param_names, param_values, param_ids = get_test_cases(
-    [
-        AuthorizationInfo("user1", "col1", "read"),
-        AuthorizationInfo("user1", "col1", "write"),
-        AuthorizationInfo("user1", "col2", "write"),
-        AuthorizationInfo("user2", "col2", "write"),
-    ],
-)
+    return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
 
 
-@pytest.mark.parametrize(param_names, param_values, ids=param_ids)
-def test_my_params1(implicit_owner: bool, user_roles, should_succeed):
-    logger.debug(f"implicit: {implicit_owner}, user_roles: {user_roles}, shoud_succeed: {should_succeed}")
+@pytest.fixture(scope="function", name="_init_authorization_test")
+async def init_authorization_test(
+    mocker,
+    httpx_mock: HTTPXMock,
+    client,
+    test_apikey: bool,
+    test_oauth2: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
+    iam_roles: list[str],
+    should_succeed: bool,
+):
+    # Log test params
+    log_collections = "\n  ".join(
+        [""] + [f"'{col.owner_id}:{col.collection_id}' for {col.action!r}" for col in requested_collections],
+    )
+    log_roles = "\n  ".join([""] + (iam_roles or ["(none)"]))
+    logger.debug(
+        f"""
+As: {user_login!r} (=UAC/Keycloak user and {'API key' if test_apikey else 'OAuth 2.0 cookie'} owner)
+I want to access collection(s): {log_collections}
+With IAM role(s): {log_roles}
+Should this succeed ? {"Yes" if should_succeed else "No"}""",
+    )
+
+    # Init mockers for test
+    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, user_login=user_login)
+
+
+@AUTH_PARAM
+@get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
+async def test_authorization_get_one_collection(_init_authorization_test, client, test_apikey, should_succeed):
+
+    response = client.request("GET", "/catalog/collections/toto:S1_L1", **(VALID_APIKEY_HEADER if test_apikey else {}))
+
+    if should_succeed:
+        assert response.status_code == HTTP_200_OK
+        assert json.loads(response.content) == Collection("toto", "S1_L1").as_returned(cluster_mode=True)
+    else:
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthorizationGetOneCollection:

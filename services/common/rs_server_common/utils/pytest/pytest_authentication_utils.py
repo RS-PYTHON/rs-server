@@ -63,7 +63,7 @@ async def init_test(
     mock_wrong_apikey: bool = False,
     user_login="pyteam",
 ):
-    """init mocker for tests."""
+    """Init mockers for tests in cluster mode with authentication."""
 
     # Needs init_app_cluster_mode()
     from rs_server_common.utils.pytest.pytest_utils import (  # pylint: disable=import-outside-toplevel

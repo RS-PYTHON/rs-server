@@ -135,12 +135,7 @@ class Collection:
     name: str
 
     @property
-    def id_(self) -> str:
-        """Returns the id as '<name>' or '<user>_<name>'"""
-        return f"{self.user}_{self.name}" if self.user else f"{self.name}"
-
-    @property
-    def id_colon(self) -> str:
+    def full_id(self) -> str:
         """Returns the id as '<name>' or '<user>:<name>'"""
         return f"{self.user}:{self.name}" if self.user else f"{self.name}"
 
@@ -148,7 +143,7 @@ class Collection:
     def properties(self) -> dict[str, Any]:
         """Returns the properties."""
         properites = {
-            "id": self.id_,
+            "id": self.name,
             "type": "Collection",
             "links": [
                 {
@@ -180,7 +175,7 @@ class Collection:
             {
                 "rel": "items",
                 "type": "application/geo+json",
-                "href": f"http://testserver/catalog/collections/{self.id_colon}/items",
+                "href": f"http://testserver/catalog/collections/{self.full_id}/items",
                 **auth_refs,
             },
             {
@@ -198,7 +193,7 @@ class Collection:
             {
                 "rel": "self",
                 "type": "application/json",
-                "href": f"http://testserver/catalog/collections/{self.id_colon}",
+                "href": f"http://testserver/catalog/collections/{self.full_id}",
                 **auth_refs,
             },
             {
@@ -211,7 +206,7 @@ class Collection:
                 "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                 "type": "application/schema+json",
                 "title": "Queryables",
-                "href": f"http://testserver/catalog/collections/{self.id_colon}/queryables",
+                "href": f"http://testserver/catalog/collections/{self.full_id}/queryables",
                 **auth_refs,
             },
         ]
