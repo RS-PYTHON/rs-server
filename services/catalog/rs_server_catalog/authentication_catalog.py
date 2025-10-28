@@ -39,30 +39,43 @@ def get_authorisation(
     Returns:
         bool: True if the user is authorized, else False
     """
+    # The UAC/Keycloak user (who is also the owner of the api key and oauth2 cookie)
+    # always has all the rights on all the collections he owns.
+    if user_login == requested_owner_id:
+        return True
+
+    # Parse authorization roles to retrieve the role owner_id, collection_id and type of right
     auth_role_pattern = (
         r"rs_catalog_(?P<owner_id>.*(?=:)):"  # Group owner_id
         r"(?P<collection_id>.+)_"  # Group collection_id
         r"(?P<type_of_right>read|write|download)"  # Group type_of_right
         r"(?=$)"  # Lookahead for end of line
     )
-    if user_login == requested_owner_id:
-        return True
-
-    # Check for each requested collection that we have are allowed to access according to the requested type of right
     parsed_auth_roles = []
     for role in auth_roles:
         if match := re.match(auth_role_pattern, role):
             parsed_auth_roles.append(match.groupdict())
+
+    # For each requested collection
     for requested_col_id in requested_col_ids:
+
+        # Does the user have at least one role that authorizes him to request this collection ?
+        requested_col_ok = False
         for auth_role in parsed_auth_roles:
+
             if owner_prefix:
                 requested_col_id = requested_col_id.removeprefix(f"{auth_role['owner_id']}_")
-            if (auth_role["collection_id"] != "*") and (requested_col_id != auth_role["collection_id"]):
-                return False  # not authorized
-            if requested_owner_id != auth_role["owner_id"]:
-                return False
-            if type_of_right != auth_role["type_of_right"]:
-                return False
 
-    # We are authorized only if the user has all roles for all collections
+            col_id_ok = (auth_role["collection_id"] == "*") or (requested_col_id == auth_role["collection_id"])
+            owner_ok = requested_owner_id == auth_role["owner_id"]
+            type_ok = type_of_right == auth_role["type_of_right"]
+
+            if col_id_ok and owner_ok and type_ok:
+                requested_col_ok = True
+
+        # Return False if the user is not authorized for at least one collection
+        if not requested_col_ok:
+            return False
+
+    # Return True if the user is authorized for all collections
     return True

@@ -169,6 +169,11 @@ def toto_s2_l3_fixture() -> Collection:  # pylint: disable=missing-function-docs
     return a_collection("toto", "S2_L3")
 
 
+@pytest.fixture(scope="session", name="titi_s1_l1")
+def titi_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
+    return a_collection("titi", "S1_L1")
+
+
 @pytest.fixture(scope="session", name="titi_s2_l1")
 def titi_s2_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("titi", "S2_L1")
@@ -364,6 +369,7 @@ def setup_database(
     client,
     toto_s1_l1,
     toto_s2_l3,
+    titi_s1_l1,
     titi_s2_l1,
     darius_s1_l2,
     pyteam_s1_l1,
@@ -380,6 +386,7 @@ def setup_database(
         client (_type_): The catalog client.
         toto_s1_l1 (_type_): a collection named S1_L1 with the user id toto.
         toto_s2_l3 (_type_): a collection named S2_L3 with the user id toto.
+        titi_s1_l1 (_type_): a collection named S1_L1 with the user id titi.
         titi_s2_l1 (_type_): a collection named S2_L1 with the user id titi.
         feature_toto_S1_L1_0 (_type_): a feature from the collection S1_L1 with the
         user id toto.
@@ -392,6 +399,7 @@ def setup_database(
     os.environ["BUCKET_CONFIG_FILE_PATH"] = S3_EXPIRATION_BUCKET_CSV_FILE
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
+    add_collection(client, titi_s1_l1)
     add_collection(client, titi_s2_l1)
     add_collection(client, darius_s1_l2)
     add_collection(client, pyteam_s1_l1)

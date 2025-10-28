@@ -307,13 +307,11 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
     if isinstance(requested_collections, AuthorizationInfo):
         requested_collections = [requested_collections]
 
+    # Unique values
     requested_col_owners = sorted({col.owner_id for col in requested_collections})
-    requested_col_ids = sorted({col.collection_id for col in requested_collections})
     requested_col_actions = sorted({col.action for col in requested_collections})
 
     ko_actions = sorted({"read", "write", "download"} - set(requested_col_actions))
-    if not ko_actions:
-        ko_actions = ["unauth"]
 
     if len(requested_col_owners) == 1:
         param_ids.append("implicit-owner")
@@ -322,43 +320,46 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
     param_ids.append("no-roles")
     param_values.append([requested_collections, "anybody", [], False])
 
+    # For every possible test case
     for test_owner, test_col_id, test_action in itertools.product(["*", "ok", "ko"], ["*", "ok", "ko"], ["ok", "ko"]):
 
+        iam_roles = set()
         should_succeed = True
 
-        if test_owner == "*":
-            iam_role_owners = ["*"]
-        elif test_owner == "ok":
-            iam_role_owners = requested_col_owners
-        else:
-            iam_role_owners = ["unauth"]
-            should_succeed = False
+        # Calculate iam roles for the current test case
+        for requested_col in requested_collections:
 
-        if test_col_id == "*":
-            iam_role_col_ids = ["*"]
-        elif test_col_id == "ok":
-            iam_role_col_ids = requested_col_ids
-        else:
-            iam_role_col_ids = ["unauth"]
-            should_succeed = False
+            if test_owner == "*":
+                iam_role_owner = "*"
+            elif test_owner == "ok":
+                iam_role_owner = requested_col.owner_id
+            else:  # ko
+                iam_role_owner = "unauth"
+                should_succeed = False
 
-        if test_action == "ok":
-            iam_role_actions = requested_col_actions
-        else:
-            iam_role_actions = ko_actions
-            should_succeed = False
+            if test_col_id == "*":
+                iam_role_col_id = "*"
+            elif test_col_id == "ok":
+                iam_role_col_id = requested_col.collection_id
+            else:  # ko
+                iam_role_col_id = "unauth"
+                should_succeed = False
 
-        roles = [
-            f"rs_catalog_{role_owner}:{role_col}_{role_action}"
-            for role_owner, role_col, role_action in itertools.product(
-                iam_role_owners,
-                iam_role_col_ids,
-                iam_role_actions,
-            )
-        ]
+            if test_action == "ok":
+                iam_role_actions = [requested_col.action]
+            else:  # ko
+                iam_role_actions = ko_actions
+                should_succeed = False
+
+            for iam_role_action in iam_role_actions:
+                iam_roles.add(f"rs_catalog_{iam_role_owner}:{iam_role_col_id}_{iam_role_action}")
+
+        # Add a dummy role, it should not impact the authorization
+        if ko_actions:
+            iam_roles.add(f"rs_catalog_dummy:dummy_{ko_actions[0]}")
 
         param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
-        param_values.append([requested_collections, "anybody", roles, should_succeed])
+        param_values.append([requested_collections, "anybody", sorted(iam_roles), should_succeed])
 
     return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
 
@@ -393,10 +394,22 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
 
 
 @AUTH_PARAM
+@get_test_cases(
+    [
+        AuthorizationInfo("userA", "colA", "read"),
+        AuthorizationInfo("userB", "colB", "write"),
+    ],
+)
+async def test_my(_init_authorization_test):
+    pass
+
+
+@AUTH_PARAM
 @get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
 async def test_authorization_get_one_collection(_init_authorization_test, client, test_apikey, should_succeed):
 
-    response = client.request("GET", "/catalog/collections/toto:S1_L1", **(VALID_APIKEY_HEADER if test_apikey else {}))
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+    response = client.request("GET", "/catalog/collections/toto:S1_L1", **header)
 
     if should_succeed:
         assert response.status_code == HTTP_200_OK
