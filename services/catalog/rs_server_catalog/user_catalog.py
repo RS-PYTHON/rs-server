@@ -545,7 +545,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                         # Check the existence of the collection after concatenation of owner_id
                         if not await self.collection_exists(request, content["collections"][i]):
                             raise log_http_exception(
-                                status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.",
+                                status_code=HTTP_404_NOT_FOUND,
+                                detail=f"Collection {collection} not found.",
                             )
 
                 self.request_ids["collection_ids"] = content["collections"]
@@ -580,7 +581,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                         # Check the existence of the collection after concatenation of owner_id
                         if not await self.collection_exists(request, coll_list[i]):
                             raise log_http_exception(
-                                status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.",
+                                status_code=HTTP_404_NOT_FOUND,
+                                detail=f"Collection {collection} not found.",
                             )
 
                 self.request_ids["collection_ids"] = coll_list
