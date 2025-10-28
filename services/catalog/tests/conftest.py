@@ -118,8 +118,7 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
         response = client.get("/catalog/collections")
         if response.status_code == 200:
             for collection in response.json().get("collections", []):
-                collection_id = collection["id"].replace("_", ":", 1)
-                client.delete(f"/catalog/collections/{collection_id}")
+                client.delete(f"/catalog/collections/{collection['owner']}:{collection['id']}")
         yield client  # Does NOT trigger setup_database!
 
 
