@@ -16,6 +16,7 @@
 
 import os
 import os.path as osp
+import re
 import traceback
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -324,10 +325,8 @@ def _apply_product_facets(feature: dict, _odata: dict) -> None:
         and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
     ):
         return
-    legacy_type: dict[str, str] = next(
-        (item for item in product_type_data if item.get("legacyType") == props["product:type"]),
-        {},
-    )
+
+    legacy_type = find_product_type(props["product:type"])
     props["product:type"] = legacy_type["productType"]
     props["processing:level"] = legacy_type["processingLevel"]
 
@@ -338,6 +337,34 @@ def _apply_product_facets(feature: dict, _odata: dict) -> None:
         props.pop(k, None)
 
     props[instrument_mode_key] = legacy_type["instrumentMode"]
+
+
+def find_product_type(product_type: str):
+    """
+    Finds the first product type entry whose 'legacyType' matches the given product_type.
+    Works with both exact strings and regex patterns.
+
+    Args:
+        product_type: The string to test.
+
+    Returns:
+        The first matching dictionary entry, or a default item if no match.
+    """
+
+    default = {key: None for key in product_type_data[0]}
+    for item in product_type_data:
+        pattern = item.get("legacyType", "")
+
+        try:
+            # Try regex full match first
+            if re.fullmatch(pattern, product_type):
+                return item
+        except (TypeError, re.error):
+            # If regex fails (invalid pattern), fall back to plain equality
+            if pattern == product_type:
+                return item
+
+    return default
 
 
 def validate_sort_input(sortby: str):

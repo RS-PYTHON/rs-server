@@ -17,7 +17,11 @@
 from datetime import datetime
 
 import pytest
-from rs_server_common.utils.utils import check_and_fix_timerange, validate_inputs_format
+from rs_server_common.utils.utils import (
+    check_and_fix_timerange,
+    find_product_type,
+    validate_inputs_format,
+)
 
 
 def test_add_end_datetime():
@@ -131,3 +135,89 @@ def test_validate_inputs_format(date_time: str, expected: tuple[str, str, str]):
         check_dt(stop_dt, stop_str)
     else:
         assert stop_dt is None
+
+
+product_type_data = {
+    "productType": "S01SIWRAW",
+    "mission": "S1",
+    "instrumentMode": "IW",
+    "processingLevel": "RAW",
+    "legacyType": "IW_RAW__0N",
+}
+
+# All 36 legacyType values
+all_legacy_types = [
+    "S1_GRDF_1S",
+    "S2_GRDF_1S",
+    "S3_GRDF_1S",
+    "S4_GRDF_1S",
+    "S5_GRDF_1S",
+    "S6_GRDF_1S",
+    "S1_GRDF_1A",
+    "S2_GRDF_1A",
+    "S3_GRDF_1A",
+    "S4_GRDF_1A",
+    "S5_GRDF_1A",
+    "S6_GRDF_1A",
+    "S1_GRDH_1S",
+    "S2_GRDH_1S",
+    "S3_GRDH_1S",
+    "S4_GRDH_1S",
+    "S5_GRDH_1S",
+    "S6_GRDH_1S",
+    "S1_GRDH_1A",
+    "S2_GRDH_1A",
+    "S3_GRDH_1A",
+    "S4_GRDH_1A",
+    "S5_GRDH_1A",
+    "S6_GRDH_1A",
+    "S1_GRDM_1S",
+    "S2_GRDM_1S",
+    "S3_GRDM_1S",
+    "S4_GRDM_1S",
+    "S5_GRDM_1S",
+    "S6_GRDM_1S",
+    "S1_GRDM_1A",
+    "S2_GRDM_1A",
+    "S3_GRDM_1A",
+    "S4_GRDM_1A",
+    "S5_GRDM_1A",
+    "S6_GRDM_1A",
+]
+
+
+def test_all_legacy_types_match():
+    """Test that all 36 legacy types are matched by the single regex."""
+    for legacy in all_legacy_types:
+        legacy_type_entry = find_product_type(legacy)
+        assert legacy_type_entry, f"No match found for {legacy}"
+        assert legacy_type_entry["legacyType"] == "S[1-6]_GRD[FHM]_1[AS]"
+        assert legacy_type_entry["productType"] == "S01SSMGRD"
+        assert legacy_type_entry["mission"] == "S1"
+        assert legacy_type_entry["instrumentMode"] == "SM"
+        assert legacy_type_entry["processingLevel"] == "GRD"
+
+
+def test_regex_error_fallback_branch(monkeypatch):
+    """Covers: invalid regex raises re.error → equality fallback → returns item"""
+    broken_entry = {
+        "productType": "BROKEN",
+        "mission": "S0",
+        "instrumentMode": "XX",
+        "processingLevel": "TEST",
+        "legacyType": "[invalid_regex",
+    }
+
+    # Monkeypatch product_type_data with a list containing both
+    if isinstance(product_type_data, list):
+        temp_data = product_type_data + [broken_entry]
+    else:
+        temp_data = [product_type_data, broken_entry]
+
+    monkeypatch.setattr("rs_server_common.utils.utils.product_type_data", temp_data)
+
+    result = find_product_type("[invalid_regex")
+    assert result == broken_entry, "Expected equality fallback match"
+
+    result = find_product_type("NO_MATCH_TYPE")
+    assert result == {key: None for key in broken_entry}, "Expected default value for unmatched input"
