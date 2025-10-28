@@ -71,12 +71,12 @@ def collection_id_without_owner_id(collection_id: str, owner_id: str) -> str:
     return collection_id.removeprefix(f"{owner_id}_")
 
 
-def resolve_collection_id(collection: str) -> str:
+def resolve_collection_id(owner: str, collection: str) -> str:
     """Returns collection_id"""
     if ":" in collection:
         o, c = collection.split(":", 1)
         return owner_id_and_collection_id(o, c)
-    return collection
+    return owner_id_and_collection_id(owner, collection)
 
 
 def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-statements

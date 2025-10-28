@@ -538,7 +538,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             # ----- Call /catalog/search with POST method endpoint
             if "collections" in content:
-                content["collections"] = [resolve_collection_id(c) for c in content["collections"]]
+                owner_id = self.request_ids["owner_id"]
+                content["collections"] = [resolve_collection_id(owner_id, c) for c in content["collections"]]
                 self.request_ids["collection_ids"] = content["collections"]
                 logger.debug(f"Using collections: {content['collections']}")
                 request = self.override_request_body(request, content)
@@ -562,8 +563,9 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
+                owner_id = self.request_ids["owner_id"]
                 coll_list = query_params_dict["collections"].split(",")
-                coll_list = [resolve_collection_id(c) for c in coll_list]
+                coll_list = [resolve_collection_id(owner_id, c) for c in coll_list]
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
                 request = self.override_request_query_string(request, query_params_dict)
