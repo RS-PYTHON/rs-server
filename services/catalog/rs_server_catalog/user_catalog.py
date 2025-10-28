@@ -588,6 +588,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             "read",
             self.request_ids["owner_id"],
             self.request_ids["user_login"],
+            # When calling the /search endpoints, the catalog ids are always prefixed by their <owner>_
+            owner_prefix=True,
         ):
             raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         return request
