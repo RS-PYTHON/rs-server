@@ -103,7 +103,6 @@ from .user_handler import (
     CATALOG_COLLECTIONS,
     CATALOG_PREFIX,
     owner_id_and_collection_id,
-    resolve_collection_id,
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
@@ -538,10 +537,18 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             # ----- Call /catalog/search with POST method endpoint
             if "collections" in content:
-                owner_id = self.request_ids["owner_id"]
-                content["collections"] = [resolve_collection_id(owner_id, c) for c in content["collections"]]
+                # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
+                for i, collection in enumerate(content["collections"]):
+                    if not await self.collection_exists(request, collection):
+                        content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
+                        logger.debug(f"Using collection name: {content['collections'][i]}")
+                        # Check the existence of the collection after concatenation of owner_id
+                        if not await self.collection_exists(request, content["collections"][i]):
+                            raise log_http_exception(
+                                status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.",
+                            )
+
                 self.request_ids["collection_ids"] = content["collections"]
-                logger.debug(f"Using collections: {content['collections']}")
                 request = self.override_request_body(request, content)
 
         # ---------- GET requests
@@ -563,9 +570,19 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
-                owner_id = self.request_ids["owner_id"]
                 coll_list = query_params_dict["collections"].split(",")
-                coll_list = [resolve_collection_id(owner_id, c) for c in coll_list]
+
+                # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
+                for i, collection in enumerate(coll_list):
+                    if not await self.collection_exists(request, collection):
+                        coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
+                        logger.debug(f"Using collection name: {coll_list[i]}")
+                        # Check the existence of the collection after concatenation of owner_id
+                        if not await self.collection_exists(request, coll_list[i]):
+                            raise log_http_exception(
+                                status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.",
+                            )
+
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
                 request = self.override_request_query_string(request, query_params_dict)
