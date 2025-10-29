@@ -65,7 +65,7 @@ def get_authorisation(
 
             # Remove the owner prefix from the requested collection id, if any
             if owner_prefix:
-                requested_col_id = _requested_col_id.removeprefix(f"{auth_role['owner_id']}_")
+                requested_col_id = _requested_col_id.removeprefix(f"{requested_owner_id}_")
             else:
                 requested_col_id = _requested_col_id
 

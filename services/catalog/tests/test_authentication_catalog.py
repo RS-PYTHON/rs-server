@@ -16,6 +16,7 @@
 
 """Unit tests for the authentication."""
 
+import getpass
 import itertools
 import json
 from dataclasses import dataclass
@@ -54,6 +55,10 @@ from .helpers import (  # pylint: disable=no-name-in-module
     export_aws_credentials,
 )
 
+####################
+# Global variables #
+####################
+
 logger = Logging.default(__name__)
 
 # Run tests by authenticating with either an apikey or oauth2 cookie
@@ -74,6 +79,159 @@ COMMON_FIELDS = {
     "stac_extensions": [AUTH_EXTENSION],
     **AUTH_SCHEME,
 }
+
+#################################
+# Utility classes and functions #
+#################################
+
+
+@dataclass
+class AuthorizationInfo:
+
+    owner_id: str
+    collection_id: str
+    action: Literal["read", "write", "download"]
+
+
+# All existing collections inserted in the database from conftest.py::setup_database
+# with "read" requested action.
+ALL_DATABASE_COLLECTIONS = [
+    AuthorizationInfo("toto", "S1_L1", "read"),
+    AuthorizationInfo("toto", "S2_L3", "read"),
+    AuthorizationInfo("titi", "S1_L1", "read"),
+    AuthorizationInfo("titi", "S2_L1", "read"),
+    AuthorizationInfo("darius", "S1_L2", "read"),
+    AuthorizationInfo("pyteam", "S1_L1", "read"),
+    AuthorizationInfo(getpass.getuser(), "S2_L2", "read"),
+]
+
+
+def get_test_cases(requested_collections: AuthorizationInfo | list[AuthorizationInfo]) -> pytest.MarkDecorator:
+
+    # note: iam = identity and access management
+    param_names = ["requested_collections", "user_login", "iam_roles", "should_succeed"]
+    param_ids = []
+    param_values = []
+
+    if isinstance(requested_collections, AuthorizationInfo):
+        requested_collections = [requested_collections]
+
+    # Unique values
+    requested_col_owners = sorted({col.owner_id for col in requested_collections})
+    requested_col_actions = sorted({col.action for col in requested_collections})
+
+    ko_actions = sorted({"read", "write", "download"} - set(requested_col_actions))
+
+    if len(requested_col_owners) == 1:
+        param_ids.append("implicit-owner")
+        param_values.append([requested_collections, requested_col_owners[0], [], True])
+
+    param_ids.append("no-roles")
+    param_values.append([requested_collections, "anybody", [], False])
+
+    # For every possible test case
+    for test_owner, test_col_id, test_action in itertools.product(
+        ["all", "ok", "ko"],
+        ["all", "ok", "ko"],
+        ["ok", "ko"],
+    ):
+
+        iam_roles = set()
+        should_succeed = True
+
+        # Calculate iam roles for the current test case
+        for requested_col in requested_collections:
+
+            if test_owner == "all":
+                iam_role_owner = "*"
+            elif test_owner == "ok":
+                iam_role_owner = requested_col.owner_id
+            else:  # ko
+                iam_role_owner = "unauth"
+                should_succeed = False
+
+            if test_col_id == "all":
+                iam_role_col_id = "*"
+            elif test_col_id == "ok":
+                iam_role_col_id = requested_col.collection_id
+            else:  # ko
+                iam_role_col_id = "unauth"
+                should_succeed = False
+
+            if test_action == "ok":
+                iam_role_actions = [requested_col.action]
+            else:  # ko
+                iam_role_actions = ko_actions
+                should_succeed = False
+
+            for iam_role_action in iam_role_actions:
+                iam_roles.add(f"rs_catalog_{iam_role_owner}:{iam_role_col_id}_{iam_role_action}")
+
+        # Add a dummy role, it should not impact the authorization
+        if ko_actions:
+            iam_roles.add(f"rs_catalog_dummy:dummy_{ko_actions[0]}")
+
+        param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
+        param_values.append([requested_collections, "anybody", sorted(iam_roles), should_succeed])
+
+    return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
+
+
+@pytest.fixture(scope="function", name="_init_authorization_test")
+async def init_authorization_test(
+    mocker,
+    httpx_mock: HTTPXMock,
+    client,
+    test_apikey: bool,
+    test_oauth2: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
+    iam_roles: list[str],
+    should_succeed: bool,
+):
+    # Log test params
+    log_collections = "\n  ".join(
+        [""] + [f"'{col.owner_id}:{col.collection_id}' for {col.action!r}" for col in requested_collections],
+    )
+    log_roles = "\n  ".join([""] + (iam_roles or ["(none)"]))
+    logger.debug(
+        f"""
+As: {user_login!r} (=UAC/Keycloak user and {'API key' if test_apikey else 'OAuth 2.0 cookie'} owner)
+I want to access collection(s): {log_collections}
+With IAM role(s): {log_roles}
+Should this succeed ? {"Yes" if should_succeed else "No"}""",
+    )
+
+    # Init mockers for test
+    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, user_login=user_login)
+
+
+#########
+# Tests #
+#########
+
+
+@AUTH_PARAM
+@get_test_cases(ALL_DATABASE_COLLECTIONS)
+async def test_get_collections(_init_authorization_test, client, test_apikey, should_succeed):
+    """Test the /catalog/collections endpoint"""
+
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+    response = client.request("GET", "/catalog/collections", **header)
+
+    # The endpoint should always return OK, even with wrong or missing roles
+    assert response.status_code == HTTP_200_OK
+    returned_cols = json.loads(response.content)["collections"]
+
+    # In nominal case, all collections should be returned
+    if should_succeed:
+        returned_ids = sorted([f"{col['owner']}:{col['id']}" for col in returned_cols])
+        expected_ids = sorted([f"{col.owner_id}:{col.collection_id}" for col in ALL_DATABASE_COLLECTIONS])
+        assert returned_ids == expected_ids
+
+    # In error case, no collections should be returned
+    else:
+        assert not returned_cols
 
 
 class TestAuthentication:
@@ -287,121 +445,6 @@ class TestAuthentication:
 
 
 # TODO add comments
-
-
-@dataclass
-class AuthorizationInfo:
-
-    owner_id: str
-    collection_id: str
-    action: Literal["read", "write", "download"]
-
-
-def get_test_cases(requested_collections: AuthorizationInfo | list[AuthorizationInfo]) -> pytest.MarkDecorator:
-
-    # note: iam = identity and access management
-    param_names = ["requested_collections", "user_login", "iam_roles", "should_succeed"]
-    param_ids = []
-    param_values = []
-
-    if isinstance(requested_collections, AuthorizationInfo):
-        requested_collections = [requested_collections]
-
-    # Unique values
-    requested_col_owners = sorted({col.owner_id for col in requested_collections})
-    requested_col_actions = sorted({col.action for col in requested_collections})
-
-    ko_actions = sorted({"read", "write", "download"} - set(requested_col_actions))
-
-    if len(requested_col_owners) == 1:
-        param_ids.append("implicit-owner")
-        param_values.append([requested_collections, requested_col_owners[0], [], True])
-
-    param_ids.append("no-roles")
-    param_values.append([requested_collections, "anybody", [], False])
-
-    # For every possible test case
-    for test_owner, test_col_id, test_action in itertools.product(["*", "ok", "ko"], ["*", "ok", "ko"], ["ok", "ko"]):
-
-        iam_roles = set()
-        should_succeed = True
-
-        # Calculate iam roles for the current test case
-        for requested_col in requested_collections:
-
-            if test_owner == "*":
-                iam_role_owner = "*"
-            elif test_owner == "ok":
-                iam_role_owner = requested_col.owner_id
-            else:  # ko
-                iam_role_owner = "unauth"
-                should_succeed = False
-
-            if test_col_id == "*":
-                iam_role_col_id = "*"
-            elif test_col_id == "ok":
-                iam_role_col_id = requested_col.collection_id
-            else:  # ko
-                iam_role_col_id = "unauth"
-                should_succeed = False
-
-            if test_action == "ok":
-                iam_role_actions = [requested_col.action]
-            else:  # ko
-                iam_role_actions = ko_actions
-                should_succeed = False
-
-            for iam_role_action in iam_role_actions:
-                iam_roles.add(f"rs_catalog_{iam_role_owner}:{iam_role_col_id}_{iam_role_action}")
-
-        # Add a dummy role, it should not impact the authorization
-        if ko_actions:
-            iam_roles.add(f"rs_catalog_dummy:dummy_{ko_actions[0]}")
-
-        param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
-        param_values.append([requested_collections, "anybody", sorted(iam_roles), should_succeed])
-
-    return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
-
-
-@pytest.fixture(scope="function", name="_init_authorization_test")
-async def init_authorization_test(
-    mocker,
-    httpx_mock: HTTPXMock,
-    client,
-    test_apikey: bool,
-    test_oauth2: bool,
-    requested_collections: list[AuthorizationInfo],
-    user_login: str,
-    iam_roles: list[str],
-    should_succeed: bool,
-):
-    # Log test params
-    log_collections = "\n  ".join(
-        [""] + [f"'{col.owner_id}:{col.collection_id}' for {col.action!r}" for col in requested_collections],
-    )
-    log_roles = "\n  ".join([""] + (iam_roles or ["(none)"]))
-    logger.debug(
-        f"""
-As: {user_login!r} (=UAC/Keycloak user and {'API key' if test_apikey else 'OAuth 2.0 cookie'} owner)
-I want to access collection(s): {log_collections}
-With IAM role(s): {log_roles}
-Should this succeed ? {"Yes" if should_succeed else "No"}""",
-    )
-
-    # Init mockers for test
-    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, user_login=user_login)
-
-
-@AUTH_PARAM
-@get_test_cases(
-    [
-        AuthorizationInfo("userA", "colA", "read"),
-        AuthorizationInfo("userB", "colB", "write"),
-    ],
-)
-async def test_my(_init_authorization_test):
-    pass
 
 
 @AUTH_PARAM

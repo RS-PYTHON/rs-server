@@ -52,7 +52,6 @@ from rs_server_catalog.user_handler import (
     adapt_links,
     adapt_object_links,
     add_user_prefix,
-    filter_collections,
     get_user,
     reroute_url,
 )
@@ -784,33 +783,21 @@ field is not permitted also."
         Returns:
             dict: The list of all collections accessible by the user.
         """
-        catalog_read_right_pattern = (
-            r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
-        )
-        accessible_collections = []
+        # Test user authorization on each collection
+        accessible_collections = [
+            requested_col
+            for requested_col in collections
+            if get_authorisation(
+                [requested_col["id"]],
+                auth_roles,
+                "read",
+                requested_col["owner"],
+                user_login,
+                owner_prefix=True,
+            )
+        ]
 
-        # Filter roles for read access
-        read_roles = [role for role in auth_roles if re.match(catalog_read_right_pattern, role)]
-
-        for role in read_roles:
-            if match := re.match(catalog_read_right_pattern, role):
-                groups = match.groupdict()
-                if groups["right_type"] == "read":
-                    owner_id = groups["owner_id"]
-                    collection_id = groups["collection_id"]
-                    accessible_collections.extend(
-                        filter_collections(
-                            collections,
-                            f"{owner_id}_" if collection_id == "*" else f"{owner_id}_{collection_id}",
-                        ),
-                    )
-
-        # Add collections for current user
-        accessible_collections.extend(filter_collections(collections, user_login))
-
-        # Convert to dict then back to list to only keep unique ids
-        accessible_collections = list({col["id"]: col for col in accessible_collections}.values())
-
+        # Return results, sorted by <owner>_<collection_id>
         return sorted(accessible_collections, key=lambda col: col["id"])
 
     def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
