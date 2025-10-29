@@ -54,7 +54,7 @@ types-requests = "^2.32.0.20250328"
 flake8 = "^7.1.2"
 bandit = "^1.8.3"
 safety = "^3.3.0"
-pylint = "^3.3.7"
+pylint = "^4.0.2"
 flake8-pyproject = "^1.2.3"
 
 [tool.poetry.requires-plugins]
