@@ -75,7 +75,7 @@ pytest-mock = "^3.15.1"
 httpx = "^0.28.1"
 # Test tools
 responses = "^0.25.8"
-pylint = "^3.3.7"
+pylint = "^4.0.2"
 
 
 [tool.pytest.ini_options]
