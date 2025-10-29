@@ -20,7 +20,7 @@ import re
 def get_authorisation(
     requested_col_ids: list[str],
     auth_roles: list[str],
-    type_of_right: str,
+    requested_action: str,
     requested_owner_id: str,
     user_login: str,
     owner_prefix: bool = False,
@@ -30,8 +30,8 @@ def get_authorisation(
 
     Args:
         requested_col_ids (list): IDs of the requested collections.
-        auth_roles (list): The list of authorisation for the user_login.
-        type_of_right (str): the type of the right. Can be read, write or download.
+        auth_roles (list): The list of authorisations for the user_login.
+        requested_action (str): Requested action (read, write or download) on the collections.
         requested_owner_id (str): The name of the owner of the collection {collection_id}.
         user_login (str): The owner of the key linked to the request.
         owner_prefix (bool): True if the collection IDs are prefixed by their collection <owner>_
@@ -44,11 +44,11 @@ def get_authorisation(
     if user_login == requested_owner_id:
         return True
 
-    # Parse authorization roles to retrieve the role owner_id, collection_id and type of right
+    # Parse authorization roles to retrieve the role owner_id, collection_id and action
     auth_role_pattern = (
         r"rs_catalog_(?P<owner_id>.*(?=:)):"  # Group owner_id
         r"(?P<collection_id>.+)_"  # Group collection_id
-        r"(?P<type_of_right>read|write|download)"  # Group type_of_right
+        r"(?P<action>read|write|download)"  # Group action
         r"(?=$)"  # Lookahead for end of line
     )
     parsed_auth_roles = []
@@ -57,23 +57,34 @@ def get_authorisation(
             parsed_auth_roles.append(match.groupdict())
 
     # For each requested collection
-    for requested_col_id in requested_col_ids:
+    for _requested_col_id in requested_col_ids:
 
         # Does the user have at least one role that authorizes him to request this collection ?
         requested_col_ok = False
         for auth_role in parsed_auth_roles:
 
+            # Remove the owner prefix from the requested collection id, if any
             if owner_prefix:
-                requested_col_id = requested_col_id.removeprefix(f"{auth_role['owner_id']}_")
+                requested_col_id = _requested_col_id.removeprefix(f"{auth_role['owner_id']}_")
+            else:
+                requested_col_id = _requested_col_id
 
-            col_id_ok = (auth_role["collection_id"] == "*") or (requested_col_id == auth_role["collection_id"])
-            owner_ok = requested_owner_id == auth_role["owner_id"]
-            type_ok = type_of_right == auth_role["type_of_right"]
+            # Does this role give the authorization to this collection ID ?
+            col_id_ok = (auth_role["collection_id"] == "*") or (auth_role["collection_id"] == requested_col_id)
 
-            if col_id_ok and owner_ok and type_ok:
+            # Does this role give the authorization to this collection owner ?
+            owner_ok = (auth_role["owner_id"] == "*") or (auth_role["owner_id"] == requested_owner_id)
+
+            # Does this role give the authorization to this collection for read/write/download ?
+            action_ok = auth_role["action"] == requested_action
+
+            # All conditions must be met for this role to give the authorization to the collection
+            if col_id_ok and owner_ok and action_ok:
                 requested_col_ok = True
+                break  # no need to check other roles
 
-        # Return False if the user is not authorized for at least one collection
+        # The user has no role that authorizes him to request this collection.
+        # Return False if the user is not authorized for at least one collection.
         if not requested_col_ok:
             return False
 
