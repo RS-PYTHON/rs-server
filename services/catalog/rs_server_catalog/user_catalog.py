@@ -46,7 +46,6 @@ from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
     add_prefix_link_landing_page,
-    manage_landing_page,
 )
 from rs_server_catalog.user_handler import (
     adapt_links,
@@ -881,8 +880,6 @@ field is not permitted also."
 
         # Manage local landing page of the catalog
         if request.scope["path"] in (CATALOG_PREFIX, CATALOG_PREFIX + "/"):
-            if common_settings.CLUSTER_MODE:  # /catalog
-                content = manage_landing_page(auth_roles, user_login, content)
             regex_catalog = CATALOG_COLLECTIONS + r"/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
                 link_parser = urlparse(link["href"])

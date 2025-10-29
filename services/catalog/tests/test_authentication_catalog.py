@@ -87,6 +87,7 @@ COMMON_FIELDS = {
 
 @dataclass
 class AuthorizationInfo:
+    """Authorization info linked to a database collection or to a user iam roles in UAC/Keycloak."""
 
     owner_id: str
     collection_id: str
@@ -106,28 +107,73 @@ ALL_DATABASE_COLLECTIONS = [
 ]
 
 
-def get_test_cases(requested_collections: AuthorizationInfo | list[AuthorizationInfo]) -> pytest.MarkDecorator:
+def get_test_cases(
+    requested_collections: AuthorizationInfo | list[AuthorizationInfo],
+    test_missing_roles=False,
+) -> pytest.MarkDecorator:
+    """
+    Generate all test cases for the catalog endpoint authorizations.
 
-    # note: iam = identity and access management
+    For each endpoint, we test 3 test cases regarding the collections owner_id:
+    1. The user has an iam role with owner_id=*, which allows him to request collections by all owners (test case=all)
+    2. The user has an iam role with owner_id = the owner of the specific requested collection (test case=ok)
+    3. The user has an iam role with a wrong owner_id (test case=ko).
+
+    Same thing with the test cases for collection_id:
+    1. * to request all collections
+    2. Good collection_id
+    3. Wrong collection_id
+
+    Same thing for the action (read/write/download) but without the *:
+    1. Good action
+    2. Wrong action
+
+    So for each endpoint we test all possible test case combinations 3*3*2 = 18 test cases, plus we add some
+    specific test cases when possible e.g. testing the implicit owner_id.
+
+    Args:
+        requested_collections: database collections requested by the pytest.
+
+    Returns:
+        Parametrized test cases, ready to use with a pytest, with parameters:
+        requested_collections: database collections requested by the pytest.
+        user_login: UAC/Keycloak user and API key or oauth2 cookie owner.
+        iam_roles: user iam (Identity and Access Management) roles in UAC/Keycloak.
+        should_succeed: should the user be authorized for the requested collections using this user login and roles ?
+    """
+
+    # pytest parameters, values and ids
     param_names = ["requested_collections", "user_login", "iam_roles", "should_succeed"]
     param_ids = []
     param_values = []
 
+    # Only work with lists
     if isinstance(requested_collections, AuthorizationInfo):
         requested_collections = [requested_collections]
 
-    # Unique values
+    # Unique values for requested collection owners and actions
     requested_col_owners = sorted({col.owner_id for col in requested_collections})
     requested_col_actions = sorted({col.action for col in requested_collections})
 
+    # For "wrong" actions we'll use actions that are not requested by the pytest.
     ko_actions = sorted({"read", "write", "download"} - set(requested_col_actions))
 
+    # Specific test case: implicit owner = the user is also the owner of the owner of all the requested collections.
     if len(requested_col_owners) == 1:
-        param_ids.append("implicit-owner")
+        param_ids.append("implicit_owner")
         param_values.append([requested_collections, requested_col_owners[0], [], True])
 
-    param_ids.append("no-roles")
+    # Test that with no roles at all, the user is unauthorized
+    param_ids.append("no_roles")
     param_values.append([requested_collections, "anybody", [], False])
+
+    # In the case of several requested collections, add a test case where everything is ok
+    # but we only keep the roles on a single collection. The test should fail.
+    if test_missing_roles and (len(requested_collections) > 1):
+        first_col = requested_collections[0]
+        iam_roles = [f"rs_catalog_{first_col.owner_id}:{first_col.collection_id}_{first_col.action}"]
+        param_values.append([requested_collections, "anybody", iam_roles, False])
+        param_ids.append(f"missing_roles")
 
     # For every possible test case
     for test_owner, test_col_id, test_action in itertools.product(
@@ -135,7 +181,6 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
         ["all", "ok", "ko"],
         ["ok", "ko"],
     ):
-
         iam_roles = set()
         should_succeed = True
 
@@ -171,6 +216,7 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
         if ko_actions:
             iam_roles.add(f"rs_catalog_dummy:dummy_{ko_actions[0]}")
 
+        # Save pytest param ids and values for the current test case
         param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
         param_values.append([requested_collections, "anybody", sorted(iam_roles), should_succeed])
 
@@ -179,6 +225,7 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
 
 @pytest.fixture(scope="function", name="_init_authorization_test")
 async def init_authorization_test(
+    request,
     mocker,
     httpx_mock: HTTPXMock,
     client,
@@ -189,6 +236,9 @@ async def init_authorization_test(
     iam_roles: list[str],
     should_succeed: bool,
 ):
+    """
+    Initialize a pytest to test the authorization. The arguments come from get_test_cases()
+    """
     # Log test params
     log_collections = "\n  ".join(
         [""] + [f"'{col.owner_id}:{col.collection_id}' for {col.action!r}" for col in requested_collections],
@@ -202,13 +252,130 @@ With IAM role(s): {log_roles}
 Should this succeed ? {"Yes" if should_succeed else "No"}""",
     )
 
+    # Additional fixture params, if any
+    try:
+        kwargs = request.param
+    except AttributeError:
+        kwargs = {}
+
     # Init mockers for test
-    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, user_login=user_login)
+    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, user_login=user_login, **kwargs)
 
 
 #########
 # Tests #
 #########
+
+
+@AUTH_PARAM
+@get_test_cases(ALL_DATABASE_COLLECTIONS)
+@pytest.mark.parametrize("_init_authorization_test", [{"mock_wrong_apikey": True}], indirect=True, ids=[""])
+async def test_landing_page(_init_authorization_test, client, test_apikey, should_succeed):
+    """
+    The the catalog landing page authorizations and returned contents.
+    """
+    # Test a wrong apikey
+    if test_apikey:
+        wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
+        assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
+
+    # Test with the good credentials
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+    response = client.request("GET", "/catalog/", **header)
+
+    # The endpoint should always return OK, even with wrong or missing roles
+    assert response.status_code == HTTP_200_OK
+    contents = json.loads(response.content)
+
+    # Expected returned links
+    expected_base_links = [
+        {
+            "rel": "self",
+            "type": "application/json",
+            "title": "This document",
+            "href": "http://testserver/catalog/",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "root",
+            "type": "application/json",
+            "title": "Root",
+            "href": "http://testserver/catalog/",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "data",
+            "type": "application/json",
+            "title": "Collections available for this Catalog",
+            "href": "http://testserver/catalog/collections",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "conformance",
+            "type": "application/json",
+            "title": "STAC/OGC conformance classes implemented by this server",
+            "href": "http://testserver/catalog/conformance",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search [GET]",
+            "href": "http://testserver/catalog/search",
+            "method": "GET",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search [POST]",
+            "href": "http://testserver/catalog/search",
+            "method": "POST",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+            "type": "application/schema+json",
+            "title": "Queryables available for this Catalog",
+            "href": "http://testserver/catalog/queryables",
+            "method": "GET",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "service-desc",
+            "type": "application/vnd.oai.openapi+json;version=3.0",
+            "title": "OpenAPI service description",
+            "href": "http://testserver/catalog/api",
+            **AUTH_REFS,
+        },
+        {
+            "rel": "service-doc",
+            "type": "text/html",
+            "title": "OpenAPI service documentation",
+            "href": "http://testserver/catalog/api.html",
+            **AUTH_REFS,
+        },
+    ]
+
+    # In nominal case, we should also have child links for all collections.
+    # In error case, no collections should be returned.
+    expected_col_links = []
+    if should_succeed:
+        expected_col_links = [
+            {
+                "rel": "child",
+                "type": "application/json",
+                "title": col.collection_id,
+                "href": f"http://testserver/catalog/collections/{col.owner_id}:{col.collection_id}",
+                **AUTH_REFS,
+            }
+            for col in ALL_DATABASE_COLLECTIONS
+        ]
+
+    assert contents["links"] == expected_base_links + sorted(
+        expected_col_links,
+        key=lambda link: link["href"],  # type: ignore
+    )
 
 
 @AUTH_PARAM
@@ -232,219 +399,6 @@ async def test_get_collections(_init_authorization_test, client, test_apikey, sh
     # In error case, no collections should be returned
     else:
         assert not returned_cols
-
-
-class TestAuthentication:
-    """Test that the user must be authenticated to access catalog endpoints."""
-
-    @AUTH_PARAM
-    async def test_authentication_and_contents(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """
-        Test that the http endpoints are protected and return 401 or 403 if not authenticated,
-        and test the response contents.
-        """
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_titi:S2_L1_read",
-            "rs_catalog_darius:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, True)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        #
-        # Test contents returned by the /catalog landing page endpoint
-        #
-
-        base_links = [
-            {
-                "rel": "self",
-                "type": "application/json",
-                "title": "This document",
-                "href": "http://testserver/catalog/",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "root",
-                "type": "application/json",
-                "title": "Root",
-                "href": "http://testserver/catalog/",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "data",
-                "type": "application/json",
-                "title": "Collections available for this Catalog",
-                "href": "http://testserver/catalog/collections",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "conformance",
-                "type": "application/json",
-                "title": "STAC/OGC conformance classes implemented by this server",
-                "href": "http://testserver/catalog/conformance",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "search",
-                "type": "application/geo+json",
-                "title": "STAC search [GET]",
-                "href": "http://testserver/catalog/search",
-                "method": "GET",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "search",
-                "type": "application/geo+json",
-                "title": "STAC search [POST]",
-                "href": "http://testserver/catalog/search",
-                "method": "POST",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                "type": "application/schema+json",
-                "title": "Queryables available for this Catalog",
-                "href": "http://testserver/catalog/queryables",
-                "method": "GET",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "service-desc",
-                "type": "application/vnd.oai.openapi+json;version=3.0",
-                "title": "OpenAPI service description",
-                "href": "http://testserver/catalog/api",
-                **AUTH_REFS,
-            },
-            {
-                "rel": "service-doc",
-                "type": "text/html",
-                "title": "OpenAPI service documentation",
-                "href": "http://testserver/catalog/api.html",
-                **AUTH_REFS,
-            },
-        ]
-
-        static_child_links = [
-            {
-                "rel": "child",
-                "type": "application/json",
-                "title": id,
-                "href": f"http://testserver/catalog/collections/{owner}:{id}",
-                **AUTH_REFS,
-            }
-            for owner, id in [
-                ["toto", "S1_L1"],
-                ["toto", "S2_L3"],
-                ["titi", "S2_L1"],
-                ["pyteam", "S1_L1"],
-            ]
-        ]
-
-        landing_page_response = client.request("GET", "/catalog/", **header)
-        assert landing_page_response.status_code == HTTP_200_OK
-        content = json.loads(landing_page_response.content)
-        assert content["links"] == base_links + sorted(
-            static_child_links,
-            key=lambda link: link["href"],  # type: ignore
-        )
-
-        # Add a collection
-        post_response = add_collection(client, Collection("pyteam", "S2_L1"), **header)
-        assert post_response.status_code == HTTP_201_CREATED
-
-        # Check the returned collection contents
-        valid_collections = [
-            Collection("toto", "S1_L1").as_returned(cluster_mode=True),
-            Collection("toto", "S2_L3").as_returned(cluster_mode=True),
-            Collection("titi", "S2_L1").as_returned(cluster_mode=True),
-            Collection("pyteam", "S1_L1").as_returned(cluster_mode=True),
-            Collection("pyteam", "S2_L1").as_returned(cluster_mode=True),
-        ]
-        all_collections = client.request("GET", "/catalog/collections", **header)
-
-        assert all_collections.status_code == HTTP_200_OK
-        content = json.loads(all_collections.content)
-        assert content["collections"] == sorted(valid_collections, key=lambda col: f"{col['owner']}:{col['id']}")
-
-        # Test a wrong apikey
-        if test_apikey:
-            wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
-            assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
-
-        # Delete the added collection so we're back to the initial test state
-        assert client.delete("/catalog/collections/pyteam:S2_L1", **header).is_success
-
-    @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-    @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
-    @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
-    async def test_error_when_not_authenticated(self, mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
-        """
-        Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
-        """
-        owner_id = "pyteam"
-        await init_test(
-            mocker,
-            httpx_mock,
-            client,
-            test_apikey,
-            test_oauth2,
-            [],
-            mock_wrong_apikey=True,
-            user_login=owner_id,
-        )
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        # For each route and method from the openapi specification i.e. with the /catalog/ prefixes
-        for path, methods in app.openapi()["paths"].items():
-            if not must_be_authenticated(path):
-                continue
-            for method in methods.keys():
-
-                endpoint = path.format(collection_id="collection_id", item_id="item_id", owner_id=owner_id)
-                logger.debug(f"Test the {endpoint!r} [{method}] authentication")
-
-                # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
-                # We have other errors on many endpoints because we didn't give the right arguments,
-                # but it's OK it is not what we are testing here.
-                if test_apikey or test_oauth2:
-                    response = client.request(method, endpoint, **header)
-                    logger.debug(response)
-                    assert response.status_code not in (
-                        HTTP_401_UNAUTHORIZED,
-                        HTTP_403_FORBIDDEN,
-                        HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
-                    )
-
-                    # With a wrong apikey, we should have a 403 error
-                    if test_apikey:
-                        assert client.request(method, endpoint, **WRONG_APIKEY_HEADER).status_code == HTTP_403_FORBIDDEN
-
-                # Check that without authentication, the endpoint is protected and we receive a 401
-                else:
-                    assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
-
-    def test_authenticated_endpoints(self):
-        """Test that the catalog endpoints need authentication."""
-        for route_path in [
-            "/catalog/_mgmt/health",
-            "/catalog/_mgmt/ping",
-            "/catalog/api",
-            "/catalog/api.html",
-            "/auth/",
-        ]:
-            assert not must_be_authenticated(route_path)
-        for route_path in [
-            "/catalog",
-            "/catalog/",
-            "/catalog/conformance",
-            "/catalog/collections",
-            "/catalog/search",
-            "/catalog/queryables",
-        ]:
-            assert must_be_authenticated(route_path)
-
-
-# TODO add comments
 
 
 @AUTH_PARAM
@@ -1450,3 +1404,76 @@ class TestAuthorizationPostOneItem:  # pylint: disable=duplicate-code
             **header,
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthentication:
+    """Test that the user must be authenticated to access catalog endpoints."""
+
+    @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
+    @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
+    @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
+    async def test_error_when_not_authenticated(self, mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
+        """
+        Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
+        """
+        owner_id = "pyteam"
+        await init_test(
+            mocker,
+            httpx_mock,
+            client,
+            test_apikey,
+            test_oauth2,
+            [],
+            mock_wrong_apikey=True,
+            user_login=owner_id,
+        )
+        header = VALID_APIKEY_HEADER if test_apikey else {}
+
+        # For each route and method from the openapi specification i.e. with the /catalog/ prefixes
+        for path, methods in app.openapi()["paths"].items():
+            if not must_be_authenticated(path):
+                continue
+            for method in methods.keys():
+
+                endpoint = path.format(collection_id="collection_id", item_id="item_id", owner_id=owner_id)
+                logger.debug(f"Test the {endpoint!r} [{method}] authentication")
+
+                # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
+                # We have other errors on many endpoints because we didn't give the right arguments,
+                # but it's OK it is not what we are testing here.
+                if test_apikey or test_oauth2:
+                    response = client.request(method, endpoint, **header)
+                    logger.debug(response)
+                    assert response.status_code not in (
+                        HTTP_401_UNAUTHORIZED,
+                        HTTP_403_FORBIDDEN,
+                        HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
+                    )
+
+                    # With a wrong apikey, we should have a 403 error
+                    if test_apikey:
+                        assert client.request(method, endpoint, **WRONG_APIKEY_HEADER).status_code == HTTP_403_FORBIDDEN
+
+                # Check that without authentication, the endpoint is protected and we receive a 401
+                else:
+                    assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
+
+    def test_authenticated_endpoints(self):
+        """Test that the catalog endpoints need authentication."""
+        for route_path in [
+            "/catalog/_mgmt/health",
+            "/catalog/_mgmt/ping",
+            "/catalog/api",
+            "/catalog/api.html",
+            "/auth/",
+        ]:
+            assert not must_be_authenticated(route_path)
+        for route_path in [
+            "/catalog",
+            "/catalog/",
+            "/catalog/conformance",
+            "/catalog/collections",
+            "/catalog/search",
+            "/catalog/queryables",
+        ]:
+            assert must_be_authenticated(route_path)
