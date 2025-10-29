@@ -50,7 +50,6 @@ from .helpers import (  # pylint: disable=no-name-in-module
     AUTH_REFS,
     AUTH_SCHEME,
     Collection,
-    add_collection,
     clear_aws_credentials,
     export_aws_credentials,
 )
@@ -80,6 +79,8 @@ COMMON_FIELDS = {
     **AUTH_SCHEME,
 }
 
+ACTION_TYPE = Literal["read", "write", "download"]
+
 #################################
 # Utility classes and functions #
 #################################
@@ -91,7 +92,7 @@ class AuthorizationInfo:
 
     owner_id: str
     collection_id: str
-    action: Literal["read", "write", "download"]
+    actions: ACTION_TYPE | list[ACTION_TYPE]
 
 
 # All existing collections inserted in the database from conftest.py::setup_database
@@ -107,10 +108,7 @@ ALL_DATABASE_COLLECTIONS = [
 ]
 
 
-def get_test_cases(
-    requested_collections: AuthorizationInfo | list[AuthorizationInfo],
-    test_missing_roles=False,
-) -> pytest.MarkDecorator:
+def get_test_cases(requested_collections: AuthorizationInfo | list[AuthorizationInfo]) -> pytest.MarkDecorator:
     """
     Generate all test cases for the catalog endpoint authorizations.
 
@@ -147,33 +145,26 @@ def get_test_cases(
     param_ids = []
     param_values = []
 
-    # Only work with lists
+    # Only work with sorted lists
     if isinstance(requested_collections, AuthorizationInfo):
         requested_collections = [requested_collections]
-
-    # Unique values for requested collection owners and actions
-    requested_col_owners = sorted({col.owner_id for col in requested_collections})
-    requested_col_actions = sorted({col.action for col in requested_collections})
-
-    # For "wrong" actions we'll use actions that are not requested by the pytest.
-    ko_actions = sorted({"read", "write", "download"} - set(requested_col_actions))
+    else:
+        requested_collections.sort(key=lambda col: f"{col.owner_id}:{col.collection_id}")
+    for requested_col in requested_collections:
+        if isinstance(requested_col.actions, str):
+            requested_col.actions = [requested_col.actions]
+        else:
+            requested_col.actions.sort()
 
     # Specific test case: implicit owner = the user is also the owner of the owner of all the requested collections.
+    requested_col_owners = {col.owner_id for col in requested_collections}  # remove duplicates
     if len(requested_col_owners) == 1:
         param_ids.append("implicit_owner")
-        param_values.append([requested_collections, requested_col_owners[0], [], True])
+        param_values.append([requested_collections, next(iter(requested_col_owners)), [], True])
 
     # Test that with no roles at all, the user is unauthorized
     param_ids.append("no_roles")
     param_values.append([requested_collections, "anybody", [], False])
-
-    # In the case of several requested collections, add a test case where everything is ok
-    # but we only keep the roles on a single collection. The test should fail.
-    if test_missing_roles and (len(requested_collections) > 1):
-        first_col = requested_collections[0]
-        iam_roles = [f"rs_catalog_{first_col.owner_id}:{first_col.collection_id}_{first_col.action}"]
-        param_values.append([requested_collections, "anybody", iam_roles, False])
-        param_ids.append(f"missing_roles")
 
     # For every possible test case
     for test_owner, test_col_id, test_action in itertools.product(
@@ -184,7 +175,7 @@ def get_test_cases(
         iam_roles = set()
         should_succeed = True
 
-        # Calculate iam roles for the current test case
+        # Calculate iam roles for the current test case and for all requested collections
         for requested_col in requested_collections:
 
             if test_owner == "all":
@@ -203,8 +194,11 @@ def get_test_cases(
                 iam_role_col_id = "unauth"
                 should_succeed = False
 
+            # For "wrong" actions we'll use actions that are not requested for this requested collection
+            ko_actions = {"read", "write", "download"} - set(requested_col.actions)
+
             if test_action == "ok":
-                iam_role_actions = [requested_col.action]
+                iam_role_actions = requested_col.actions
             else:  # ko
                 iam_role_actions = ko_actions
                 should_succeed = False
@@ -213,12 +207,23 @@ def get_test_cases(
                 iam_roles.add(f"rs_catalog_{iam_role_owner}:{iam_role_col_id}_{iam_role_action}")
 
         # Add a dummy role, it should not impact the authorization
-        if ko_actions:
-            iam_roles.add(f"rs_catalog_dummy:dummy_{ko_actions[0]}")
+        iam_roles.add(f"rs_catalog_dummy:dummy_read")
 
         # Save pytest param ids and values for the current test case
         param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
         param_values.append([requested_collections, "anybody", sorted(iam_roles), should_succeed])
+
+    # In the case of several requested collections, add a test case where everything is ok
+    # but we only keep half the collections.
+    if len(requested_collections) > 1:
+        half_collections = requested_collections[0 : int(len(requested_collections) / 2)]
+        iam_roles = [
+            f"rs_catalog_{col.owner_id}:{col.collection_id}_{action}"
+            for col in half_collections
+            for action in col.actions
+        ]
+        param_values.append([half_collections, "anybody", iam_roles, True])
+        param_ids.append(f"partial_roles")
 
     return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
 
@@ -241,7 +246,8 @@ async def init_authorization_test(
     """
     # Log test params
     log_collections = "\n  ".join(
-        [""] + [f"'{col.owner_id}:{col.collection_id}' for {col.action!r}" for col in requested_collections],
+        [""]
+        + [f"'{col.owner_id}:{col.collection_id}' for: {','.join(col.actions)!r}" for col in requested_collections],
     )
     log_roles = "\n  ".join([""] + (iam_roles or ["(none)"]))
     logger.debug(
@@ -270,10 +276,16 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
 @AUTH_PARAM
 @get_test_cases(ALL_DATABASE_COLLECTIONS)
 @pytest.mark.parametrize("_init_authorization_test", [{"mock_wrong_apikey": True}], indirect=True, ids=[""])
-async def test_landing_page(_init_authorization_test, client, test_apikey, should_succeed):
-    """
-    The the catalog landing page authorizations and returned contents.
-    """
+async def test_authorization_landing_page(
+    request,
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    should_succeed: bool,
+):
+    """Test the GET /catalog landing page endpoint"""
+
     # Test a wrong apikey
     if test_apikey:
         wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
@@ -361,6 +373,10 @@ async def test_landing_page(_init_authorization_test, client, test_apikey, shoul
     # In error case, no collections should be returned.
     expected_col_links = []
     if should_succeed:
+
+        # We request all the collections except for this specific test case
+        if "partial_roles" not in request.node.name:
+            assert requested_collections == ALL_DATABASE_COLLECTIONS
         expected_col_links = [
             {
                 "rel": "child",
@@ -369,19 +385,22 @@ async def test_landing_page(_init_authorization_test, client, test_apikey, shoul
                 "href": f"http://testserver/catalog/collections/{col.owner_id}:{col.collection_id}",
                 **AUTH_REFS,
             }
-            for col in ALL_DATABASE_COLLECTIONS
+            for col in requested_collections
         ]
-
-    assert contents["links"] == expected_base_links + sorted(
-        expected_col_links,
-        key=lambda link: link["href"],  # type: ignore
-    )
+    assert contents["links"] == expected_base_links + expected_col_links
 
 
 @AUTH_PARAM
 @get_test_cases(ALL_DATABASE_COLLECTIONS)
-async def test_get_collections(_init_authorization_test, client, test_apikey, should_succeed):
-    """Test the /catalog/collections endpoint"""
+async def test_authorization_get_collections(
+    request,
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    should_succeed: bool,
+):
+    """Test the GET /catalog/collections endpoint"""
 
     header = VALID_APIKEY_HEADER if test_apikey else {}
     response = client.request("GET", "/catalog/collections", **header)
@@ -392,9 +411,15 @@ async def test_get_collections(_init_authorization_test, client, test_apikey, sh
 
     # In nominal case, all collections should be returned
     if should_succeed:
-        returned_ids = sorted([f"{col['owner']}:{col['id']}" for col in returned_cols])
-        expected_ids = sorted([f"{col.owner_id}:{col.collection_id}" for col in ALL_DATABASE_COLLECTIONS])
-        assert returned_ids == expected_ids
+
+        # We request all the collections except for this specific test case
+        if "partial_roles" not in request.node.name:
+            assert requested_collections == ALL_DATABASE_COLLECTIONS
+
+        expected_cols = [
+            Collection(col.owner_id, col.collection_id).as_returned(cluster_mode=True) for col in requested_collections
+        ]
+        assert returned_cols == expected_cols
 
     # In error case, no collections should be returned
     else:
@@ -403,7 +428,13 @@ async def test_get_collections(_init_authorization_test, client, test_apikey, sh
 
 @AUTH_PARAM
 @get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
-async def test_authorization_get_one_collection(_init_authorization_test, client, test_apikey, should_succeed):
+async def test_authorization_get_one_collection(
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    should_succeed: bool,
+):
+    """Test the GET /catalog/collections/{owner}:{collection_id} endpoint"""
 
     header = VALID_APIKEY_HEADER if test_apikey else {}
     response = client.request("GET", "/catalog/collections/toto:S1_L1", **header)
@@ -415,270 +446,84 @@ async def test_authorization_get_one_collection(_init_authorization_test, client
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthorizationGetOneCollection:
-    """Contains authorization tests when the user wants to get a single collection."""
+@AUTH_PARAM
+@get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
+async def test_authorization_get_items(
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    should_succeed: bool,
+    feature_toto_s1_l1_0,
+    feature_toto_s1_l1_1,
+):
+    """Test the GET /catalog/collections/{owner}:{collection_id}/items endpoint"""
 
-    @AUTH_PARAM
-    @pytest.mark.parametrize(
-        ("user", "user_str_for_endpoint_call"),
-        [
-            ("toto", "toto:"),
-            ("pyteam", ""),
-        ],
-    )
-    async def test_http200_with_good_authentication(
-        self,
-        user,
-        user_str_for_endpoint_call,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):  # pylint: disable=too-many-arguments
-        """Test that the user gets the right collection when he does a good request with right permissions."""
-        iam_roles = [f"rs_catalog_{user}:*_read"]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+    response = client.request("GET", "/catalog/collections/toto:S1_L1/items", **header)
 
-        collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": f"http://testserver/catalog/collections/{user}:S1_L1/items",
-                    **AUTH_REFS,
-                },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTH_REFS,
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/",
-                    **AUTH_REFS,
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": f"http://testserver/catalog/collections/{user}:S1_L1",
-                    **AUTH_REFS,
-                },
-                {
-                    "rel": "items",
-                    "href": f"http://testserver/catalog/collections/{user}:S1_L1/items/",
-                    "type": "application/geo+json",
-                    **AUTH_REFS,
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                    **AUTH_REFS,
-                },
-                {
-                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
-                    "type": "application/schema+json",
-                    "title": "Queryables",
-                    "href": f"http://testserver/catalog/collections/{user}:S1_L1/queryables",
-                    **AUTH_REFS,
-                },
-            ],
-            "owner": user,
-            **COMMON_FIELDS,
-        }
-        response = client.request(
-            "GET",
-            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1",
-            **header,
-        )
+    if should_succeed:
         assert response.status_code == HTTP_200_OK
-        assert collection == json.loads(response.content)
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without the right authorisations."""
-
-        iam_roles = [
-            "rs_catalog_toto:*_write",
-            "rs_catalog_toto:S1_L2_read",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            "/catalog/collections/toto:S1_L1",
-            **header,
-        )
+        returned_features = json.loads(response.content)["features"]
+        assert [feature["id"] for feature in returned_features] == [feature_toto_s1_l1_0.id_, feature_toto_s1_l1_1.id_]
+    else:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthorizationGetItems:
-    """Contains authorization tests when the user wants to get items."""
+@AUTH_PARAM
+@get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
+async def test_authorization_get_one_item(
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    should_succeed: bool,
+    feature_toto_s1_l1_0,
+):
+    """Test the GET /catalog/collections/{owner}:{collection_id}/items/{item_id} endpoint"""
 
-    @AUTH_PARAM
-    @pytest.mark.parametrize(
-        ("user", "user_str_for_endpoint_call"),
-        [
-            ("toto", "toto:"),
-            ("pyteam", ""),
-        ],
-    )
-    async def test_http200_with_good_authentication(
-        self,
-        user,
-        user_str_for_endpoint_call,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):  # pylint: disable=too-many-arguments
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does a good request with right permissions."""
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+    response = client.request("GET", f"/catalog/collections/toto:S1_L1/items/{feature_toto_s1_l1_0.id_}", **header)
 
-        iam_roles = [f"rs_catalog_{user}:*_read"]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/",
-            **header,
-        )
+    if should_succeed:
         assert response.status_code == HTTP_200_OK
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user get a HTTP_401_UNAUTHORIZED status code response
-        when he does a good requests without the right authorisations.
-        """
-
-        iam_roles = [
-            "rs_catalog_toto:*_write",
-            "rs_catalog_toto:S1_L2_read",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            "/catalog/collections/toto:S1_L1/items/",
-            **header,
-        )
+        returned_feature = json.loads(response.content)
+        assert returned_feature["id"] == feature_toto_s1_l1_0.id_
+    else:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthorizationGetOneItem:
-    """Contains authorization tests when the user wants to one item."""
+@AUTH_PARAM
+@get_test_cases(AuthorizationInfo("toto", "new_collection", "write"))
+async def test_authorization_post_and_delete_one_collection(
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    should_succeed: bool,
+):
+    """Test the POST and DELETE /catalog/collections endpoints"""
 
-    @AUTH_PARAM
-    @pytest.mark.parametrize(
-        ("user", "user_str_for_endpoint_call", "feature"),
-        [
-            ("toto", "toto:", "fe916452-ba6f-4631-9154-c249924a122d"),
-            ("pyteam", "", "hi916451-ca6f-4631-9154-4249924a133d"),
-        ],
-    )
-    async def test_http200_with_good_authentication(
-        self,
-        user,
-        user_str_for_endpoint_call,
-        feature,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):  # pylint: disable=too-many-arguments
-        """Test that the user gets the right item when he does a good request with right permissions."""
+    new_collection = Collection("toto", "new_collection")
+    header = VALID_APIKEY_HEADER if test_apikey else {}
 
-        iam_roles = [
-            "rs_catalog_pyteam:*_read",
-            "rs_catalog_toto:*_read",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
+    # Create the collection
+    post_response = client.request("POST", "/catalog/collections", json=new_collection.properties, **header)
 
-        feature_s1_l1_0 = {
-            "id": feature,
-            # "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
-            # "type": "Feature",
-            # "assets": {
-            #     "may24C355000e4102500n.tif": {
-            #         "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
-            #         "type": "image/tiff; application=geotiff; profile=cloud-optimized",
-            #         "title": "NOAA STORM COG",
-            #         **AUTH_REFS,
-            #     },
-            # },
-            # "geometry": {
-            #     "type": "Polygon",
-            #     "coordinates": [
-            #         [
-            #             [-94.6334839, 37.0595608],
-            #             [-94.6334839, 37.0332547],
-            #             [-94.6005249, 37.0332547],
-            #             [-94.6005249, 37.0595608],
-            #             [-94.6334839, 37.0595608],
-            #         ],
-            #     ],
-            # },
-            # "collection": "S1_L1",
-            # "properties": {
-            #     "gsd": 0.5971642834779395,
-            #     "owner": user,
-            #     "width": 2500,
-            #     "height": 2500,
-            #     "datetime": "2000-02-02T00:00:00Z",
-            #     "owner_id": user,
-            #     "proj:epsg": 3857,
-            #     "orientation": "nadir",
-            #     **AUTH_SCHEME,
-            # },
-            # "stac_version": "1.0.0",
-            # "stac_extensions": [
-            #     "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
-            #     "https://stac-extensions.github.io/projection/v2.0.0/schema.json",
-            #     AUTH_EXTENSION,
-            # ],
-        }
+    if should_succeed:
+        assert post_response.status_code == HTTP_201_CREATED
+        returned_col = json.loads(post_response.content)
+        assert returned_col["owner"] == "toto"
+        assert returned_col["id"] == "new_collection"
+    else:
+        assert post_response.status_code == HTTP_401_UNAUTHORIZED
 
-        response = client.request(
-            "GET",
-            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/{feature}",
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-        feature_id = json.loads(response.content)["id"]
-        assert feature_id == feature_s1_l1_0["id"]
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without the right permissions.
-        """
-
-        iam_roles = [
-            "rs_catalog_toto:*_write",
-            "rs_catalog_toto:S1_L2_read",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
+    # Delete the collection so we're back to the initial test state.
+    # NOTE: it has actually been created only in the should_succeed case.
+    delete_response = client.delete(f"/catalog/collections/toto:new_collection", **header)
+    if should_succeed:
+        assert delete_response.status_code == HTTP_200_OK
+        assert json.loads(delete_response.content) == {"deleted collection": "new_collection"}
+    else:
+        # NOTE: it's 401 not 404 even if the collection does not exist in this case
+        assert delete_response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthorizationPostOneCollection:
