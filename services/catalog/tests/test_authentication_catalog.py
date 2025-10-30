@@ -247,7 +247,7 @@ async def init_authorization_test(
     # Log test params
     log_collections = "\n  ".join(
         [""]
-        + [f"'{col.owner_id}:{col.collection_id}' for: {','.join(col.actions)!r}" for col in requested_collections],
+        + [f"'{col.owner_id}:{col.collection_id}' with {','.join(col.actions)!r}" for col in requested_collections],
     )
     log_roles = "\n  ".join([""] + (iam_roles or ["(none)"]))
     logger.debug(
@@ -432,18 +432,30 @@ async def test_authorization_get_one_collection(
     _init_authorization_test,
     client,
     test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
     should_succeed: bool,
 ):
     """Test the GET /catalog/collections/{owner}:{collection_id} endpoint"""
 
+    owner = requested_collections[0].owner_id
+    collection_id = requested_collections[0].collection_id
     header = VALID_APIKEY_HEADER if test_apikey else {}
-    response = client.request("GET", "/catalog/collections/toto:S1_L1", **header)
 
-    if should_succeed:
-        assert response.status_code == HTTP_200_OK
-        assert json.loads(response.content) == Collection("toto", "S1_L1").as_returned(cluster_mode=True)
-    else:
-        assert response.status_code == HTTP_401_UNAUTHORIZED
+    # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
+    for implicit_owner in False, True:
+        owner_url = "" if implicit_owner else f"{owner}:"
+        response = client.request("GET", f"/catalog/collections/{owner_url}{collection_id}", **header)
+
+        # The implicit owner should work only when user == owner
+        if implicit_owner and (user_login != owner):
+            assert response.status_code == HTTP_404_NOT_FOUND
+
+        elif should_succeed:
+            assert response.status_code == HTTP_200_OK
+            assert json.loads(response.content) == Collection(owner, collection_id).as_returned(cluster_mode=True)
+        else:
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 @AUTH_PARAM
@@ -452,21 +464,36 @@ async def test_authorization_get_items(
     _init_authorization_test,
     client,
     test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
     should_succeed: bool,
     feature_toto_s1_l1_0,
     feature_toto_s1_l1_1,
 ):
     """Test the GET /catalog/collections/{owner}:{collection_id}/items endpoint"""
 
+    owner = requested_collections[0].owner_id
+    collection_id = requested_collections[0].collection_id
     header = VALID_APIKEY_HEADER if test_apikey else {}
-    response = client.request("GET", "/catalog/collections/toto:S1_L1/items", **header)
 
-    if should_succeed:
-        assert response.status_code == HTTP_200_OK
-        returned_features = json.loads(response.content)["features"]
-        assert [feature["id"] for feature in returned_features] == [feature_toto_s1_l1_0.id_, feature_toto_s1_l1_1.id_]
-    else:
-        assert response.status_code == HTTP_401_UNAUTHORIZED
+    # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
+    for implicit_owner in False, True:
+        owner_url = "" if implicit_owner else f"{owner}:"
+        response = client.request("GET", f"/catalog/collections/{owner_url}{collection_id}/items", **header)
+
+        # The implicit owner should work only when user == owner
+        if implicit_owner and (user_login != owner):
+            assert response.status_code == HTTP_404_NOT_FOUND
+
+        elif should_succeed:
+            assert response.status_code == HTTP_200_OK
+            returned_features = json.loads(response.content)["features"]
+            assert [feature["id"] for feature in returned_features] == [
+                feature_toto_s1_l1_0.id_,
+                feature_toto_s1_l1_1.id_,
+            ]
+        else:
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 @AUTH_PARAM
@@ -475,20 +502,36 @@ async def test_authorization_get_one_item(
     _init_authorization_test,
     client,
     test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
     should_succeed: bool,
     feature_toto_s1_l1_0,
 ):
     """Test the GET /catalog/collections/{owner}:{collection_id}/items/{item_id} endpoint"""
 
+    owner = requested_collections[0].owner_id
+    collection_id = requested_collections[0].collection_id
     header = VALID_APIKEY_HEADER if test_apikey else {}
-    response = client.request("GET", f"/catalog/collections/toto:S1_L1/items/{feature_toto_s1_l1_0.id_}", **header)
 
-    if should_succeed:
-        assert response.status_code == HTTP_200_OK
-        returned_feature = json.loads(response.content)
-        assert returned_feature["id"] == feature_toto_s1_l1_0.id_
-    else:
-        assert response.status_code == HTTP_401_UNAUTHORIZED
+    # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
+    for implicit_owner in False, True:
+        owner_url = "" if implicit_owner else f"{owner}:"
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{owner_url}{collection_id}/items/{feature_toto_s1_l1_0.id_}",
+            **header,
+        )
+
+        # The implicit owner should work only when user == owner
+        if implicit_owner and (user_login != owner):
+            assert response.status_code == HTTP_404_NOT_FOUND
+
+        elif should_succeed:
+            assert response.status_code == HTTP_200_OK
+            returned_feature = json.loads(response.content)
+            assert returned_feature["id"] == feature_toto_s1_l1_0.id_
+        else:
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 @AUTH_PARAM
@@ -497,427 +540,179 @@ async def test_authorization_post_and_delete_one_collection(
     _init_authorization_test,
     client,
     test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
     should_succeed: bool,
 ):
-    """Test the POST and DELETE /catalog/collections endpoints"""
+    """Test the POST and DELETE /catalog/collections/{owner}:{collection_id} endpoints"""
 
-    new_collection = Collection("toto", "new_collection")
+    owner = requested_collections[0].owner_id
+    collection_id = requested_collections[0].collection_id
+    new_collection = Collection(owner, collection_id)
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
-    # Create the collection
-    post_response = client.request("POST", "/catalog/collections", json=new_collection.properties, **header)
+    # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
+    for implicit_owner in False, True:
+        owner_url = "" if implicit_owner else f"{owner}:"
+
+        # Create the collection
+        post_response = client.request("POST", "/catalog/collections", json=new_collection.properties, **header)
+
+        if should_succeed:
+            assert post_response.status_code == HTTP_201_CREATED
+            returned_col = json.loads(post_response.content)
+            assert returned_col["owner"] == owner
+            assert returned_col["id"] == collection_id
+        else:
+            assert post_response.status_code == HTTP_401_UNAUTHORIZED
+
+        # Delete the collection so we're back to the initial test state.
+        # NOTE: it has actually been created only in the should_succeed case.
+        delete_response = client.delete(f"/catalog/collections/{owner_url}{collection_id}", **header)
+
+        # The implicit owner should work only when user == owner
+        if implicit_owner and (user_login != owner):
+            assert delete_response.status_code == HTTP_404_NOT_FOUND
+
+            # Delete the collection with the good url, in case it has been created,
+            # or we'll have conflicts in the next tests
+            client.delete(f"/catalog/collections/{owner}:{collection_id}", **header)
+
+        elif should_succeed:
+            assert delete_response.status_code == HTTP_200_OK
+            assert json.loads(delete_response.content) == {"deleted collection": "new_collection"}
+
+        # NOTE: in this case, the collection has not been created.
+        # But we still receive a 401 not 404 even though the colleciton does not exist.
+        else:
+            assert delete_response.status_code == HTTP_401_UNAUTHORIZED
+
+
+@AUTH_PARAM
+@get_test_cases(AuthorizationInfo("toto", "S1_L1", "write"))
+async def test_authorization_put_one_collection(
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
+    should_succeed: bool,
+):
+    """Test the PUT /catalog/collections/{owner}:{collection_id} endpoint (to update a collection)"""
+
+    owner = requested_collections[0].owner_id
+    collection_id = requested_collections[0].collection_id
+    existing_collection = Collection(owner, collection_id)
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+
+    # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
+    for implicit_owner in False, True:
+        owner_url = "" if implicit_owner else f"{owner}:"
+
+        # Update the collection
+        response = client.request(
+            "PUT",
+            f"/catalog/collections/{owner_url}{collection_id}",
+            json=existing_collection.properties,
+            **header,
+        )
+
+        # The implicit owner should work only when user == owner
+        if implicit_owner and (user_login != owner):
+            assert response.status_code == HTTP_404_NOT_FOUND
+
+        elif should_succeed:
+            assert response.status_code == HTTP_200_OK
+            returned_col = json.loads(response.content)
+            assert returned_col["owner"] == owner
+            assert returned_col["id"] == collection_id
+        else:
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+@AUTH_PARAM
+@get_test_cases(
+    [
+        AuthorizationInfo("toto", "S1_L1", "read"),
+        AuthorizationInfo("toto", "S2_L3", "read"),
+    ],
+)
+@pytest.mark.parametrize("method", ["GET", "POST"], ids=["get", "post"])
+async def test_authorization_search(
+    request,
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    should_succeed: bool,
+    feature_toto_s1_l1_0,
+    feature_toto_s1_l1_1,
+    feature_toto_s2_l3_0,
+    method: str,
+):
+    """Test the GET and POST /catalog/search endpoints"""
+
+    # Requested collection owner and ids.
+    owner = requested_collections[0].owner_id
+    single_collection = ["S1_L1"]
+    several_collections = ["S1_L1", "S2_L3"]
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+
+    def get_search_kwargs(searched_collections: list[str]):
+        """Return the arguments to pass to the search request"""
+        if method == "GET":
+            params = {
+                "collections": ",".join(searched_collections),
+                "filter-lang": "cql2-text",
+                "filter": f"width=2500 AND owner={owner!r}",
+            }
+            return {"params": params}
+        else:  # POST
+            params = {
+                "collections": searched_collections,
+                "filter-lang": "cql2-json",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "owner"}, owner]},
+                        {"op": "=", "args": [{"property": "width"}, 2500]},
+                    ],
+                },
+            }
+            return {"json": params}
+
+    # Search a single collection
+    response = client.request(method, "/catalog/search", **get_search_kwargs(single_collection), **header)
 
     if should_succeed:
-        assert post_response.status_code == HTTP_201_CREATED
-        returned_col = json.loads(post_response.content)
-        assert returned_col["owner"] == "toto"
-        assert returned_col["id"] == "new_collection"
+        assert response.status_code == HTTP_200_OK
+        returned_features = json.loads(response.content)["features"]
+        assert [feature["id"] for feature in returned_features] == [
+            feature_toto_s1_l1_0.id_,
+            feature_toto_s1_l1_1.id_,
+        ]
     else:
-        assert post_response.status_code == HTTP_401_UNAUTHORIZED
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
-    # Delete the collection so we're back to the initial test state.
-    # NOTE: it has actually been created only in the should_succeed case.
-    delete_response = client.delete(f"/catalog/collections/toto:new_collection", **header)
-    if should_succeed:
-        assert delete_response.status_code == HTTP_200_OK
-        assert json.loads(delete_response.content) == {"deleted collection": "new_collection"}
+    # Search several collections
+    response = client.request(method, "/catalog/search", **get_search_kwargs(several_collections), **header)
+
+    # In this specific case, we search for 2 collections but only have authorization on one collection.
+    # The search returns an unauthorized response.
+    if "partial_roles" in request.node.name:
+        # 'requested_collections' are in fact the collections authorized to the user
+        assert len(requested_collections) < len(several_collections)
+        assert response.status_code == HTTP_401_UNAUTHORIZED
+
+    elif should_succeed:
+        assert response.status_code == HTTP_200_OK
+        returned_features = json.loads(response.content)["features"]
+        assert [feature["id"] for feature in returned_features] == [
+            feature_toto_s2_l3_0.id_,
+            feature_toto_s1_l1_0.id_,
+            feature_toto_s1_l1_1.id_,
+        ]
     else:
-        # NOTE: it's 401 not 404 even if the collection does not exist in this case
-        assert delete_response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthorizationPostOneCollection:
-    """Contains authorization tests when a user wants to post one collection."""
-
-    collection_to_post = {
-        "id": "MY_SPECIAL_COLLECTION",
-        "type": "Collection",
-        "owner": "pyteam",
-        "links": [
-            {
-                "rel": "items",
-                "type": "application/geo+json",
-                "href": "http://testserver/collections/toto/items",
-            },
-            {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-            {
-                "rel": "self",
-                "type": "application/json",
-                "href": """http://testserver/collections/toto""",
-            },
-            {
-                "rel": "license",
-                "href": "https://creativecommons.org/licenses/publicdomain/",
-                "title": "public domain",
-            },
-        ],
-        **COMMON_FIELDS,
-    }
-
-    @AUTH_PARAM
-    async def test_http201_with_good_authentication(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does a good request with right permissions."""
-
-        iam_roles = [
-            "rs_catalog_pyteam:*_read",
-            "rs_catalog_pyteam:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "POST",
-            "/catalog/collections",
-            json=self.collection_to_post,
-            **header,
-        )
-        assert response.status_code == HTTP_201_CREATED
-
-        # Delete the created collections so we're back to the initial test state
-        assert client.delete(
-            f"/catalog/collections/{self.collection_to_post['owner']}:{self.collection_to_post['id']}",
-            **header,
-        ).is_success
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without the right permissions."""
-
-        iam_roles = ["rs_catalog_toto:S1_L2_read"]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-        self.collection_to_post["owner"] = "toto"
-        response = client.request(
-            "POST",
-            "/catalog/collections",
-            json=self.collection_to_post,
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-
-    @AUTH_PARAM
-    async def test_fails_user_creates_collection_owned_by_another_user(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test to verify that creating a collection owned by another user returns HTTP 401 Unauthorized.
-
-        This test checks the scenario where the user 'pyteam' attempts to create a collection that
-        is owned by the user 'toto'. It ensures that the appropriate HTTP 401 Unauthorized status
-        code is returned. The rs-server-catalog receives the apikey from the HEADER parameter,
-        which is created for the user 'pyteam'. It then tries to create a collection with the
-        info received in the body, but it sees that the owner is the 'toto' user, which doesn't
-        correspond with the apikey owner
-
-        Args:
-            self: The test case instance.
-            mocker: pytest-mock fixture for mocking objects.
-            httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
-            client: Test client for making HTTP requests to the application.
-
-        Returns:
-            None
-
-        Raises:
-            AssertionError: If the response status code is not HTTP 401 Unauthorized.
-
-        Notes:
-        - The `iam_roles` variable simulates the roles assigned to the user 'pyteam'.
-        - The `init_test` function is called to set up the test environment with mocked roles and configurations.
-        - The `self.collection_to_post` dictionary is modified to set the 'owner' field to 'toto'.
-        - The `client.request` method sends a POST request to create a collection.
-        - The test asserts that the response status code is HTTP 401 Unauthorized.
-        """
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-        self.collection_to_post["owner"] = "toto"
-        response = client.request(
-            "POST",
-            "/catalog/collections",
-            json=self.collection_to_post,
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthorizationPutOneCollection:
-    """Contains authorization tests when a user wants to update one collection."""
-
-    updated_collection = {
-        "id": "S1_L1",
-        "type": "Collection",
-        "links": [
-            {
-                "rel": "items",
-                "type": "application/geo+json",
-                "href": "http://testserver/collections/pyteam_S1_L1/items",
-            },
-            {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "self", "type": "application/json", "href": "http://testserver/collections/pyteam_S1_L1"},
-            {
-                "rel": "items",
-                "href": "http://testserver/collections/S1_L1/items",
-                "type": "application/geo+json",
-            },
-            {
-                "rel": "license",
-                "href": "https://creativecommons.org/licenses/publicdomain/",
-                "title": "public domain",
-            },
-        ],
-        "owner": "pyteam",
-        **COMMON_FIELDS,
-    }
-
-    @AUTH_PARAM
-    async def test_http200_with_good_authentication(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does good requests (one with the owner_id parameter and the other one
-        without the owner_id parameter) with right permissions."""
-
-        iam_roles = [
-            "rs_catalog_pyteam:*_read",
-            "rs_catalog_pyteam:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        # owner_id is used in the endpoint, format is owner_id:collection
-        response = client.request(
-            "PUT",
-            "/catalog/collections/pyteam:S1_L1",
-            json=self.updated_collection,
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-        # request the endpoint by using just "collection" (the owner_id is
-        # loaded by the rs-server-catalog directly from the apikey)
-        response = client.request(
-            "PUT",
-            "/catalog/collections/S1_L1",
-            json=self.updated_collection,
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without the right permissions."""
-
-        iam_roles = ["rs_catalog_pyteam:S1_L2_read"]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "PUT",
-            "/catalog/collections/toto:S1_L1",
-            json=self.updated_collection,
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-
-    @AUTH_PARAM
-    async def test_fails_user_updates_collection_owned_by_another_user(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """This test evaluates the scenario where the user 'pyteam' attempts to update his
-        own collection by altering the owner field to another user, 'toto'. The primary objective
-        is to ensure that an appropriate HTTP 401 Unauthorized status code is returned. The rs-server-catalog
-        retrieves the apikey from the HEADER parameter, which is associated with the user 'pyteam'. When
-        attempting to update the collection with the information provided in the body, the
-        system detects that the owner is specified as 'toto'. Since 'toto' does not match the owner of the apikey,
-        the update is correctly rejected, resulting in the expected unauthorized status.
-
-        Args:
-            self: The test case instance.
-            mocker: pytest-mock fixture for mocking objects.
-            httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
-            client: Test client for making HTTP requests to the application.
-
-        Returns:
-            None
-
-        Raises:
-            AssertionError: If the response status code is not HTTP 401 Unauthorized.
-
-        Notes:
-        - The `iam_roles` variable simulates the roles assigned to the user 'pyteam'.
-        - The `init_test` function is called to set up the test environment with mocked roles and configurations.
-        - The `self.collection_to_post` dictionary is modified to set the 'owner' field to 'toto'.
-        - The `client.request` method sends a PUT request to update a collection.
-        - The test asserts that the response status code is HTTP 401 Unauthorized.
-        """
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-        self.updated_collection["owner"] = "toto"
-        response = client.request(
-            "PUT",
-            "/catalog/collections/toto:S1_L1",
-            json=self.updated_collection,
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthorizationSearch:
-    """Contains authorization tests when a user wants to do a search request."""
-
-    # Search request using one collection
-    search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
-    test_json = {
-        "collections": ["S1_L1"],
-        "filter-lang": "cql2-json",
-        "filter": {
-            "op": "and",
-            "args": [
-                {"op": "=", "args": [{"property": "owner"}, "toto"]},
-                {"op": "=", "args": [{"property": "width"}, 2500]},
-            ],
-        },
-    }
-    # Search request using several collections
-    search_params_several_coll = {
-        "collections": "S1_L1,S2_L3",
-        "filter-lang": "cql2-text",
-        "filter": "width=2500 AND owner='toto'",
-    }
-    test_json_several_coll = {
-        "collections": ["S1_L1", "S2_L3"],
-        "filter-lang": "cql2-json",
-        "filter": {
-            "op": "and",
-            "args": [
-                {"op": "=", "args": [{"property": "owner"}, "toto"]},
-                {"op": "=", "args": [{"property": "width"}, 2500]},
-            ],
-        },
-    }
-
-    @AUTH_PARAM
-    async def test_http200_with_good_authentication(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does good requests (GET and POST method) with right permissions."""
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            "/catalog/search",
-            params=self.search_params,
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-        response = client.request("POST", "/catalog/search", json=self.test_json, **header)
-        assert response.status_code == HTTP_200_OK
-
-    @AUTH_PARAM
-    async def test_several_collections_http200_with_good_authentication(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does good requests (GET and POST method) with right permissions for several collections"""
-        iam_roles = [
-            "rs_catalog_toto:S1_L1_read",
-            "rs_catalog_toto:S1_L1_write",
-            "rs_catalog_toto:S2_L3_read",
-            "rs_catalog_toto:S2_L3_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            "/catalog/search",
-            params=self.search_params_several_coll,
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-        response = client.request("POST", "/catalog/search", json=self.test_json_several_coll, **header)
-        assert response.status_code == HTTP_200_OK
-
-    @AUTH_PARAM
-    async def test_several_collections_fails_without_good_perms(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does good requests (GET and POST method) with missing permission for
-        at least one collection"""
-
-        iam_roles = [
-            "rs_catalog_toto:S1_L1_read",
-            "rs_catalog_toto:S1_L1_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "GET",
-            "/catalog/search",
-            params=self.search_params_several_coll,
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-        response = client.request("POST", "/catalog/search", json=self.test_json_several_coll, **header)
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
@@ -1056,89 +851,6 @@ class TestAuthorizationDownload:
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
             clear_aws_credentials()
-
-
-class TestAuthorizationDelete:
-    """Contains authorization tests when a user wants to delete a collection."""
-
-    @AUTH_PARAM
-    async def test_http200_with_good_authentication(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he deletes a collection with right permissions"""
-
-        iam_roles: list[str] = []
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        # create the collections first
-        collections = ["pyteam_fixture_collection_1", "pyteam_fixture_collection_2"]
-        for collection in collections:
-            new_collection = {
-                "id": f"{collection}",
-                "type": "Collection",
-                "description": "test_description",
-                "stac_version": "1.0.0",
-                "owner": "pyteam",
-                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-                "license": "public-domain",
-                "extent": {
-                    "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                    "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-                },
-            }
-
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=new_collection,
-                **header,
-            )
-            assert response.status_code == HTTP_201_CREATED
-
-        # request the endpoint by using "user:collection"
-        response = client.request(
-            "DELETE",
-            f"/catalog/collections/pyteam:{collections[0]}",
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-        # request the endpoint by using just "collection" (the user is
-        # loaded by the rs-server-catalog directly from the apikey)
-        response = client.request(
-            "DELETE",
-            f"/catalog/collections/{collections[1]}",
-            **header,
-        )
-        assert response.status_code == HTTP_200_OK
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he tries to delete a collection without right permissions."""
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        # sending a request from user pyteam (loaded from the apikey) to delete
-        # the S1_L1 collection owned by the `toto` user.
-        # 401 unauthorized reponse should be received
-        response = client.request(
-            "DELETE",
-            "/catalog/collections/toto:S1_L1",
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthorizationPostOneItem:  # pylint: disable=duplicate-code
