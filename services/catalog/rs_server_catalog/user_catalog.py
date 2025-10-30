@@ -1020,12 +1020,18 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
-            # Don't display geometry and bbox for default case since it was added just for compliance.
-            if request.scope["path"] == CATALOG_COLLECTIONS:
+
+            if (request.scope["path"] == CATALOG_COLLECTIONS) or (
+                (request.method == "PUT")
+                and (
+                    request.scope["path"] == (CATALOG_COLLECTIONS + f"/{user}_{self.request_ids['collection_ids'][0]}")
+                )
+            ):
                 response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
-            elif (
-                request.scope["path"]
-                == CATALOG_COLLECTIONS
+
+            # Don't display geometry and bbox for default case since it was added just for compliance.
+            elif request.scope["path"] == (
+                CATALOG_COLLECTIONS
                 + f"/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
             ):
                 response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
