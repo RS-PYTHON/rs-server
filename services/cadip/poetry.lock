@@ -237,18 +237,18 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.40.61"
+version = "1.40.63"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.40.61-py3-none-any.whl", hash = "sha256:6b9c57b2a922b5d8c17766e29ed792586a818098efe84def27c8f582b33f898c"},
-    {file = "boto3-1.40.61.tar.gz", hash = "sha256:d6c56277251adf6c2bdd25249feae625abe4966831676689ff23b4694dea5b12"},
+    {file = "boto3-1.40.63-py3-none-any.whl", hash = "sha256:f15d4abf1a6283887c336f660cdfc2162a210d2d8f4d98dbcbcef983371c284d"},
+    {file = "boto3-1.40.63.tar.gz", hash = "sha256:3bf4b034900c87a6a9b3b3b44c4aec26e96fc73bff2505f0766224b7295178ce"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.61,<1.41.0"
+botocore = ">=1.40.63,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -257,14 +257,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.61"
+version = "1.40.63"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.40.61-py3-none-any.whl", hash = "sha256:17ebae412692fd4824f99cde0f08d50126dc97954008e5ba2b522eb049238aa7"},
-    {file = "botocore-1.40.61.tar.gz", hash = "sha256:a2487ad69b090f9cccd64cf07c7021cd80ee9c0655ad974f87045b02f3ef52cd"},
+    {file = "botocore-1.40.63-py3-none-any.whl", hash = "sha256:83657b3ee487268fccc9ba022cba572ba657b9ece8cddd1fa241e2c6a49c8c14"},
+    {file = "botocore-1.40.63.tar.gz", hash = "sha256:0324552c3c800e258cbcb8c22b495a2e2e0260a7408d08016196e46fa0d1b587"},
 ]
 
 [package.dependencies]
@@ -1056,14 +1056,14 @@ usgs = ["usgs (>=0.3.6)"]
 
 [[package]]
 name = "fastapi"
-version = "0.120.1"
+version = "0.120.3"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "fastapi-0.120.1-py3-none-any.whl", hash = "sha256:0e8a2c328e96c117272d8c794d3a97d205f753cc2e69dd7ee387b7488a75601f"},
-    {file = "fastapi-0.120.1.tar.gz", hash = "sha256:b5c6217e9ddca6dfcf54c97986180d4a1955e10c693d74943fc5327700178bff"},
+    {file = "fastapi-0.120.3-py3-none-any.whl", hash = "sha256:bfee21c98db9128dc425a686eafd14899e26e4471aab33076bff2427fd6dcd22"},
+    {file = "fastapi-0.120.3.tar.gz", hash = "sha256:17db50718ee86c9e01e54f9d8600abf130f6f762711cd0d8f02eb392668271ba"},
 ]
 
 [package.dependencies]
@@ -3355,14 +3355,14 @@ files = [
 
 [[package]]
 name = "smart-open"
-version = "7.4.1"
+version = "7.4.2"
 description = "Utils for streaming large files (S3, HDFS, GCS, SFTP, Azure Blob Storage, gzip, bz2, zst...)"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "smart_open-7.4.1-py3-none-any.whl", hash = "sha256:f52cb9bc897c7676dfc6996735332bd2465dfb048c73bfa9dfcdc829f48018cc"},
-    {file = "smart_open-7.4.1.tar.gz", hash = "sha256:5c20f09026875e6dec708e9610e0cd13d24d91f0a2c12e6511b9e478a566b4a0"},
+    {file = "smart_open-7.4.2-py3-none-any.whl", hash = "sha256:5e53a2604d62979a3940f80472c3d42c508250cec709ad4d25854f597d15036f"},
+    {file = "smart_open-7.4.2.tar.gz", hash = "sha256:648b5619297cb32720cdfed4ffbcb15209defb531e0904497721a9b24fdcdcac"},
 ]
 
 [package.dependencies]
@@ -3371,7 +3371,7 @@ wrapt = "*"
 [package.extras]
 all = ["smart_open[azure,gcs,http,s3,ssh,webhdfs,zst]"]
 azure = ["azure-common", "azure-core", "azure-storage-blob"]
-gcs = ["google-cloud-storage (>=2.6.0)"]
+gcs = ["google-api-core (<2.28) ; python_version < \"3.10\"", "google-cloud-storage (>=2.6.0)"]
 http = ["requests"]
 s3 = ["boto3 (>=1.9.17)"]
 ssh = ["paramiko"]
@@ -3489,44 +3489,35 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "6.0.0"
+version = "6.1.0"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_api-6.0.0-py3-none-any.whl", hash = "sha256:8cb99869d886d806a098d0d0caf46a75bd39ff64a8dfdf491bded065ed4d53b6"},
-    {file = "stac_fastapi_api-6.0.0.tar.gz", hash = "sha256:ab6241df62847c3b012f5bb6dfca5c7cd6a3c097afd8e5881b0e213a3d6dcdb2"},
+    {file = "stac_fastapi_api-6.1.0-py3-none-any.whl", hash = "sha256:99bc5ed2e0ecae76d5f813222d30343146a35c8508b49340f24d1f4c59edeffc"},
+    {file = "stac_fastapi_api-6.1.0.tar.gz", hash = "sha256:71469e9c50580cb3c31cdd16852d825589d61d1a269d704cec2c2ae26bb7eee5"},
 ]
 
 [package.dependencies]
-brotli_asgi = "*"
-"stac-fastapi.types" = ">=6.0,<7.0"
-
-[package.extras]
-benchmark = ["pytest-benchmark"]
-dev = ["httpx", "pre-commit", "pytest", "pytest-asyncio", "pytest-cov", "requests"]
-docs = ["black (>=23.10.1)", "griffe-inherited-docstrings (>=1.0.0)", "mkdocs (>=1.4.3)", "mkdocs-jupyter (>=0.24.5)", "mkdocs-material[imaging] (>=9.5)", "mkdocstrings[python] (>=0.25.1)"]
+brotli-asgi = "*"
+stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.0.0"
-description = "An implementation of STAC API based on the FastAPI framework."
+version = "6.1.0"
+description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_extensions-6.0.0-py3-none-any.whl", hash = "sha256:c158a63c5ca7e83d95817956385c58606ab92b0c733ab3a62a42e3d65b108274"},
-    {file = "stac_fastapi_extensions-6.0.0.tar.gz", hash = "sha256:3829982d07299bb82605774d311675795fbc6972c920b6aa48ef6853cc187f7b"},
+    {file = "stac_fastapi_extensions-6.1.0-py3-none-any.whl", hash = "sha256:2bae84f049dad1898b45d9cdb3bde70837e614cb99d2d4dd109cd472b0445dc1"},
+    {file = "stac_fastapi_extensions-6.1.0.tar.gz", hash = "sha256:bd6c5139226aff766b19d2829c7cbfeaae4d5d2619f3fce74b08ff71d63ff4e1"},
 ]
 
 [package.dependencies]
-"stac-fastapi.api" = ">=6.0,<7.0"
-"stac-fastapi.types" = ">=6.0,<7.0"
-
-[package.extras]
-dev = ["pre-commit", "pytest", "pytest-asyncio", "pytest-cov", "requests"]
-docs = ["black (>=23.10.1)", "griffe-inherited-docstrings (>=1.0.0)", "mkdocs (>=1.4.3)", "mkdocs-jupyter (>=0.24.5)", "mkdocs-material[imaging] (>=9.5)", "mkdocstrings[python] (>=0.25.1)"]
+stac-fastapi-api = ">=6.1,<7.0"
+stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
@@ -3565,14 +3556,14 @@ validation = ["stac_pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.0.0"
-description = "An implementation of STAC API based on the FastAPI framework."
+version = "6.1.0"
+description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_types-6.0.0-py3-none-any.whl", hash = "sha256:127db34c036223359c6a4a4a7d0a16d5f41d9b841a5dd109978b9dc1c0cfbf61"},
-    {file = "stac_fastapi_types-6.0.0.tar.gz", hash = "sha256:ce058af7813e009b4ec1f7ccd1187c5d661b9505099b7b208c814c278ecd68a7"},
+    {file = "stac_fastapi_types-6.1.0-py3-none-any.whl", hash = "sha256:ae193a6f023af3a3c1352a905e3b5470da7b4f860c332d924a9e6212948d9169"},
+    {file = "stac_fastapi_types-6.1.0.tar.gz", hash = "sha256:a647632ec7b144f4a233d54e09093cc1dadb1ba7989a36426db56d3de2d07be2"},
 ]
 
 [package.dependencies]
@@ -3580,11 +3571,7 @@ attrs = ">=23.2.0"
 fastapi = ">=0.109.0"
 iso8601 = ">=1.0.2,<2.2.0"
 pydantic-settings = ">=2"
-stac_pydantic = ">=3.3.0,<4.0"
-
-[package.extras]
-dev = ["pre-commit", "pytest", "pytest-asyncio", "pytest-cov", "requests"]
-docs = ["black (>=23.10.1)", "griffe-inherited-docstrings (>=1.0.0)", "mkdocs (>=1.4.3)", "mkdocs-jupyter (>=0.24.5)", "mkdocs-material[imaging] (>=9.5)", "mkdocstrings[python] (>=0.25.1)"]
+stac-pydantic = ">=3.3.0,<4.0"
 
 [[package]]
 name = "stac-pydantic"
