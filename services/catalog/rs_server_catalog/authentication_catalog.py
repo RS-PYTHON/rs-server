@@ -16,6 +16,8 @@
 
 import re
 
+from rs_server_common import settings
+
 
 def get_authorisation(
     requested_col_ids: list[str],
@@ -39,6 +41,10 @@ def get_authorisation(
     Returns:
         bool: True if the user is authorized, else False
     """
+    # No authorization needed in local mode
+    if settings.LOCAL_MODE:
+        return True
+
     # The UAC/Keycloak user (who is also the owner of the api key and oauth2 cookie)
     # always has all the rights on all the collections he owns.
     if user_login == requested_owner_id:
