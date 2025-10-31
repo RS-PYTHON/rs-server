@@ -12,15 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""EDRS Connector module for secure FTPES communication."""
 
 import ssl
 from ftplib import FTP_TLS
-from typing import List, Dict
+from pathlib import Path
+from typing import Any
 
 
 class EDRSConnector:
-    def __init__(self, host: str, port: int, login: str, password: str,
-                 ca_cert: str, client_cert: str, client_key: str):
+    """EDRS Connector using FTPES (FTP over explicit TLS) for secure file transfers."""
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        login: str,
+        password: str,
+        ca_cert: str,
+        client_cert: str,
+        client_key: str,
+    ):
         """
         Initialize EDRS connector with FTPS (FTPES) credentials.
         """
@@ -31,7 +43,7 @@ class EDRSConnector:
         self.ca_cert = ca_cert
         self.client_cert = client_cert
         self.client_key = client_key
-        self.ftp = None
+        self.ftp: FTP_TLS | None = None
 
     def connect(self):
         """
@@ -44,67 +56,108 @@ class EDRSConnector:
 
         self.ftp = FTP_TLS(context=context)
         self.ftp.connect(self.host, self.port, timeout=10)
-        self.ftp.auth()   # AUTH TLS (explicit)
-        self.ftp.prot_p() # Encrypt data channel
+        self.ftp.auth()  # AUTH TLS (explicit)
+        self.ftp.prot_p()  # Encrypt data channel
         self.ftp.login(self.login, self.password)
         print(f"Connected to {self.host}:{self.port} as {self.login}")
 
-    # ============================================================
-    # LIST version (simple, returns raw directory listing strings)
-    # ============================================================
-    def list_satellite_files_list(self, satellite_id: str) -> List[str]:
+    def walk(self, path: str) -> list[dict[str, Any]]:
         """
-        List all files under NOMINAL/<satellite_id>/ch_<x>/ using LIST.
-        Returns a flat list of raw strings.
-        """
-        if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+        List files and directories under /NOMINAL/<path>.
 
-        base_dir = f"/NOMINAL/{satellite_id}"
-        self.ftp.cwd(base_dir)
-        channels = [d for d in self.ftp.nlst() if d.startswith("ch_")]
+        Parameters
+        ----------
+        path : str
+            Relative path under the NOMINAL directory (e.g., "SAT123/ch_01/")
 
-        all_entries = []
-        for ch in channels:
-            path = f"{base_dir}/{ch}"
-            print(f"Listing (LIST): {path}")
-            self.ftp.cwd(path)
-            raw_entries = []
-            self.ftp.retrlines("LIST", raw_entries.append)
-            for line in raw_entries:
-                all_entries.append(f"{path}: {line}")
+        Returns
+        -------
+        List[Dict[str, str | int | None]]
+            List of dicts containing file/dir info with keys:
+            - path: str - Full path
+            - type: str - Either 'file' or 'dir'
+            - size: int | None - Size in bytes for files, None for dirs
 
-        return all_entries
-
-    # ============================================================
-    # MLSD version (structured, RFC 3659)
-    # ============================================================
-    def list_satellite_files_mlsd(self, satellite_id: str) -> List[Dict[str, str]]:
-        """
-        List all files under NOMINAL/<satellite_id>/ch_<x>/ using MLSD.
-        Returns structured facts (RFC 3659): type, size, modify, perm, etc.
+        Raises
+        ------
+        ConnectionError
+            If not connected
+        RuntimeError
+            On FTP listing failure
         """
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
 
-        base_dir = f"/NOMINAL/{satellite_id}"
-        self.ftp.cwd(base_dir)
-        channels = [d for d in self.ftp.nlst() if d.startswith("ch_")]
+        base_path = f"/NOMINAL/{path.strip('/')}"
 
-        all_facts = []
-        for ch in channels:
-            path = f"{base_dir}/{ch}"
-            print(f"Listing (MLSD): {path}")
-            self.ftp.cwd(path)
+        try:
+            entries = self.ftp.nlst(base_path)
+        except Exception as e:
+            raise RuntimeError(f"Failed to list {base_path}: {e}") from e
+
+        current_dir = self.ftp.pwd()
+        results = []
+
+        for entry in entries:
+            info = {"path": entry, "type": "dir", "size": 0}
+
             try:
-                for name, facts in self.ftp.mlsd():
-                    facts["name"] = name
-                    facts["path"] = f"{path}/{name}"
-                    all_facts.append(facts)
+                self.ftp.cwd(entry)
+                self.ftp.cwd(current_dir)  # Return to original dir
             except Exception as e:
-                print(f"MLSD not supported for {path}: {e}")
+                # temp, add logger
+                # print(e)
+                # temp
+                info["type"] = "file"
+                info["size"] = self.ftp.size(entry) if info["type"] == "file" else 0  # type: ignore
 
-        return all_facts
+            results.append(info)
+
+        return results
+
+    def download(self, remote_path: str, p_local_path: str = "") -> str:
+        """
+        Download a file from the FTP server.
+
+        Parameters
+        ----------
+        remote_path : str
+            Remote path to the file (absolute or relative to current cwd).
+        local_path : str, optional
+            Local filesystem path to save the file. If omitted, the remote filename
+            is used in the current working directory.
+
+        Returns
+        -------
+        str
+            The local file path where the file was saved.
+
+        Raises
+        ------
+        ConnectionError
+            If not connected.
+        RuntimeError
+            On failure to retrieve the file.
+        """
+        if not self.ftp:
+            raise ConnectionError("Not connected. Call connect() first.")
+
+        # Determine local target path
+        local_path: Path = Path(local_path) if p_local_path else Path(Path(remote_path).name)
+        if not local_path.name:
+            raise ValueError("remote_path has no filename and no local_path provided")
+
+        # Ensure directory exists
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            with local_path.open("wb") as f:
+                self.ftp.retrbinary(f"RETR {remote_path}", f.write)
+        except Exception as e:
+            local_path.unlink(missing_ok=True)  # Remove partial file if exists
+            raise RuntimeError(f"Failed to download {remote_path}: {e}") from e
+
+        return str(local_path)
 
     def close(self):
         """

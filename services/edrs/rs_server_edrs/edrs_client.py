@@ -1,15 +1,34 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Module used to connect to EDRS stations using EDRSConnector."""
+import os
+import os.path as osp
+from pathlib import Path
+
 import yaml
 from edrs_connector import EDRSConnector
-import os
-from pathlib import Path
-import os.path as osp
 
-DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
+DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (
+    Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
+)
 EDRS_STATIONS_CONFIG = os.environ.get("EDRS_STATIONS_CONFIG_YAML", DEFAULT_EDRS_STATIONS_CONFIG)
 
-def load_station_config(config_path: str, station_name: str) -> dict:
+
+def load_station_config(config_path: str | Path, station_name: str) -> dict:
     """Load connection parameters for a specific station from YAML config."""
-    with open(config_path, "r") as f:
+    with open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     # Handle case where stations are provided as a YAML string under one key
@@ -42,15 +61,18 @@ def load_station_config(config_path: str, station_name: str) -> dict:
         raise ValueError(f"Missing required fields in config for '{station_name}': {', '.join(missing)}")
     return connection_params
 
+
 if __name__ == "__main__":
     STATION_NAME = "bedc"
     client = EDRSConnector(**load_station_config(EDRS_STATIONS_CONFIG, STATION_NAME))
 
     client.connect()
-    print("\n=== LIST version ===")
-    print(client.list_satellite_files_list("S1A"))
 
-    print("\n=== MLSD version ===")
-    print(client.list_satellite_files_mlsd("S1A"))
+    print(client.walk("/S1A/DCS_01_202501270945000000112233_dat/"))
+
+    files = client.walk("/S1A/DCS_01_202501270945000000112233_dat/ch_1/")
+    for file in files:
+        if file["type"] == "file":
+            client.download(file["path"], Path.cwd() / Path(file["path"]).name)
 
     client.close()
