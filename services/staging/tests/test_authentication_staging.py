@@ -20,7 +20,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
     WRONG_APIKEY_HEADER,
-    init_test,
+    init_authentication_test,
 )
 from rs_server_staging.main import app, must_be_authenticated
 from rs_server_staging.processors.processor_staging import Staging
@@ -53,7 +53,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     """
     owner_id = "pyteam"
     # pylint: disable=duplicate-code
-    await init_test(
+    await init_authentication_test(
         mocker,
         httpx_mock,
         staging_client,

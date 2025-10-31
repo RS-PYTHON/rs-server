@@ -32,7 +32,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
     WRONG_APIKEY_HEADER,
-    init_test,
+    init_authentication_test,
 )
 from starlette.status import (
     HTTP_200_OK,
@@ -301,7 +301,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
     )
 
     # Init mockers for test
-    await init_test(
+    await init_authentication_test(
         mocker,
         httpx_mock,
         client,
@@ -946,7 +946,7 @@ class TestAuthentication:
         Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
         """
         owner_id = "pyteam"
-        await init_test(
+        await init_authentication_test(
             mocker,
             httpx_mock,
             client,

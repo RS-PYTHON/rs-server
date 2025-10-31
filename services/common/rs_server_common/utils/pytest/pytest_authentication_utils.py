@@ -53,7 +53,7 @@ def init_app_cluster_mode():
     os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"  # nosec
 
 
-async def init_test(
+async def init_authentication_test(
     mocker,
     httpx_mock: HTTPXMock,
     client: TestClient,
