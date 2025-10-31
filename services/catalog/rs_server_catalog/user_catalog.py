@@ -1202,7 +1202,7 @@ field is not permitted also."
         ):
             logger.error(
                 f"The '{user_login}' user cannot delete a \
-collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
+collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
 
