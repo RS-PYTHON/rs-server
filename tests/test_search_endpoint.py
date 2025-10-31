@@ -110,8 +110,8 @@ class TestConstellationMapping:
             ("sentinel-2b", "sentinel-2", "S2B"),
             ("sentinel-1a", "sentinel-1", "S1A"),
             ("sentinel-5p", "sentinel-5P", "S5P"),
-            (None, "sentinel-1", "S1A, S1B, S1C, S1D"),
-            (None, "sentinel-2", "S2A, S2B, S2C"),
+            (None, "sentinel-1", "S1A,S1B,S1C,S1D"),
+            (None, "sentinel-2", "S2A,S2B,S2C"),
             (None, "sentinel-5P", "S5P"),
         ],
     )
@@ -1620,9 +1620,9 @@ class TestFeatureCollectionOdataStacMapping:
         """Used to test if application correctly builds next/previous token."""
         base_cadip_uri = (
             "http://127.0.0.1:5000/Sessions?$filter=SessionId in ("
-            "'S1A_20200105072204051312', 'S1A_20200105072204051313', 'S1A_20200105072204051314', "
-            "'S1A_20200105072204051315', 'S1A_20200105072204051316', 'S1A_20200105072204051317', "
-            "'S1A_20200105072204051318', 'S1A_20200105072204051319', 'S1A_20200105072204051310', "
+            "'S1A_20200105072204051312','S1A_20200105072204051313','S1A_20200105072204051314',"
+            "'S1A_20200105072204051315','S1A_20200105072204051316','S1A_20200105072204051317',"
+            "'S1A_20200105072204051318','S1A_20200105072204051319','S1A_20200105072204051310',"
             "'S1A_20200105072204051311')&$orderby=PublicationDate desc&"
             f"$top=10&$skip={(int(page) - 1) * 10}"
         )
@@ -1868,15 +1868,15 @@ def test_search_parameters(
             "platformShortName": "sentinel-1",
         }
         query3 = {
-            "productType": "AUX_OBMEMC, type2",
-            "platformShortName": "sentinel-1, sentinel-2",
+            "productType": "AUX_OBMEMC,type2",
+            "platformShortName": "sentinel-1,sentinel-2",
         }
     elif cadip:
         query2 = {
             "Satellite": "S1A",
         }
         query3 = {
-            "Satellite": "S1A, S2A",
+            "Satellite": "S1A,S2A",
         }
     else:
         raise NotImplementedError
@@ -1914,7 +1914,7 @@ def test_search_parameters(
     # User given parameters
 
     # Static values
-    user_ids = "id1, id2"
+    user_ids = "id1,id2"
     user_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
     user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
@@ -2047,7 +2047,7 @@ def test_search_parameters(
                 )
             elif cadip:
                 # Add quote to the user_id
-                user_ids_with_quote = ", ".join([f"'{user_id}'" for user_id in user_ids.split(", ")])
+                user_ids_with_quote = ",".join([f"'{user_id}'" for user_id in user_ids.split(",")])
                 odata_no_query = (
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
@@ -2129,7 +2129,7 @@ def test_search_parameters(
                         if value is None:
                             return None
                         if "," in value:
-                            values = ", ".join([f"'{val}'" for val in value.split(", ")])
+                            values = ",".join([f"'{val}'" for val in value.split(",")])
                             return f"({values})"
                         return f"'{value}'"
 
