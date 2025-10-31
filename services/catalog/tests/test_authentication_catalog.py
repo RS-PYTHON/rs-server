@@ -919,7 +919,7 @@ async def test_authorization_post_and_delete_one_item(
             assert post_response.status_code == HTTP_201_CREATED
             returned_feature = json.loads(post_response.content)
             assert returned_feature["id"] == feature_id
-            assert returned_feature["collection"] == f"{owner}_{collection_id}"
+            assert returned_feature["collection"] == collection_id
         else:
             assert post_response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -940,6 +940,49 @@ async def test_authorization_post_and_delete_one_item(
         # But we still receive a 401 not 404 even though the colleciton does not exist.
         else:
             assert delete_response.status_code == HTTP_401_UNAUTHORIZED
+
+
+@AUTH_PARAM
+@get_test_cases("PUT one item", AuthorizationInfo("toto", "S1_L1", "write"))
+async def test_authorization_put_one_item(
+    _init_authorization_test,
+    client,
+    test_apikey: bool,
+    requested_collections: list[AuthorizationInfo],
+    user_login: str,
+    should_succeed: bool,
+    feature_toto_s1_l1_0,
+):
+    """Test the PUT /catalog/collections/{owner}:{collection_id}/items/{item_id} endpoint (to update an item)"""
+
+    owner = requested_collections[0].owner_id
+    collection_id = requested_collections[0].collection_id
+    feature_id = feature_toto_s1_l1_0.id_
+    header = VALID_APIKEY_HEADER if test_apikey else {}
+
+    # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
+    for owner_in_url in f"{owner}:", "":
+
+        # Update the collection
+        response = client.request(
+            "PUT",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items/{feature_id}",
+            json=feature_toto_s1_l1_0.properties,
+            **header,
+        )
+
+        # The implicit owner should work only when user == owner
+        # Else we have a 404 because 'owner:' is missing from the url.
+        if (not owner_in_url) and (user_login != owner):
+            assert response.status_code == HTTP_404_NOT_FOUND
+
+        elif should_succeed:
+            assert response.status_code == HTTP_200_OK
+            returned_feature = json.loads(response.content)
+            assert returned_feature["id"] == feature_id
+            assert returned_feature["collection"] == collection_id
+        else:
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthentication:
