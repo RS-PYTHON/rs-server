@@ -16,7 +16,6 @@
 
 """Unit tests for the authentication."""
 
-import copy
 import getpass
 import itertools
 import json
@@ -111,7 +110,12 @@ ALL_DATABASE_COLLECTIONS = [
 ]
 
 
-def get_test_cases(requested_collections: AuthorizationInfo | list[AuthorizationInfo]) -> pytest.MarkDecorator:
+def get_test_cases(
+    endpoint_desc: str,
+    requested_collections: AuthorizationInfo | list[AuthorizationInfo],
+    write_collections: bool = False,
+    init_test_params: dict = {},
+) -> pytest.MarkDecorator:
     """
     Generate all test cases for the catalog endpoint authorizations.
 
@@ -136,20 +140,33 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
     - partial_roles (add authorization on only half the collections)
 
     Args:
+        endpoint_desc, endpoint description
         requested_collections: database collections requested by the pytest. In the nominal test cases, we add iam
         roles to the user to give him authorization on these collections.
+        write_collections: specific case when we want to POST/PUT/DELETE collections. In this case, the only test that
+        should succeed is the implicit owner = the user is also the owner of the owner of all the requested collections.
+        init_test_params: additional params to pass to the init_test() function.
 
     Returns:
         Parametrized test cases, ready to use with a pytest, with parameters:
+        endpoint_desc: same as input arg.
         requested_collections: same as input arg, expect in the "partial_roles" case where we add authorization to
         only half the collections.
         user_login: UAC/Keycloak user and API key or oauth2 cookie owner.
         iam_roles: user iam (Identity and Access Management) roles in UAC/Keycloak.
         should_succeed: should the user be authorized for the requested collections using this user login and roles ?
+        init_test_params: same as input arg.
     """
 
     # pytest parameters, values and ids
-    param_names = ["requested_collections", "user_login", "iam_roles", "should_succeed"]
+    param_names = [
+        "endpoint_desc",
+        "requested_collections",
+        "user_login",
+        "iam_roles",
+        "should_succeed",
+        "init_test_params",
+    ]
     param_ids = []
     param_values = []
 
@@ -168,11 +185,13 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
     requested_col_owners = {col.owner_id for col in requested_collections}  # remove duplicates
     if len(requested_col_owners) == 1:
         param_ids.append("implicit_owner")
-        param_values.append([requested_collections, next(iter(requested_col_owners)), [], True])
+        param_values.append(
+            [endpoint_desc, requested_collections, next(iter(requested_col_owners)), [], True, init_test_params],
+        )
 
     # Test that with no roles at all, the user is unauthorized
     param_ids.append("no_roles")
-    param_values.append([requested_collections, "anybody", [], False])
+    param_values.append([endpoint_desc, requested_collections, "anybody", [], False, init_test_params])
 
     # For every possible test case
     for test_owner, test_col_id, test_action in itertools.product(
@@ -219,7 +238,16 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
 
         # Save pytest param ids and values for the current test case
         param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
-        param_values.append([requested_collections, "anybody", sorted(iam_roles), should_succeed])
+        param_values.append(
+            [
+                endpoint_desc,
+                requested_collections,
+                "anybody",
+                sorted(iam_roles),
+                should_succeed and (not write_collections),
+                init_test_params,
+            ],
+        )
 
     # In the case of several requested collections, add a test case where everything is ok
     # but we only keep half the collections.
@@ -230,7 +258,9 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
             for col in half_collections
             for action in col.actions
         ]
-        param_values.append([half_collections, "anybody", iam_roles, True])
+        param_values.append(
+            [endpoint_desc, half_collections, "anybody", iam_roles, True and (not write_collections), init_test_params],
+        )
         param_ids.append(f"partial_roles")
 
     return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
@@ -238,16 +268,17 @@ def get_test_cases(requested_collections: AuthorizationInfo | list[Authorization
 
 @pytest.fixture(scope="function", name="_init_authorization_test")
 async def init_authorization_test(
-    request,
     mocker,
     httpx_mock: HTTPXMock,
     client,
     test_apikey: bool,
     test_oauth2: bool,
+    endpoint_desc: str,
     requested_collections: list[AuthorizationInfo],
     user_login: str,
     iam_roles: list[str],
     should_succeed: bool,
+    init_test_params: dict,
 ):
     """
     Initialize a pytest to test the authorization. The arguments come from get_test_cases()
@@ -255,25 +286,73 @@ async def init_authorization_test(
     # Log test params
     log_collections = "\n  ".join(
         [""]
-        + [f"'{col.owner_id}:{col.collection_id}' with {','.join(col.actions)!r}" for col in requested_collections],
+        + [
+            f"'{col.owner_id}:{col.collection_id}' (needs {','.join(col.actions)!r} privileges)"
+            for col in requested_collections
+        ],
     )
     log_roles = "\n  ".join([""] + (iam_roles or ["(none)"]))
     logger.debug(
         f"""
-As: {user_login!r} (=UAC/Keycloak user and {'API key' if test_apikey else 'OAuth 2.0 cookie'} owner)
-I want to access collection(s): {log_collections}
-With IAM role(s): {log_roles}
+I want to: {endpoint_desc!r}
+As user: {user_login!r} (=UAC/Keycloak user and {'API key' if test_apikey else 'OAuth 2.0 cookie'} owner)
+On collections: {log_collections}
+With IAM roles: {log_roles}
 Should this succeed ? {"Yes" if should_succeed else "No"}""",
     )
 
-    # Additional fixture params, if any
-    try:
-        kwargs = request.param
-    except AttributeError:
-        kwargs = {}
-
     # Init mockers for test
-    await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles, user_login=user_login, **kwargs)
+    await init_test(
+        mocker,
+        httpx_mock,
+        client,
+        test_apikey,
+        test_oauth2,
+        iam_roles,
+        user_login=user_login,
+        **init_test_params,
+    )
+
+
+@pytest.fixture(scope="module", name="_init_bucket_for_auth_download")
+def init_bucket_for_auth_download(client, feature_toto_s1_l1_0):
+    """Init the bucket only once for all the test_authorization_download test cases."""
+
+    # Start moto server
+    moto_endpoint = "http://localhost:8077"
+    export_aws_credentials()
+    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    server = ThreadedMotoServer(port=8077)
+    server.start()
+
+    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+    # Upload a file to rspython-ops-catalog-all-production
+    catalog_bucket = "rspython-ops-catalog-all-production"  # Name of default catalog from config file
+    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+    object_content = "testing\n"
+    s3_handler.s3_client.put_object(
+        Bucket=catalog_bucket,
+        Key="S1_L1/images/may24C355000e4102500n.tif",
+        Body=object_content,
+    )
+
+    yield {"object_content": object_content}
+
+    server.stop()
+    # Remove bucket credentials form env variables / should create a s3_handler without credentials error
+    clear_aws_credentials()
+
+    response = client.get(
+        f"/catalog/collections/toto:S1_L1/items/{feature_toto_s1_l1_0.id_}/download/may24C355000e4102500n.tif",
+    )
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
 
 
 #########
@@ -282,8 +361,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
 
 
 @AUTH_PARAM
-@get_test_cases(ALL_DATABASE_COLLECTIONS)
-@pytest.mark.parametrize("_init_authorization_test", [{"mock_wrong_apikey": True}], indirect=True, ids=[""])
+@get_test_cases("GET landing page", ALL_DATABASE_COLLECTIONS, init_test_params={"mock_wrong_apikey": True})
 async def test_authorization_landing_page(
     request,
     _init_authorization_test,
@@ -399,7 +477,7 @@ async def test_authorization_landing_page(
 
 
 @AUTH_PARAM
-@get_test_cases(ALL_DATABASE_COLLECTIONS)
+@get_test_cases("GET collections", ALL_DATABASE_COLLECTIONS)
 async def test_authorization_get_collections(
     request,
     _init_authorization_test,
@@ -435,7 +513,7 @@ async def test_authorization_get_collections(
 
 
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
+@get_test_cases("GET one collection", AuthorizationInfo("toto", "S1_L1", "read"))
 async def test_authorization_get_one_collection(
     _init_authorization_test,
     client,
@@ -451,13 +529,12 @@ async def test_authorization_get_one_collection(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
-        response = client.request("GET", f"/catalog/collections/{owner_url}{collection_id}", **header)
+    for owner_in_url in f"{owner}:", "":
+        response = client.request("GET", f"/catalog/collections/{owner_in_url}{collection_id}", **header)
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        if implicit_owner and (user_login != owner):
+        if (not owner_in_url) and (user_login != owner):
             assert response.status_code == HTTP_404_NOT_FOUND
 
         elif should_succeed:
@@ -468,7 +545,7 @@ async def test_authorization_get_one_collection(
 
 
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
+@get_test_cases("GET items", AuthorizationInfo("toto", "S1_L1", "read"))
 async def test_authorization_get_items(
     _init_authorization_test,
     client,
@@ -486,13 +563,12 @@ async def test_authorization_get_items(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
-        response = client.request("GET", f"/catalog/collections/{owner_url}{collection_id}/items", **header)
+    for owner_in_url in f"{owner}:", "":
+        response = client.request("GET", f"/catalog/collections/{owner_in_url}{collection_id}/items", **header)
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        if implicit_owner and (user_login != owner):
+        if (not owner_in_url) and (user_login != owner):
             assert response.status_code == HTTP_404_NOT_FOUND
 
         elif should_succeed:
@@ -507,7 +583,7 @@ async def test_authorization_get_items(
 
 
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "S1_L1", "read"))
+@get_test_cases("GET one item", AuthorizationInfo("toto", "S1_L1", "read"))
 async def test_authorization_get_one_item(
     _init_authorization_test,
     client,
@@ -524,17 +600,16 @@ async def test_authorization_get_one_item(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
+    for owner_in_url in f"{owner}:", "":
         response = client.request(
             "GET",
-            f"/catalog/collections/{owner_url}{collection_id}/items/{feature_toto_s1_l1_0.id_}",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items/{feature_toto_s1_l1_0.id_}",
             **header,
         )
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        if implicit_owner and (user_login != owner):
+        if (not owner_in_url) and (user_login != owner):
             assert response.status_code == HTTP_404_NOT_FOUND
 
         elif should_succeed:
@@ -546,7 +621,11 @@ async def test_authorization_get_one_item(
 
 
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "new_collection", "write"))
+@get_test_cases(
+    "POST/DELETE one collection",
+    AuthorizationInfo("toto", "new_collection", "write"),
+    write_collections=True,
+)
 async def test_authorization_post_and_delete_one_collection(
     _init_authorization_test,
     client,
@@ -563,8 +642,7 @@ async def test_authorization_post_and_delete_one_collection(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
+    for owner_in_url in f"{owner}:", "":
 
         # Create the collection
         post_response = client.request("POST", "/catalog/collections", json=new_collection.properties, **header)
@@ -579,11 +657,11 @@ async def test_authorization_post_and_delete_one_collection(
 
         # Delete the collection so we're back to the initial test state.
         # NOTE: it has actually been created only in the should_succeed case.
-        delete_response = client.delete(f"/catalog/collections/{owner_url}{collection_id}", **header)
+        delete_response = client.delete(f"/catalog/collections/{owner_in_url}{collection_id}", **header)
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        if implicit_owner and (user_login != owner):
+        if (not owner_in_url) and (user_login != owner):
             assert delete_response.status_code == HTTP_404_NOT_FOUND
 
             # Delete the collection with the good url, in case it has been created,
@@ -601,7 +679,7 @@ async def test_authorization_post_and_delete_one_collection(
 
 
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "S1_L1", "write"))
+@get_test_cases("PUT one collection", AuthorizationInfo("toto", "S1_L1", "write"), write_collections=True)
 async def test_authorization_put_one_collection(
     _init_authorization_test,
     client,
@@ -618,20 +696,19 @@ async def test_authorization_put_one_collection(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
+    for owner_in_url in f"{owner}:", "":
 
         # Update the collection
         response = client.request(
             "PUT",
-            f"/catalog/collections/{owner_url}{collection_id}",
+            f"/catalog/collections/{owner_in_url}{collection_id}",
             json=existing_collection.properties,
             **header,
         )
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        if implicit_owner and (user_login != owner):
+        if (not owner_in_url) and (user_login != owner):
             assert response.status_code == HTTP_404_NOT_FOUND
 
         elif should_succeed:
@@ -645,6 +722,7 @@ async def test_authorization_put_one_collection(
 
 @AUTH_PARAM
 @get_test_cases(
+    "GET/POST search",
     [
         AuthorizationInfo("toto", "S1_L1", "read"),
         AuthorizationInfo("toto", "S2_L3", "read"),
@@ -729,49 +807,8 @@ async def test_authorization_search(
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-@pytest.fixture(scope="module", name="_init_bucket_for_auth_download")
-def init_bucket_for_auth_download(client, feature_toto_s1_l1_0):
-    """Init the bucket only once for all the test_authorization_download test cases."""
-
-    # Start moto server
-    moto_endpoint = "http://localhost:8077"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
-    )
-    server = ThreadedMotoServer(port=8077)
-    server.start()
-
-    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-    # Upload a file to rspython-ops-catalog-all-production
-    catalog_bucket = "rspython-ops-catalog-all-production"  # Name of default catalog from config file
-    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-    object_content = "testing\n"
-    s3_handler.s3_client.put_object(
-        Bucket=catalog_bucket,
-        Key="S1_L1/images/may24C355000e4102500n.tif",
-        Body=object_content,
-    )
-
-    yield {"object_content": object_content}
-
-    server.stop()
-    # Remove bucket credentials form env variables / should create a s3_handler without credentials error
-    clear_aws_credentials()
-
-    response = client.get(
-        f"/catalog/collections/toto:S1_L1/items/{feature_toto_s1_l1_0.id_}/download/may24C355000e4102500n.tif",
-    )
-    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
-
-
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "S1_L1", "download"))
+@get_test_cases("GET download file", AuthorizationInfo("toto", "S1_L1", "download"))
 async def test_authorization_download(
     _init_authorization_test,
     _init_bucket_for_auth_download,
@@ -782,7 +819,7 @@ async def test_authorization_download(
     should_succeed: bool,
     feature_toto_s1_l1_0,
 ):
-    """Test the GET /catalog/collections/{owner}:{collection_id}/items/{item_id}/download/{file} endpoint"""
+    """Test the GET /catalog/collections/{owner}:{collection_id}/items/{item_id}/download/{filename} endpoint"""
 
     owner = requested_collections[0].owner_id
     collection_id = requested_collections[0].collection_id
@@ -790,19 +827,18 @@ async def test_authorization_download(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
+    for owner_in_url in f"{owner}:", "":
 
         response = client.request(
             "GET",
-            f"/catalog/collections/{owner_url}{collection_id}/items/{item_id}/download/may24C355000e4102500n.tif",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items/{item_id}/download/may24C355000e4102500n.tif",
             **header,
         )
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        missing_owner_url = implicit_owner and (user_login != owner)
-        if missing_owner_url:
+        missing_owner_in_url = (not owner_in_url) and (user_login != owner)
+        if missing_owner_in_url:
             assert response.status_code == HTTP_404_NOT_FOUND
 
         elif should_succeed:
@@ -820,23 +856,23 @@ async def test_authorization_download(
 
         # test with a non-existing asset id
         response = client.get(
-            f"/catalog/collections/{owner_url}{collection_id}/items/{item_id}/download/UNKNWON",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items/{item_id}/download/UNKNWON",
             **header,
         )
-        if missing_owner_url or should_succeed:
+        if missing_owner_in_url or should_succeed:
             assert response.status_code == HTTP_404_NOT_FOUND
         else:
             assert response.status_code == HTTP_401_UNAUTHORIZED
 
         response = client.get(
-            f"/catalog/collections/{owner_url}{collection_id}/items/INCORRECT_ITEM_ID/download/UNKNOWN",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items/INCORRECT_ITEM_ID/download/UNKNOWN",
             **header,
         )
         assert response.status_code == HTTP_404_NOT_FOUND  # 404 in all cases
 
 
 @AUTH_PARAM
-@get_test_cases(AuthorizationInfo("toto", "S1_L1", "write"))
+@get_test_cases("POST/DELETE one item", AuthorizationInfo("toto", "S1_L1", "write"))
 async def test_authorization_post_and_delete_one_item(
     _init_authorization_test,
     client,
@@ -857,20 +893,19 @@ async def test_authorization_post_and_delete_one_item(
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
-    for implicit_owner in False, True:
-        owner_url = "" if implicit_owner else f"{owner}:"
+    for owner_in_url in f"{owner}:", "":
 
         # Create the item
         post_response = client.post(
-            f"/catalog/collections/{owner_url}{collection_id}/items",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items",
             json=new_feature.properties,
             **header,
         )
 
         # The implicit owner should work only when user == owner
         # Else we have a 404 because 'owner:' is missing from the url.
-        missing_owner_url = implicit_owner and (user_login != owner)
-        if missing_owner_url:
+        missing_owner_in_url = (not owner_in_url) and (user_login != owner)
+        if missing_owner_in_url:
             assert post_response.status_code == HTTP_404_NOT_FOUND
 
         elif should_succeed:
@@ -885,11 +920,11 @@ async def test_authorization_post_and_delete_one_item(
         # NOTE: it has actually been created only in the should_succeed case.
         delete_response = client.request(
             "DELETE",
-            f"/catalog/collections/{owner_url}{collection_id}/items/{feature_id}",
+            f"/catalog/collections/{owner_in_url}{collection_id}/items/{feature_id}",
             json=new_feature.properties,
             **header,
         )
-        if missing_owner_url:
+        if missing_owner_in_url:
             assert delete_response.status_code == HTTP_404_NOT_FOUND
         elif should_succeed:
             assert delete_response.status_code == HTTP_200_OK
@@ -898,116 +933,6 @@ async def test_authorization_post_and_delete_one_item(
         # But we still receive a 401 not 404 even though the colleciton does not exist.
         else:
             assert delete_response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthorizationPostOneItem:  # pylint: disable=duplicate-code
-    """Contains authorization tests when a user wants to post one item."""
-
-    item_id = "S1SIWOCN_20220412T054447_0024_S139"
-    feature_to_post = {
-        "type": "Feature",
-        "stac_version": "1.0.0",
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-        ],
-        "id": item_id,
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [-94.6334839, 37.0595608],
-                    [-94.6334839, 37.0332547],
-                    [-94.6005249, 37.0332547],
-                    [-94.6005249, 37.0595608],
-                    [-94.6334839, 37.0595608],
-                ],
-            ],
-        },
-        "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
-        "properties": {
-            "gsd": 0.5971642834779395,
-            "width": 2500,
-            "height": 2500,
-            "datetime": "2000-02-02T00:00:00Z",
-            "proj:epsg": 3857,
-            "orientation": "nadir",
-        },
-        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-        "assets": {
-            "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"],
-            },
-            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                "roles": ["data"],
-            },
-            "S1SIWOCN_20220412T054447_0024_S139_T902.nc": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-                "roles": ["data"],
-            },
-        },
-        "collection": "S1_L1",
-    }
-
-    @AUTH_PARAM
-    async def test_http201_with_good_authentication(
-        self,
-        mocker,
-        httpx_mock: HTTPXMock,
-        client,
-        test_apikey,
-        test_oauth2,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does a good request with right permissions."""
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.post(
-            "/catalog/collections/S1_L1/items",
-            content=json.dumps(self.feature_to_post),
-            **header,
-        )
-        # check if the item was well added to the collection
-        assert response.status_code == HTTP_201_CREATED
-        # delete the item, don't change the collection, because it is used
-        # by other tests also
-        response = client.request(
-            "DELETE",
-            f"/catalog/collections/S1_L1/items/{self.item_id}",
-            json=self.feature_to_post,
-            **header,
-        )
-        # check if the item was deleted from the collection
-        assert response.status_code == HTTP_200_OK
-
-    @AUTH_PARAM
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without right permissions."""
-
-        iam_roles = ["rs_catalog_toto:S1_L1_read"]
-        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
-        header = VALID_APIKEY_HEADER if test_apikey else {}
-
-        response = client.request(
-            "POST",
-            "/catalog/collections/toto:S1_L1/items",
-            json=self.feature_to_post,
-            **header,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthentication:
