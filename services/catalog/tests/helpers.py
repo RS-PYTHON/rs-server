@@ -21,9 +21,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 from fastapi.testclient import TestClient
-from requests import Response
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     OAUTH2_AUTHORIZATION_ENDPOINT,
     OAUTH2_TOKEN_ENDPOINT,
@@ -235,7 +235,7 @@ def a_collection(user: str | None, name: str) -> Collection:
     return Collection(user, name)
 
 
-def add_collection(client: TestClient, collection: Collection, **kwargs) -> Response:
+def add_collection(client: TestClient, collection: Collection, **kwargs) -> httpx._models.Response:
     """Add the given collection in the STAC catalog.
 
     Args:

@@ -20,7 +20,7 @@ import getpass
 import itertools
 import json
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 import requests
@@ -49,7 +49,6 @@ from .helpers import (  # pylint: disable=no-name-in-module
     AUTH_EXTENSION,
     AUTH_REFS,
     AUTH_SCHEME,
-    TEMP_BUCKET,
     Collection,
     Feature,
     clear_aws_credentials,
@@ -81,7 +80,7 @@ COMMON_FIELDS = {
     **AUTH_SCHEME,
 }
 
-ACTION_TYPE = Literal["read", "write", "download"]
+ActionType = Literal["read", "write", "download"]
 
 #################################
 # Utility classes and functions #
@@ -94,7 +93,7 @@ class AuthorizationInfo:
 
     owner_id: str
     collection_id: str
-    actions: ACTION_TYPE | list[ACTION_TYPE]
+    actions: ActionType | list[ActionType]
 
 
 # All existing collections inserted in the database from conftest.py::setup_database
@@ -110,11 +109,11 @@ ALL_DATABASE_COLLECTIONS = [
 ]
 
 
-def get_test_cases(
+def get_test_cases(  # pylint: disable=too-many-branches
     endpoint_desc: str,
     requested_collections: AuthorizationInfo | list[AuthorizationInfo],
     write_collections: bool = False,
-    init_test_params: dict = {},
+    init_test_params: dict | None = None,
 ) -> pytest.MarkDecorator:
     """
     Generate all test cases for the catalog endpoint authorizations.
@@ -222,19 +221,19 @@ def get_test_cases(
                 should_succeed = False
 
             # For "wrong" actions we'll use actions that are not requested for this requested collection
-            ko_actions = {"read", "write", "download"} - set(requested_col.actions)
+            ko_actions = list({"read", "write", "download"} - set(requested_col.actions))
 
             if test_action == "ok":
                 iam_role_actions = requested_col.actions
             else:  # ko
-                iam_role_actions = ko_actions
+                iam_role_actions = ko_actions  # type: ignore[assignment]
                 should_succeed = False
 
             for iam_role_action in iam_role_actions:
                 iam_roles.add(f"rs_catalog_{iam_role_owner}:{iam_role_col_id}_{iam_role_action}")
 
         # Add a dummy role, it should not impact the authorization
-        iam_roles.add(f"rs_catalog_dummy:dummy_read")
+        iam_roles.add("rs_catalog_dummy:dummy_read")
 
         # Save pytest param ids and values for the current test case
         param_ids.append(f"owner_{test_owner}-col_{test_col_id}-action_{test_action}")
@@ -253,15 +252,15 @@ def get_test_cases(
     # but we only keep half the collections.
     if len(requested_collections) > 1:
         half_collections = requested_collections[0 : int(len(requested_collections) / 2)]
-        iam_roles = [
+        iam_roles = {
             f"rs_catalog_{col.owner_id}:{col.collection_id}_{action}"
             for col in half_collections
             for action in col.actions
-        ]
+        }
         param_values.append(
             [endpoint_desc, half_collections, "anybody", iam_roles, True and (not write_collections), init_test_params],
         )
-        param_ids.append(f"partial_roles")
+        param_ids.append("partial_roles")
 
     return pytest.mark.parametrize(param_names, param_values, ids=param_ids)
 
@@ -310,7 +309,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
         test_oauth2,
         iam_roles,
         user_login=user_login,
-        **init_test_params,
+        **(init_test_params or {}),
     )
 
 
@@ -751,6 +750,7 @@ async def test_authorization_search(
 
     def get_search_kwargs(searched_collections: list[str]):
         """Return the arguments to pass to the search request"""
+        params: dict[str, Any] = {}
         if method == "GET":
             params = {
                 "collections": ",".join(searched_collections),
@@ -758,19 +758,19 @@ async def test_authorization_search(
                 "filter": f"width=2500 AND owner={owner!r}",
             }
             return {"params": params}
-        else:  # POST
-            params = {
-                "collections": searched_collections,
-                "filter-lang": "cql2-json",
-                "filter": {
-                    "op": "and",
-                    "args": [
-                        {"op": "=", "args": [{"property": "owner"}, owner]},
-                        {"op": "=", "args": [{"property": "width"}, 2500]},
-                    ],
-                },
-            }
-            return {"json": params}
+        # POST
+        params = {
+            "collections": searched_collections,
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, owner]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+        return {"json": params}
 
     # Search a single collection
     response = client.request(method, "/catalog/search", **get_search_kwargs(single_collection), **header)
