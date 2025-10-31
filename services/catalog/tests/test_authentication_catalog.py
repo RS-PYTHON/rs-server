@@ -258,7 +258,14 @@ def get_test_cases(  # pylint: disable=too-many-branches
             for action in col.actions
         }
         param_values.append(
-            [endpoint_desc, half_collections, "anybody", iam_roles, True and (not write_collections), init_test_params],
+            [
+                endpoint_desc,
+                half_collections,
+                "anybody",
+                sorted(iam_roles),
+                True and (not write_collections),
+                init_test_params,
+            ],
         )
         param_ids.append("partial_roles")
 
