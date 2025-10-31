@@ -844,8 +844,7 @@ async def test_authorization_post_and_delete_one_item(
     requested_collections: list[AuthorizationInfo],
     user_login: str,
     should_succeed: bool,
-    # init_buckets, # from conftest.py
-    a_correct_feature,
+    _init_bucket_for_auth_download,  # the DELETE endpoint needs this fixture, I don't know why
 ):
     """
     Test the POST /catalog/collections/{owner}:{collection_id}/items
@@ -853,17 +852,9 @@ async def test_authorization_post_and_delete_one_item(
     """
     owner = requested_collections[0].owner_id
     collection_id = requested_collections[0].collection_id
+    feature_id = "new_feature"
+    new_feature = Feature(owner, feature_id, collection_id)
     header = VALID_APIKEY_HEADER if test_apikey else {}
-
-    # Use feature from conftest, modify its collection
-    new_feature = copy.deepcopy(a_correct_feature)
-    new_feature["collection"] = collection_id
-    feature_id = new_feature["id"]
-
-    # # Populate temp-bucket with some small files.
-    # s3_handler = init_buckets.s3_handler
-    # for key in new_feature.keys():
-    #     s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=key, Body="testing\n")
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
     for implicit_owner in False, True:
@@ -872,7 +863,7 @@ async def test_authorization_post_and_delete_one_item(
         # Create the item
         post_response = client.post(
             f"/catalog/collections/{owner_url}{collection_id}/items",
-            json=new_feature,
+            json=new_feature.properties,
             **header,
         )
 
@@ -884,9 +875,9 @@ async def test_authorization_post_and_delete_one_item(
 
         elif should_succeed:
             assert post_response.status_code == HTTP_201_CREATED
-            returned_col = json.loads(post_response.content)
-            assert returned_col["id"] == feature_id
-            assert returned_col["collection"] == f"{owner}_{collection_id}"
+            returned_feature = json.loads(post_response.content)
+            assert returned_feature["id"] == feature_id
+            assert returned_feature["collection"] == f"{owner}_{collection_id}"
         else:
             assert post_response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -895,7 +886,7 @@ async def test_authorization_post_and_delete_one_item(
         delete_response = client.request(
             "DELETE",
             f"/catalog/collections/{owner_url}{collection_id}/items/{feature_id}",
-            json=new_feature,
+            json=new_feature.properties,
             **header,
         )
         if missing_owner_url:
