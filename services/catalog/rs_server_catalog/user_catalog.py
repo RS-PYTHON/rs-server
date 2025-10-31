@@ -540,6 +540,12 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     if not await self.collection_exists(request, collection):
                         content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
                         logger.debug(f"Using collection name: {content['collections'][i]}")
+                        # Check the existence of the collection after concatenation of owner_id
+                        if not await self.collection_exists(request, content["collections"][i]):
+                            raise log_http_exception(
+                                status_code=HTTP_404_NOT_FOUND,
+                                detail=f"Collection {collection} not found.",
+                            )
 
                 self.request_ids["collection_ids"] = content["collections"]
                 request = self.override_request_body(request, content)
@@ -569,6 +575,13 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 for i, collection in enumerate(coll_list):
                     if not await self.collection_exists(request, collection):
                         coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
+                        logger.debug(f"Using collection name: {coll_list[i]}")
+                        # Check the existence of the collection after concatenation of owner_id
+                        if not await self.collection_exists(request, coll_list[i]):
+                            raise log_http_exception(
+                                status_code=HTTP_404_NOT_FOUND,
+                                detail=f"Collection {collection} not found.",
+                            )
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)

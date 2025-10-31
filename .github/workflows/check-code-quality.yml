@@ -97,7 +97,7 @@ jobs:
           poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: check-linting
@@ -164,7 +164,7 @@ jobs:
 
       - name: Save reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: check-security
           path: |
@@ -215,7 +215,7 @@ jobs:
           filename: ./cov-report.xml
 
       - name: Save reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: run-all-pytests
           path: |
@@ -239,17 +239,17 @@ jobs:
         with:
           fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name:
             check-linting
       - name: Download vulnerability reports
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name:
             check-security
       - name: Download pytest reports
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name:
             run-all-pytests
