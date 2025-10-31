@@ -1,0 +1,27 @@
+stations: |
+  pedc: 
+    service: 
+      name: edrs
+      url: http://mockup-station-pedc.processing.svc.cluster.local:8080
+    domain: mockup-station-pedc.processing.svc.cluster.local
+    authentication: 
+      auth_type: ftpes
+      username: test
+      password: test
+      ca_crt: /certs/ca.crt
+      client_crt: /certs/client.crt
+      client_key: /certs/client.key
+  
+  bedc: 
+    service: 
+      name: edrs
+      url: 127.0.0.1
+      port: 5005
+    domain: mockup-station-pedc.processing.svc.cluster.local
+    authentication: 
+      auth_type: ftpes
+      username: user
+      password: password
+      ca_crt: /Users/ovidiu/work/rs-demo/local-mode/certs/ca.crt
+      client_crt: /Users/ovidiu/work/rs-demo/local-mode/certs/client.crt
+      client_key: /Users/ovidiu/work/rs-demo/local-mode/certs/client.key
