@@ -705,6 +705,15 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 or request.scope["path"]
                 == CATALOG_COLLECTIONS + f"/{self.request_ids['owner_id']}_{collection}"  # PUT collection
             ):
+                # Manage a collection creation. The apikey user should be the same as the owner
+                # field in the body request. In other words, an apikey user cannot create a
+                # collection owned by another user.
+                # We don't care for local mode, any user may create / delete collection owned by another user
+                if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != self.request_ids["user_login"]:
+                    error = f"The '{self.request_ids['user_login']}' user cannot create a \
+collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
+field is not permitted also."
+                    raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail=error)
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
@@ -1170,6 +1179,16 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 user_login,
             )
         ):
+            return False
+        # we don't care for local mode, any user may create / delete collection owned by another user
+        if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != user_login:
+            # Manage a collection deletion. The apikey user (or local user if in local mode)
+            # should be the same as the owner field in the body request. In other words, the
+            # apikey user cannot delete a collection owned by another user
+            logger.error(
+                f"The '{user_login}' user cannot delete a \
+collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
+            )
             return False
         await self.build_filelist_to_be_deleted(request)
         return True
