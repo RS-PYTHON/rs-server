@@ -31,6 +31,7 @@ from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
+from shapely.geometry import shape
 
 # pylint: disable=too-few-public-methods
 logger = Logging.default(__name__)
@@ -261,7 +262,7 @@ def odata_to_stac(
             continue
         if stac_key == "geometry" and value:
             feature_template["geometry"] = value
-            feature_template["bbox"] = _bbox_from_geometry(feature_template["geometry"])
+            feature_template["bbox"] = shape(feature_template["geometry"]).bounds
             continue
         if stac_key in feature_template["assets"]["file"]:
             feature_template["assets"]["file"][stac_key] = value
@@ -276,21 +277,6 @@ def odata_to_stac(
         if not feature_template["collection"]:
             logger.warning(f"Unable to determine collection for {odata_dict}")
     return feature_template
-
-
-def _bbox_from_geometry(geom: dict) -> list[float]:
-    """Compute [minLon, minLat, maxLon, maxLat] from GeoJSON Polygon."""
-    t = (geom.get("type") or "").lower()
-
-    def _extrema(points):
-        xs = [p[0] for p in points]
-        ys = [p[1] for p in points]
-        return [min(xs), min(ys), max(xs), max(ys)]
-
-    if t == "polygon":
-        ring = (geom.get("coordinates") or [[]])[0] or []
-        return _extrema(ring) if ring else []
-    return []
 
 
 def check_and_fix_timerange(item: dict):
