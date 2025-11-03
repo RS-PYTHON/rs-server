@@ -145,8 +145,8 @@ class MockPgstacCadip(MockPgstac):
             session_features (list[Item]): sessions as Item objects
         """
 
-        # Join session ids with ', '
-        features_ids = ", ".join(feature.id for feature in session_features)
+        # Join session ids with ','
+        features_ids = ",".join(feature.id for feature in session_features)
         logger.debug(f"Searching for CADIP files at station {station} for session ids: {features_ids}")
 
         assets: list[dict] = []
