@@ -18,7 +18,9 @@ import ssl
 from ftplib import FTP_TLS
 from pathlib import Path
 from typing import Any
+from rs_server_common.utils.logging import Logging
 
+logger = Logging.default(__name__)
 
 class EDRSConnector:
     """EDRS Connector using FTPES (FTP over explicit TLS) for secure file transfers."""
@@ -32,6 +34,7 @@ class EDRSConnector:
         ca_cert: str,
         client_cert: str,
         client_key: str,
+        disable_mlsd=True,
     ):
         """
         Initialize EDRS connector with FTPS (FTPES) credentials.
@@ -44,6 +47,7 @@ class EDRSConnector:
         self.client_cert = client_cert
         self.client_key = client_key
         self.ftp: FTP_TLS | None = None
+        self.disable_mlsd = disable_mlsd  # Set to True to disable MLSD command usage
 
     def connect(self):
         """
@@ -59,7 +63,7 @@ class EDRSConnector:
         self.ftp.auth()  # AUTH TLS (explicit)
         self.ftp.prot_p()  # Encrypt data channel
         self.ftp.login(self.login, self.password)
-        print(f"Connected to {self.host}:{self.port} as {self.login}")
+        logger.debug(f"Connected to {self.host}:{self.port} as {self.login}")
 
     def walk(self, path: str) -> list[dict[str, Any]]:
         """
@@ -90,10 +94,20 @@ class EDRSConnector:
 
         base_path = f"/NOMINAL/{path.strip('/')}"
 
-        try:
+        # Try MLSD first, unless explicitly disabled
+        if self.disable_mlsd:
             entries = self.ftp.nlst(base_path)
-        except Exception as e:
-            raise RuntimeError(f"Failed to list {base_path}: {e}") from e
+        else:
+            try:
+                entries = [name for name, _ in self.ftp.mlsd(base_path)]
+            except Exception as e:
+                logger.error(f"MLSD failed for {base_path}: {e}, using NLST instead.")
+                # Fallback when MLSD is not supported
+                if "500" in str(e):
+                    self.disable_mlsd = True
+                    entries = self.ftp.nlst(base_path)
+                else:
+                    raise RuntimeError(f"Failed to list {base_path} using MLSD: {e}") from e
 
         current_dir = self.ftp.pwd()
         results = []
@@ -102,14 +116,16 @@ class EDRSConnector:
             info = {"path": entry, "type": "dir", "size": 0}
 
             try:
+                # If cwd works, it's a directory
                 self.ftp.cwd(entry)
                 self.ftp.cwd(current_dir)  # Return to original dir
-            except Exception as e:
-                # temp, add logger
-                # print(e)
-                # temp
+            except Exception:
+                # If cwd fails, assume it's a file
                 info["type"] = "file"
-                info["size"] = self.ftp.size(entry) if info["type"] == "file" else 0  # type: ignore
+                try:
+                    info["size"] = self.ftp.size(entry) or 0
+                except Exception:
+                    info["size"] = 0  # Some FTP servers don't support SIZE for all files
 
             results.append(info)
 

@@ -27,7 +27,7 @@ authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
 readme = "README.md"
 homepage = "https://home.rs-python.eu/"
 repository = "https://github.com/RS-PYTHON/rs-server"
-documentation = ""
+documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
 keywords = ["stac", "copernicus", "sentinel", "processing", "edrs"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -44,3 +44,12 @@ classifiers = [
 packages = [
     { include = "rs_server_edrs" },
 ]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+rs-server-common = "*"
+
+
+[tool.poetry.group.dev.dependencies]
+rs-server-common = {path = "../common", develop = true}
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
