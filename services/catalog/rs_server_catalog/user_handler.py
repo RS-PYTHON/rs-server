@@ -282,19 +282,6 @@ def remove_owner_from_collection_name_in_collection(collection: dict, current_us
     return collection, ""
 
 
-def filter_collections(collections: list[dict], prefix: str) -> list[dict]:
-    """Filter the collections according to the prefix.
-
-    Args:
-        collections (list[dict]): The list of collections available.
-        prefix (str): The prefix.
-
-    Returns:
-        list[dict]: The list of collections corresponding to the prefix
-    """
-    return [collection for collection in collections if collection["id"].startswith(prefix)]
-
-
 def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
     """Adapt all the links from a collection using the user and collection name they already contain,
     so the user can access them correctly

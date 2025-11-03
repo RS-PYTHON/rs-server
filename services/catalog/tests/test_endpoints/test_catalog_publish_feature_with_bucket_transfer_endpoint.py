@@ -341,7 +341,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         # check if owner was added and match to the owner of the collection
         assert feature_data["properties"]["owner"] == owner
         # check if stac_extension correctly updated collection name
-        assert feature_data["collection"] == f"{owner}_{collection_id}"
+        assert feature_data["collection"] == collection_id
         # check if stac extension was added
         assert (
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json" in feature_data["stac_extensions"]

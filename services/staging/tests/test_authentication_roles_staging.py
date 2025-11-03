@@ -18,7 +18,7 @@ import pytest
 from pytest_httpx import HTTPXMock
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
-    init_test,
+    init_authentication_test,
 )
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -57,7 +57,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pyl
     test_apikey = False
     test_oauth2 = True  # test only with the oauth2 cookie
     # pylint: disable=duplicate-code
-    await init_test(
+    await init_authentication_test(
         mocker,
         httpx_mock,
         staging_client,

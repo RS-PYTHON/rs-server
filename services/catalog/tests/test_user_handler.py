@@ -19,7 +19,6 @@ import getpass
 import pytest
 from rs_server_catalog.user_handler import (
     add_user_prefix,
-    filter_collections,
     get_user,
     remove_owner_from_collection_name_in_collection,
     remove_owner_from_collection_name_in_feature,
@@ -378,18 +377,3 @@ class TestRemoveUserFromObject:  # pylint: disable=missing-function-docstring
 
     def test_remove_the_user_in_the_feature_id_property(self, feature: dict, feature_output: dict):
         assert remove_owner_from_collection_name_in_feature(feature, "baduser") == (feature_output, "titi")
-
-
-class TestFilterCollections:  # pylint: disable=missing-function-docstring
-    """This Class contains unit tests for the function filter_collections"""
-
-    def test_get_nothing_if_the_user_is_not_found(self, collections: list[dict]):
-        assert filter_collections(collections, "NOTFOUND") == []
-
-    def test_get_all_collections_with_toto_in_the_id_property(
-        self,
-        collection_toto_1: dict,
-        collection_toto_2: dict,
-        collections: list[dict],
-    ):
-        assert filter_collections(collections, "toto") == [collection_toto_1, collection_toto_2]
