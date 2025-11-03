@@ -143,7 +143,7 @@ class EDRSConnector:
             raise ConnectionError("Not connected. Call connect() first.")
 
         # Determine local target path
-        local_path: Path = Path(local_path) if p_local_path else Path(Path(remote_path).name)
+        local_path: Path = Path(p_local_path) if p_local_path else Path(Path(remote_path).name)
         if not local_path.name:
             raise ValueError("remote_path has no filename and no local_path provided")
 
