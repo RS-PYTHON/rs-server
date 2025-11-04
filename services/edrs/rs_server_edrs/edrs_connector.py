@@ -14,13 +14,16 @@
 
 """EDRS Connector module for secure FTPES communication."""
 
+import os
 import ssl
-from ftplib import FTP_TLS
+from ftplib import FTP, FTP_TLS
 from pathlib import Path
 from typing import Any
+
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
+
 
 class EDRSConnector:
     """EDRS Connector using FTPES (FTP over explicit TLS) for secure file transfers."""
@@ -48,22 +51,34 @@ class EDRSConnector:
         self.client_key = client_key
         self.ftp: FTP_TLS | None = None
         self.disable_mlsd = disable_mlsd  # Set to True to disable MLSD command usage
+        # Read environment variable (defaults to FALSE)
+        use_ssl_env = os.getenv("USE_SSL", "FALSE").strip().lower()
+        self.use_ssl = use_ssl_env in ["1", "true", "yes"]
 
     def connect(self):
         """
-        Establish a secure FTPES (explicit TLS) connection.
+        Establish an FTP or FTPES (explicit TLS) connection depending on USE_SSL.
         """
-        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)
-        context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_REQUIRED
+        if self.use_ssl:
+            logger.debug("Connecting via FTPES (explicit TLS)...")
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)
+            if self.client_cert and self.client_key:
+                context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_REQUIRED
 
-        self.ftp = FTP_TLS(context=context)
-        self.ftp.connect(self.host, self.port, timeout=10)
-        self.ftp.auth()  # AUTH TLS (explicit)
-        self.ftp.prot_p()  # Encrypt data channel
-        self.ftp.login(self.login, self.password)
-        logger.debug(f"Connected to {self.host}:{self.port} as {self.login}")
+            self.ftp = FTP_TLS(context=context)
+            self.ftp.connect(self.host, self.port, timeout=10)
+            self.ftp.auth()  # AUTH TLS (explicit)
+            self.ftp.prot_p()  # Encrypt data channel
+            self.ftp.login(self.login, self.password)
+        else:
+            logger.debug("Connecting via plain FTP (no SSL)...")
+            self.ftp = FTP()
+            self.ftp.connect(self.host, self.port, timeout=10)
+            self.ftp.login(self.login, self.password)
+
+        logger.info(f"Connected to {self.host}:{self.port} as {self.login}")
 
     def walk(self, path: str) -> list[dict[str, Any]]:
         """
@@ -176,9 +191,10 @@ class EDRSConnector:
         return str(local_path)
 
     def close(self):
-        """
-        Close the FTP connection.
-        """
+        """Close the FTP connection."""
         if self.ftp:
-            self.ftp.quit()
-            print("Connection closed.")
+            try:
+                self.ftp.quit()
+            except Exception:
+                self.ftp.close()
+            logger.info("Connection closed.")
