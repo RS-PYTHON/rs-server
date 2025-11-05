@@ -68,7 +68,7 @@ class TestStagingCatalog:
         expected_filter_object = {
             "collections": "test_collection",
             "filter-lang": "cql2-text",
-            "filter": "id IN ('1', '2')",
+            "filter": "id IN ('1','2')",
             "limit": "2",
         }
         # Assert that requests.get was called with the correct parameters

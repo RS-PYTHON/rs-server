@@ -21,8 +21,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 from fastapi.testclient import TestClient
+from rs_server_common.utils.pytest.pytest_authentication_utils import (
+    OAUTH2_AUTHORIZATION_ENDPOINT,
+    OAUTH2_TOKEN_ENDPOINT,
+    OIDC_ENDPOINT,
+    OIDC_REALM,
+    RSPY_UAC_HOMEPAGE,
+)
 from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
@@ -30,6 +38,44 @@ S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "s3/expiration_bucket
 
 TEMP_BUCKET = "temp-bucket"
 CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
+
+# Authentication fields
+
+AUTH_EXTENSION = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+AUTH_SCHEME = {
+    "auth:schemes": {
+        "apikey": {
+            "type": "apiKey",
+            "description": f"API key generated using {RSPY_UAC_HOMEPAGE}"
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+            "name": "x-api-key",
+            "in": "header",
+        },
+        "openid": {
+            "type": "openIdConnect",
+            "description": "OpenID Connect",
+            "openIdConnectUrl": f"{OIDC_ENDPOINT}/realms/{OIDC_REALM}/.well-known/openid-configuration",
+        },
+        "oauth2": {
+            "type": "oauth2",
+            "description": "OAuth2+PKCE Authorization Code Flow",
+            "flows": {
+                "authorizationCode": {
+                    "authorizationUrl": OAUTH2_AUTHORIZATION_ENDPOINT,
+                    "tokenUrl": OAUTH2_TOKEN_ENDPOINT,
+                    "scopes": {},
+                },
+            },
+        },
+        "s3": {
+            "type": "s3",
+            "description": "S3",
+        },
+    },
+}
+AUTH_REFS = {
+    "auth:refs": ["apikey", "openid", "oauth2"],
+}
 
 
 def is_db_up(db_url: str) -> bool:
@@ -89,9 +135,9 @@ class Collection:
     name: str
 
     @property
-    def id_(self) -> str:
-        """Returns the id."""
-        return f"{self.user}_{self.name}" if self.user else f"{self.name}"
+    def full_id(self) -> str:
+        """Returns the id as '<name>' or '<user>:<name>'"""
+        return f"{self.user}:{self.name}" if self.user else f"{self.name}"
 
     @property
     def properties(self) -> dict[str, Any]:
@@ -100,18 +146,6 @@ class Collection:
             "id": self.name,
             "type": "Collection",
             "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": f"http://localhost:8082/collections/{self.name}/items",
-                },
-                {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
-                {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": f"""http://localhost:8082/collections/{self.name}""",
-                },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
@@ -131,6 +165,58 @@ class Collection:
 
         return properites
 
+    def as_returned(self, cluster_mode: bool) -> dict[str, Any]:
+        """Returns the Collection as if returned by the catalog service"""
+        properties = self.properties
+        auth_refs = AUTH_REFS if cluster_mode else {}
+
+        # Add links
+        properties["links"] = [
+            {
+                "rel": "items",
+                "type": "application/geo+json",
+                "href": f"http://testserver/catalog/collections/{self.full_id}/items",
+                **auth_refs,
+            },
+            {
+                "rel": "parent",
+                "type": "application/json",
+                "href": "http://testserver/catalog/",
+                **auth_refs,
+            },
+            {
+                "rel": "root",
+                "type": "application/json",
+                "href": "http://testserver/catalog/",
+                **auth_refs,
+            },
+            {
+                "rel": "self",
+                "type": "application/json",
+                "href": f"http://testserver/catalog/collections/{self.full_id}",
+                **auth_refs,
+            },
+            {
+                "rel": "license",
+                "href": "https://creativecommons.org/licenses/publicdomain/",
+                "title": "public domain",
+                **auth_refs,
+            },
+            {
+                "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                "type": "application/schema+json",
+                "title": "Queryables",
+                "href": f"http://testserver/catalog/collections/{self.full_id}/queryables",
+                **auth_refs,
+            },
+        ]
+
+        # Add authentication fields
+        if cluster_mode:
+            properties.update({"stac_extensions": [AUTH_EXTENSION], **AUTH_SCHEME})
+
+        return properties
+
 
 def a_collection(user: str | None, name: str) -> Collection:
     """Create a collection for test purpose.
@@ -149,7 +235,7 @@ def a_collection(user: str | None, name: str) -> Collection:
     return Collection(user, name)
 
 
-def add_collection(client: TestClient, collection: Collection):
+def add_collection(client: TestClient, collection: Collection, **kwargs) -> httpx._models.Response:
     """Add the given collection in the STAC catalog.
 
     Args:
@@ -162,11 +248,9 @@ def add_collection(client: TestClient, collection: Collection):
     Raises:
         Error if the collection addition failed.
     """
-    response = client.post(
-        "/catalog/collections",
-        json=collection.properties,
-    )
+    response = client.post("/catalog/collections", json=collection.properties, **kwargs)
     response.raise_for_status()
+    return response
 
 
 def add_collection_from_dict(client: TestClient, collection: dict) -> tuple[str, str]:

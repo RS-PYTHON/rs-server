@@ -416,7 +416,7 @@ class Staging(
         filter_object = {
             "collections": catalog_collection,
             "filter-lang": "cql2-text",
-            "filter": f"id IN ({', '.join(ids)})",
+            "filter": f"id IN ({','.join(ids)})",
             "limit": str(len(ids)),
         }
 

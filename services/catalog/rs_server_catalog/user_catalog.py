@@ -46,13 +46,11 @@ from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
     add_prefix_link_landing_page,
-    manage_landing_page,
 )
 from rs_server_catalog.user_handler import (
     adapt_links,
     adapt_object_links,
     add_user_prefix,
-    filter_collections,
     get_user,
     reroute_url,
 )
@@ -601,6 +599,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             "read",
             self.request_ids["owner_id"],
             self.request_ids["user_login"],
+            # When calling the /search endpoints, the catalog ids are always prefixed by their <owner>_
+            owner_prefix=True,
         ):
             raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         return request
@@ -701,19 +701,24 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             collection = self.request_ids["collection_ids"][0]
             if (
-                request.scope["path"] == CATALOG_COLLECTIONS  # POST collection
-                or request.scope["path"]
-                == CATALOG_COLLECTIONS + f"/{self.request_ids['owner_id']}_{collection}"  # PUT collection
+                # POST collection
+                request.scope["path"]
+                == CATALOG_COLLECTIONS
+            ) or (
+                # PUT collection
+                request.scope["path"]
+                == f"{CATALOG_COLLECTIONS}/{self.request_ids['owner_id']}_{collection}"
             ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
                 # collection owned by another user.
                 # We don't care for local mode, any user may create / delete collection owned by another user
-                if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != self.request_ids["user_login"]:
+                if common_settings.CLUSTER_MODE and (self.request_ids["owner_id"] != self.request_ids["user_login"]):
                     error = f"The '{self.request_ids['user_login']}' user cannot create a \
 collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
 field is not permitted also."
                     raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail=error)
+
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
@@ -795,33 +800,21 @@ field is not permitted also."
         Returns:
             dict: The list of all collections accessible by the user.
         """
-        catalog_read_right_pattern = (
-            r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
-        )
-        accessible_collections = []
+        # Test user authorization on each collection
+        accessible_collections = [
+            requested_col
+            for requested_col in collections
+            if get_authorisation(
+                [requested_col["id"]],
+                auth_roles,
+                "read",
+                requested_col["owner"],
+                user_login,
+                owner_prefix=True,
+            )
+        ]
 
-        # Filter roles for read access
-        read_roles = [role for role in auth_roles if re.match(catalog_read_right_pattern, role)]
-
-        for role in read_roles:
-            if match := re.match(catalog_read_right_pattern, role):
-                groups = match.groupdict()
-                if groups["right_type"] == "read":
-                    owner_id = groups["owner_id"]
-                    collection_id = groups["collection_id"]
-                    accessible_collections.extend(
-                        filter_collections(
-                            collections,
-                            f"{owner_id}_" if collection_id == "*" else f"{owner_id}_{collection_id}",
-                        ),
-                    )
-
-        # Add collections for current user
-        accessible_collections.extend(filter_collections(collections, user_login))
-
-        # Convert to dict then back to list to only keep unique ids
-        accessible_collections = list({col["id"]: col for col in accessible_collections}.values())
-
+        # Return results, sorted by <owner>_<collection_id>
         return sorted(accessible_collections, key=lambda col: col["id"])
 
     def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
@@ -835,10 +828,10 @@ field is not permitted also."
         """
         for collection in collections:
             owner_id = collection["owner"]
-            collection_id = collection["id"].removeprefix(f"{owner_id}_")
+            collection["id"] = collection["id"].removeprefix(f"{owner_id}_")
             for link in collection["links"]:
                 link_parser = urlparse(link["href"])
-                new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
+                new_path = add_user_prefix(link_parser.path, owner_id, collection["id"])
                 link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
 
@@ -905,8 +898,6 @@ field is not permitted also."
 
         # Manage local landing page of the catalog
         if request.scope["path"] in (CATALOG_PREFIX, CATALOG_PREFIX + "/"):
-            if common_settings.CLUSTER_MODE:  # /catalog
-                content = manage_landing_page(auth_roles, user_login, content)
             regex_catalog = CATALOG_COLLECTIONS + r"/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
                 link_parser = urlparse(link["href"])
@@ -1056,15 +1047,12 @@ field is not permitted also."
             user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
+            response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
+
             # Don't display geometry and bbox for default case since it was added just for compliance.
-            if request.scope["path"] == CATALOG_COLLECTIONS:
-                response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
-            elif (
-                request.scope["path"]
-                == CATALOG_COLLECTIONS
-                + f"/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
+            if request.scope["path"].startswith(
+                f"{CATALOG_COLLECTIONS}/{user}_{self.request_ids['collection_ids'][0]}/items",
             ):
-                response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
                 if response_content.get("geometry") == DEFAULT_GEOM:
                     response_content["geometry"] = None
                 if response_content.get("bbox") == DEFAULT_BBOX:
@@ -1171,9 +1159,11 @@ field is not permitted also."
         """
         user_login = getpass.getuser()
         auth_roles = []
+
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
+
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
@@ -1188,16 +1178,25 @@ field is not permitted also."
             )
         ):
             return False
+
+        # Manage a collection deletion. The apikey user (or local user if in local mode)
+        # should be the same as the owner field in the body request. In other words, the
+        # apikey user cannot delete a collection owned by another user
         # we don't care for local mode, any user may create / delete collection owned by another user
-        if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != user_login:
-            # Manage a collection deletion. The apikey user (or local user if in local mode)
-            # should be the same as the owner field in the body request. In other words, the
-            # apikey user cannot delete a collection owned by another user
+        if (
+            (  # DELETE collection
+                request.scope["path"]
+                == f"{CATALOG_COLLECTIONS}/{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}"
+            )
+            and common_settings.CLUSTER_MODE
+            and (self.request_ids["owner_id"] != user_login)
+        ):
             logger.error(
                 f"The '{user_login}' user cannot delete a \
-collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
+collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
+
         await self.build_filelist_to_be_deleted(request)
         return True
 

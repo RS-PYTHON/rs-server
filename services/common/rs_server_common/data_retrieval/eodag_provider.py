@@ -156,7 +156,7 @@ class EodagProvider(Provider):
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
         key = plural_key if isinstance(value, list) else singular_key
-        mapped_search_args[key] = ", ".join(f"'{p}'" for p in value) if isinstance(value, list) else f"'{value}'"
+        mapped_search_args[key] = ",".join(f"'{p}'" for p in value) if isinstance(value, list) else f"'{value}'"
 
     def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-branches,too-many-locals
         """
@@ -196,10 +196,10 @@ class EodagProvider(Provider):
             if platform := kwargs.pop("Satellite", None):
                 self._handle_multiple_values(mapped_search_args, platform, "platform", "platforms")
 
-        for auxip_key in ("attr_ptype", "platformSerialIdentifier", "platformShortName"):
-            # Handle AUXIP parameters that can have one or several values
-            if values := kwargs.pop(auxip_key, None):
-                self._handle_multiple_values(mapped_search_args, values, auxip_key, auxip_key + "s")
+        for multivalued_key in ("attr_ptype", "platformSerialIdentifier", "platformShortName"):
+            # Handle AUXIP/PRIP parameters that can have one or several values
+            if values := kwargs.pop(multivalued_key, None):
+                self._handle_multiple_values(mapped_search_args, values, multivalued_key, multivalued_key + "s")
 
         if date_time := kwargs.pop("PublicationDate", False):
             # Since now both for files and sessions, time interval is optional, map it if provided.
