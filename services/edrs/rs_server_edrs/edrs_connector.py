@@ -51,7 +51,7 @@ class EDRSConnector:
         self.ca_cert = ca_cert
         self.client_cert = client_cert
         self.client_key = client_key
-        self.ftp: FTP_TLS | None = None
+        self.ftp: FTP | FTP_TLS | None = None
         self.disable_mlsd = disable_mlsd  # Set to True to disable MLSD command usage
         # Read environment variable (defaults to FALSE)
         use_ssl_env = os.getenv("USE_SSL", "FALSE").strip().lower()
