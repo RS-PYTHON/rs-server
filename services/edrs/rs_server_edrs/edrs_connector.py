@@ -14,12 +14,14 @@
 
 """EDRS Connector module for secure FTPES communication."""
 
+import io
 import os
 import ssl
 from ftplib import FTP, FTP_TLS
 from pathlib import Path
 from typing import Any
 
+import xmltodict
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
@@ -189,6 +191,56 @@ class EDRSConnector:
             raise RuntimeError(f"Failed to download {remote_path}: {e}") from e
 
         return str(local_path)
+
+    def read_file(self, remote_path: str) -> Any:
+        """
+        Read a file from the FTP server directly into memory.
+
+        If the file is XML, it will be parsed into a Python dictionary.
+        Otherwise, the raw bytes content will be returned.
+
+        Parameters
+        ----------
+        remote_path : str
+            Path to the file on the FTP server.
+
+        Returns
+        -------
+        dict | bytes
+            - dict if the file is XML
+            - bytes otherwise
+
+        Raises
+        ------
+        ConnectionError
+            If not connected.
+        RuntimeError
+            On failure to retrieve or parse the file.
+        """
+        if not self.ftp:
+            raise ConnectionError("Not connected. Call connect() first.")
+
+        buffer = io.BytesIO()
+
+        try:
+            # Retrieve the remote file into memory
+            self.ftp.retrbinary(f"RETR {remote_path}", buffer.write)
+        except Exception as e:
+            raise RuntimeError(f"Failed to read remote file {remote_path}: {e}") from e
+
+        buffer.seek(0)
+
+        # Check if file is XML based on extension
+        if remote_path.lower().endswith(".xml"):
+            try:
+                # Parse XML into dict
+                content = xmltodict.parse(buffer.getvalue())
+                return content
+            except Exception as e:
+                raise RuntimeError(f"Failed to parse XML file {remote_path}: {e}") from e
+        else:
+            # Return raw bytes for non-XML files
+            return buffer.getvalue()
 
     def close(self):
         """Close the FTP connection."""
