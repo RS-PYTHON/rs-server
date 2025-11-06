@@ -20,6 +20,8 @@ from pathlib import Path
 import yaml
 from edrs_connector import EDRSConnector
 
+from edrs_utils import build_stac_item_from_channel
+
 DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (
     Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
 )
@@ -74,5 +76,15 @@ if __name__ == "__main__":
     for file in files:
         if file["type"] == "file":
             client.download(file["path"], Path.cwd() / Path(file["path"]).name)
+
+    channel_dir = "/S1A/DCS_01_202501270945000000112233_dat/ch_1/"
+    stac_item = build_stac_item_from_channel(
+        client=client,
+        channel_dir=channel_dir,
+        files=files,
+        collection_id="s1_bedc",   # adjust to your collection
+        center="bedc",             # "bedc" or "pedc"
+    )
+    print(stac_item)
 
     client.close()

@@ -15,13 +15,13 @@ stations: |
   bedc:
     service:
       name: edrs
-      url: {URL}
-      port: {PORT}
+      url: 127.0.0.1
+      port: 5005
     domain: mockup-station-pedc.processing.svc.cluster.local
     authentication:
       auth_type: ftpes
-      username: {USER}
-      password: {PASS}
+      username: user
+      password: password
       ca_crt: /path/to/ca.crt
       client_crt: /path/to/client.crt
       client_key: /path/to/client.key
