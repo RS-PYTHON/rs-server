@@ -27,7 +27,6 @@ class MockPgstacEdrs(MockPgstac):
         )
         self.sortby = "id"
     async def process_search(self, request: Request) -> dict:
-        # EDRS nu expune /search; metoda e obligatorie în MockPgstac
         raise HTTPException(status_code=404, detail="EDRS does not support /search. Use /edrs/collections/{id}/items.")
 
 @router.get("/", include_in_schema=False)
