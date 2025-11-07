@@ -43,7 +43,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -73,7 +73,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -103,7 +103,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -134,7 +134,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -165,7 +165,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -195,7 +195,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -226,7 +226,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -256,7 +256,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -286,7 +286,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -316,7 +316,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -345,7 +345,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -369,7 +369,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -398,7 +398,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -427,7 +427,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -457,7 +457,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -486,7 +486,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -515,7 +515,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -545,7 +545,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -573,7 +573,7 @@ collections:
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
