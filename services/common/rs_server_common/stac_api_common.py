@@ -959,7 +959,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 iterable = value if isinstance(value, list) else value.split(",")
                 s = {v.strip() for v in iterable}
                 intersection = intersection.intersection(s) if i else s  # type: ignore
-            intersection = ", ".join(intersection) if intersection else None
+            intersection = ",".join(intersection) if intersection else None
             logger.debug(f"comma-separated list conflict resolution result: {intersection}")
 
         return intersection, not intersection

@@ -48,6 +48,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-common = "*"
+xmltodict = "^1.0.2"
 
 
 [tool.poetry.group.dev.dependencies]

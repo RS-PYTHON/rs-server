@@ -14,12 +14,14 @@
 
 """EDRS Connector module for secure FTPES communication."""
 
+import io
 import os
 import ssl
 from ftplib import FTP, FTP_TLS
 from pathlib import Path
 from typing import Any
 
+import xmltodict
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
@@ -49,7 +51,7 @@ class EDRSConnector:
         self.ca_cert = ca_cert
         self.client_cert = client_cert
         self.client_key = client_key
-        self.ftp: FTP_TLS | None = None
+        self.ftp: FTP | FTP_TLS | None = None
         self.disable_mlsd = disable_mlsd  # Set to True to disable MLSD command usage
         # Read environment variable (defaults to FALSE)
         use_ssl_env = os.getenv("USE_SSL", "FALSE").strip().lower()
@@ -81,29 +83,24 @@ class EDRSConnector:
         logger.info(f"Connected to {self.host}:{self.port} as {self.login}")
 
     def walk(self, path: str) -> list[dict[str, Any]]:
+        """List files and directories under /NOMINAL/<path>.
+
+        Args:
+            path (str): Relative path under the NOMINAL directory
+                (e.g., "SAT123/ch_01/").
+
+        Returns:
+            list[dict[str, str | int | None]]: A list of dictionaries containing
+                information about each file or directory. Each dictionary includes:
+                - path (str): Full path.
+                - type (str): Either 'file' or 'dir'.
+                - size (int | None): Size in bytes for files, None for directories.
+
+        Raises:
+            ConnectionError: If the FTP client is not connected.
+            RuntimeError: If the FTP listing operation fails.
         """
-        List files and directories under /NOMINAL/<path>.
 
-        Parameters
-        ----------
-        path : str
-            Relative path under the NOMINAL directory (e.g., "SAT123/ch_01/")
-
-        Returns
-        -------
-        List[Dict[str, str | int | None]]
-            List of dicts containing file/dir info with keys:
-            - path: str - Full path
-            - type: str - Either 'file' or 'dir'
-            - size: int | None - Size in bytes for files, None for dirs
-
-        Raises
-        ------
-        ConnectionError
-            If not connected
-        RuntimeError
-            On FTP listing failure
-        """
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
 
@@ -115,7 +112,7 @@ class EDRSConnector:
         else:
             try:
                 entries = [name for name, _ in self.ftp.mlsd(base_path)]
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.error(f"MLSD failed for {base_path}: {e}, using NLST instead.")
                 # Fallback when MLSD is not supported
                 if "500" in str(e):
@@ -134,12 +131,12 @@ class EDRSConnector:
                 # If cwd works, it's a directory
                 self.ftp.cwd(entry)
                 self.ftp.cwd(current_dir)  # Return to original dir
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 # If cwd fails, assume it's a file
                 info["type"] = "file"
                 try:
                     info["size"] = self.ftp.size(entry) or 0
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     info["size"] = 0  # Some FTP servers don't support SIZE for all files
 
             results.append(info)
@@ -147,29 +144,21 @@ class EDRSConnector:
         return results
 
     def download(self, remote_path: str, p_local_path: str = "") -> str:
+        """Download a file from the FTP server.
+
+        Args:
+            remote_path (str): Remote path to the file (absolute or relative to the current working directory).
+            local_path (str, optional): Local filesystem path where the file will be saved.
+                If omitted, the remote filename is used in the current working directory.
+
+        Returns:
+            str: The local file path where the file was saved.
+
+        Raises:
+            ConnectionError: If the FTP client is not connected.
+            RuntimeError: If the file cannot be retrieved.
         """
-        Download a file from the FTP server.
 
-        Parameters
-        ----------
-        remote_path : str
-            Remote path to the file (absolute or relative to current cwd).
-        local_path : str, optional
-            Local filesystem path to save the file. If omitted, the remote filename
-            is used in the current working directory.
-
-        Returns
-        -------
-        str
-            The local file path where the file was saved.
-
-        Raises
-        ------
-        ConnectionError
-            If not connected.
-        RuntimeError
-            On failure to retrieve the file.
-        """
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
 
@@ -190,11 +179,59 @@ class EDRSConnector:
 
         return str(local_path)
 
+    def read_file(self, remote_path: str) -> Any:
+        """
+        Read a file from the FTP server directly into memory.
+
+        If the file is XML, it is parsed into a Python dictionary.
+        Otherwise, the raw bytes content is returned.
+
+        Args:
+            remote_path (str): Path to the file on the FTP server.
+
+        Returns:
+            dict | bytes: A dictionary if the file is XML, otherwise raw bytes.
+
+        Raises:
+            ConnectionError: If the FTP client is not connected.
+            RuntimeError: If the file cannot be retrieved or parsed.
+        """
+
+        if not self.ftp:
+            raise ConnectionError("Not connected. Call connect() first.")
+
+        buffer = io.BytesIO()
+
+        try:
+            # Retrieve the remote file into memory
+            self.ftp.retrbinary(f"RETR {remote_path}", buffer.write)
+        except Exception as e:
+            error_msg = str(e)
+            if "550" in error_msg or "Not a plain file" in error_msg:
+                logger.error(f"Remote path '{remote_path}' is a directory, not a file.")
+                raise RuntimeError(f"Remote path '{remote_path}' appears to be a directory, not a file.") from e
+            logger.error(f"Failed to read remote file '{remote_path}': {e}")
+            raise RuntimeError(f"Failed to read remote file '{remote_path}': {e}") from e
+
+        buffer.seek(0)
+
+        # Check if file is XML based on extension
+        if remote_path.lower().endswith(".xml"):
+            try:
+                # Parse XML into dict
+                content = xmltodict.parse(buffer.getvalue())
+                return content
+            except Exception as e:
+                raise RuntimeError(f"Failed to parse XML file {remote_path}: {e}") from e
+        else:
+            # Return raw bytes for non-XML files
+            return buffer.getvalue()
+
     def close(self):
         """Close the FTP connection."""
         if self.ftp:
             try:
                 self.ftp.quit()
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 self.ftp.close()
             logger.info("Connection closed.")

@@ -188,7 +188,7 @@ def cadip_map_mission(platform: str, constellation: str) -> str | None:
             config = next(sat[platform] for sat in data["satellites"] if platform in sat)
             satellite = config.get("code", None)
         if constellation:
-            satellites = ", ".join(
+            satellites = ",".join(
                 [
                     satellite_info["code"]
                     for satellite in data["satellites"]
