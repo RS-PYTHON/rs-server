@@ -21,6 +21,7 @@ from typing import Optional
 import os
 import os.path as osp
 import yaml
+import json
 
 from rs_server_common.utils.logging import Logging
 
@@ -50,6 +51,17 @@ def select_config(configuration_id: str) -> dict | None:
         None,
     )
 
+@lru_cache
+def edrs_session_odata_to_stac_template() -> dict:
+    return json.loads((EDRS_CONFIG / "edrs_session_STAC_template.json").read_text(encoding="utf-8"))
+
+@lru_cache
+def edrs_sessions_stac_mapper() -> dict:
+    return json.loads((EDRS_CONFIG / "edrs_sessions_stac_mapper.json").read_text(encoding="utf-8"))
+
+@lru_cache
+def edrs_stac_mapper() -> dict:
+    return json.loads((EDRS_CONFIG / "edrs_asset_stac_mapper.json").read_text(encoding="utf-8"))
 
 
 def build_stac_item_from_channel(client, channel_dir: str, files: list, collection_id: str, center: str) -> dict:

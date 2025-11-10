@@ -16,12 +16,13 @@ stations: |
   pedc:
     service:
       name: edrs
-      url: http://mockup-station-pedc.processing.svc.cluster.local:8080
+      url: 127.0.0.1
+      port: 5005
     domain: mockup-station-pedc.processing.svc.cluster.local
     authentication:
       auth_type: ftpes
-      username: test
-      password: test
+      username: user
+      password: password
       ca_crt: /certs/ca.crt
       client_crt: /certs/client.crt
       client_key: /certs/client.key

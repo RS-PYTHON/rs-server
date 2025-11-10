@@ -1,3 +1,4 @@
+import copy
 from typing import Optional, Literal, Annotated
 from fastapi import APIRouter, Request, HTTPException, status
 from fastapi import Path as FPath
@@ -15,51 +16,90 @@ import re
 from rs_server_common.authentication import authentication
 from rs_server_common.stac_api_common import MockPgstac, handle_exceptions
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import map_stac_platform, odata_to_stac
 
-from rs_server_edrs.edrs_utils import edrs_read_conf, edrs_select_config, select_config
+from rs_server_edrs.edrs_utils import edrs_read_conf, edrs_select_config, edrs_session_odata_to_stac_template, edrs_sessions_stac_mapper, edrs_stac_mapper, select_config
 from rs_server_edrs.edrs_client import EDRSConnector, load_station_config, EDRS_STATIONS_CONFIG
 
 logger = Logging.default(__name__)
 router = APIRouter()
 
-def _dummy_Item(collection: str, item_id: str, assets_list: list[tuple[str, dict]]) -> Item:
-    assets: dict[str, dict] = {}
-    for fname, meta in (assets_list or []):
-        assets[fname] = {
-            "href": meta["path"],
-            "title": fname,
-            "roles": ["cadu"],
-            "channel": meta.get("channel"),
-            "created":"",
-            "updated":"",
-            "file:size": meta.get("file:size", 0),
-        }
 
-    item = Item(
-        id=item_id,
-        type="Feature",
-        stac_version="1.0.0",
-        collection=collection,
-        properties={
-            "datetime": "2025-10-10T18:37:22.000Z",
-            "platform": "sentinel-3b",
-            "constellation": "sentinel-3",
-        },
-        geometry=None,
-        assets=assets,
-        links=[],
-    )
-    return item
+def _platform_constellation_from_code(code: str) -> tuple[str | None, str | None]:
+    # code ex.: "S1A", "S1C", "S2B" => returns satellites and constellation
+    cfg = map_stac_platform()
+    for sat in cfg["satellites"]:
+        for plat, info in sat.items():
+            if info.get("code") == code:
+                return plat, info.get("constellation")
+    return None, None
 
-def _constellation_platform(sat: str) -> tuple[str, str]:
-    s = sat.upper()
-    if s.startswith("S1"):
-        return "sentinel-1", f"sentinel-1{s[-1].lower()}"
-    if s.startswith("S2"):
-        return "sentinel-2", f"sentinel-2{s[-1].lower()}"
-    if s.startswith("S3"):
-        return "sentinel-3", f"sentinel-3{s[-1].lower()}"
-    return s.lower(), s.lower()
+def _iso(s: str | None) -> str | None:
+    if not s: return None
+    # normalize "2024-04-10T08:37:00Z" -> ISO with 'Z'
+    return s.replace("+00:00","Z")
+
+def _parse_dsib_dict(dsib: dict) -> tuple[str|None,str|None,str|None,str|None,str|None]:
+    hdr = dsib.get("DSIB",{}).get("Header",{})
+    acq = dsib.get("DSIB",{}).get("Acquisition_Info",{})
+    sat = hdr.get("Satellite")
+    created = hdr.get("Generation_Time")
+    start = acq.get("Start_Time")
+    stop = acq.get("End_Time")
+    finished = hdr.get("Generation_Time")
+    return sat, _iso(start), _iso(stop), _iso(created), _iso(finished)
+
+def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list[dict]]:
+    """Returns (session_odata, assets_products)."""
+    ch_entries = client.walk(f"{sat}/{session_id}") or []
+    channel_dirs = [e["path"] for e in ch_entries if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))]
+
+
+    starts, stops, gens = [], [], []
+    assets_products: list[dict] = []
+    platform_name, constellation = _platform_constellation_from_code(sat)
+
+    for ch_dir in channel_dirs:
+        ch_name = ch_dir.rsplit("/",1)[-1]   # ch_1
+        ch_num = int(ch_name.split("_")[1]) if "_" in ch_name else None
+
+        files = client.walk(f"{sat}/{session_id}/{ch_name}") or []
+        # DSIB
+        dsib_entry = next((f for f in files if f.get("type")=="file" and f.get("path","").lower().endswith("_dsib.xml")), None)
+        dsib_dict = None
+        if dsib_entry:
+            dsib_dict = client.read_file(dsib_entry["path"])
+        # time din DSIB
+        if dsib_dict:
+            sat_code, start, stop, created, finished = _parse_dsib_dict(dsib_dict)
+            if start: starts.append(start)
+            if stop:  stops.append(stop)
+            if created: gens.append(created)
+
+        # assets din walk (.raw)
+        for f in files:
+            p = f.get("path","")
+            if f.get("type")=="file" and p.lower().endswith(".raw"):
+                assets_products.append({
+                    "SessionId": session_id.removesuffix("_dat"),
+                    "File_Name": Path(p).name,
+                    "Size_Bytes": int(f.get("size") or 0),
+                    "href": p,                 # absolut ftp
+                    "Channel": ch_num,
+                    "Created": gens[-1] if gens else None,
+                    "Updated": gens[-1] if gens else None
+                })
+
+    session_odata = {
+        "SessionId": session_id.removesuffix("_dat"),
+        "MinStart": min(starts) if starts else None,
+        "MaxStop": max(stops) if stops else None,
+        "MinCreated": min(gens) if gens else None,
+        "MaxFinished": max(gens) if gens else None,  # fallback to Generation_Time
+        "Platform": platform_name,
+        "Constellation": constellation
+    }
+    return session_odata, assets_products
 
 def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]:
     m = re.fullmatch(r"ch_(\d+)", ch_name)
@@ -80,6 +120,21 @@ def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]
             ))
     return assets
 
+def _apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
+    mapper = edrs_stac_mapper()
+    key_field = mapper["id"]
+    out_specs = {k: v for k, v in mapper.items() if k != "id"}
+
+    for a in asset_items:
+        key = a.get(key_field)
+        if not key:
+            continue
+        out = {ok: (a.get(spec) if isinstance(spec, str) else spec)
+               for ok, spec in out_specs.items()
+               if not (isinstance(spec, str) and a.get(spec) is None)}
+        item.assets[key] = out
+
+
 def build_edrs_item_collection(client, satellites: list[str], collection_id: str) -> ItemCollection:
     items: list[Item] = []
 
@@ -92,21 +147,20 @@ def build_edrs_item_collection(client, satellites: list[str], collection_id: str
 
         for sess_path in session_dirs:
             session_id = Path(sess_path).name
-            # enumerate channels for this session
-            ch_entries = client.walk(f"{sat}/{session_id}") or []
-            channel_dirs = [
-                e["path"] for e in ch_entries
-                if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))
-            ]
-            # walk each channel (files: DSDB .raw + DSIB .xml)
-            assets_list = []
-            for ch_dir in channel_dirs:
-                ch_name = ch_dir.rsplit("/", 1)[-1]
-                files = client.walk(f"{sat}/{session_id}/{ch_name}") or []
-                assets_list.extend(build_assets_list(files, ch_name))
             
-            # add one item per session (dummy for now)
-            items.append(_dummy_Item(collection=collection_id, item_id=session_id, assets_list=assets_list))
+            session, asset_products = _collect_session_stats(client, sat, session_id)
+
+            feature = odata_to_stac(
+                copy.deepcopy(edrs_session_odata_to_stac_template()),
+                session,
+                edrs_sessions_stac_mapper()
+            )
+
+            feature["collection"] = collection_id
+            item = Item(**feature)
+
+            _apply_asset_mapping_to_item(item, asset_products)
+            items.append(item)
 
     return ItemCollection(type="FeatureCollection", features=items).to_dict()
 
