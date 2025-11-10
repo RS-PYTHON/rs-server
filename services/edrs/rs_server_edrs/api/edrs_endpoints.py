@@ -51,18 +51,6 @@ def _dummy_Item(collection: str, item_id: str, assets_list: list[tuple[str, dict
     )
     return item
 
-def _read_text(meta: dict) -> Optional[str]:
-    x = meta.get("content") or meta.get("body") or meta.get("data")
-    if x is None:
-        return None
-    if isinstance(x, (bytes, bytearray)):
-        try:
-            return x.decode("utf-8")
-        except Exception:
-            return x.decode("latin-1", errors="ignore")
-    return str(x)
-
-
 def _constellation_platform(sat: str) -> tuple[str, str]:
     s = sat.upper()
     if s.startswith("S1"):
