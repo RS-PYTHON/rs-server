@@ -15,7 +15,6 @@
 Module for interacting with EDRS system through a FastAPI APIRouter.
 """
 
-from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -38,6 +37,13 @@ def edrs_read_conf() -> dict:
         return yaml.safe_load(cfg) or {}
 
 def edrs_select_config(configuration_id: str) -> dict | None:
+    """Used to select a specific configuration from yaml file, returns None if not found."""
+    return next(
+        (item for item in edrs_read_conf()["collections"] if item["id"] == configuration_id),
+        None,
+    )
+
+def select_config(configuration_id: str) -> dict | None:
     """Used to select a specific configuration from yaml file, returns None if not found."""
     return next(
         (item for item in edrs_read_conf()["collections"] if item["id"] == configuration_id),
