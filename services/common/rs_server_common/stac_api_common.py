@@ -170,6 +170,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     auxip: bool = False
     cadip: bool = False
     prip: bool = False
+    edrs: bool = False
 
     # Current page
     page: int = 1
@@ -181,6 +182,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         self.auxip = self.service == "auxip"
         self.cadip = self.service == "cadip"
         self.prip = self.service == "prip"
+        self.edrs = self.service == "edrs"
 
     @classmethod
     @asynccontextmanager
@@ -231,6 +233,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         if self.prip:
             for queryable_name, queryable_data in get_prip_queryables().items():
+                queryables.update({queryable_name: QueryableField(**queryable_data)})
+            return queryables
+        
+        if self.edrs:
+            for queryable_name, queryable_data in get_edrs_queryables().items():
                 queryables.update({queryable_name: QueryableField(**queryable_data)})
             return queryables
 
@@ -1181,6 +1188,13 @@ def get_adgs_queryables() -> dict:
 def get_prip_queryables() -> dict:
     """Function used to read and interpret from prip_queryables.yaml"""
     with open(Path(__file__).parent.parent / "config" / "prip_queryables.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+@lru_cache
+def get_edrs_queryables() -> dict:
+    """Function used to read and interpret from edrs_queryables.yaml"""
+    with open(Path(__file__).parent.parent / "config" / "edrs_queryables.yaml", encoding="utf-8") as cf:
         return yaml.safe_load(cf)
 
 

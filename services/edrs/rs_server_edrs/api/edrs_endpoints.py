@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 import stac_pydantic
 from stac_pydantic import Item, ItemCollection
 from stac_pydantic.shared import Asset
+from stac_pydantic.links import Link, Links
 
 from pathlib import Path
 
@@ -135,8 +136,12 @@ def _apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
         item.assets[key] = out
 
 
-def build_edrs_item_collection(client, satellites: list[str], collection_id: str) -> ItemCollection:
+def build_edrs_item_collection(client, satellites: list[str], collection_id: str, request: Request) -> ItemCollection:
     items: list[Item] = []
+
+    service_base = str(request.url).split("/collections/")[0].rstrip("/")
+    collection_href = f"{service_base}/collections/{collection_id}"
+    root_href = f"{service_base}/"
 
     for sat in satellites:
         entries = client.walk(sat) or []
@@ -160,9 +165,23 @@ def build_edrs_item_collection(client, satellites: list[str], collection_id: str
             item = Item(**feature)
 
             _apply_asset_mapping_to_item(item, asset_products)
+            self_href = f"{collection_href}/items/{item.id}"
+            item.links = Links(root=[
+                Link(rel="collection", type="application/json",     href=collection_href),
+                Link(rel="parent",     type="application/json",     href=collection_href),
+                Link(rel="root",       type="application/json",     href=root_href),
+                Link(rel="self",       type="application/geo+json", href=f"{collection_href}/items/{item.id}"),
+            ])
             items.append(item)
 
-    return ItemCollection(type="FeatureCollection", features=items).to_dict()
+    ic_links = Links(root=[
+        Link(rel="collection", type="application/json",     href=collection_href),
+        Link(rel="parent",     type="application/json",     href=collection_href),
+        Link(rel="root",       type="application/json",     href=root_href),
+        Link(rel="self",       type="application/geo+json", href=str(request.url)),
+    ])
+
+    return ItemCollection(type="FeatureCollection", features=items, links=ic_links).to_dict()
 
 
 class MockPgstacEdrs(MockPgstac):
@@ -197,7 +216,7 @@ class MockPgstacEdrs(MockPgstac):
     
         by_session = {}
         try:
-            return build_edrs_item_collection(client, satellites, collection_id)
+            return build_edrs_item_collection(client, satellites, collection_id, request)
         finally:
             try:
                 client.close()
@@ -262,3 +281,66 @@ async def get_edrs_collection_items(
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     return await request.app.state.pgstac_client.get_items(collection_id, request)
+
+
+# -------------------------------
+# Item by ID (pentru rel:self)
+# -------------------------------
+@router.get("/edrs/collections/{collection_id}/items/{session_id}")
+@handle_exceptions
+async def get_edrs_item(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="EDRS collection ID.", max_length=100, description="E.G. s1_pedc")],
+    session_id:    Annotated[str, FPath(title="EDRS session ID.",    max_length=200, description="E.G. DCS_01_202501270945000000112233_dat")],
+) -> dict:
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+
+    cfg = edrs_select_config(collection_id)
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    center = cfg.get("station")
+    satellites = [s.strip() for s in str(cfg.get("satellite", "")).split(",") if s.strip()]
+    if not satellites:
+        raise HTTPException(status_code=404, detail="No satellites configured for this collection")
+
+    params = load_station_config(EDRS_STATIONS_CONFIG, center)
+    client = EDRSConnector(**params)
+    client.connect()
+    try:
+        for sat in satellites:
+            entries = client.walk(f"{sat}/{session_id}") or []
+            if not entries:
+                continue
+
+            session, asset_products = _collect_session_stats(client, sat, session_id)
+
+            feature = odata_to_stac(
+                copy.deepcopy(edrs_session_odata_to_stac_template()),
+                session,
+                edrs_sessions_stac_mapper()
+            )
+            feature["collection"] = collection_id
+            item = Item(**feature)
+            _apply_asset_mapping_to_item(item, asset_products)
+
+            # Link-urile STAC (collection/parent/root/self)
+            service_base = str(request.url).split("/collections/")[0].rstrip("/")
+            collection_href = f"{service_base}/collections/{collection_id}"
+            root_href = f"{service_base}/"
+            self_href = f"{collection_href}/items/{item.id}"
+            item.links = Links(root=[
+                Link(rel="collection", type="application/json",     href=collection_href),
+                Link(rel="parent",     type="application/json",     href=collection_href),
+                Link(rel="root",       type="application/json",     href=root_href),
+                Link(rel="self",       type="application/geo+json", href=self_href),
+            ])
+            return item.to_dict()
+
+        raise HTTPException(status_code=404, detail=f"Session {session_id!r} not found in collection {collection_id!r}")
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
