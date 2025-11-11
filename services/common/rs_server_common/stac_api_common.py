@@ -357,7 +357,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Merge pagination parameters into input params.
             # Convert lists with one element into this single value.
             for key, values in query_params.items():
-                if key not in ("limit", "page", "sortby"):
+                if key not in ("limit", "page", "sortby", "bbox"):
                     continue
                 if isinstance(values, list) and (len(values) == 1):
                     params[key] = values[0]
@@ -447,6 +447,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     "'YYYY-MM-DDThh:mm:ssZ/..' or '../YYYY-MM-DDThh:mm:ssZ'",
                 ) from exception
 
+        bbox = params.pop("bbox", None)
         #
         # Read query and/or CQL filter
 
@@ -592,9 +593,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
         if self.cadip:
             stac_params["platform"] = mission  # type: ignore
+        if self.prip and bbox:
+            west, south, east, north = map(float, bbox.split(","))
+            polygon_wkt = f"POLYGON(({west} {south}, {east} {south}, {east} {north}, {west} {north}, {west} {south}))"
+            intersects_query = f"intersects={polygon_wkt}"
+            read_query(intersects_query)
 
         # Discard these search parameters
-        params.pop("bbox", None)
         params.pop("conf", None)
         params.pop("filter-lang", None)
 
