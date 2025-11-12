@@ -16,7 +16,9 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
+from services.edrs.rs_server_edrs.edrs_client import load_station_config
 from services.edrs.rs_server_edrs.edrs_connector import EDRSConnector
 
 # pylint: disable=redefined-outer-name
@@ -255,3 +257,94 @@ def test_close_with_exception(mocker, connector):
 
     connector.close()
     mock_ftp.close.assert_called_once()
+
+
+def test_load_station_config_valid(tmp_path: Path):
+    """Test loading a valid station configuration."""
+    config_data = {
+        "stations": {
+            "stationA": {
+                "authentication": {
+                    "username": "user",
+                    "password": "pass",
+                    "ca_crt": "ca.pem",
+                    "client_crt": "client.pem",
+                    "client_key": "client.key",
+                },
+                "service": {
+                    "url": "example.com",
+                    "port": 443,
+                },
+            },
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    result = load_station_config(config_path, "stationA")
+
+    assert result == {
+        "host": "example.com",
+        "port": 443,
+        "login": "user",
+        "password": "pass",
+        "ca_cert": "ca.pem",
+        "client_cert": "client.pem",
+        "client_key": "client.key",
+    }
+
+
+def test_load_station_config_stations_as_string(tmp_path: Path):
+    """Test when stations are provided as a YAML string."""
+    inner_stations = yaml.safe_dump(
+        {
+            "stationB": {
+                "authentication": {
+                    "username": "bob",
+                    "password": "secret",
+                    "ca_crt": "ca.pem",
+                    "client_crt": "crt.pem",
+                    "client_key": "key.pem",
+                },
+                "service": {"url": "srv.com", "port": 8080},
+            },
+        },
+    )
+    config_data = {"stations": inner_stations}
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    result = load_station_config(config_path, "stationB")
+    assert result["host"] == "srv.com"
+    assert result["port"] == 8080
+    assert result["login"] == "bob"
+
+
+def test_load_station_config_missing_station(tmp_path: Path):
+    """Test error when station not found in config."""
+    config_data: dict[str, dict[str, dict]] = {"stations": {"stationA": {}}}
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Station 'stationB' not found"):
+        load_station_config(config_path, "stationB")
+
+
+def test_load_station_config_missing_required_fields(tmp_path: Path):
+    """Test error when required fields are missing."""
+    config_data = {
+        "stations": {
+            "stationA": {
+                "authentication": {"username": "user"},
+                "service": {"url": "example.com"},  # port missing
+            },
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    with pytest.raises(ValueError) as excinfo:
+        load_station_config(config_path, "stationA")
+
+    assert "Missing required fields" in str(excinfo.value)
+    assert "port" in str(excinfo.value)

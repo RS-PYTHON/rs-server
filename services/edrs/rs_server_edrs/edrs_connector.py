@@ -76,7 +76,7 @@ class EDRSConnector:
             self.ftp.login(self.login, self.password)
         else:
             logger.debug("Connecting via plain FTP (no SSL)...")
-            self.ftp = FTP()  # nosec B321
+            self.ftp = FTP()  # nosec B321 # NOSONAR
             self.ftp.connect(self.host, self.port, timeout=10)
             self.ftp.login(self.login, self.password)
 

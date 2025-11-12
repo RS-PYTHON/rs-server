@@ -18,7 +18,8 @@ import os.path as osp
 from pathlib import Path
 
 import yaml
-from edrs_connector import EDRSConnector
+
+from services.edrs.rs_server_edrs.edrs_connector import EDRSConnector
 
 DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (
     Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
@@ -67,12 +68,5 @@ if __name__ == "__main__":
     client = EDRSConnector(**load_station_config(EDRS_STATIONS_CONFIG, STATION_NAME))
 
     client.connect()
-
-    print(client.walk("/S1A/DCS_01_202501270945000000112233_dat/"))
-
-    files = client.walk("/S1A/DCS_01_202501270945000000112233_dat/ch_1/")
-    for file in files:
-        if file["type"] == "file":
-            client.download(file["path"], Path.cwd() / Path(file["path"]).name)
 
     client.close()
