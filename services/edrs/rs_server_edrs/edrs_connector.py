@@ -66,9 +66,9 @@ class EDRSConnector:
         if self.use_ssl:
             logger.debug("Connecting via FTPES (explicit TLS)...")
             # EDRS uses internal certificates; hostname verification intentionally disabled.
-            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)  # NOSONAR
             if self.client_cert and self.client_key:
-                context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)  # NOSONAR
+                context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)
             context.check_hostname = False  # NOSONAR
             context.verify_mode = ssl.CERT_REQUIRED
 
