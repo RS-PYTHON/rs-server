@@ -14,10 +14,12 @@
 
 """Unit tests for the EDRSConnector class."""
 from pathlib import Path
+
 import pytest
+
 from services.edrs.rs_server_edrs.edrs_connector import EDRSConnector
 
-#pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -31,7 +33,7 @@ def connector(monkeypatch):
         password="pass",
         ca_cert="ca.pem",
         client_cert="client.crt",
-        client_key="client.key"
+        client_key="client.key",
     )
 
 
@@ -105,7 +107,7 @@ def test_walk_with_nlst(mocker, connector):
 
     def mock_cwd(arg):
         if arg == "file1.txt":
-            raise Exception("not a dir") # pylint: disable=broad-exception-raised
+            raise Exception("not a dir")  # pylint: disable=broad-exception-raised
 
     mock_ftp.cwd.side_effect = mock_cwd
     connector.ftp = mock_ftp
