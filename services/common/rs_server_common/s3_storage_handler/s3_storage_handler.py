@@ -322,7 +322,7 @@ class S3StorageHandler:
                 new_keys = []
                 for key in keys:
                     path = key.strip().lstrip("/")
-                    s3_files = self.list_s3_files_obj(bucket, path)
+                    s3_files = self.list_s3_files_obj(bucket, path[len(f"s3://{bucket}/") :])
                     if len(s3_files) == 1 and path == s3_files[0]:
                         # If the key is a file, don't expand it
                         new_keys.append(key)
