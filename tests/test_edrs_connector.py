@@ -86,7 +86,7 @@ def test_connect_with_ssl(mocker, connector, monkeypatch):
     mock_ftps.connect.assert_called_once_with("test_host", 21, timeout=10)
     mock_ftps.auth.assert_called_once()
     mock_ftps.prot_p.assert_called_once()
-    mock_ftps.login.assert_called_once_with("user", "pass")
+    mock_ftps.login.assert_called_once_with("test_user", "value_not_a_password")
     assert connector.ftp == mock_ftps
 
 
@@ -103,7 +103,7 @@ def test_connect_without_ssl(mocker, connector):
     connector.connect()
 
     mock_ftp.connect.assert_called_once_with("test_host", 21, timeout=10)
-    mock_ftp.login.assert_called_once_with("user", "pass")
+    mock_ftp.login.assert_called_once_with("test_user", "value_not_a_password")
     assert connector.ftp == mock_ftp
 
 
