@@ -57,6 +57,8 @@ from rs_server_common.utils.utils import (
     run_in_threads,
     validate_inputs_format,
 )
+from shapely import wkt
+from shapely.geometry import box
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
@@ -601,15 +603,27 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 coords = list(map(float, bbox))
 
             west, south, east, north = coords  # pylint: disable=E0606
-            polygon_wkt = f"POLYGON(({west} {south}, {east} {south}, {east} {north}, {west} {north}, {west} {south}))"
 
+            # if 'intersects' wasn't previously set
             if "intersects" not in stac_params or not stac_params["intersects"]:
-                stac_params["intersects"] = polygon_wkt
+                stac_params["intersects"] = (box(west, south, east, north)).wkt
             else:
-                raise log_http_exception(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    "Specify either of the parameters 'bbox' or 'intesects', but not both.",
-                )
+                # will set the value of the two intersecting polygons
+                bbox_polygon = box(west, south, east, north)
+
+                # also convert the 'intersects' value
+                poly = wkt.loads(stac_params["intersects"])
+                west, south, east, north = poly.bounds
+                filter_polygon = box(west, south, east, north)
+
+                if bbox_polygon.intersects(filter_polygon):
+                    stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
+                else:
+                    stac_params.pop("intersects", None)
+                    raise log_http_exception(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        "The provided 'bbox' and 'intersects' polygons do not overlap.",
+                    )
 
         # Discard these search parameters
         params.pop("conf", None)
