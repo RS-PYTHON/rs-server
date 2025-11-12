@@ -1457,14 +1457,14 @@ usgs = ["usgs (>=0.3.6)"]
 
 [[package]]
 name = "fastapi"
-version = "0.120.4"
+version = "0.121.1"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.120.4-py3-none-any.whl", hash = "sha256:9bdf192308676480d3593e10fd05094e56d6fdc7d9283db26053d8104d5f82a0"},
-    {file = "fastapi-0.120.4.tar.gz", hash = "sha256:2d856bc847893ca4d77896d4504ffdec0fb04312b705065fca9104428eca3868"},
+    {file = "fastapi-0.121.1-py3-none-any.whl", hash = "sha256:2c5c7028bc3a58d8f5f09aecd3fd88a000ccc0c5ad627693264181a3c33aa1fc"},
+    {file = "fastapi-0.121.1.tar.gz", hash = "sha256:b6dba0538fd15dab6fe4d3e5493c3957d8a9e1e9257f56446b5859af66f32441"},
 ]
 
 [package.dependencies]
@@ -5376,7 +5376,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = "^3.11"
@@ -5393,7 +5393,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = "^3.11"
@@ -5410,7 +5410,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = "^3.11"
@@ -5428,7 +5428,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = "^3.11"
@@ -5443,7 +5443,7 @@ boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 cachetools = ">=5.5.2"
 eodag = "==v3.10.0"
-fastapi = ">=0.116.2,<0.121.0"
+fastapi = ">=0.120.0,<0.122.0"
 filelock = ">=3.16.1"
 geojson-pydantic = "2.0.0"
 httpx = "^0.28.1"
@@ -5466,7 +5466,7 @@ sqlalchemy = "^2.0.43"
 stac-fastapi-pgstac = "==6.0.0"
 stac-fastapi-types = "^6.0.0"
 stac-pydantic = "^3.4.0"
-starlette = ">=0.49.1,<0.50"
+starlette = ">=0.49.1,<0.51"
 urllib3 = ">=2.5.0"
 uvicorn = ">=0.35.0"
 
@@ -5494,7 +5494,7 @@ url = "services/edrs"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = "^3.11"
@@ -5504,10 +5504,10 @@ develop = true
 
 [package.dependencies]
 attrs = ">=25.3.0,<26.0"
-fastapi = ">=0.116.2,<0.121.0"
+fastapi = ">=0.120.0,<0.122.0"
 pyyaml = "^6.0.2"
 requests = "^2.32.5"
-starlette = ">=0.49.1,<0.50"
+starlette = ">=0.49.1,<0.51"
 uvicorn = ">=0.35.0"
 
 [package.source]
@@ -5516,7 +5516,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = "^3.11"
@@ -5533,7 +5533,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a3.post79.dev0"
+version = "1.0a3.post81.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = "^3.11"
