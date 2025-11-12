@@ -285,6 +285,8 @@ async def get_cadip_collection(
     auth_validation(request, collection_id, "read")
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
 
+
+
 @router.get(path="/edrs/collections/{collection_id}/items", response_class=GeoJSONResponse)
 @handle_exceptions
 async def get_edrs_collection_items(
@@ -305,14 +307,25 @@ async def get_edrs_collection_items(
 
     from types import SimpleNamespace
     from rs_server_common.rspy_models import ItemCollection
-    from rs_server_common.stac_api_common import MockPgstac
-    
+    from rs_server_common.stac_api_common import (
+        MockPgstac,
+        get_edrs_queryables,
+        check_input_type,
+    )
+    from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
+    from fastapi import HTTPException
+    import json, re
+    from datetime import datetime as DateTime
+
     # Read raw query parameters and resolve effective values (query string overrides function args)
     queryParams = request.query_params
     sortByExpr = queryParams.get("sortby", sortby) or "-datetime"
     limitValue = int(queryParams.get("limit", limit) or 1000)
     pageValue = int(queryParams.get("page", page) or 1)
-    
+    filterExpr = queryParams.get("filter", filter_)
+    filterLang = (queryParams.get("filter-lang", filter_lang) or "cql2-text").lower()
+    dateTimeExpr = queryParams.get("datetime", datetime)
+
     # Normalize features to plain dicts so ItemCollection.model_validate can consume them
     featuresList = []
     for f in item_collection.get("features", []) or []:
@@ -323,20 +336,168 @@ async def get_edrs_collection_items(
         elif hasattr(f, "to_dict"):
             featuresList.append(f.to_dict())
         else:
-            # Fail fast on unsupported feature types
             raise HTTPException(status_code=422, detail="Invalid feature type in collection")
-    
-    # Build an ItemCollection model from the normalized dict
+
+    # ---------- Filtering (properties + datetime). BBOX intentionally ignored (no geometries). ----------
+    queryablesRaw = get_edrs_queryables()
+    allowedProps = set(queryablesRaw.keys()) | {"id"}
+
+    # Adapt queryables for check_input_type when values are plain dicts
+    fieldInfo = {}
+    for k, v in queryablesRaw.items():
+        if hasattr(v, "type"):
+            fieldInfo[k] = v
+        elif isinstance(v, dict) and "type" in v:
+            fieldInfo[k] = SimpleNamespace(type=v["type"])
+        else:
+            fieldInfo[k] = SimpleNamespace(type="string")
+
+    conditions = []  # list of (key, value)
+
+    def add_condition(propName: str, value):
+        key = propName
+        if key.startswith("properties."):
+            key = key.split(".", 1)[1]
+        if key not in allowedProps:
+            raise HTTPException(status_code=422, detail=f"Invalid query filter property: {propName!r}")
+        # Skip type-check for id (always string), otherwise use common validator
+        if key != "id":
+            check_input_type(fieldInfo, key, value)
+        conditions.append((key, str(value)))
+
+    def parse_cql2_text(expr: str):
+        parts = re.split(r"\bAND\b", expr, flags=re.IGNORECASE)
+        for raw in parts:
+            segment = raw.strip()
+            if not segment:
+                continue
+            m = re.match(r'^([\w\:\.\-]+)\s*=\s*(.+)$', segment)
+            if not m:
+                raise HTTPException(status_code=422, detail=f"Invalid filter condition: {segment!r}")
+            left, right = m.group(1).strip(), m.group(2).strip()
+            if right.startswith(("'", '"')) and right.endswith(("'", '"')) and len(right) >= 2:
+                right = right[1:-1]
+            add_condition(left, right)
+
+    def parse_cql2_json(node):
+        if not isinstance(node, dict):
+            raise HTTPException(status_code=422, detail="Invalid CQL2-JSON filter")
+        op = str(node.get("op", "")).lower()
+        args = node.get("args", [])
+        if op == "and":
+            for a in args:
+                parse_cql2_json(a)
+        elif op in {"=", "eq"} and len(args) == 2:
+            left, right = args[0], args[1]
+            if isinstance(left, dict) and "property" in left:
+                propName = left["property"]
+            elif isinstance(left, str):
+                propName = left
+            else:
+                raise HTTPException(status_code=422, detail="Invalid CQL2-JSON left operand")
+            if isinstance(right, dict) and "literal" in right:
+                value = right["literal"]
+            else:
+                value = right
+            add_condition(propName, value)
+        else:
+            raise HTTPException(status_code=422, detail=f"Unsupported CQL2-JSON operator: {op}")
+
+    if filterExpr:
+        if filterLang in {"cql2-json", "application/cql+json"}:
+            try:
+                node = filterExpr
+                if isinstance(node, str):
+                    node = json.loads(node)
+                node = process_filter_extensions(node)
+                parse_cql2_json(node)
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=f"Invalid CQL2-JSON filter: {e}")
+        elif filterLang == "cql2-text":
+            parse_cql2_text(str(filterExpr))
+        else:
+            raise HTTPException(status_code=422, detail=f"Unsupported filter-lang: {filterLang}")
+
+    # Datetime interval parsing (ISO instant or start/end)
+    def parse_iso(val: str | None):
+        if not val:
+            return None
+        s = str(val).strip()
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        try:
+            return DateTime.fromisoformat(s)
+        except Exception:
+            try:
+                return DateTime.fromisoformat(s + "T00:00:00+00:00")
+            except Exception:
+                return None
+
+    def parse_interval(expr: str | None):
+        if not expr:
+            return None, None
+        s = str(expr).strip()
+        if "/" in s:
+            a, b = s.split("/", 1)
+            return (parse_iso(a) if a and a != ".." else None), (parse_iso(b) if b and b != ".." else None)
+        t = parse_iso(s)
+        return t, t
+
+    def intersects_time(itemStart, itemEnd, qStart, qEnd):
+        if qStart is None and qEnd is None:
+            return True
+        if itemStart is None and itemEnd is None:
+            return True
+        s = itemStart or itemEnd
+        e = itemEnd or itemStart
+        if s is None and e is None:
+            return True
+        if qStart and qEnd:
+            return (s <= qEnd) and (e >= qStart)
+        if qStart:
+            return e >= qStart
+        if qEnd:
+            return s <= qEnd
+        return True
+
+    qStart, qEnd = parse_interval(dateTimeExpr)
+
+    def match_props(feature: dict) -> bool:
+        for k, v in conditions:
+            if k == "id":
+                if str(feature.get("id", "")) != str(v):
+                    return False
+            else:
+                if str(feature.get("properties", {}).get(k, "")) != str(v):
+                    return False
+        return True
+
+    def match_datetime(feature: dict) -> bool:
+        props = feature.get("properties", {})
+        itemStart = parse_iso(props.get("start_datetime") or props.get("datetime"))
+        itemEnd = parse_iso(props.get("end_datetime") or props.get("datetime"))
+        return intersects_time(itemStart, itemEnd, qStart, qEnd)
+
+    filteredFeatures = [
+        f for f in featuresList
+        if match_props(f) and match_datetime(f)
+    ]
+
+    # Build an ItemCollection model from filtered features
     itemCollectionModel = ItemCollection.model_validate({
         "type": item_collection.get("type", "FeatureCollection"),
-        "features": featuresList,
+        "features": filteredFeatures,
     })
-    
+
     # Create a lightweight context with the attributes expected by MockPgstac.paginate
     pagingCtx = SimpleNamespace(sortby=str(sortByExpr), limit=limitValue, page=pageValue)
-    
+
     # Delegate sorting + slicing to the existing paginate implementation
     return MockPgstac.paginate(pagingCtx, itemCollectionModel)
+
+
 
 
 @router.get(path="/edrs/collections/{collection_id}/items/{session_id}", response_class=GeoJSONResponse)
