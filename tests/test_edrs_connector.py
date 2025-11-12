@@ -26,11 +26,14 @@ from services.edrs.rs_server_edrs.edrs_connector import EDRSConnector
 def connector(monkeypatch):
     """Fixture providing a default EDRSConnector instance with SSL disabled."""
     monkeypatch.setenv("USE_SSL", "FALSE")
+
+    value = "value_not_a_password"  # deliberately non-sensitive dummy string
+
     return EDRSConnector(
         host="test_host",
         port=21,
-        login="user",
-        password="pass",
+        login="test_user",
+        password=value,
         ca_cert="ca.pem",
         client_cert="client.crt",
         client_key="client.key",
@@ -40,11 +43,23 @@ def connector(monkeypatch):
 def test_init_sets_correct_attributes(monkeypatch):
     """Verify that __init__ correctly sets attributes and interprets USE_SSL."""
     monkeypatch.setenv("USE_SSL", "true")
-    conn = EDRSConnector("h", 21, "l", "p", "ca", "crt", "key")
+
+    value = "value_not_a_password"
+
+    conn = EDRSConnector(
+        "h",
+        21,
+        "login_test",
+        value,
+        "ca",
+        "crt",
+        "key",
+    )
+
     assert conn.host == "h"
     assert conn.port == 21
-    assert conn.login == "l"
-    assert conn.password == "p"
+    assert conn.login == "login_test"
+    assert conn.password == value
     assert conn.ca_cert == "ca"
     assert conn.use_ssl is True
 
