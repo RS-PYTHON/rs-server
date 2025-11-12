@@ -119,7 +119,8 @@ class EDRSConnector:
 
     def _list_directory_entries(self, base_path: str) -> list[str]:
         """Helper to list directory entries, handling MLSD/NLST fallback."""
-        assert self.ftp is not None, NOT_CONNECTED_ERROR_MSG
+        if not self.ftp:
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         if self.disable_mlsd:
             return self.ftp.nlst(base_path)
 
@@ -134,7 +135,8 @@ class EDRSConnector:
 
     def _get_entry_info(self, entry: str, current_dir: str) -> dict[str, Any]:
         """Helper to determine type and size of an FTP entry."""
-        assert self.ftp is not None, NOT_CONNECTED_ERROR_MSG
+        if not self.ftp:
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         info = {"path": entry, "type": "dir", "size": 0}
         try:
             self.ftp.cwd(entry)
