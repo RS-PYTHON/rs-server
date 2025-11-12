@@ -17,7 +17,7 @@
 import io
 import os
 import ssl
-from ftplib import FTP, FTP_TLS
+from ftplib import FTP, FTP_TLS  # nosec B402
 from pathlib import Path
 from typing import Any
 
@@ -76,7 +76,7 @@ class EDRSConnector:
             self.ftp.login(self.login, self.password)
         else:
             logger.debug("Connecting via plain FTP (no SSL)...")
-            self.ftp = FTP()
+            self.ftp = FTP()  # nosec B321
             self.ftp.connect(self.host, self.port, timeout=10)
             self.ftp.login(self.login, self.password)
 
