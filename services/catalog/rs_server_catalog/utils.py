@@ -116,23 +116,13 @@ def delete_s3_files(s3_files_to_be_deleted):
         logger.error("Failed to create the s3 handler when trying to delete the s3 files")
         return False
 
-    # delete any temp file file or a file from the catalog for which the asset has been removed
-    for s3_key in s3_files_to_be_deleted:
-        try:
-            if not is_s3_path(s3_key):
-                logger.error(
-                    f"The requested s3 key {s3_key} for deletion does not match the "
-                    "correct S3 path pattern (s3://bucket_name/path/to/obj). Skipping",
-                )
-                continue
-            key_array = s3_key.split("/")
-            s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
-        except RuntimeError as rte:
-            logger.exception(
-                f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
-                f"Reason: {rte}. However, the process will still continue !",
-            )
-            continue
+    try:
+        s3_handler.delete_keys_from_s3(None, s3_files_to_be_deleted)
+    except RuntimeError as rte:
+        logger.exception(
+            f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
+        )
+        return False
     return True
 
 

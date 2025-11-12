@@ -220,7 +220,7 @@ class DataLifecycle:
             for bucket_name, bucket_keys in bucket_info.items():
                 # Use a new s3 S3StorageHandler instance for every task as it is not thread-safe
                 task_group.create_task(
-                    S3StorageHandler().adelete_files_from_s3(bucket_name, bucket_keys),
+                    S3StorageHandler().adelete_keys_from_s3(bucket_name, bucket_keys),
                 )
         self.logger.debug("Finished deleting s3 keys")
 
