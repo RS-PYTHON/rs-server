@@ -7,6 +7,7 @@ import stac_pydantic
 from stac_pydantic import Item, ItemCollection
 from stac_pydantic.shared import Asset
 from stac_pydantic.links import Link, Links
+from stac_fastapi.api.models import GeoJSONResponse
 
 from pathlib import Path
 
@@ -15,7 +16,19 @@ from xml.etree import ElementTree as ET
 import re
 
 from rs_server_common.authentication import authentication
-from rs_server_common.stac_api_common import MockPgstac, handle_exceptions
+from rs_server_common.stac_api_common import (
+    MockPgstac,
+    handle_exceptions,
+    CollectionType,
+    BBoxType,
+    DateTimeType,
+    FilterType,
+    FilterLangType,
+    SortByType,
+    LimitType,
+    PageType,
+    sort_feature_collection,
+)
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import map_stac_platform, odata_to_stac
 
@@ -272,75 +285,86 @@ async def get_cadip_collection(
     auth_validation(request, collection_id, "read")
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
 
-@router.get("/edrs/collections/{collection_id}/items")
+@router.get(path="/edrs/collections/{collection_id}/items", response_class=GeoJSONResponse)
 @handle_exceptions
 async def get_edrs_collection_items(
     request: Request,
-    collection_id: Annotated[str, FPath(title="EDRS collection ID.", max_length=100, description="E.G. s1_pedc")],
+    collection_id: CollectionType,
+    bbox: BBoxType = None,
+    datetime: DateTimeType = None,
+    filter_: FilterType = None,
+    filter_lang: FilterLangType = "cql2-text",
+    sortby: SortByType = None,
+    limit: LimitType = None,
+    page: PageType = None,
 ) -> dict:
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
-    return await request.app.state.pgstac_client.get_items(collection_id, request)
+
+    item_collection: dict = await request.app.state.pgstac_client.get_items(collection_id, request)
+
+    from types import SimpleNamespace
+    from rs_server_common.rspy_models import ItemCollection
+    from rs_server_common.stac_api_common import MockPgstac
+    
+    # Read raw query parameters and resolve effective values (query string overrides function args)
+    queryParams = request.query_params
+    sortByExpr = queryParams.get("sortby", sortby) or "-datetime"
+    limitValue = int(queryParams.get("limit", limit) or 1000)
+    pageValue = int(queryParams.get("page", page) or 1)
+    
+    # Normalize features to plain dicts so ItemCollection.model_validate can consume them
+    featuresList = []
+    for f in item_collection.get("features", []) or []:
+        if isinstance(f, dict):
+            featuresList.append(f)
+        elif hasattr(f, "model_dump"):
+            featuresList.append(f.model_dump())
+        elif hasattr(f, "to_dict"):
+            featuresList.append(f.to_dict())
+        else:
+            # Fail fast on unsupported feature types
+            raise HTTPException(status_code=422, detail="Invalid feature type in collection")
+    
+    # Build an ItemCollection model from the normalized dict
+    itemCollectionModel = ItemCollection.model_validate({
+        "type": item_collection.get("type", "FeatureCollection"),
+        "features": featuresList,
+    })
+    
+    # Create a lightweight context with the attributes expected by MockPgstac.paginate
+    pagingCtx = SimpleNamespace(sortby=str(sortByExpr), limit=limitValue, page=pageValue)
+    
+    # Delegate sorting + slicing to the existing paginate implementation
+    return MockPgstac.paginate(pagingCtx, itemCollectionModel)
 
 
-# -------------------------------
-# Item by ID (pentru rel:self)
-# -------------------------------
-@router.get("/edrs/collections/{collection_id}/items/{session_id}")
+@router.get(path="/edrs/collections/{collection_id}/items/{session_id}", response_class=GeoJSONResponse)
 @handle_exceptions
 async def get_edrs_item(
     request: Request,
-    collection_id: Annotated[str, FPath(title="EDRS collection ID.", max_length=100, description="E.G. s1_pedc")],
-    session_id:    Annotated[str, FPath(title="EDRS session ID.",    max_length=200, description="E.G. DCS_01_202501270945000000112233_dat")],
+    collection_id: CollectionType,
+    session_id: str,
 ) -> dict:
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
 
-    cfg = edrs_select_config(collection_id)
-    if not cfg:
-        raise HTTPException(status_code=404, detail="Collection not found")
+    # Reuse the existing collection builder to guarantee identical STAC mapping
+    item_collection = await request.app.state.pgstac_client.get_items(collection_id, request)
+    features = item_collection.get("features", [])
 
-    center = cfg.get("station")
-    satellites = [s.strip() for s in str(cfg.get("satellite", "")).split(",") if s.strip()]
-    if not satellites:
-        raise HTTPException(status_code=404, detail="No satellites configured for this collection")
+    # Session IDs in items are stored without the "_dat" suffix
+    wanted = session_id.removesuffix("_dat")
+    feature = next((f for f in features if f.get("id") == wanted), None)
 
-    params = load_station_config(EDRS_STATIONS_CONFIG, center)
-    client = EDRSConnector(**params)
-    client.connect()
-    try:
-        for sat in satellites:
-            entries = client.walk(f"{sat}/{session_id}") or []
-            if not entries:
-                continue
+    if not feature:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session '{session_id}' not found in collection '{collection_id}'",
+        )
 
-            session, asset_products = _collect_session_stats(client, sat, session_id)
+    # Return the single STAC Item (Feature)
+    return feature
 
-            feature = odata_to_stac(
-                copy.deepcopy(edrs_session_odata_to_stac_template()),
-                session,
-                edrs_sessions_stac_mapper()
-            )
-            feature["collection"] = collection_id
-            item = Item(**feature)
-            _apply_asset_mapping_to_item(item, asset_products)
 
-            # Link-urile STAC (collection/parent/root/self)
-            service_base = str(request.url).split("/collections/")[0].rstrip("/")
-            collection_href = f"{service_base}/collections/{collection_id}"
-            root_href = f"{service_base}/"
-            self_href = f"{collection_href}/items/{item.id}"
-            item.links = Links(root=[
-                Link(rel="collection", type="application/json",     href=collection_href),
-                Link(rel="parent",     type="application/json",     href=collection_href),
-                Link(rel="root",       type="application/json",     href=root_href),
-                Link(rel="self",       type="application/geo+json", href=self_href),
-            ])
-            return item.to_dict()
 
-        raise HTTPException(status_code=404, detail=f"Session {session_id!r} not found in collection {collection_id!r}")
-    finally:
-        try:
-            client.close()
-        except Exception:
-            pass
