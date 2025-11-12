@@ -594,10 +594,22 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if self.cadip:
             stac_params["platform"] = mission  # type: ignore
         if self.prip and bbox:
-            west, south, east, north = map(float, bbox.split(","))
+
+            if isinstance(bbox, str):
+                coords = [float(x) for x in bbox.split(",")]
+            elif isinstance(bbox, list):
+                coords = list(map(float, bbox))
+
+            west, south, east, north = coords  # pylint: disable=E0606
             polygon_wkt = f"POLYGON(({west} {south}, {east} {south}, {east} {north}, {west} {north}, {west} {south}))"
-            intersects_query = f"intersects={polygon_wkt}"
-            read_query(intersects_query)
+
+            if "intersects" not in stac_params or not stac_params["intersects"]:
+                stac_params["intersects"] = polygon_wkt
+            else:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    "Specify either of the parameters 'bbox' or 'intesects', but not both.",
+                )
 
         # Discard these search parameters
         params.pop("conf", None)
