@@ -217,10 +217,10 @@ class DataLifecycle:
         # automatically the files on the buckets.
         # This is done 24 hours after the expiration delay set on the config map.
         async with asyncio.TaskGroup() as task_group:
-            for bucket_name, bucket_keys in bucket_info.items():
+            for _, bucket_keys in bucket_info.items():
                 # Use a new s3 S3StorageHandler instance for every task as it is not thread-safe
                 task_group.create_task(
-                    S3StorageHandler().adelete_keys_from_s3(bucket_name, bucket_keys),
+                    S3StorageHandler().adelete_keys_from_s3(bucket_keys),
                 )
         self.logger.debug("Finished deleting s3 keys")
 

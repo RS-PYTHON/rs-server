@@ -117,7 +117,7 @@ def delete_s3_files(s3_files_to_be_deleted):
         return False
 
     try:
-        s3_handler.delete_keys_from_s3(None, s3_files_to_be_deleted)
+        s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
     except RuntimeError as rte:
         logger.exception(
             f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
