@@ -183,22 +183,6 @@ class TestDeleteS3Files:
         mock_s3_handler.delete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
         mock_logger.error.assert_not_called()
 
-    @pytest.mark.skip(reason="Code under test has been modified to not check for invalid s3 paths")
-    def test_delete_s3_files_invalid_s3_path(self, mocker):
-        """Test the behavior when an invalid S3 path is provided."""
-        mock_logger = mocker.patch("rs_server_catalog.utils.logger")
-        mock_s3_handler = mocker.patch("rs_server_catalog.utils.get_s3_handler")
-        mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=False)
-
-        result = delete_s3_files(["invalid_path"])
-
-        assert result is True
-        mock_s3_handler.delete_keys_from_s3.assert_not_called()
-        mock_logger.error.assert_called_once_with(
-            "The requested s3 key invalid_path for deletion does not match the "
-            "correct S3 path pattern (s3://bucket_name/path/to/obj). Skipping",
-        )
-
     def test_delete_s3_files_deletion_runtime_error(self, mocker):
         """Test the behavior when a RuntimeError occurs during deletion."""
         mock_logger = mocker.patch("rs_server_catalog.utils.logger")
