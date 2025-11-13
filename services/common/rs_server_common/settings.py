@@ -18,6 +18,7 @@ import os
 from os import environ as env
 
 from httpx import AsyncClient
+from stac_fastapi.pgstac.config import Settings
 from starlette.requests import Request
 
 #########################
@@ -46,8 +47,9 @@ LOCAL_MODE: bool = env_bool("RSPY_LOCAL_MODE", default=False)
 # Cluster mode is the opposite of local mode
 CLUSTER_MODE: bool = not LOCAL_MODE
 
-# STAC browser URL(s), as seen from the user browser, separated by commas e.g. http://url1,http://url2
-CORS_ORIGINS: list[str] = [url.strip() for url in os.environ.get("CORS_ORIGINS", "").split(";") if url]
+# STAC browser URL(s), as seen from the user browser.
+# They are parsed by pydantic from the environment variable CORS_ORIGINS
+CORS_ORIGINS: list[str] = Settings().cors_origins
 
 
 def request_from_stacbrowser(request: Request) -> bool:
