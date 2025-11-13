@@ -235,7 +235,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             for queryable_name, queryable_data in get_prip_queryables().items():
                 queryables.update({queryable_name: QueryableField(**queryable_data)})
             return queryables
-        
+
         if self.edrs:
             for queryable_name, queryable_data in get_edrs_queryables().items():
                 queryables.update({queryable_name: QueryableField(**queryable_data)})

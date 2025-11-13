@@ -1,39 +1,47 @@
 import copy
-from typing import Optional, Literal, Annotated
-from fastapi import APIRouter, Request, HTTPException, status
-from fastapi import Path as FPath
-from fastapi.responses import RedirectResponse
-import stac_pydantic
-from stac_pydantic import Item, ItemCollection
-from stac_pydantic.shared import Asset
-from stac_pydantic.links import Link, Links
-from stac_fastapi.api.models import GeoJSONResponse
-
+import re
 from pathlib import Path
-
+from typing import Annotated, Literal, Optional
 from xml.etree import ElementTree as ET
 
-import re
-
+import stac_pydantic
+from fastapi import APIRouter, HTTPException
+from fastapi import Path as FPath
+from fastapi import Request, status
+from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
 from rs_server_common.stac_api_common import (
-    MockPgstac,
-    handle_exceptions,
-    CollectionType,
     BBoxType,
+    CollectionType,
     DateTimeType,
-    FilterType,
     FilterLangType,
-    SortByType,
+    FilterType,
     LimitType,
+    MockPgstac,
     PageType,
+    SortByType,
+    handle_exceptions,
     sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import map_stac_platform, odata_to_stac
-
-from rs_server_edrs.edrs_utils import edrs_read_conf, edrs_select_config, edrs_session_odata_to_stac_template, edrs_sessions_stac_mapper, edrs_stac_mapper, select_config
-from rs_server_edrs.edrs_client import EDRSConnector, load_station_config, EDRS_STATIONS_CONFIG
+from rs_server_edrs.edrs_client import (
+    EDRS_STATIONS_CONFIG,
+    EDRSConnector,
+    load_station_config,
+)
+from rs_server_edrs.edrs_utils import (
+    edrs_read_conf,
+    edrs_select_config,
+    edrs_session_odata_to_stac_template,
+    edrs_sessions_stac_mapper,
+    edrs_stac_mapper,
+    select_config,
+)
+from stac_fastapi.api.models import GeoJSONResponse
+from stac_pydantic import Item, ItemCollection
+from stac_pydantic.links import Link, Links
+from stac_pydantic.shared import Asset
 
 logger = Logging.default(__name__)
 router = APIRouter()
@@ -48,34 +56,23 @@ def _platform_constellation_from_code(code: str) -> tuple[str | None, str | None
                 return plat, info.get("constellation")
     return None, None
 
+
 def _iso(s: str | None) -> str | None:
-    if not s: return None
+    if not s:
+        return None
     # normalize "2024-04-10T08:37:00Z" -> ISO with 'Z'
-    return s.replace("+00:00","Z")
+    return s.replace("+00:00", "Z")
+
 
 def _parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None, str | None]:
     block = dsib.get("DCSU_Session_Information_Block") or {}
-    start = (
-        block.get("time_start")
-        or block.get("start_time")
-        or block.get("start_datetime")
-    )
+    start = block.get("time_start") or block.get("start_time") or block.get("start_datetime")
 
-    stop = (
-        block.get("time_stop")
-        or block.get("stop_time")
-        or block.get("end_datetime")
-    )
+    stop = block.get("time_stop") or block.get("stop_time") or block.get("end_datetime")
 
-    created = (
-        block.get("time_created")
-        or block.get("created")
-    )
+    created = block.get("time_created") or block.get("created")
 
-    finished = (
-        block.get("time_finished")
-        or block.get("finished")
-    )
+    finished = block.get("time_finished") or block.get("finished")
 
     # fallbacks consistent with how STAC Item is built
     if not created:
@@ -85,46 +82,56 @@ def _parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, st
 
     return None, _iso(start), _iso(stop), _iso(created), _iso(finished)
 
+
 def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list[dict]]:
     """Returns (session_odata, assets_products)."""
     ch_entries = client.walk(f"{sat}/{session_id}") or []
-    channel_dirs = [e["path"] for e in ch_entries if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))]
-
+    channel_dirs = [
+        e["path"] for e in ch_entries if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))
+    ]
 
     starts, stops, gens = [], [], []
     assets_products: list[dict] = []
     platform_name, constellation = _platform_constellation_from_code(sat)
 
     for ch_dir in channel_dirs:
-        ch_name = ch_dir.rsplit("/",1)[-1]   # ch_1
+        ch_name = ch_dir.rsplit("/", 1)[-1]  # ch_1
         ch_num = int(ch_name.split("_")[1]) if "_" in ch_name else None
 
         files = client.walk(f"{sat}/{session_id}/{ch_name}") or []
         # DSIB
-        dsib_entry = next((f for f in files if f.get("type")=="file" and f.get("path","").lower().endswith("_dsib.xml")), None)
+        dsib_entry = next(
+            (f for f in files if f.get("type") == "file" and f.get("path", "").lower().endswith("_dsib.xml")),
+            None,
+        )
         dsib_dict = None
         if dsib_entry:
             dsib_dict = client.read_file(dsib_entry["path"])
         # time din DSIB
         if dsib_dict:
             sat_code, start, stop, created, finished = _parse_dsib_dict(dsib_dict)
-            if start: starts.append(start)
-            if stop:  stops.append(stop)
-            if created: gens.append(created)
+            if start:
+                starts.append(start)
+            if stop:
+                stops.append(stop)
+            if created:
+                gens.append(created)
 
         # assets din walk (.raw)
         for f in files:
-            p = f.get("path","")
-            if f.get("type")=="file" and p.lower().endswith(".raw"):
-                assets_products.append({
-                    "SessionId": session_id.removesuffix("_dat"),
-                    "File_Name": Path(p).name,
-                    "Size_Bytes": int(f.get("size") or 0),
-                    "href": p,                 # absolut ftp
-                    "Channel": ch_num,
-                    "Created": gens[-1] if gens else None,
-                    "Updated": gens[-1] if gens else None
-                })
+            p = f.get("path", "")
+            if f.get("type") == "file" and p.lower().endswith(".raw"):
+                assets_products.append(
+                    {
+                        "SessionId": session_id.removesuffix("_dat"),
+                        "File_Name": Path(p).name,
+                        "Size_Bytes": int(f.get("size") or 0),
+                        "href": p,  # absolut ftp
+                        "Channel": ch_num,
+                        "Created": gens[-1] if gens else None,
+                        "Updated": gens[-1] if gens else None,
+                    },
+                )
 
     session_odata = {
         "SessionId": session_id.removesuffix("_dat"),
@@ -133,9 +140,10 @@ def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, lis
         "MinCreated": min(gens) if gens else None,
         "MaxFinished": max(gens) if gens else None,  # fallback to Generation_Time
         "Platform": platform_name,
-        "Constellation": constellation
+        "Constellation": constellation,
     }
     return session_odata, assets_products
+
 
 def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]:
     m = re.fullmatch(r"ch_(\d+)", ch_name)
@@ -146,15 +154,18 @@ def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]
         p = f.get("path", "")
         if f.get("type") == "file" and p.lower().endswith(".raw"):
             fname = Path(p).name
-            assets.append((
-                fname,
-                {
-                    "path": p,
-                    "channel": channel,
-                    "file:size": int(f.get("size") or 0),
-                },
-            ))
+            assets.append(
+                (
+                    fname,
+                    {
+                        "path": p,
+                        "channel": channel,
+                        "file:size": int(f.get("size") or 0),
+                    },
+                ),
+            )
     return assets
+
 
 def _apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
     mapper = edrs_stac_mapper()
@@ -165,9 +176,11 @@ def _apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
         key = a.get(key_field)
         if not key:
             continue
-        out = {ok: (a.get(spec) if isinstance(spec, str) else spec)
-               for ok, spec in out_specs.items()
-               if not (isinstance(spec, str) and a.get(spec) is None)}
+        out = {
+            ok: (a.get(spec) if isinstance(spec, str) else spec)
+            for ok, spec in out_specs.items()
+            if not (isinstance(spec, str) and a.get(spec) is None)
+        }
         item.assets[key] = out
 
 
@@ -182,18 +195,21 @@ def build_edrs_item_collection(client, satellites: list[str], collection_id: str
         entries = client.walk(sat) or []
 
         # collect session directories
-        session_dirs = [e["path"] for e in entries if e.get("type") == "dir" and 
-                        re.fullmatch(fr"/NOMINAL/{re.escape(sat)}/DCS_\d+_\d+_dat", e.get("path",""))]
+        session_dirs = [
+            e["path"]
+            for e in entries
+            if e.get("type") == "dir" and re.fullmatch(rf"/NOMINAL/{re.escape(sat)}/DCS_\d+_\d+_dat", e.get("path", ""))
+        ]
 
         for sess_path in session_dirs:
             session_id = Path(sess_path).name
-            
+
             session, asset_products = _collect_session_stats(client, sat, session_id)
 
             feature = odata_to_stac(
                 copy.deepcopy(edrs_session_odata_to_stac_template()),
                 session,
-                edrs_sessions_stac_mapper()
+                edrs_sessions_stac_mapper(),
             )
 
             feature["collection"] = collection_id
@@ -201,27 +217,32 @@ def build_edrs_item_collection(client, satellites: list[str], collection_id: str
 
             _apply_asset_mapping_to_item(item, asset_products)
             self_href = f"{collection_href}/items/{item.id}"
-            item.links = Links(root=[
-                Link(rel="collection", type="application/json",     href=collection_href),
-                Link(rel="parent",     type="application/json",     href=collection_href),
-                Link(rel="root",       type="application/json",     href=root_href),
-                Link(rel="self",       type="application/geo+json", href=f"{collection_href}/items/{item.id}"),
-            ])
+            item.links = Links(
+                root=[
+                    Link(rel="collection", type="application/json", href=collection_href),
+                    Link(rel="parent", type="application/json", href=collection_href),
+                    Link(rel="root", type="application/json", href=root_href),
+                    Link(rel="self", type="application/geo+json", href=f"{collection_href}/items/{item.id}"),
+                ],
+            )
             items.append(item)
 
-    ic_links = Links(root=[
-        Link(rel="collection", type="application/json",     href=collection_href),
-        Link(rel="parent",     type="application/json",     href=collection_href),
-        Link(rel="root",       type="application/json",     href=root_href),
-        Link(rel="self",       type="application/geo+json", href=str(request.url)),
-    ])
+    ic_links = Links(
+        root=[
+            Link(rel="collection", type="application/json", href=collection_href),
+            Link(rel="parent", type="application/json", href=collection_href),
+            Link(rel="root", type="application/json", href=root_href),
+            Link(rel="self", type="application/geo+json", href=str(request.url)),
+        ],
+    )
 
     return ItemCollection(type="FeatureCollection", features=items, links=ic_links).to_dict()
 
 
 class MockPgstacEdrs(MockPgstac):
     """pgSTAC mock for EDRS (collections from YAML)."""
-    def __init__(self, request: Optional[Request] = None, readwrite: Optional[Literal["r","w"]] = None):
+
+    def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         super().__init__(
             request=request,
             readwrite=readwrite,
@@ -232,6 +253,7 @@ class MockPgstacEdrs(MockPgstac):
             map_mission=lambda *_: None,
         )
         self.sortby = "id"
+
     async def process_search(self, request: Request) -> dict:
         raise HTTPException(status_code=404, detail="EDRS does not support /search. Use /edrs/collections/{id}/items.")
 
@@ -239,16 +261,16 @@ class MockPgstacEdrs(MockPgstac):
         cfg = edrs_select_config(collection_id)
         if not cfg:
             raise HTTPException(status_code=404, detail="Collection not found")
-    
+
         center = cfg.get("station")
         satellites = [s.strip() for s in str(cfg.get("satellite", "")).split(",") if s.strip()]
         if not satellites:
             return {"type": "FeatureCollection", "features": []}
-    
+
         params = load_station_config(EDRS_STATIONS_CONFIG, center)
         client = EDRSConnector(**params)
         client.connect()
-    
+
         by_session = {}
         try:
             return build_edrs_item_collection(client, satellites, collection_id, request)
@@ -257,7 +279,6 @@ class MockPgstacEdrs(MockPgstac):
                 client.close()
             except Exception:
                 pass
-
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -284,11 +305,13 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
 async def home():
     return RedirectResponse("/edrs")
 
+
 @router.get("/edrs")
 async def get_root_catalog(request: Request):
     logger.info("Starting %s", request.url.path)
     authentication.auth_validation("edrs", "landing_page", request=request)
     return await request.app.state.pgstac_client.landing_page(request=request)
+
 
 @router.get("/edrs/collections")
 async def get_allowed_edrs_collections(request: Request) -> dict:
@@ -296,17 +319,16 @@ async def get_allowed_edrs_collections(request: Request) -> dict:
     authentication.auth_validation("edrs", "landing_page", request=request)
     return await request.app.state.pgstac_client.all_collections(request=request)
 
+
 @router.get("/edrs/collections/{collection_id}")
 async def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="EDRS collection ID.", max_length=100, description="E.G. s1_pedc")],
 ) -> list[dict] | dict | stac_pydantic.Collection:
-    """
-    """
+    """ """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
-
 
 
 @router.get(path="/edrs/collections/{collection_id}/items", response_class=GeoJSONResponse)
@@ -327,17 +349,19 @@ async def get_edrs_collection_items(
 
     item_collection: dict = await request.app.state.pgstac_client.get_items(collection_id, request)
 
+    import json
+    import re
+    from datetime import datetime as DateTime
     from types import SimpleNamespace
+
+    from fastapi import HTTPException
     from rs_server_common.rspy_models import ItemCollection
     from rs_server_common.stac_api_common import (
         MockPgstac,
-        get_edrs_queryables,
         check_input_type,
+        get_edrs_queryables,
     )
     from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
-    from fastapi import HTTPException
-    import json, re
-    from datetime import datetime as DateTime
 
     # Read raw query parameters and resolve effective values (query string overrides function args)
     queryParams = request.query_params
@@ -393,7 +417,7 @@ async def get_edrs_collection_items(
             segment = raw.strip()
             if not segment:
                 continue
-            m = re.match(r'^([\w\:\.\-]+)\s*=\s*(.+)$', segment)
+            m = re.match(r"^([\w\:\.\-]+)\s*=\s*(.+)$", segment)
             if not m:
                 raise HTTPException(status_code=422, detail=f"Invalid filter condition: {segment!r}")
             left, right = m.group(1).strip(), m.group(2).strip()
@@ -502,24 +526,21 @@ async def get_edrs_collection_items(
         itemEnd = parse_iso(props.get("end_datetime") or props.get("datetime"))
         return intersects_time(itemStart, itemEnd, qStart, qEnd)
 
-    filteredFeatures = [
-        f for f in featuresList
-        if match_props(f) and match_datetime(f)
-    ]
+    filteredFeatures = [f for f in featuresList if match_props(f) and match_datetime(f)]
 
     # Build an ItemCollection model from filtered features
-    itemCollectionModel = ItemCollection.model_validate({
-        "type": item_collection.get("type", "FeatureCollection"),
-        "features": filteredFeatures,
-    })
+    itemCollectionModel = ItemCollection.model_validate(
+        {
+            "type": item_collection.get("type", "FeatureCollection"),
+            "features": filteredFeatures,
+        },
+    )
 
     # Create a lightweight context with the attributes expected by MockPgstac.paginate
     pagingCtx = SimpleNamespace(sortby=str(sortByExpr), limit=limitValue, page=pageValue)
 
     # Delegate sorting + slicing to the existing paginate implementation
     return MockPgstac.paginate(pagingCtx, itemCollectionModel)
-
-
 
 
 @router.get(path="/edrs/collections/{collection_id}/items/{session_id}", response_class=GeoJSONResponse)
@@ -548,6 +569,3 @@ async def get_edrs_item(
 
     # Return the single STAC Item (Feature)
     return feature
-
-
-

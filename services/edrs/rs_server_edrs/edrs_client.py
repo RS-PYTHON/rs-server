@@ -18,7 +18,6 @@ import os.path as osp
 from pathlib import Path
 
 import yaml
-
 from rs_server_edrs.edrs_connector import EDRSConnector
 
 DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (
