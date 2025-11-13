@@ -53,15 +53,37 @@ def _iso(s: str | None) -> str | None:
     # normalize "2024-04-10T08:37:00Z" -> ISO with 'Z'
     return s.replace("+00:00","Z")
 
-def _parse_dsib_dict(dsib: dict) -> tuple[str|None,str|None,str|None,str|None,str|None]:
-    hdr = dsib.get("DSIB",{}).get("Header",{})
-    acq = dsib.get("DSIB",{}).get("Acquisition_Info",{})
-    sat = hdr.get("Satellite")
-    created = hdr.get("Generation_Time")
-    start = acq.get("Start_Time")
-    stop = acq.get("End_Time")
-    finished = hdr.get("Generation_Time")
-    return sat, _iso(start), _iso(stop), _iso(created), _iso(finished)
+def _parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None, str | None]:
+    block = dsib.get("DCSU_Session_Information_Block") or {}
+    start = (
+        block.get("time_start")
+        or block.get("start_time")
+        or block.get("start_datetime")
+    )
+
+    stop = (
+        block.get("time_stop")
+        or block.get("stop_time")
+        or block.get("end_datetime")
+    )
+
+    created = (
+        block.get("time_created")
+        or block.get("created")
+    )
+
+    finished = (
+        block.get("time_finished")
+        or block.get("finished")
+    )
+
+    # fallbacks consistent with how STAC Item is built
+    if not created:
+        created = finished or stop or start
+    if not finished:
+        finished = created or stop or start
+
+    return None, _iso(start), _iso(stop), _iso(created), _iso(finished)
 
 def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list[dict]]:
     """Returns (session_odata, assets_products)."""
