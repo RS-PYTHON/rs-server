@@ -999,6 +999,7 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
     files_to_be_deleted = [
         f"file_to_be_deleted_{i}.txt" for i in range(1 if single_file else (2 * max_delete_files + 1))
     ]
+    keys_to_be_deleted = [f"s3://{bucket}/{file}" for file in files_to_be_deleted]
     s3_handler.s3_client.create_bucket(Bucket=bucket)
     for file in files_to_be_deleted:
         s3_handler.s3_client.put_object(Bucket=bucket, Key=file, Body="testing\n")
@@ -1007,7 +1008,7 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
             s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
         else:
             spy = mocker.spy(s3_handler.s3_client, "delete_objects")
-            await s3_handler.adelete_keys_from_s3(files_to_be_deleted)
+            await s3_handler.adelete_keys_from_s3(keys_to_be_deleted)
             assert spy.call_count == 3  # because we uploaded 2 * MAX_DELETE_FILES + 1 files
     except RuntimeError:
         server.stop()
@@ -1040,7 +1041,7 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
             if single_file:
                 s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
             else:
-                await s3_handler.adelete_keys_from_s3(files_to_be_deleted)
+                await s3_handler.adelete_keys_from_s3(keys_to_be_deleted)
         except RuntimeError:
             server.stop()
             assert False, "s3_handler.delete_file(s)_from_s3 raised exception !"
