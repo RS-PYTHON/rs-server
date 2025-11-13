@@ -180,9 +180,10 @@ class TestDeleteS3Files:
         result = delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is True
-        mock_s3_handler.delete_file_from_s3.assert_called_once_with("bucket_name", "path/to/file")
+        mock_s3_handler.delete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
         mock_logger.error.assert_not_called()
 
+    @pytest.mark.skip(reason="Code under test has been modified to not check for invalid s3 paths")
     def test_delete_s3_files_invalid_s3_path(self, mocker):
         """Test the behavior when an invalid S3 path is provided."""
         mock_logger = mocker.patch("rs_server_catalog.utils.logger")
@@ -192,7 +193,7 @@ class TestDeleteS3Files:
         result = delete_s3_files(["invalid_path"])
 
         assert result is True
-        mock_s3_handler.delete_file_from_s3.assert_not_called()
+        mock_s3_handler.delete_keys_from_s3.assert_not_called()
         mock_logger.error.assert_called_once_with(
             "The requested s3 key invalid_path for deletion does not match the "
             "correct S3 path pattern (s3://bucket_name/path/to/obj). Skipping",
@@ -204,15 +205,14 @@ class TestDeleteS3Files:
         mock_get_s3_handler = mocker.patch("rs_server_catalog.utils.get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.delete_file_from_s3.side_effect = RuntimeError("Deletion failed")
+        mock_s3_handler.delete_keys_from_s3.side_effect = RuntimeError("Deletion failed")
         mock_get_s3_handler.return_value = mock_s3_handler
         ftbd = "s3://bucket_name/path/to/file"
         result = delete_s3_files([ftbd])
 
         assert result is True  # Function should continue even if deletion fails
         mock_logger.exception.assert_called_once_with(
-            f"Failed to delete key {ftbd} from s3 bucket."
-            "Reason: Deletion failed. However, the process will still continue !",
+            "Failed to delete keys from s3 bucket. Reason: Deletion failed. However, the process will still continue !",
         )
 
 

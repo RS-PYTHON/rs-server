@@ -122,7 +122,6 @@ def delete_s3_files(s3_files_to_be_deleted):
         logger.exception(
             f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
         )
-        return False
     return True
 
 
