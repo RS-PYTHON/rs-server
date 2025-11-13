@@ -17,7 +17,7 @@
 import io
 import os
 import ssl
-from ftplib import FTP, FTP_TLS
+from ftplib import FTP, FTP_TLS  # nosec B402
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,8 @@ import xmltodict
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
+
+NOT_CONNECTED_ERROR_MSG = "Not connected. Call connect() first."
 
 
 class EDRSConnector:
@@ -63,10 +65,11 @@ class EDRSConnector:
         """
         if self.use_ssl:
             logger.debug("Connecting via FTPES (explicit TLS)...")
-            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)
+            # EDRS uses internal certificates; hostname verification intentionally disabled.
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)  # NOSONAR
             if self.client_cert and self.client_key:
                 context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)
-            context.check_hostname = False
+            context.check_hostname = False  # NOSONAR
             context.verify_mode = ssl.CERT_REQUIRED
 
             self.ftp = FTP_TLS(context=context)
@@ -76,7 +79,7 @@ class EDRSConnector:
             self.ftp.login(self.login, self.password)
         else:
             logger.debug("Connecting via plain FTP (no SSL)...")
-            self.ftp = FTP()
+            self.ftp = FTP()  # nosec B321 # NOSONAR
             self.ftp.connect(self.host, self.port, timeout=10)
             self.ftp.login(self.login, self.password)
 
@@ -91,10 +94,7 @@ class EDRSConnector:
 
         Returns:
             list[dict[str, str | int | None]]: A list of dictionaries containing
-                information about each file or directory. Each dictionary includes:
-                - path (str): Full path.
-                - type (str): Either 'file' or 'dir'.
-                - size (int | None): Size in bytes for files, None for directories.
+                information about each file or directory.
 
         Raises:
             ConnectionError: If the FTP client is not connected.
@@ -102,46 +102,53 @@ class EDRSConnector:
         """
 
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
 
         base_path = f"/NOMINAL/{path.strip('/')}"
 
-        # Try MLSD first, unless explicitly disabled
-        if self.disable_mlsd:
-            entries = self.ftp.nlst(base_path)
-        else:
-            try:
-                entries = [name for name, _ in self.ftp.mlsd(base_path)]
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error(f"MLSD failed for {base_path}: {e}, using NLST instead.")
-                # Fallback when MLSD is not supported
-                if "500" in str(e):
-                    self.disable_mlsd = True
-                    entries = self.ftp.nlst(base_path)
-                else:
-                    raise RuntimeError(f"Failed to list {base_path} using MLSD: {e}") from e
+        entries = self._list_directory_entries(base_path)
 
         current_dir = self.ftp.pwd()
         results = []
 
         for entry in entries:
-            info = {"path": entry, "type": "dir", "size": 0}
-
-            try:
-                # If cwd works, it's a directory
-                self.ftp.cwd(entry)
-                self.ftp.cwd(current_dir)  # Return to original dir
-            except Exception:  # pylint: disable=broad-except
-                # If cwd fails, assume it's a file
-                info["type"] = "file"
-                try:
-                    info["size"] = self.ftp.size(entry) or 0
-                except Exception:  # pylint: disable=broad-except
-                    info["size"] = 0  # Some FTP servers don't support SIZE for all files
-
+            info = self._get_entry_info(entry, current_dir)
             results.append(info)
 
         return results
+
+    def _list_directory_entries(self, base_path: str) -> list[str]:
+        """Helper to list directory entries, handling MLSD/NLST fallback."""
+        if not self.ftp:
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
+        if self.disable_mlsd:
+            return self.ftp.nlst(base_path)
+
+        try:
+            return [name for name, _ in self.ftp.mlsd(base_path)]
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error(f"MLSD failed for {base_path}: {e}, using NLST instead.")
+            if "500" in str(e):
+                self.disable_mlsd = True
+                return self.ftp.nlst(base_path)
+            raise RuntimeError(f"Failed to list {base_path} using MLSD: {e}") from e
+
+    def _get_entry_info(self, entry: str, current_dir: str) -> dict[str, Any]:
+        """Helper to determine type and size of an FTP entry."""
+        if not self.ftp:
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
+        info = {"path": entry, "type": "dir", "size": 0}
+        try:
+            self.ftp.cwd(entry)
+            self.ftp.cwd(current_dir)
+            return info
+        except Exception:  # pylint: disable=broad-except
+            info["type"] = "file"
+            try:
+                info["size"] = self.ftp.size(entry) or 0
+            except Exception:  # pylint: disable=broad-except
+                info["size"] = 0
+            return info
 
     def download(self, remote_path: str, p_local_path: str = "") -> str:
         """Download a file from the FTP server.
@@ -160,7 +167,7 @@ class EDRSConnector:
         """
 
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
 
         # Determine local target path
         local_path: Path = Path(p_local_path) if p_local_path else Path(Path(remote_path).name)
@@ -198,7 +205,7 @@ class EDRSConnector:
         """
 
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
 
         buffer = io.BytesIO()
 
