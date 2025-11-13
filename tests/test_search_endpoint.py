@@ -2762,7 +2762,7 @@ def test_prip_bbox_converted_to_intersects(
     responses.add(
         responses.GET,
         re.compile(
-            r"http://127\.0\.0\.1:5000/Products\?.*OData\.CSC\.Intersects.*POLYGON.*105.*0.*105.*1.*100.*1.*100.*0.*105.*0",  # pylint: disable=line-too-long
+            r"http://127\.0\.0\.1:5000/Products\?.*OData\.CSC\.Intersects.*POLYGON.*105.*0.*105.*1.*100.*1.*100.*0.*105.*0",  # noqa: E501   # pylint: disable=line-too-long
         ),
         json={"value": []},
         status=200,
