@@ -20,7 +20,6 @@ import os
 import os.path as osp
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from rs_server_common.utils.logging import Logging

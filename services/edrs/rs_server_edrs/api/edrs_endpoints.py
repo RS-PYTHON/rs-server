@@ -1,8 +1,21 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import re
 from pathlib import Path
-from typing import Annotated, Literal, Optional
-from xml.etree import ElementTree as ET
+from typing import Annotated, Literal
 
 import stac_pydantic
 from fastapi import APIRouter, HTTPException
@@ -47,7 +60,7 @@ logger = Logging.default(__name__)
 router = APIRouter()
 
 
-def _platform_constellation_from_code(code: str) -> tuple[str | None, str | None]:
+def platform_constellation_from_code(code: str) -> tuple[str | None, str | None]:
     # code ex.: "S1A", "S1C", "S2B" => returns satellites and constellation
     cfg = map_stac_platform()
     for sat in cfg["satellites"]:
@@ -57,21 +70,18 @@ def _platform_constellation_from_code(code: str) -> tuple[str | None, str | None
     return None, None
 
 
-def _iso(s: str | None) -> str | None:
+def iso(s: str | None) -> str | None:
     if not s:
         return None
     # normalize "2024-04-10T08:37:00Z" -> ISO with 'Z'
     return s.replace("+00:00", "Z")
 
 
-def _parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None, str | None]:
+def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None, str | None]:
     block = dsib.get("DCSU_Session_Information_Block") or {}
     start = block.get("time_start") or block.get("start_time") or block.get("start_datetime")
-
     stop = block.get("time_stop") or block.get("stop_time") or block.get("end_datetime")
-
     created = block.get("time_created") or block.get("created")
-
     finished = block.get("time_finished") or block.get("finished")
 
     # fallbacks consistent with how STAC Item is built
@@ -80,10 +90,10 @@ def _parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, st
     if not finished:
         finished = created or stop or start
 
-    return None, _iso(start), _iso(stop), _iso(created), _iso(finished)
+    return None, iso(start), iso(stop), iso(created), iso(finished)
 
 
-def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list[dict]]:
+def collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list[dict]]:
     """Returns (session_odata, assets_products)."""
     ch_entries = client.walk(f"{sat}/{session_id}") or []
     channel_dirs = [
@@ -92,7 +102,7 @@ def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, lis
 
     starts, stops, gens = [], [], []
     assets_products: list[dict] = []
-    platform_name, constellation = _platform_constellation_from_code(sat)
+    platform_name, constellation = platform_constellation_from_code(sat)
 
     for ch_dir in channel_dirs:
         ch_name = ch_dir.rsplit("/", 1)[-1]  # ch_1
@@ -109,7 +119,7 @@ def _collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, lis
             dsib_dict = client.read_file(dsib_entry["path"])
         # time din DSIB
         if dsib_dict:
-            sat_code, start, stop, created, finished = _parse_dsib_dict(dsib_dict)
+            _, start, stop, created, _ = parse_dsib_dict(dsib_dict)
             if start:
                 starts.append(start)
             if stop:
@@ -167,7 +177,7 @@ def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]
     return assets
 
 
-def _apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
+def apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
     mapper = edrs_stac_mapper()
     key_field = mapper["id"]
     out_specs = {k: v for k, v in mapper.items() if k != "id"}
@@ -203,9 +213,7 @@ def build_edrs_item_collection(client, satellites: list[str], collection_id: str
 
         for sess_path in session_dirs:
             session_id = Path(sess_path).name
-
-            session, asset_products = _collect_session_stats(client, sat, session_id)
-
+            session, asset_products = collect_session_stats(client, sat, session_id)
             feature = odata_to_stac(
                 copy.deepcopy(edrs_session_odata_to_stac_template()),
                 session,
@@ -215,7 +223,7 @@ def build_edrs_item_collection(client, satellites: list[str], collection_id: str
             feature["collection"] = collection_id
             item = Item(**feature)
 
-            _apply_asset_mapping_to_item(item, asset_products)
+            apply_asset_mapping_to_item(item, asset_products)
             self_href = f"{collection_href}/items/{item.id}"
             item.links = Links(
                 root=[
