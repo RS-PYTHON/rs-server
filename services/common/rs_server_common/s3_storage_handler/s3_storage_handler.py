@@ -21,6 +21,7 @@ import ntpath
 import os
 import time
 import traceback
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -311,16 +312,15 @@ class S3StorageHandler:
         # NOTE: don't check if the files exist on the bucket.
         # If they don't, nothing happens, we don't have any error from boto3.
         attempt = 0
+        buckets_collection: dict[str, list[str]] = defaultdict(list)
         while True:
             try:
                 self.connect_s3()
-                buckets_collection: dict[str, list[str]] = {}
                 for key in keys:
-                    bucket = key.split("/")[2]
-                    if bucket not in buckets_collection:
-                        buckets_collection[bucket] = []
+                    parsed = urlparse(key)
+                    bucket = parsed.netloc
                     path = key.strip().lstrip("/")
-                    s3_files = self.list_s3_files_obj(bucket, path[len(f"s3://{bucket}/") :])
+                    s3_files = self.list_s3_files_obj(parsed.netloc, parsed.path.strip("/"))
                     if len(s3_files) == 1 and path == s3_files[0]:
                         # If the key is a file, don't expand it
                         buckets_collection[bucket].append(key)
@@ -332,19 +332,29 @@ class S3StorageHandler:
                     # Convert the key values into a dict
                     key_dict = [{"Key": key} for key in new_keys]
 
-                    # The boto3 delete_objects function takes max 1000 items to delete.
-                    # Split the key list and process the chunks in parallel.
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        futures = [
-                            executor.submit(
-                                self.s3_client.delete_objects,
-                                Bucket=bucket,
-                                Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
-                            )
-                            for i in range(0, len(keys), MAX_DELETE_FILES)
-                        ]
-                        for future in concurrent.futures.as_completed(futures):
-                            future.result()
+                # The boto3 delete_objects function takes max 1000 items to delete.
+                # Split the key list and process the chunks in parallel.
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+
+                    futures = []
+                    for bucket, new_keys in buckets_collection.items():
+
+                        # Convert the key values into a dict
+                        key_dict = [{"Key": key} for key in new_keys]
+
+                        futures.extend(
+                            [
+                                executor.submit(
+                                    self.s3_client.delete_objects,
+                                    Bucket=bucket,
+                                    Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
+                                )
+                                for i in range(0, len(keys), MAX_DELETE_FILES)
+                            ],
+                        )
+
+                    for future in concurrent.futures.as_completed(futures):
+                        future.result()
 
                     # If everything went OK, exit the function
                     return
