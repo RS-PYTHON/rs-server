@@ -29,7 +29,9 @@ from fastapi import Request, status
 from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
 from rs_server_common.rspy_models import ItemCollection as RspyItemCollection
-from rs_server_common.stac_api_common import (  # pylint: disable=unused-import  # Re-exported for API parity even if unused locally.
+
+# from rs_server_common.stac_api_common import sort_feature_collection
+from rs_server_common.stac_api_common import (
     BBoxType,
     CollectionType,
     DateTimeType,
@@ -42,7 +44,6 @@ from rs_server_common.stac_api_common import (  # pylint: disable=unused-import 
     check_input_type,
     get_edrs_queryables,
     handle_exceptions,
-    sort_feature_collection,
 )
 from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
@@ -376,7 +377,9 @@ async def get_edrs_collection_items(
     page: PageType = None,
 ) -> dict:
     """Filter, sort, and page STAC Items for the requested collection."""
-    # pylint: disable=too-many-branches,too-many-statements  # Input normalization and filtering logic is intentionally verbose.
+    # pylint: disable=too-many-branches,too-many-statements
+    # Input normalization, multi-format CQL parsing, and filtering/pagination happen inline here,
+    # so the flow stays verbose.
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
 
