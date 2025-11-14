@@ -190,7 +190,7 @@ class DataLifecycle:
 
         # First, update the items in the stac database using a bulk transaction.
         # We need one transaction by collection name, run in parallel.
-        async with asyncio.TaskGroup() as task_group:
+        async with asyncio.TaskGroup():
             for col_name, col_items in items_by_collection.items():
 
                 # Convert the items into a dict with key=item id and value=items
@@ -216,12 +216,12 @@ class DataLifecycle:
         # NOTE: if ever this fails, a secondary data lifecycle is set on OVH Object Storage side to clean up
         # automatically the files on the buckets.
         # This is done 24 hours after the expiration delay set on the config map.
-        async with asyncio.TaskGroup() as task_group:
-            for bucket_name, bucket_keys in bucket_info.items():
-                # Use a new s3 S3StorageHandler instance for every task as it is not thread-safe
-                task_group.create_task(
-                    S3StorageHandler().adelete_files_from_s3(bucket_name, bucket_keys),
-                )
+        bucket_files = []
+
+        for bucket_name, bucket_keys in bucket_info.items():
+            bucket_files.extend([f"s3://{bucket_name}/{key}" for key in bucket_keys])
+
+        await S3StorageHandler().adelete_keys_from_s3(bucket_files)
         self.logger.debug("Finished deleting s3 keys")
 
     def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
