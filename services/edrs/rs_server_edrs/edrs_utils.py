@@ -56,14 +56,17 @@ def select_config(configuration_id: str) -> dict | None:
 
 @lru_cache
 def edrs_session_odata_to_stac_template() -> dict:
+    """Return the cached STAC template used for session items."""
     return json.loads((EDRS_CONFIG / "edrs_session_STAC_template.json").read_text(encoding="utf-8"))
 
 
 @lru_cache
 def edrs_sessions_stac_mapper() -> dict:
+    """Return the cached mapper between OData fields and STAC item properties."""
     return json.loads((EDRS_CONFIG / "edrs_sessions_stac_mapper.json").read_text(encoding="utf-8"))
 
 
 @lru_cache
 def edrs_stac_mapper() -> dict:
+    """Return the cached mapper for asset-specific STAC properties."""
     return json.loads((EDRS_CONFIG / "edrs_asset_stac_mapper.json").read_text(encoding="utf-8"))
