@@ -255,35 +255,35 @@ user is used with the following priority:
       ],
       "assets": {
         "cog": {
-          "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.cog.zip/download/cog",
+          "href": "s3://catalog-bucket/correct_location/some_file.cog.zip"
           "roles": [
             "data"
           ],
           "alternate": {
-            "s3": {
-              "href": "s3://catalog-bucket/correct_location/some_file.cog.zip"
+            "https": {
+              "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.cog.zip/download/cog",
             }
           }
         },
         "ncdf": {
-          "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.ncdf.zip/download/ncdf",
+          "href": "s3://catalog-bucket/correct_location/some_file.ncdf.zip"
           "roles": [
             "data"
           ],
           "alternate": {
-            "s3": {
-              "href": "s3://catalog-bucket/correct_location/some_file.ncdf.zip"
+            "https": {
+              "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.ncdf.zip/download/ncdf",
             }
           }
         },
         "zarr": {
-          "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.zarr.zip/download/zarr",
+          "href": "s3://catalog-bucket/correct_location/some_file.zarr.zip"
           "roles": [
             "data"
           ],
           "alternate": {
-            "s3": {
-              "href": "s3://catalog-bucket/correct_location/some_file.zarr.zip"
+            "https": {
+              "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.zarr.zip/download/zarr",
             }
           }
         }

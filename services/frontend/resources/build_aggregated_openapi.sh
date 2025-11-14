@@ -65,7 +65,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     done
 
     # Idem for pgstac database
-    db_image="ghcr.io/stac-utils/pgstac:v0.9.5"
+    db_image="ghcr.io/stac-utils/pgstac:v0.9.8"
     docker pull "$db_image"
     (docker run --rm --network=$network --name=$pgstac_container \
         -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
@@ -118,16 +118,21 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # Use postgres database
     run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
     run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
+    run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health"
     RSPY_LOCAL_MODE=1 \
         run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
 
     # Use pgstac database
-    POSTGRES_DBNAME=$POSTGRES_DB \
-    POSTGRES_PASS=$POSTGRES_PASSWORD \
-    POSTGRES_HOST_READER=$POSTGRES_HOST \
-    POSTGRES_HOST_WRITER=$POSTGRES_HOST \
-    POSTGRES_PORT=$PGSTAC_PORT \
-        run_local_service "../catalog" "rs_server_catalog.main:app" 8003 "_mgmt/ping"
+    PGDATABASE=$POSTGRES_DB \
+    PGUSER=$POSTGRES_USER \
+    PGPASSWORD=$POSTGRES_PASSWORD \
+    PGHOST=$POSTGRES_HOST \
+    PGPORT=$PGSTAC_PORT \
+    ENABLE_TRANSACTIONS_EXTENSIONS=1 \
+    PREFIX_PATH=/catalog \
+    OPENAPI_URL=/catalog/api \
+    DOCS_URL=/catalog/api.html \
+        run_local_service "../catalog" "rs_server_catalog.app:app" 8003 "catalog/_mgmt/ping"
 fi
 
 services_file="${SCRIPT_DIR}/services.yml" # input file = describe services

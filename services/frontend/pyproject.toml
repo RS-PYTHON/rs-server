@@ -1,6 +1,20 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [project]
 name = "rs-server-frontend"
-version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-frontend"
@@ -38,11 +52,11 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4"
-fastapi = "^0.115.11"
-starlette = ">=0.45.3,<0.46"
-uvicorn = ">=0.31,<0.35"
-requests = "^2.32.3"
-attrs = ">=24.2,<26.0"
+fastapi = ">=0.120.0,<0.122.0"
+starlette = ">=0.49.1,<0.51"
+uvicorn = ">=0.35.0"
+requests = "^2.32.5"
+attrs = ">=25.3.0,<26.0"
 pyyaml = "^6.0.2"
 
 [tool.poetry.group.dev]
@@ -50,20 +64,18 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 # Testing
-pytest = "^8.3.3"
-pytest-asyncio = "^0.24.0"
-pytest-cov = ">=5,<7"
-pytest-docker = "^3.1.0"
+pytest = "^8.4.2"
+pytest-asyncio = "^1.2.0"
+pytest-cov = "^7.0.0"
+pytest-docker = "^3.2.3"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = ">=0.32,<0.35"
-pytest-mock = "^3.12.0"
+pytest-httpx = ">=0.35,<0.36"
+pytest-mock = "^3.15.1"
 # Testing fastapi
-httpx = "^0.27.2"
-# Tools
-requests = "^2.32.3"
+httpx = "^0.28.1"
 # Test tools
-responses = "^0.25.3"
-pylint = "^3.3.0"
+responses = "^0.25.8"
+pylint = "^4.0.2"
 
 
 [tool.pytest.ini_options]
@@ -72,7 +84,10 @@ markers = [
     "integration", # mark a test as integration test
 ]
 
-[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
 enable = true
 metadata = false
 

@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+id:
+  type: string
+  title: id
+  format: string
+  description: string
 platform:
   type: string
   title: platform
   format: string
   description: string
-  enum: ["sentinel-1a", "sentinel-1b", "sentinel-1c", "sentinel-2a", "sentinel-2b", "sentinel-2c", "sentinel-3a", "sentinel-3b", "sentinel-5P"]
+  enum: ["sentinel-1a", "sentinel-1b", "sentinel-1c", "sentinel-1d", "sentinel-2a", "sentinel-2b", "sentinel-2c", "sentinel-3a", "sentinel-3b", "sentinel-5P"]
 constellation:
   type: string
   title: constellation

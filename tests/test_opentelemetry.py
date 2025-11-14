@@ -14,20 +14,32 @@
 
 """Unit tests for OpenTelemetry."""
 
+import requests
 from fastapi import FastAPI
-from rs_server_common.utils import opentelemetry
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 
 
-async def test_opentelemetry(mocker):
+async def test_opentelemetry(mocker, monkeypatch):
     """
     For now, just test that the otel init code passes without errors.
     Don't check the generated logs, traces and metrics.
     """
 
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
-    mocker.patch("rs_server_common.utils.opentelemetry.FROM_PYTEST", new=True, autospec=False)
+    mocker.patch("rs_server_common.utils.init_opentelemetry.FROM_PYTEST", new=True, autospec=False)
+
+    # Patch the env variables
+    monkeypatch.setenv("OTEL_PYTHON_REQUESTS_TRACE_HEADERS", "1")
+    monkeypatch.setenv("OTEL_PYTHON_REQUESTS_TRACE_BODY", "1")
 
     Logging.default(__name__)
     app = FastAPI()
-    opentelemetry.init_traces(app, "pytest")
+    init_opentelemetry.init_traces(app, "pytest")
+
+    # Run a dummy http request to be instrumented by opentelemetry
+    try:
+        requests.get("https://dummy", timeout=1)
+    except RequestsConnectionError:
+        pass

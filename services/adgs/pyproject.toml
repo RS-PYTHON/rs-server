@@ -1,6 +1,20 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [project]
 name = "rs-server-adgs"
-version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-adgs"
@@ -37,25 +51,23 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4"
-rs-server-common = {path = "../common", develop = true}
+rs-server-common = "*"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-pytest-asyncio = "^0.24.0"
-pytest-cov = ">=5,<7"
-pytest-docker = "^3.1.0"
+rs-server-common = {path = "../common", develop = true}
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
+pytest = "^8.4.2"
+pytest-asyncio = "^1.2.0"
+pytest-cov = "^7.0.0"
+pytest-docker = "^3.2.3"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = ">=0.32,<0.35"
-pytest-mock = "^3.12.0"
+pytest-httpx = ">=0.35,<0.36"
+pytest-mock = "^3.15.1"
 black = ">=24.8,<26.0"
-mypy = "^1.11.2"
-orjson = [ # we need the same markers and versions as in eodag: https://github.com/CS-SI/eodag/blob/develop/setup.cfg
-    {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
-    {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
-]
+mypy = "^1.17.1"
 
 [tool.black]
 line-length = 120
@@ -71,7 +83,10 @@ warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
 
-[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
 enable = true
 metadata = false
 

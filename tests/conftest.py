@@ -20,45 +20,49 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
-import json
 import os
 import os.path as osp
-import subprocess  # nosec ignore security issue
+from importlib import reload
+
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# flake8: noqa
+# pylint: disable=wrong-import-order,wrong-import-position
+os.environ["RSPY_LOCAL_MODE"] = "1"
+from rs_server_common import settings, stac_api_common
+
+reload(settings)
+
+import datetime
+import json
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
-# We are in local mode (no cluster).
-# Do this before any other imports.
-# pylint: disable=wrong-import-position
-# flake8: noqa
-os.environ["RSPY_LOCAL_MODE"] = "1"
-from importlib import reload
-
-from rs_server_common import settings
-
-reload(settings)
-
 import pytest
-import responses
-import yaml
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from rs_server_adgs import adgs_retriever, adgs_utils
+from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
+    S3ExternalAuthenticationConfig,
+    StationExternalAuthenticationConfig,
 )
-from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
+from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import map_stac_platform
+from rs_server_prip import prip_retriever, prip_utils
 
 from tests.app import init_app
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
+PRIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "prip_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
+os.environ["RSPY_PRIP_SEARCH_CONFIG"] = str(PRIP_SEARCH.absolute())
 
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
@@ -77,13 +81,6 @@ def before_and_after(session_mocker):
     ####################
     # Before all tests #
     ####################
-
-    # Use this default value for the configuration file for authentication to external stations.
-    session_mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.CONFIG_PATH_AUTH_TO_EXTERNAL",
-        new=str((Path(__file__).parent.parent / "services/common/config/rs-server.yaml").resolve()),
-        autospec=False,
-    )
 
     # Avoid errors:
     # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in 1s
@@ -113,65 +110,18 @@ def read_cli(request):
 #####################
 
 
-def export_aws_credentials():
-    """Export AWS credentials as environment variables for testing purposes.
-
-    This function sets the following environment variables with dummy values for AWS credentials:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_SECURITY_TOKEN
-    - AWS_SESSION_TOKEN
-    - AWS_DEFAULT_REGION
-
-    Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
-    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        os.environ.update(s3_config["s3"])
-
-
-########################
-# FASTAPI AND DATABASE #
-########################
-
-# Init the FastAPI application and database
-# See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
-# But I have error
-#     pytest_postgresql.exceptions.ExecutableMissingException: Could not found /usr/lib/postgresql/14/bin/pg_ctl.
-#     Is PostgreSQL server installed?
-#     Alternatively pg_config installed might be from different version that postgresql-server.
-# See commit bbc6290df7c92fd306908830cbade8975e1eea6c
-
-# Clean before running.
-# No security risks since this file is not released into production.
-subprocess.run([RESOURCES_FOLDER / "clean.sh"], check=False, shell=False)  # nosec ignore security issue
-
-
-@pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_():
-    """Return the path to the docker-compose.yml file to run before tests."""
-    return RESOURCES_FOLDER / "db" / "docker-compose.yml"
+###########
+# FASTAPI #
+###########
 
 
 @pytest.fixture(name="fastapi_app")
-def fastapi_app_(  # pylint: disable=too-many-arguments
+def fastapi_app_(
     request,
     mocker,
     monkeypatch,
-    docker_ip,
-    docker_services,
-    docker_compose_file,
-):  # pylint: disable=unused-argument
-    """
-    Init the FastAPI application and the database connection from the docker-compose.yml file.
-    docker_ip, docker_services are used by pytest-docker that runs docker compose.
-    """
+):
+    """Init the FastAPI application"""
 
     # Mock cluster/local mode to enable or disable authentication.
     try:
@@ -193,9 +143,6 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
 
-    # Read the .env file that comes with docker-compose.yml
-    load_dotenv(RESOURCES_FOLDER / "db" / ".env")
-
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:
         monkeypatch.setenv("OIDC_ENDPOINT", "http://OIDC_ENDPOINT")
@@ -203,9 +150,6 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
         monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
-        # In cluster mode, deactivate the creation of the configuration file for authentication to extenal stations.
-        # All the tests that need it should create a mocked version in a temporary directory.
-        mocker.patch("rs_server_common.fastapi_app.init_rs_server_config_yaml", side_effect=None)
 
         # Reload the oauth2 module with the cluster info
         reload(oauth2)
@@ -217,37 +161,58 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
 
 @pytest.fixture(name="client")
 def client_(fastapi_app: FastAPI):
-    """Test the FastAPI application, opens the database session."""
+    """Test the FastAPI application"""
     with TestClient(fastapi_app) as client:
         yield client
 
 
-@pytest.fixture(scope="function", autouse=True)
-def create_tables(client):  # pylint: disable=unused-argument
-    """Drop and create all tables."""
-    sessionmanager.drop_all()
-    sessionmanager.create_all()
-
-
-@pytest.fixture(scope="function", autouse=True)
-def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-argument
-    """Override the default database session"""
-
-    # pylint: disable=duplicate-code
-    # NOTE: don't understand why we must duplicate this code.
-    def get_db_override():
-        try:
-            with sessionmanager.session() as session:
-                yield session
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            DatabaseSessionManager.reraise_http_exception(exception)
-
-    fastapi_app.dependency_overrides[get_db] = get_db_override
+@pytest.fixture(autouse=True)
+def workaround_fixture(client):  # pylint: disable=unused-argument
+    """
+    I need this or I have the error "function uses no fixture 'fastapi_app'", I can't understand why.
+    """
 
 
 ##################
 # OTHER FIXTURES #
 ##################
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_caches():
+    """Clear caches at the end of each test"""
+    yield
+    adgs_retriever.init_adgs_provider.cache_clear()
+    adgs_utils.read_conf.cache_clear()
+    prip_retriever.init_prip_provider.cache_clear()
+    prip_utils.read_conf.cache_clear()
+    cadip_retriever.init_cadip_provider.cache_clear()
+    cadip_utils.read_conf.cache_clear()
+    cadip_utils.cadip_stac_mapper.cache_clear()
+    CustomEODataAccessGateway.create.cache_clear()
+    map_stac_platform.cache_clear()
+    stac_api_common.get_cadip_queryables.cache_clear()
+    stac_api_common.get_adgs_queryables.cache_clear()
+
+
+@pytest.fixture(scope="function")
+def use_module_for_station_token(monkeypatch):
+    """
+    Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    usage of the internal token module  for getting the token and setting it to the eodag
+    """
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
+    reload(adgs_retriever)
+    reload(prip_retriever)
+    reload(cadip_retriever)
+
+    yield
+
+    # Restore default value = False at the end of the test function
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
+    reload(adgs_retriever)
+    reload(prip_retriever)
+    reload(cadip_retriever)
 
 
 @pytest.fixture(scope="module", name="a_product")
@@ -320,7 +285,7 @@ def a_session_fixture(id_, at_date, satellite_idf):
         "Satellite": satellite_idf,
         "StationUnitId": "01",
         "DownlinkOrbit": 53186,
-        "AcquisitionId": "53186_1",
+        "AcquisitionId": "53186_A1",
         "AntennaId": "MSP21",
         "FrontEndId": "01",
         "Retransfer": False,
@@ -482,22 +447,22 @@ def expected_config_token_file_fixture() -> dict:
 
 
 @pytest.fixture(name="get_external_auth_config")
-def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig:
-    """Fixture to provide an ExternalAuthenticationConfig instance based on station_id.
+def get_external_auth_config_fixture(station_id) -> StationExternalAuthenticationConfig:
+    """Fixture to provide an StationExternalAuthenticationConfig instance based on station_id.
 
-    This fixture creates and returns an ExternalAuthenticationConfig object with
+    This fixture creates and returns an StationExternalAuthenticationConfig object with
     predefined values based on the provided station_id.
 
     Args:
         station_id (str): The identifier for the station, determining the service name.
 
     Returns:
-        ExternalAuthenticationConfig: An instance with the configuration for the given station_id.
+        StationExternalAuthenticationConfig: An instance with the configuration for the given station_id.
     """
     # Determine the service based on the station_id
     service = "auxip" if station_id == "adgs" else "cadip"
-    # Return a configured ExternalAuthenticationConfig object
-    return ExternalAuthenticationConfig(
+    # Return a configured StationExternalAuthenticationConfig object
+    return StationExternalAuthenticationConfig(
         station_id=station_id,
         domain=f"mockup-{service}-{station_id}.processing.svc.cluster.local",
         service_name=service,
@@ -514,27 +479,29 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
     )
 
 
-@pytest.fixture(name="mock_token_validation")
-def validate_token(mocker):
-    """Fixture used to mock rs server service that authorize eodag ops."""
+@pytest.fixture(name="get_s3_external_auth_config")
+def get_s3_external_auth_config_fixture(station_id) -> StationExternalAuthenticationConfig:
+    """Fixture to provide an S3ExternalAuthenticationConfig instance based on station_id.
 
-    def _validate_token(service: str | None = None):
-        if not service:
-            # If not defined, mock both adgs and cadip
-            mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-        else:
-            # If defined, custom path mock
-            mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
-        responses.add(
-            responses.POST,
-            TOKEN_URL,
-            json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-            status=200,
-        )
-        return service  # If needed, return the value to be used later in the test
+    This fixture creates and returns an S3ExternalAuthenticationConfig object with
+    predefined values based on the provided station_id.
 
-    return _validate_token
+    Args:
+        station_id (str): The identifier for the station, determining the service name.
+
+    Returns:
+        StationExternalAuthenticationConfig: An instance with the configuration for the given station_id.
+    """
+    # Return a configured S3ExternalAuthenticationConfig object
+    return S3ExternalAuthenticationConfig(  # nosec B106
+        station_id=station_id,
+        domain=f"mockup-s3-{station_id}.processing.svc.cluster.local",
+        service_name="s3",
+        service_url="http://127.0.0.1:6001",
+        auth_type="s3",
+        access_key="abcdef",
+        secret_key="123456",
+    )
 
 
 @pytest.fixture(name="cadip_feature")
@@ -589,6 +556,47 @@ def adgs_pickup_response():
     adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response.json"
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
+
+
+@pytest.fixture(name="prip_feature")
+@lru_cache(maxsize=1)
+def prip_feature():
+    """Expected STAC Item for PRIP mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_feature.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+@pytest.fixture(name="prip_feature_no_geom")
+@lru_cache(maxsize=1)
+def prip_feature_no_geom():
+    """Expected STAC Item for PRIP mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_feature_no_geometry.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+@pytest.fixture(name="prip_response")
+@lru_cache(maxsize=1)
+def prip_pickup_response():
+    """Mock PRIP OData pickup response used by the mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_pickup_response.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+@pytest.fixture(name="mock_token_dict")
+def get_mock_token_dict():
+    """Setup a mock for the token dictionary"""
+    return {
+        "access_token": "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI",
+        "expires_in": 3600,
+        "access_token_creation_date": datetime.datetime.now(),
+        "refresh_token": "fakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "refresh_token_creation_date": datetime.datetime.now(),
+        "token_type": "Bearer",
+    }
 
 
 @pytest.fixture(name="adgs_response_10_items")

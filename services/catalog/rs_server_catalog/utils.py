@@ -21,6 +21,7 @@ from typing import Any
 from fastapi import HTTPException
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
+from starlette.responses import Response
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 logger = Logging.default(__name__)
@@ -49,7 +50,7 @@ def verify_existing_item_from_catalog(method: str, item: dict, content_id_str: s
     # item with a name that already exists in the database.
     if method == "POST" and item:
         raise HTTPException(
-            detail=f"Conflict error! The item {item['id']} " f"already exists in the {user_collection_str} collection",
+            detail=f"The item {item['id']} " f"already exists in the {user_collection_str} collection",
             status_code=HTTP_409_CONFLICT,
         )
     # Protection for cases where a PUT or PATCH request is made for an item
@@ -74,11 +75,11 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
     Once the asset is inserted in the catalog, the content typically looks like this:
         "filename": {
             "alternate": {
-                "s3": {
-                    "href": "s3://rs-cluster-catalog/path/to/filename"
+                "https": {
+                    "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
                 }
             },
-            "href": "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
+            "href": "s3://rs-dev-cluster-catalog/path/to/filename",
         }
 
     Args:
@@ -92,11 +93,8 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
         HTTPException: If the S3 key could not be loaded or is invalid.
     """
     # Attempt to retrieve the S3 key from the 'alternate.s3.href' or 'href' fields
-    s3_filename = asset.get("alternate", {}).get("s3", {}).get("href")
-    alternate_field = bool(s3_filename)
-
-    if not s3_filename:
-        s3_filename = asset.get("href", "")
+    s3_filename = asset.get("href", "")
+    alternate_field = bool(asset.get("alternate", None))
 
     # Validate that the S3 key was successfully retrieved and has the correct format
     if not is_s3_path(s3_filename):
@@ -118,23 +116,12 @@ def delete_s3_files(s3_files_to_be_deleted):
         logger.error("Failed to create the s3 handler when trying to delete the s3 files")
         return False
 
-    # delete any temp file file or a file from the catalog for which the asset has been removed
-    for s3_key in s3_files_to_be_deleted:
-        try:
-            if not is_s3_path(s3_key):
-                logger.error(
-                    f"The requested s3 key {s3_key} for deletion does not match the "
-                    "correct S3 path pattern (s3://bucket_name/path/to/obj). Skipping",
-                )
-                continue
-            key_array = s3_key.split("/")
-            s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
-        except RuntimeError as rte:
-            logger.exception(
-                f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
-                f"Reason: {rte}. However, the process will still continue !",
-            )
-            continue
+    try:
+        s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
+    except RuntimeError as rte:
+        logger.exception(
+            f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
+        )
     return True
 
 
@@ -203,3 +190,8 @@ def get_token_for_pagination(items_dic: dict[Any, Any]):
         if link.get("rel") == "next":
             token = link.get("href", None)
     return token
+
+
+def headers_minus_content_length(response: Response) -> dict[str, str]:
+    """Returns response headers without Content-Length"""
+    return {k: v for k, v in response.headers.items() if k.lower() != "content-length"}

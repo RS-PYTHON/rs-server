@@ -14,41 +14,33 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import os
+import os.path as osp
+import re
+import traceback
+from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from threading import Thread
 from typing import Any
 
+import yaml
+from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
+from shapely.geometry import shape
 
 # pylint: disable=too-few-public-methods
-
 logger = Logging.default(__name__)
-
-# TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
-DWN_THREAD_START_TIMEOUT = 5
-
-
-def is_valid_date_format(date: str) -> bool:
-    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS[.sss]Z".
-
-    Args:
-        date (str): The string to be validated for the specified date format.
-
-    Returns:
-        bool: True if the input string adheres to the expected date format, otherwise False.
-
-    """
-    try:
-        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")  # test without milliseconds
-        return True
-    except ValueError:
-        try:
-            datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")  # test with milliseconds
-            return True
-        except ValueError:
-            pass
-    return False
+LOCAL_PTYPE_MAPPING_FILE = (
+    Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config" / "product_type_mapping.yaml"
+)
+PTYPE_MAPPING_FILE = Path(os.environ.get("PTYPE_MAPPING_CONFIG", LOCAL_PTYPE_MAPPING_FILE))
+with PTYPE_MAPPING_FILE.open("r", encoding="utf-8") as f:
+    product_type_data = yaml.safe_load(f)["types"]
 
 
 def validate_str_list(parameter: str) -> list | str:
@@ -83,7 +75,7 @@ def validate_str_list(parameter: str) -> list | str:
 def validate_inputs_format(
     date_time: str,
     raise_errors: bool = True,
-) -> Any:
+) -> tuple[datetime | None, datetime | None, datetime | None]:
     """
     Validate the format and content of a time interval string.
 
@@ -127,26 +119,27 @@ def validate_inputs_format(
             fixed_date = date_time
     except ValueError as exc:
         logger.error("Missing start or stop in endpoint call!")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
-
-    for date in [fixed_date, start_date, stop_date]:
-        if date.strip("'\".") and not is_valid_date_format(date):
-            logger.info("Invalid start/stop in endpoint call!")
-            if raise_errors:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-            return None, None, None
-
-    def to_dt(dates) -> list[Any]:
-        """Converts a list of date strings to datetime objects or None if the conversion fails."""
-        return [datetime.fromisoformat(date) if is_valid_date(date) else None for date in dates]
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Missing start/stop") from exc
 
     def is_valid_date(date: str) -> bool:
         """Check if the string can be converted to a valid datetime."""
         try:
-            datetime.fromisoformat(date)
+            isoparse(date)
             return True
         except ValueError:
             return False
+
+    for date in [fixed_date, start_date, stop_date]:
+        if date.strip("'\".") and not is_valid_date(date):
+            message: str = f"Invalid date: {date}"
+            logger.warning(message)
+            if raise_errors:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+            return None, None, None
+
+    def to_dt(dates: list[str]) -> list[datetime | None]:
+        """Converts a list of date strings to datetime objects or None if the conversion fails."""
+        return [isoparse(date) if is_valid_date(date) else None for date in dates]
 
     fixed_date_dt, start_date_dt, stop_date_dt = to_dt([fixed_date, start_date, stop_date])
 
@@ -164,7 +157,79 @@ def validate_inputs_format(
     return fixed_date_dt, start_date_dt, stop_date_dt
 
 
-def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict) -> dict:
+@lru_cache
+def map_stac_platform() -> dict:
+    """Function used to read and interpret from constellation.yaml"""
+    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
+    """
+    Custom function for ADGS/PRIP, to read constellation mapper and return propper
+    values for platform and serial.
+    Eodag maps this values to platformShortName, platformSerialIdentifier
+
+    Input: platform = sentinel-1a       Output: sentinel-1, A
+    Input: platform = sentinel-5P       Output: sentinel-5p, None
+    Input: constellation = sentinel-1   Output: sentinel-1, None
+    """
+    data = map_stac_platform()
+    platform_short_name: str | None = None
+    platform_serial_identifier: str | None = None
+    try:
+        if platform:
+            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
+            platform_short_name = config.get("constellation", None)
+            platform_serial_identifier = config.get("serialid", None)
+        if constellation:
+            if platform_short_name and platform_short_name != constellation:
+                # Inconsistent combination of platform / constellation case
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail="Invalid combination of platform-constellation",
+                )
+            if any(
+                satellite[list(satellite.keys())[0]]["constellation"] == constellation
+                for satellite in data["satellites"]
+            ):
+                platform_short_name = constellation
+                platform_serial_identifier = None
+            else:
+                raise KeyError
+    except (KeyError, IndexError, StopIteration) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Cannot map platform/constellation",
+        ) from exc
+    return platform_short_name, platform_serial_identifier
+
+
+def reverse_adgs_prip_map_mission(
+    platform: str | None,
+    constellation: str | None,
+) -> tuple[str | None, str | None]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not (constellation or platform):
+        return None, None
+
+    if constellation:
+        constellation = constellation.lower()  # type: ignore
+
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            # Check for matching serialid and constellation
+            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                return key, info.get("constellation")
+    return None, None
+
+
+def odata_to_stac(
+    feature_template: dict,
+    odata_dict: dict,
+    odata_stac_mapper: dict,
+    collection_provider: Callable[[dict], str | None] | None = None,
+) -> dict:
     """
     Maps OData values to a given STAC template.
 
@@ -172,6 +237,8 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
         feature_template (dict): The STAC feature template to be populated.
         odata_dict (dict): The dictionary containing OData values.
         odata_stac_mapper (dict): The mapping dictionary for converting OData keys to STAC properties.
+        collection_provider (Callable[[dict], str | None]): optional function that determines STAC collection
+                                                            for a given OData entity
 
     Returns:
         dict: The populated STAC feature template.
@@ -182,15 +249,33 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
     if not all(item in feature_template.keys() for item in ["properties", "id", "assets"]):
         raise ValueError("Invalid stac feature template")
     for stac_key, eodag_key in odata_stac_mapper.items():
-        if eodag_key in odata_dict:
+        if eodag_key not in odata_dict:
             if stac_key in feature_template["properties"]:
-                feature_template["properties"][stac_key] = odata_dict[eodag_key]
-            elif stac_key == "id":
-                feature_template["id"] = odata_dict[eodag_key]
-            elif stac_key in feature_template["assets"]["file"]:
-                feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
+                feature_template["properties"].pop(stac_key, None)
+            continue
+        value = odata_dict[eodag_key]
+        if stac_key in feature_template["properties"]:
+            feature_template["properties"][stac_key] = [value] if stac_key == "instruments" else value
+            continue
+        if stac_key == "id":
+            feature_template["id"] = value
+            continue
+        if stac_key == "geometry" and value:
+            feature_template["geometry"] = value
+            feature_template["bbox"] = shape(feature_template["geometry"]).bounds
+            continue
+        if stac_key in feature_template["assets"]["file"]:
+            feature_template["assets"]["file"][stac_key] = value
+
+    _apply_product_facets(feature_template, odata_dict)
+
     # to pass pydantic validation, make sure we don't have a single timerange value
     check_and_fix_timerange(feature_template)
+    # determine item collection
+    if collection_provider:
+        feature_template["collection"] = collection_provider(odata_dict)
+        if not feature_template["collection"]:
+            logger.warning(f"Unable to determine collection for {odata_dict}")
     return feature_template
 
 
@@ -218,9 +303,102 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
 
 
+def _apply_product_facets(feature: dict, _odata: dict) -> None:
+    """Sets product:type, processing:level - temporary hardcoded until RSPY-760 is DONE"""
+    props: dict[str, str] = feature["properties"]
+    if not (
+        all(k in props for k in ("product:type", "processing:level"))
+        and any(k in props for k in ("sar:instrument_mode", "eopf:instrument_mode", "instrument_mode"))
+    ):
+        return
+
+    legacy_type = find_product_type(props["product:type"])
+    props["product:type"] = legacy_type["productType"]
+    props["processing:level"] = legacy_type["processingLevel"]
+
+    instrument_mode_key = "eopf:instrument_mode" if legacy_type["mission"] == "S2" else "sar:instrument_mode"
+
+    # Remove any previous/generic instrument_mode keys, then set the selected one
+    for k in ("instrument_mode", "sar:instrument_mode", "eopf:instrument_mode"):
+        props.pop(k, None)
+
+    props[instrument_mode_key] = legacy_type["instrumentMode"]
+
+
+def find_product_type(product_type: str):
+    """
+    Finds the first product type entry whose 'legacyType' matches the given product_type.
+    Works with both exact strings and regex patterns.
+
+    Args:
+        product_type: The string to test.
+
+    Returns:
+        The first matching dictionary entry, or a default item if no match.
+    """
+
+    default = {key: None for key in product_type_data[0]}
+    for item in product_type_data:
+        pattern = item.get("legacyType", "")
+
+        try:
+            # Try regex full match first
+            if re.fullmatch(pattern, product_type):
+                return item
+        except (TypeError, re.error):
+            # If regex fails (invalid pattern), fall back to plain equality
+            if pattern == product_type:
+                return item
+
+    return default
+
+
 def validate_sort_input(sortby: str):
     """Used to transform stac sort parameter to odata type.
     -datetime = startTimeFromAscendingNode DESC.
     """
-    sortby = sortby.strip("'\"").lower()
-    return [(sortby[1:], "DESC" if sortby[0] == "-" else "ASC")]
+    sortby = sortby.strip("'\"").lower().replace("properties.", "")
+    return [(sortby[1:] if sortby[0] in ["-", "+"] else sortby, "DESC" if sortby[0] == "-" else "ASC")]
+
+
+def strftime_millis(date: datetime):
+    """Format datetime with milliseconds precision"""
+    return date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+def run_threads(threads: Iterable[Thread]) -> None:
+    """Start all threads, then join them."""
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+
+def run_in_threads(
+    func: Callable[..., Any],
+    args_list: Sequence[tuple],
+    max_workers: int | None = None,
+) -> list[Any]:
+    """
+    Executes a function in parallel using threads, and returns the list of non-None results.
+
+    Each thread runs `func` with the corresponding arguments provided in `args_list`.
+
+    Args:
+        func (Callable[..., Any]): The function to be executed concurrently.
+        args_list (Sequence[tuple]): A sequence of argument tuples for each thread.
+        max_workers (int | None): The maximum number of threads to use.
+
+    Returns:
+        list[Any]: A list of results, one per thread, excluding any result that is None, in the same order as args_list.
+    """
+    results: list[Any] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for future in [executor.submit(func, *args) for args in args_list]:
+            try:
+                if (result := future.result()) is not None:
+                    results.append(result)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error(traceback.format_exc())
+                results.append(e)
+    return results

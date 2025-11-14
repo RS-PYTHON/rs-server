@@ -23,7 +23,6 @@ from threading import Lock
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from eodag.api.core import override_config_from_env
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -31,12 +30,15 @@ from eodag.utils.exceptions import (
     ValidationError,
 )
 from fastapi import HTTPException, status
+from rs_server_common.authentication.external_authentication_config import (
+    StationExternalAuthenticationConfig,
+)
+from rs_server_common.authentication.token_auth import get_station_token
+from rs_server_common.settings import env_bool
+from rs_server_common.stac_cql2 import temporal_operations
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
-
-# from fastapi import HTTPException
-
 
 logger = Logging.default(__name__)
 
@@ -50,6 +52,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Constructor"""
 
         self.lock = Lock()
+        self.all_auth_providers = []  # all authenticated providers
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -72,19 +75,57 @@ class CustomEODataAccessGateway(EODataAccessGateway):
 
     @classmethod
     @lru_cache
-    def create(cls, *args, **kwargs):
+    def create(cls, *args, **kwargs) -> "CustomEODataAccessGateway":
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
-    def override_config_from_env(self):
+    def authenticate_provider(self, provider: str, external_config: StationExternalAuthenticationConfig):
         """
-        Update the eodag conf from the latest EODAG__<provider>__auth__... env vars
-        that are set in authentication_to_external.py, if they have changed
+        Set the authentication for an external provider (=station).
+
+        Args:
+            provider: the name of the eodag provider (=station name)
+            external_config: external provider (=station) authentication from rs-server.yaml file
+            or RSPY__TOKEN__xxx env vars
         """
-        with self.lock:  # safer to use a thread lock before calling eodag and modifying a global var
-            if (new_environ := dict(os.environ)) != self.old_environ:
-                self.old_environ = new_environ
-                override_config_from_env(self.providers_config)
+
+        # In a lock, call this function only once by provider, to avoid changing the config
+        # and using it (when calling a search) at the same time.
+        with self.lock:
+            if provider in self.all_auth_providers:
+                return
+            self.all_auth_providers.append(provider)
+
+            provider_config = self.providers_config[provider]
+            if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
+                provider_config.update(
+                    {"auth": {"credentials": {"token": get_station_token(external_config, {})["access_token"]}}},
+                )
+            else:
+                # mandatory keys
+                provider_config.update(
+                    {
+                        "auth": {
+                            "auth_uri": external_config.token_url,
+                            "refresh_uri": external_config.token_url,
+                            "req_data": {
+                                "client_id": external_config.client_id,
+                                "client_secret": external_config.client_secret,
+                                "username": external_config.username,
+                                "password": external_config.password,
+                                "grant_type": external_config.grant_type,
+                            },
+                        },
+                    },
+                )
+
+                # Used to set the authorization for token retrieval
+                if external_config.authorization is not None:
+                    provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
+
+                # optional keys
+                if external_config.scope:
+                    provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
 
 
 class EodagProvider(Provider):
@@ -93,27 +134,31 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, config_file: Path, provider: str):  # type: ignore
+    def __init__(self, external_config: StationExternalAuthenticationConfig, eodag_config_path: Path, provider: str):
         """Create a EODAG provider.
 
         Args:
-            config_file: the path to the eodag configuration file
-            provider: the name of the eodag provider
+            external_config: external provider (=station) authentication from rs-server.yaml file
+            or RSPY__TOKEN__xxx env vars. Override values from the eodag config file (below).
+            eodag_config_path: path to the eodag configuration file (adgs_ws_config.yaml or cadip_ws_config.yaml)
+            provider: the name of the eodag provider (=station name)
         """
         self.provider: str = provider
-        self.config_file = config_file.resolve().as_posix()
+        self.eodag_config_path = eodag_config_path.resolve().as_posix()
         try:
             with global_lock:  # use a thread lock before calling the lru_cache
-                self.client = CustomEODataAccessGateway.create(self.config_file)
+                self.client = CustomEODataAccessGateway.create(self.eodag_config_path)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
+        self.client.authenticate_provider(self.provider, external_config)
 
-        # If the eodag object was already existing and retrieved from the lru_cache,
-        # we need to update its configuration from the latest env vars, if they have changed
-        self.client.override_config_from_env()
+    def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
+        value = values[0] if isinstance(values, list) and len(values) == 1 else values
+        key = plural_key if isinstance(value, list) else singular_key
+        mapped_search_args[key] = ",".join(f"'{p}'" for p in value) if isinstance(value, list) else f"'{value}'"
 
-    def _specific_search(self, **kwargs) -> SearchResult | list:
+    def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-branches,too-many-locals
         """
         Conducts a search for products using the specified OData arguments.
 
@@ -144,19 +189,17 @@ class EodagProvider(Provider):
         mapped_search_args: dict[str, str | None] = {}
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
-            session_id = session_id[0] if len(session_id) == 1 else session_id
-            key = "SessionIds" if isinstance(session_id, list) else "SessionId"
-            value = ", ".join(f"'{s}'" for s in session_id) if isinstance(session_id, list) else f"'{session_id}'"
-            mapped_search_args[key] = value
+            self._handle_multiple_values(mapped_search_args, session_id, "SessionId", "SessionIds")
 
         if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
-            platform = kwargs.pop("Satellite", None)
+            if platform := kwargs.pop("Satellite", None):
+                self._handle_multiple_values(mapped_search_args, platform, "platform", "platforms")
 
-            if platform:
-                key = "platforms" if isinstance(platform, list) else "platform"
-                value = ", ".join(f"'{p}'" for p in platform) if isinstance(platform, list) else f"'{platform}'"
-                mapped_search_args[key] = value
+        for multivalued_key in ("attr_ptype", "platformSerialIdentifier", "platformShortName"):
+            # Handle AUXIP/PRIP parameters that can have one or several values
+            if values := kwargs.pop(multivalued_key, None):
+                self._handle_multiple_values(mapped_search_args, values, multivalued_key, multivalued_key + "s")
 
         if date_time := kwargs.pop("PublicationDate", False):
             # Since now both for files and sessions, time interval is optional, map it if provided.
@@ -168,6 +211,11 @@ class EodagProvider(Provider):
                     "StopPublicationDate": end,
                 },
             )
+
+        for op in temporal_operations:
+            if query := kwargs.pop(op, None):
+                mapped_search_args[op] = query
+
         max_items_allowed = int(self.client.providers_config[self.provider].search.pagination["max_items_per_page"])
         if int(kwargs["items_per_page"]) > max_items_allowed:
             logger.warning(
@@ -177,14 +225,20 @@ class EodagProvider(Provider):
             logger.warning(f"Number of items per page was set to {max_items_allowed - 1}.")
             kwargs["items_per_page"] = max_items_allowed - 1
         try:
-            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
+            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
+            try:
+                prov_cfg = self.client.providers_config[self.provider]
+                products_cfg = getattr(prov_cfg, "products", {})
+                dataset_key = next(iter(products_cfg.keys()))
+            except Exception:  # pylint: disable=broad-exception-caught
+                dataset_key = "S1_SAR_RAW"  # last-resort fallback
             products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
                 raise_errors=True,
-                productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
+                productType=dataset_key,
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
@@ -257,7 +311,7 @@ class EodagProvider(Provider):
 
         """
         try:
-            with open(self.config_file, encoding="utf-8") as f:
+            with open(self.eodag_config_path, encoding="utf-8") as f:
                 base_uri = yaml.safe_load(f)[self.provider.lower()]["download"]["base_uri"]
             return EOProduct(
                 self.provider,

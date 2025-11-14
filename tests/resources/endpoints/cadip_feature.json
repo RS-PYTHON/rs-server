@@ -5,6 +5,7 @@
         "datetime": "2020-01-05T18:52:26.165Z",
         "start_datetime": "2020-01-05T07:22:04.051Z",
         "end_datetime": "2020-01-05T18:52:32.165Z",
+        "eopf:origin_datetime": "2020-01-05T18:52:32.165Z",
         "platform": "sentinel-1a",
         "constellation": "sentinel-1",
         "published": "2020-01-05T18:52:26.165Z",
@@ -12,7 +13,7 @@
         "cadip:num_channels": 2,
         "cadip:station_unit_id": "01",
         "sat:absolute_orbit": 53186,
-        "cadip:acquisition_id": 531861,
+        "cadip:acquisition_id": "53186_A1",
         "cadip:antenna_id": "MSP21",
         "cadip:front_end_id": "01",
         "cadip:retransfer": false,
@@ -37,7 +38,6 @@
             "cadip:final_block": false,
             "cadip:block_number": 1,
             "cadip:channel": 1,
-            "cadip:session_id": "S1A_20200105072204051312",
             "created": "2020-01-05T18:52:29.165Z",
             "eviction_datetime": "2020-01-05T18:52:29.165Z",
             "file:size": 42
@@ -53,7 +53,6 @@
             "cadip:final_block": false,
             "cadip:block_number": 1,
             "cadip:channel": 1,
-            "cadip:session_id": "S1A_20200105072204051312",
             "created": "2020-01-05T18:52:32.165Z",
             "eviction_datetime": "2020-01-05T18:52:32.165Z",
             "file:size": 51
@@ -63,25 +62,30 @@
         {
             "rel": "collection",
             "type": "application/json",
+            "title": "S1A_20200105072204051312",
             "href": "http://testserver/cadip/collections/cadip_session_by_id"
         },
         {
             "rel": "parent",
             "type": "application/json",
+            "title": "Parent Catalog",
             "href": "http://testserver/cadip/collections/cadip_session_by_id"
         },
         {
             "rel": "root",
             "type": "application/json",
+            "title": "STAC Root Catalog",
             "href": "http://testserver/cadip/"
         },
         {
             "rel": "self",
             "type": "application/geo+json",
+            "title": "This collection",
             "href": "http://testserver/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312"
         }
     ],
     "stac_extensions": [
+        "https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json",
         "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
     ],

@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Don't use alpine, it's too different from the build stage.
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
-# Build stage for multi stage build.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
+COPY ./layer-cleanup.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
 
-# Install dependencies
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
+# Install git to install dependencies from forked repositories
+RUN apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
 
 # Update pip version
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -30,36 +32,31 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_cadip-*.whl
-
-# Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
-
-# Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN \
-    apt update && apt upgrade -y && \
-    apt install -y libpq-dev libexpat1 && \
-    rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
-
-# Copy the whole /usr/local dir (that contains the python installation) from the build stage
-COPY --from=builder /usr/local /usr/local
+# https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
+RUN cd /tmp/whl && pip install --no-cache-dir \
+    --extra-index-url=https://home.rs-python.eu/local-pypi/ \
+    rs_server_common-*.whl rs_server_cadip-*.whl && \
+    layer-cleanup.sh
 
 # Install opentelemetry instrumentation packages for dependencies
-RUN opentelemetry-bootstrap -a install
+RUN opentelemetry-bootstrap -a install && layer-cleanup.sh
 
-# Clean everything
-RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+# Remove dependencies that are need only for compilation, not execution
+RUN apt autoremove -y git && layer-cleanup.sh
 
 # Add a default user
-RUN useradd -m user
-USER user
-WORKDIR /home/user
+ARG USER=user
+RUN useradd -m $USER
+USER $USER
+WORKDIR /home/$USER
 
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
-# After this, make sure we're still non-root
-USER user
+# Remove apt repository list and custom scripts
+USER root
+RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+USER $USER
 
 ENTRYPOINT [ \
     "python", "-m", "uvicorn", "rs_server_cadip.fastapi.cadip_app:app", \

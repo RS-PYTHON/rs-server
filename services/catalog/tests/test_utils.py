@@ -41,7 +41,7 @@ class TestVerifyExistingItemFromCatalog:
                 user_collection_str="user_collection",
             )
         assert excinfo.value.status_code == 409
-        assert "Conflict error! The item existing_item already exists" in str(excinfo.value.detail)
+        assert "The item existing_item already exists" in str(excinfo.value.detail)
 
     def test_post_nonexistent_item_no_error(self):
         """Test that a POST request with a non-existent item does not raise an error."""
@@ -109,7 +109,10 @@ class TestGetS3FilenameFromAsset:
 
     def test_retrieve_s3_key_from_alternate_field(self):
         """Test retrieving the S3 key from the 'alternate.s3.href' field."""
-        asset = {"alternate": {"s3": {"href": "s3://test_catalog_bucket/path/to/filename"}}}
+        asset = {
+            "href": "s3://test_catalog_bucket/path/to/filename",
+            "alternate": {"https": {"href": "https://rs-server/test_catalog/path/to/filename"}},
+        }
         s3_filename, alternate_field = get_s3_filename_from_asset(asset)
         assert s3_filename == "s3://test_catalog_bucket/path/to/filename"
         assert alternate_field is True
@@ -177,23 +180,8 @@ class TestDeleteS3Files:
         result = delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is True
-        mock_s3_handler.delete_file_from_s3.assert_called_once_with("bucket_name", "path/to/file")
+        mock_s3_handler.delete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
         mock_logger.error.assert_not_called()
-
-    def test_delete_s3_files_invalid_s3_path(self, mocker):
-        """Test the behavior when an invalid S3 path is provided."""
-        mock_logger = mocker.patch("rs_server_catalog.utils.logger")
-        mock_s3_handler = mocker.patch("rs_server_catalog.utils.get_s3_handler")
-        mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=False)
-
-        result = delete_s3_files(["invalid_path"])
-
-        assert result is True
-        mock_s3_handler.delete_file_from_s3.assert_not_called()
-        mock_logger.error.assert_called_once_with(
-            "The requested s3 key invalid_path for deletion does not match the "
-            "correct S3 path pattern (s3://bucket_name/path/to/obj). Skipping",
-        )
 
     def test_delete_s3_files_deletion_runtime_error(self, mocker):
         """Test the behavior when a RuntimeError occurs during deletion."""
@@ -201,15 +189,14 @@ class TestDeleteS3Files:
         mock_get_s3_handler = mocker.patch("rs_server_catalog.utils.get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.delete_file_from_s3.side_effect = RuntimeError("Deletion failed")
+        mock_s3_handler.delete_keys_from_s3.side_effect = RuntimeError("Deletion failed")
         mock_get_s3_handler.return_value = mock_s3_handler
         ftbd = "s3://bucket_name/path/to/file"
         result = delete_s3_files([ftbd])
 
         assert result is True  # Function should continue even if deletion fails
         mock_logger.exception.assert_called_once_with(
-            f"Failed to delete key {ftbd} from s3 bucket."
-            "Reason: Deletion failed. However, the process will still continue !",
+            "Failed to delete keys from s3 bucket. Reason: Deletion failed. However, the process will still continue !",
         )
 
 

@@ -16,21 +16,24 @@
 
 import json
 import os
+from typing import cast
 
 import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.keycloak_util import KCInfo
+from rs_server_common.settings import docs_params
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
+from starlette.routing import Route
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -188,21 +191,18 @@ async def test_oauth2_security(mocker, client):
     ids=["auxip", "cadip"],
 )
 async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-many-locals
-    fastapi_app,
+    fastapi_app: FastAPI,
     client,
     mocker,
     monkeypatch,
     httpx_mock: HTTPXMock,
+    use_module_for_station_token,  # pylint: disable=unused-argument
     test_apikey: bool,
     test_oauth2: bool,
 ):
     """
     Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of the internal token module  for getting the token and setting it to the eodag
-    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
-
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.authentication.authentication.FROM_PYTEST", new=True, autospec=False)
 
@@ -219,9 +219,9 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     # The user, authenticated with oauth2, can also use an apikey created by another user.
     # In this case, the apikey authentication has higher priority and should be used.
     roles = [
-        "rs_adgs_adgs_read",
-        "rs_adgs_adgs_download",
-        "rs_adgs_landing_page",
+        "rs_auxip_adgs_read",
+        "rs_auxip_adgs_download",
+        "rs_auxip_landing_page",
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
         "rs_cadip_landing_page",
@@ -257,14 +257,22 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
+    openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
+
     # If we test the oauth2 authentication, we login the user.
     # His authentication information is saved in the client session cookies.
     if test_oauth2:
         await mock_oauth2(mocker, client, "/auth/login", oauth2_user_id, oauth2_username, oauth2_roles)
 
     # For each adgs or cadip api endpoint
-    for route in fastapi_app.router.routes:
-        if not route.path.startswith(("/adgs/", "/auxip/", "/cadip/")):
+    for base_route in fastapi_app.router.routes:
+        route = cast(Route, base_route)
+        if (
+            route.path in openapi_urls
+            or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/"))
+            or not route.methods
+        ):
+            logger.debug(f"Skipping {route.path}")
             continue
 
         # For each method (get, post, ...)
@@ -370,14 +378,14 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_cadip_{station}_read",
         ],
-        [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
+        [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_auxip_landing_page"],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
             "/auxip/collections",
             "GET",
             ADGS_STATIONS,
             NAME_PARAM,
-            "rs_adgs_landing_page",
+            "rs_auxip_landing_page",
         ],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -385,7 +393,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_{station}_read",
+            "rs_auxip_{station}_read",
         ],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -393,7 +401,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_{station}_read",
+            "rs_auxip_{station}_read",
         ],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -401,7 +409,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_{station}_read",
+            "rs_auxip_{station}_read",
         ],
     ],
     indirect=["fastapi_app"],
@@ -423,6 +431,7 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     mocker,
     monkeypatch,
     httpx_mock: HTTPXMock,
+    use_module_for_station_token,  # pylint: disable=unused-argument
     test_apikey,
     test_oauth2,
     endpoint,
@@ -434,9 +443,6 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     """
     Test that the api key has the right roles for the http endpoints.
     """
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of the internal token module  for getting the token and setting it to the eodag
-    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
     # Mock the uac manager url
     if test_apikey:
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
@@ -493,7 +499,7 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
         # Test the error message with an unknown cadip station or collection,
         # skip for landing_pages since no need for stations.
         if station == UNKNOWN_CADIP_STATION and "landing_page" not in station_role:
-            message = json.loads(response.content)["detail"]
+            message = json.loads(response.content)["description"]
             assert (
                 response.status_code == status.HTTP_401_UNAUTHORIZED
                 and f"Authorization does not include the right role to download from the 'cadip_{station}' station"
@@ -547,7 +553,7 @@ async def test_stac_browser_authent(
 
     # Mock global vars
     stac_browser_url = "http://stac_browser_url"
-    mocker.patch("rs_server_common.settings.STAC_BROWSER_URLS", new=[stac_browser_url], autospec=False)
+    mocker.patch("rs_server_common.settings.CORS_ORIGINS", new=[stac_browser_url], autospec=False)
 
     # Mock functions
     mocked_user_login = "mocked_user_login"

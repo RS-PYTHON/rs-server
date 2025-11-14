@@ -18,16 +18,16 @@ import pytest
 from pytest_httpx import HTTPXMock
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
-    init_test,
+    init_authentication_test,
 )
-from starlette.status import HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
 
 from .resources.sample_data import sample_process_metadata_model
 
 
 @pytest.mark.unit
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):
+async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pylint: disable=too-many-locals
     """
     Validate role-based access control for the 'staging' resource.
 
@@ -57,7 +57,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):
     test_apikey = False
     test_oauth2 = True  # test only with the oauth2 cookie
     # pylint: disable=duplicate-code
-    await init_test(
+    await init_authentication_test(
         mocker,
         httpx_mock,
         staging_client,
@@ -86,48 +86,68 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):
 
     mock_db_table = mocker.MagicMock()
     # Mock the job databse to allocate staging resource for this job-id
-    mock_db_table.get_job.return_value = {"process_id": resource}
+    mock_db_table.get_job.return_value = {"processID": resource}
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
     job_id = "job_id"
     assert staging_client.get(f"/jobs/{job_id}", **header).status_code != HTTP_401_UNAUTHORIZED
     assert staging_client.delete(f"/jobs/{job_id}", **header).status_code != HTTP_401_UNAUTHORIZED
     assert staging_client.get(f"/jobs/{job_id}/results", **header).status_code != HTTP_401_UNAUTHORIZED
 
-    # When setting resource to other value, check that UAC does not allow since roles are not updated.
+    # When setting resource to other value (corresponding to an existing resource),
+    #  check that UAC does not allow since roles are not updated.
     resource = "other_staging"
-    unauthorized_resource_process_response = staging_client.get(f"/processes/{resource}", **header)
-    assert unauthorized_resource_process_response.status_code == HTTP_401_UNAUTHORIZED
-    assert unauthorized_resource_process_response.json() == {
-        "message": "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role",
+    mock_resources = {
+        "staging": {
+            "id": "staging",
+            "version": "0.0.1",
+        },
+        "other_staging": {
+            "id": "staging",
+            "version": "0.0.1",
+        },
     }
+    # Mock the existing resources
+    mocker.patch.dict("rs_server_staging.main.api.config", {"resources": mock_resources})
 
+    unauthorized_resource_process_response = staging_client.get(f"/processes/{resource}", **header)
+    assert unauthorized_resource_process_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert (
+        "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role"
+        in unauthorized_resource_process_response.json()["detail"]
+    )
+
+    mocker.patch("rs_server_staging.main.validate_request", return_value={})
     unauthorized_execute_jobs_response = staging_client.post(
         f"/processes/{resource}/execution",
         json=sample_process_metadata_model,
         **header,
     )
-    assert unauthorized_execute_jobs_response.status_code == HTTP_401_UNAUTHORIZED
-    assert unauthorized_execute_jobs_response.json() == {
-        "message": "Missing RS_PROCESSES_OTHER_STAGING_EXECUTE authorization role",
-    }
+    assert unauthorized_execute_jobs_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert (
+        "Missing RS_PROCESSES_OTHER_STAGING_EXECUTE authorization role"
+        in unauthorized_execute_jobs_response.json()["detail"]
+    )
 
     # Mock the jobs db, to allocate current job-id to other_staging resource.
-    mock_db_table.get_job.return_value = {"process_id": resource}
+    mock_db_table.get_job.return_value = {"processID": resource}
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
     unauthorized_resource_jobs_response = staging_client.get(f"/jobs/{job_id}", **header)
-    assert unauthorized_resource_jobs_response.status_code == HTTP_401_UNAUTHORIZED
-    assert unauthorized_resource_jobs_response.json() == {
-        "message": "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role",
-    }
+    assert unauthorized_resource_jobs_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert (
+        "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role"
+        in unauthorized_resource_jobs_response.json()["detail"]
+    )
 
     unauthorized_resource_jobs_result_response = staging_client.get(f"/jobs/{job_id}/results", **header)
-    assert unauthorized_resource_jobs_result_response.status_code == HTTP_401_UNAUTHORIZED
-    assert unauthorized_resource_jobs_result_response.json() == {
-        "message": "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role",
-    }
+    assert unauthorized_resource_jobs_result_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert (
+        "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role"
+        in unauthorized_resource_jobs_result_response.json()["detail"]
+    )
 
     unauthorized_resource_jobs_response_delete = staging_client.delete(f"/jobs/{job_id}", **header)
-    assert unauthorized_resource_jobs_response_delete.status_code == HTTP_401_UNAUTHORIZED
-    assert unauthorized_resource_jobs_response_delete.json() == {
-        "message": "Missing RS_PROCESSES_OTHER_STAGING_DISMISS authorization role",
-    }
+    assert unauthorized_resource_jobs_response_delete.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert (
+        "Missing RS_PROCESSES_OTHER_STAGING_DISMISS authorization role"
+        in unauthorized_resource_jobs_response_delete.json()["detail"]
+    )

@@ -16,8 +16,12 @@
 
 import os
 import os.path as osp
+from functools import lru_cache
 from pathlib import Path
 
+from rs_server_common.authentication.authentication_to_external import (
+    load_external_auth_config,
+)
 from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.settings import env_bool
@@ -30,6 +34,7 @@ else:
     DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config.yaml"
 
 
+@lru_cache
 def init_cadip_provider(station: str) -> EodagProvider:
     """Initialize the cadip provider for the given station.
 
@@ -46,11 +51,17 @@ def init_cadip_provider(station: str) -> EodagProvider:
     Returns:
         the EodagProvider initialized
     """
-
+    station = station.lower()
     try:
+        # Get the cadip_ws_config.yaml file path for eodag.
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
+
+        # Read the station authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
+        ext_auth_config = load_external_auth_config(station, "cadip")
+
         # default to eodag, stations may be ins, mps, mti, nsg, sgs, cadip(?)
-        return EodagProvider(eodag_config, station.lower())
+        return EodagProvider(ext_auth_config, eodag_config, station)
+
     except Exception as exception:
-        raise CreateProviderFailed("Failed to setup eodag") from exception
+        raise CreateProviderFailed(f"Failed to setup eodag for CADIP station {station}") from exception

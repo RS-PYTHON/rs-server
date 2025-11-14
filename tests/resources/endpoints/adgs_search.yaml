@@ -18,7 +18,7 @@ collections:
     query:
       platformShortName: Sentinel-1
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -29,14 +29,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -47,7 +47,7 @@ collections:
     query:
       platformShortName: Sentinel-1
       top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -58,14 +58,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -75,7 +75,7 @@ collections:
     station: adgs2
     query:
       productType: AUX_OBMEMC
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -86,14 +86,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -102,7 +102,7 @@ collections:
   - id: adgs_invalid
     station: adgs2
     query:
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -113,14 +113,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -130,7 +130,7 @@ collections:
     station: adgs2
     query:
       PublicationDate: "invalid_start/2020-02-16T12:00:00Z"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -141,14 +141,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -158,7 +158,7 @@ collections:
     station: adgs2
     query:
       PublicationDate: "2020-02-16T12:00:00Z/invalid_stop"
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Sentinel-1 Inuvik CADIP sessions'
     description: 'Sentinel-1 Inuvik CADIP sessions'
     license: other
@@ -169,14 +169,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -186,7 +186,7 @@ collections:
     station: adgs
     query:
       top: 1
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
     description: 'Sentinel-1 test CADIP sessions'
     license: other
@@ -197,14 +197,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -214,9 +214,9 @@ collections:
   - id: adgs
     station: adgs
     query: null
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    stac_extensions: []
     title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    description: 'Auxiliary files from ADGS'
     license: other
     extent:
       spatial:
@@ -225,14 +225,14 @@ collections:
         interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
         title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
     providers:
       - name: 'European Union/ESA/Copernicus'
         roles:
           - producer
           - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
       - name: 'Reference System'
         roles:
           - host
@@ -242,3 +242,14 @@ collections:
     station: adgs2
     query:
       limit: 100
+    description: 'Auxiliary files from ADGS2'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'

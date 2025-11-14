@@ -18,9 +18,9 @@ This module provides functionality to retrieve a list of products from the ADGS 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
-import json
 import os.path as osp
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -30,10 +30,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Request, status
 from fastapi.responses import RedirectResponse
-from rs_server_adgs import adgs_tags
-from rs_server_adgs.adgs_retriever import init_adgs_provider
+from rs_server_adgs import adgs_retriever, adgs_tags
 from rs_server_adgs.adgs_utils import (
-    auxip_map_mission,
+    auxip_odata_to_stac_template,
+    auxip_stac_mapper,
     prepare_collection,
     read_conf,
     select_config,
@@ -41,9 +41,6 @@ from rs_server_adgs.adgs_utils import (
     stac_to_odata,
 )
 from rs_server_common.authentication import authentication
-from rs_server_common.authentication.authentication_to_external import (
-    set_eodag_auth_token,
-)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.stac_api_common import (
     BBoxType,
@@ -58,9 +55,14 @@ from rs_server_common.stac_api_common import (
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
+    split_multiple_values,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
+from rs_server_common.utils.utils import (
+    map_auxip_prip_mission,
+    validate_inputs_format,
+    validate_sort_input,
+)
 from stac_fastapi.api.models import GeoJSONResponse
 
 # pylint: disable=duplicate-code # with cadip_search
@@ -86,11 +88,12 @@ class MockPgstacAdgs(MockPgstac):
         super().__init__(
             request=request,
             readwrite=readwrite,
-            service="adgs",
+            service="auxip",
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,
-            map_mission=auxip_map_mission,
+            map_mission=map_auxip_prip_mission,
+            temporal_mapping={"start_datetime": "ContentDate/Start", "end_datetime": "ContentDate/End"},
         )
 
         # Default sortby value
@@ -99,24 +102,24 @@ class MockPgstacAdgs(MockPgstac):
     @handle_exceptions
     def process_search(
         self,
-        collection: dict,
+        station: str,
         odata_params: dict,
+        collection_provider: Callable[[dict], str | None],
         limit: int,
         page: int,
     ) -> stac_pydantic.ItemCollection:
-        """Search adgs products for the given collection and OData parameters."""
+        """Search adgs products for the given station and OData parameters."""
         # Update odata names that shadow eodag builtins (productype)
 
         odata_params["Name"] = names[0] if isinstance(names := odata_params.get("Name"), list) else names
-        odata_params["attr_ptype"] = odata_params.pop("productType", None)
+        if product_type := odata_params.pop("productType", None):
+            odata_params["attr_ptype"] = split_multiple_values(product_type)
 
-        return process_product_search(
-            collection.get("station", "adgs"),
-            odata_params,
-            limit,
-            self.sortby,
-            page,
-        )
+        for key in ("platformSerialIdentifier", "platformShortName"):
+            if value := odata_params.pop(key, None):
+                odata_params[key] = split_multiple_values(value)
+
+        return process_product_search(station, odata_params, collection_provider, limit, self.sortby, page)
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -136,7 +139,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     station = collection["station"]
 
     # Call the authentication function from the authentication module
-    authentication.auth_validation("adgs", access_type, request=request, station=station)
+    authentication.auth_validation("auxip", access_type, request=request, station=station)
 
 
 @router.get("/", include_in_schema=False)
@@ -173,14 +176,14 @@ async def get_root_catalog(request: Request):
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
     logger.info(f"Starting {request.url.path}")
-    authentication.auth_validation("adgs", "landing_page", request=request)
+    authentication.auth_validation("auxip", "landing_page", request=request)
     return await request.app.state.pgstac_client.landing_page(request=request)
 
 
 @router.get("/auxip/conformance")
 async def get_conformance(request: Request):
     """Return the STAC/OGC conformance classes implemented by this server."""
-    authentication.auth_validation("adgs", "landing_page", request=request)
+    authentication.auth_validation("auxip", "landing_page", request=request)
     return await request.app.state.pgstac_client.conformance()
 
 
@@ -189,7 +192,7 @@ async def get_conformance(request: Request):
 async def get_allowed_adgs_collections(request: Request):
     """Return the ADGS collections to which the user has access to."""
     logger.info(f"Starting {request.url.path}")
-    authentication.auth_validation("adgs", "landing_page", request=request)
+    authentication.auth_validation("auxip", "landing_page", request=request)
     return await request.app.state.pgstac_client.all_collections(request=request)
 
 
@@ -245,9 +248,9 @@ async def get_adgs_collection_items(
         request,
         bbox=check_bbox_input(bbox),
         datetime=datetime,
-        filter=filter_,
+        filter_expr=filter_,
         filter_lang=filter_lang,
-        sortby=sortby,
+        sortby=[sortby] if sortby else None,
         limit=limit,
         page=page,
     )
@@ -322,10 +325,11 @@ async def get_adgs_collection_specific_item(
 
 
 def process_product_search(  # pylint: disable=too-many-locals
-    station,
-    queryables,
-    limit,
-    sortby,
+    station: str,
+    queryables: dict,
+    collection_provider: Callable[[dict], str | None],
+    limit: int,
+    sortby: str,
     page: int = 1,
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
@@ -335,6 +339,8 @@ def process_product_search(  # pylint: disable=too-many-locals
     Args:
         station (str): Auxip station identifier.
         queryables (dict): Query parameters for filtering results.
+        collection_provider (Callable[[dict], str | None]): Function that determines STAC collection
+                                                            for a given OData entity
         limit (int): Maximum number of products to return.
         sortby (str): Sorting field with +/- prefix for ascending/descending order.
         page (int, optional): Page number for pagination. Defaults to 1.
@@ -349,25 +355,21 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException: If there is a connection error with the station (`requests.exceptions.ConnectionError`).
         HTTPException: If there is a general failure during the process.
     """
-    set_eodag_auth_token(station, "auxip")
     try:
-        products = (init_adgs_provider(station)).search(
+        products = adgs_retriever.init_adgs_provider(station).search(
             **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
             page=page,
             **kwargs,
         )
-        feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
-        stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
-        with (
-            open(feature_template_path, encoding="utf-8") as template,
-            open(stac_mapper_path, encoding="utf-8") as stac_map,
-        ):
-            feature_template = json.loads(template.read())
-            stac_mapper = json.loads(stac_map.read())
-            collection = create_stac_collection(products, feature_template, stac_mapper)
-            return prepare_collection(serialize_adgs_asset(collection, products))
+        collection = create_stac_collection(
+            products,
+            auxip_odata_to_stac_template(),
+            auxip_stac_mapper(),
+            collection_provider,
+        )
+        return prepare_collection(serialize_adgs_asset(collection, products))
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
@@ -381,7 +383,6 @@ def process_product_search(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Station ADGS connection error: {exception}",
         ) from exception
-
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
         if isinstance(exception, HTTPException):

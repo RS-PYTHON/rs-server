@@ -23,12 +23,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     # run this worflow only for code/test related changes (avoid it for documentation)
-    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.toml', '**.yaml', '**.yml']
+    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.sh', '**.toml', '**.yaml', '**.yml']
   workflow_dispatch:
 
 env:
   PYTHON_VERSION: 3.12.9
-  SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
   changes:
@@ -39,7 +38,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       conf: ${{ steps.filter.outputs.conf }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -53,7 +52,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/install-python
       - run: >
           echo
@@ -68,7 +67,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
 
@@ -79,8 +78,10 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     # continue-on-error: true # run other jobs, resolve issues later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
 
       - name: Run pylint
         if: always() # even if previous steps returned a non-zero exit code
@@ -96,7 +97,7 @@ jobs:
           poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: check-linting
@@ -112,8 +113,10 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     # continue-on-error: true # run other jobs, resolve issues later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
       - name: Run mypy
         run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
         shell: bash
@@ -121,11 +124,13 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    # continue-on-error: true # run other jobs, resolve issues later
+    # continue-on-error: true
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
 
       - id: bandit
         name: Run bandit
@@ -138,8 +143,10 @@ jobs:
 
       - id: safety
         name: Run safety
-        if: always()
-        run: poetry run safety check --full-report
+        if: always() && github.actor != 'dependabot[bot]' # dependabot does not have access to secrets
+        run: |
+          set -x
+          poetry run safety --key ${{ secrets.SAFETY_API_KEY }} scan --detailed-output
         shell: bash
 
       - name: Run Trivy vulnerability scanner
@@ -157,7 +164,7 @@ jobs:
 
       - name: Save reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: check-security
           path: |
@@ -167,7 +174,7 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results-fs.sarif
           category: git repository
@@ -196,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/poetry-install
       - name: Run pytest
         run: ./resources/all_pytests.sh --install
@@ -208,7 +215,7 @@ jobs:
           filename: ./cov-report.xml
 
       - name: Save reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: run-all-pytests
           path: |
@@ -223,23 +230,26 @@ jobs:
     needs: [changes, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
     if: ${{ needs.changes.outputs.code == 'true' }}
     permissions: write-all # write pull request comments
-    # Mark the job as OK even if the sonarqube quality gate doesn't pass.
-    # We will resolve these issues later.
-    # continue-on-error: true
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: RS-PYTHON_rs-server
+      SONAR_HOST_URL: https://sonarcloud.io
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name:
             check-linting
       - name: Download vulnerability reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name:
             check-security
       - name: Download pytest reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name:
             run-all-pytests
@@ -251,11 +261,12 @@ jobs:
           echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Run sonarqube
-        uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: Normalize coverage paths for SonarCloud
+        run: |
+          sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
+
+      - name: Run SonarCloud Scanner
+        uses: SonarSource/sonarqube-scan-action@v6
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
@@ -265,18 +276,20 @@ jobs:
           projectBaseDir: .
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.exclusions=
+            -Dsonar.exclusions=tests,tests/**,**/tests/**
+            -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
-            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
-            -Dsonar.python.bandit.reportPaths="./bandit-report.json"
-            -Dsonar.python.coverage.reportPaths="./cov-report.xml"
-            -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
+            -Dsonar.python.pylint.reportPaths=./pylint-report.txt
+            -Dsonar.python.flake8.reportPaths=./flake8-report.txt
+            -Dsonar.python.bandit.reportPaths=./bandit-report.json
+            -Dsonar.python.coverage.reportPaths=./cov-report.xml
+            -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
 
       - name: Wait for quality gate result
         run: sleep 5
@@ -286,15 +299,15 @@ jobs:
         id: quality-gate-result
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          sonar-host-url: ${{ env.SONAR_HOST_URL }}
+          sonar-token: ${{ env.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
 
       - name: Output result
         run: |
-          echo "${{ steps.quality-gate-result.outputs.project-status }}"
-          echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+          echo "Project status: ${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "Quality gate result: ${{ steps.quality-gate-result.outputs.quality-gate-result }}"
 
       - id: check-gate
         name: Check quality gate status
@@ -302,11 +315,12 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # Mark the job as OK even if the sonarqube quality gate doesn't pass.
+        # We will resolve these issues later.
+        # continue-on-error: true
 
-      # http instead of https or the url appears as *** in github, I don't know why,
-      # it may be configurable. But http works as well.
       - if: always()
         run: >
           echo "SonarQube report:
-          http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
+          https://sonarcloud.io/dashboard?id=${{ env.SONAR_PROJECT_KEY }}&branch=${{ github.ref_name }}"
           >> $GITHUB_STEP_SUMMARY

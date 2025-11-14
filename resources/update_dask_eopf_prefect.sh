@@ -28,9 +28,10 @@ DASK_TAG=2025.3.0
 DASK_GATEWAY_TAG=2024.1.0
 PREFECT_TAG=3.2.13
 PREFECT_DASK_TAG=0.3.3
+PREFECT_AWS_TAG=0.5.9
 eopf=2.4.4
 l0=0.9.0
-all_variables=(PYTHON_VERSION DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG eopf l0) # var names
+all_variables=(PYTHON_VERSION DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG PREFECT_AWS_TAG eopf l0) # var names
 
 #
 # Bash scripts, dockerfiles and github action workflows to update,

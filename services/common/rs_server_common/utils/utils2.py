@@ -70,10 +70,11 @@ def log_http_exception(
                 """,
         ),
     ] = None,
-) -> HTTPException:
-    """Log error and return an HTTP execption to be raised by the caller"""
+    exception_type: type[HTTPException] = HTTPException,
+) -> type[HTTPException]:
+    """Log error and return an HTTP exception to be raised by the caller"""
     logger.error(detail)
-    return HTTPException(status_code, detail, headers)
+    return exception_type(status_code, detail, headers)  # type: ignore
 
 
 def read_response_error(response):
@@ -82,7 +83,7 @@ def read_response_error(response):
     # Try to read the response detail or error
     try:
         json = response.json()
-        detail = json.get("detail") or json["error"]
+        detail = json.get("detail") or json.get("description") or json["error"]
 
     # If this fail, get the full response content
     except Exception:  # pylint: disable=broad-exception-caught

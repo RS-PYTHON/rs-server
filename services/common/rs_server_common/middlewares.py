@@ -13,12 +13,15 @@
 # limitations under the License.
 
 """Common functions for fastapi middlewares"""
+import json
 import os
 import traceback
 from collections.abc import Callable
-from typing import TypedDict
+from typing import Any, ParamSpec, TypedDict
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from fastapi import FastAPI, Request, status
+import brotli
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
@@ -26,11 +29,30 @@ from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware import Middleware
+from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+REL_TITLES = {
+    "collection": "Collection",
+    "item": "Item",
+    "parent": "Parent Catalog",
+    "root": "STAC Root Catalog",
+    "conformance": "Conformance link",
+    "service-desc": "Service description",
+    "service-doc": "Service documentation",
+    "search": "Search endpoint",
+    "data": "Data link",
+    "items": "This collection items",
+    "self": "This collection",
+    "license": "License description",
+    "describedby": "Described by link",
+    "next": "Next link",
+    "previous": "Previous link",
+}
+# pylint: disable = too-few-public-methods, too-many-return-statements
 logger = Logging.default(__name__)
+P = ParamSpec("P")
 
 
 class ErrorResponse(TypedDict):
@@ -110,6 +132,269 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         )
 
 
+class PaginationLinksMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to implement 'first' button's functionality in STAC Browser
+    """
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable,
+    ):  # pylint: disable=too-many-branches,too-many-statements
+
+        # Only for /search in auxip, prip, cadip
+        if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search", "/catalog/search"]:
+
+            first_link: dict[str, Any] = {
+                "rel": "first",
+                "type": "application/geo+json",
+                "method": request.method,
+                "href": f"{str(request.base_url).rstrip('/')}{request.url.path}",
+                "title": "First link",
+            }
+
+            if common_settings.CLUSTER_MODE:
+                first_link["href"] = f"https://{str(request.base_url.hostname).rstrip('/')}{request.url.path}"
+
+            if request.method == "GET":
+                # parse query params to remove any 'prev' or 'next'
+                query_dict = dict(request.query_params)
+
+                query_dict.pop("token", None)
+                if "page" in query_dict:
+                    query_dict["page"] = "1"
+                new_query_string = urlencode(query_dict, doseq=True)
+                first_link["href"] += f"?{new_query_string}"
+
+            elif request.method == "POST":
+                try:
+                    query = await request.json()
+                    body = {}
+
+                    for key in ["datetime", "limit"]:
+                        if key in query and query[key] is not None:
+                            body[key] = query[key]
+
+                    if "token" in query and request.url.path != "/catalog/search":
+                        body["token"] = "page=1"  # nosec
+
+                    first_link["body"] = body
+                except Exception:  # pylint: disable = broad-exception-caught
+                    logger.error(traceback.format_exc())
+
+            response = await call_next(request)
+
+            encoding = response.headers.get("content-encoding", "")
+            if encoding == "br":
+                body_bytes = b"".join([section async for section in response.body_iterator])
+                response_body = brotli.decompress(body_bytes)
+
+                if request.url.path == "/catalog/search":
+                    first_link["auth:refs"] = ["apikey", "openid", "oauth2"]
+            else:
+                response_body = b""
+                async for chunk in response.body_iterator:
+                    response_body += chunk
+
+            try:
+                data = json.loads(response_body)
+
+                links = data.get("links", [])
+                has_prev = any(link.get("rel") == "previous" for link in links)
+
+                if has_prev is True:
+                    links.append(first_link)
+                    data["links"] = links
+
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+
+                if encoding == "br":
+                    new_body = brotli.compress(json.dumps(data).encode("utf-8"))
+                else:
+                    new_body = json.dumps(data).encode("utf-8")
+
+                response = Response(
+                    content=new_body,
+                    status_code=response.status_code,
+                    headers=headers,
+                    media_type="application/json",
+                )
+            except Exception:  # pylint: disable = broad-exception-caught
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
+
+                response = Response(
+                    content=response_body,
+                    status_code=response.status_code,
+                    headers=headers,
+                    media_type=response.headers.get("content-type"),
+                )
+        else:
+            return await call_next(request)
+
+        return response
+
+
+def get_link_title(link: dict, entity: dict) -> str:
+    """
+    Determine a human-readable STAC link title based on the link relation and context.
+    """
+    rel = link.get("rel")
+    href = link.get("href", "")
+    if "title" in link:
+        # don't overwrite
+        return link["title"]
+    match rel:
+        # --- special cases needing entity context ---
+        case "collection":
+            return entity.get("title") or entity.get("id") or REL_TITLES["collection"]
+        case "item":
+            return entity.get("title") or entity.get("id") or REL_TITLES["item"]
+        case "self" if entity.get("type") == "Catalog":
+            return "STAC Landing Page"
+        case "self" if href.endswith("/collections"):
+            return "All Collections"
+        case "child":
+            path = urlparse(href).path
+            collection_id = path.split("/")[-1] if path else "unknown"
+            return f"All from collection {collection_id}"
+        # --- all others: just lookup in REL_TITLES ---
+        case _:
+            return REL_TITLES.get(rel, href or "Unknown Entity")  # type: ignore
+
+
+def normalize_href(href: str) -> str:
+    """Encode query parameters in href to match expected STAC format."""
+    parsed = urlparse(href)
+    query = urlencode(parse_qsl(parsed.query), safe="")  # encode ":" -> "%3A"
+    return urlunparse(parsed._replace(query=query))
+
+
+class StacLinksTitleMiddleware(BaseHTTPMiddleware):
+    """Middleware used to update links with title"""
+
+    def __init__(self, app: FastAPI, title: str = "Default Title"):
+        """
+        Initialize the middleware.
+
+        Args:
+            app: The FastAPI application instance to attach the middleware to.
+            title: Default title to use for STAC links if no specific title is provided.
+        """
+        super().__init__(app)
+        self.title = title
+
+    async def dispatch(self, request: Request, call_next):
+        """
+        Intercept and modify outgoing responses to ensure all STAC links have proper titles.
+
+        This middleware method:
+        1. Awaits the response from the next handler.
+        2. Reads and parses the response body as JSON.
+        3. Updates the "title" property of each link using `get_link_title`.
+        4. Rebuilds the response without the original Content-Length header to prevent mismatches.
+        5. If the response body is not JSON, returns it unchanged.
+
+        Args:
+            request: The incoming FastAPI Request object.
+            call_next: The next ASGI handler in the middleware chain.
+
+        Returns:
+            A FastAPI Response object with updated STAC link titles.
+        """
+        response = await call_next(request)
+
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+
+        try:
+            data = json.loads(body)
+
+            if isinstance(data, dict) and "links" in data:
+                for link in data["links"]:
+                    if isinstance(link, dict):
+                        # normalize href to decode any %xx
+                        if "href" in link:
+                            link["href"] = normalize_href(link["href"])
+                        # update title
+                        link["title"] = get_link_title(link, data)
+
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+
+            response = Response(
+                content=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+                status_code=response.status_code,
+                headers=headers,
+                media_type="application/json",
+            )
+        except Exception:  # pylint: disable = broad-exception-caught
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+
+            response = Response(
+                content=body,
+                status_code=response.status_code,
+                headers=headers,
+                media_type=response.headers.get("content-type"),
+            )
+
+        return response
+
+
+def insert_middleware_at(app: FastAPI, index: int, middleware: Middleware):
+    """Insert the given middleware at the specified index in a FastAPI application.
+
+    Args:
+        app (FastAPI): FastAPI application
+        index (int): index at which the middleware has to be inserted
+        middleware (Middleware): Middleware to insert
+
+    Raises:
+        RuntimeError: if the application has already started
+
+    Returns:
+        FastAPI: The modified FastAPI application instance with the required middleware.
+    """
+    if app.middleware_stack:
+        raise RuntimeError("Cannot add middleware after an application has started")
+    if not any(m.cls == middleware.cls for m in app.user_middleware):
+        logger.debug("Adding %s", middleware)
+        app.user_middleware.insert(index, middleware)
+    return app
+
+
+def insert_middleware_after(
+    app: FastAPI,
+    previous_mw_class: _MiddlewareFactory,
+    middleware_class: _MiddlewareFactory[P],
+    *args: P.args,
+    **kwargs: P.kwargs,
+):
+    """Insert the given middleware after an existing one in a FastAPI application.
+
+    Args:
+        app (FastAPI): FastAPI application
+        previous_mw_class (str): Class of middleware after which the new middleware has to be inserted
+        middleware_class (Middleware): Class of middleware to insert
+        args: args for middleware_class constructor
+        kwargs: kwargs for middleware_class constructor
+
+    Raises:
+        RuntimeError: if the application has already started
+
+    Returns:
+        FastAPI: The modified FastAPI application instance with the required middleware.
+    """
+    # Existing middlewares
+    middleware_names = [middleware.cls for middleware in app.user_middleware]
+    middleware_index = middleware_names.index(previous_mw_class)
+    return insert_middleware_at(app, middleware_index + 1, Middleware(middleware_class, *args, **kwargs))
+
+
 def apply_middlewares(app: FastAPI):
     """
     Applies necessary middlewares and authentication routes to the FastAPI application.
@@ -127,16 +412,11 @@ def apply_middlewares(app: FastAPI):
     Returns:
         FastAPI: The modified FastAPI application instance with the required middleware and authentication routes.
     """
-    # Existing middlewares
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]  # type: ignore
 
     # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    if app.middleware_stack:
-        raise RuntimeError("Cannot add middleware after an application has started")
-    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
-    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
+    insert_middleware_after(app, HandleExceptionsMiddleware, SessionMiddleware, secret_key=cookie_secret)
 
     # Get the oauth2 router
     oauth2_router = oauth2.get_router(app)

@@ -315,7 +315,7 @@ async def get_user_info(request: Request) -> AuthInfo:
         # )
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            "You cannot login from a console, you need an API key or an OAuth2 session cookie.",
+            f"Error connecting to {str(request.url)!r} without a valid API key or OAuth2 session cookie.",
         )
 
     # Read the user ID and name from the cookie = from the OAuth2 authentication process

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: this file contains configuration values for the auxip/cadip search and the staging.
+# It is used only in local mode. In cluster mode, we use the RSPY__TOKEN__ env vars instead.
+
 template:
   domain:
   service:
@@ -169,11 +172,22 @@ external_data_sources:
     authentication:
       token_url: http://127.0.0.1:5007/oauth2/token
       authorization: Basic test
-  s2a:
-    domain: mockup-prip-s2a.processing.svc.cluster.local
+  s2b:
+    domain: mockup-prip-s2b.processing.svc.cluster.local
     service:
       name: prip
       url: http://127.0.0.1:5008
     authentication:
       token_url: http://127.0.0.1:5008/oauth2/token
       authorization: Basic test
+
+  # External S3 for tests
+  s3test:
+    service:
+      name: s3
+      url: https://s3.gra.io.cloud.ovh.net
+    domain: s3.gra.io.cloud.ovh.net
+    authentication:
+      auth_type: s3
+      access_key: ${access_key}
+      secret_key: ${secret_key}

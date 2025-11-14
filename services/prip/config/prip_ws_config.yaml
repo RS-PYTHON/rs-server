@@ -1,0 +1,531 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# THIS FILE WAS AUTOMATICALLY CREATED FROM:
+#  - rs-server/services/prip/config/prip_ws_config.template.yaml
+#  - rs-server/resources/sync_config_files.py
+# DON'T MODIFY IT DIRECTLY !
+
+s1a:
+  auth:
+    type: TokenAuth
+    auth_uri: PLACEHOLDER
+    token_type: json
+    token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
+    request_method: POST
+    req_data:
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
+    credentials:
+      auth_for_token: PLACEHOLDER
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
+  products:
+    S1_SAR_RAW:
+      productType: IW_RAW__0N
+  search:
+    type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5000/Products
+    need_auth: true
+    results_entry: $.value | $
+    metadata_mapping:
+      id:
+      - null
+      - $.Id
+      prip:id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      ContentLength:
+      - null
+      - $.ContentLength
+      ContentType:
+      - null
+      - $.ContentType
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      DatetimeStart:
+      - null
+      - $.ContentDate.Start
+      Start:
+      - null
+      - $.ContentDate.Start
+      End:
+      - null
+      - $.ContentDate.End
+      StartPublicationDate:
+      - null
+      - $.PublicationDate
+      StopPublicationDate:
+      - null
+      - $.PublicationDate
+      GeoFootprint:
+      - null
+      - $.GeoFootprint
+      OriginDate:
+      - null
+      - $.OriginDate
+      ProductionType:
+      - null
+      - $.ProductionType
+      ChecksumValue:
+      - null
+      - '{$.Checksum[0].Value#to_lower}'
+      attr_ptype:
+      - null
+      - $.attr_ptype
+      attr_ptypes:
+      - null
+      - $.attr_ptype
+      geometry:
+      - null
+      - POLYGON EMPTY
+      productType:
+      - null
+      - $.Attributes[?(@.Name=='productType')].Value
+      processingDate:
+      - null
+      - $.Attributes[?(@.Name=='processingDate')].Value
+      processingCenter:
+      - null
+      - $.Attributes[?(@.Name=='processingCenter')].Value
+      processorVersion:
+      - null
+      - $.Attributes[?(@.Name=='processorVersion')].Value
+      platformShortName:
+      - null
+      - $.Attributes[?(@.Name=='platformShortName')].Value
+      platformSerialIdentifier:
+      - null
+      - $.Attributes[?(@.Name=='platformSerialIdentifier')].Value
+      instrumentShortName:
+      - null
+      - $.Attributes[?(@.Name=='instrumentShortName')].Value
+      orbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='orbitNumber')].Value
+      relativeOrbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='relativeOrbitNumber')].Value
+      cycleNumber:
+      - null
+      - $.Attributes[?(@.Name=='cycleNumber')].Value
+      orbitDirection:
+      - null
+      - $.Attributes[?(@.Name=='orbitDirection')].Value
+      polarisationChannels:
+      - null
+      - $.Attributes[?(@.Name=='polarisationChannels')].Value
+      datatakeID:
+      - null
+      - $.Attributes[?(@.Name=='datatakeID')].Value
+      instrumentConfigurationID:
+      - null
+      - $.Attributes[?(@.Name=='instrumentConfigurationID')].Value
+      platformSerialIdentifiers:
+      - null
+      - $.platformSerialIdentifier
+      platformShortNames:
+      - null
+      - $.platformShortName
+      href:
+      - null
+      - http://127.0.0.1:5000/Products({id})/$value
+      downloadLink: http://127.0.0.1:5000/Products({id})/$value
+      title: $.Name
+      intersects:
+      - null
+      - $.intersects
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '{}'
+        operations:
+          and:
+          - contains(Name, '{Name}')
+          - contains(Id, '{prip:id}')
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - EvictionDate eq {EvictionDate#to_iso_utc_datetime}
+          - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
+          - OriginDate eq {OriginDate#to_iso_utc_datetime}
+          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
+          - ContentDate/Start eq {Start#to_iso_utc_datetime}
+          - ContentDate/End eq {End#to_iso_utc_datetime}
+          - ContentLength eq {ContentLength#to_int}
+          - ContentLength gt {ContentLengthMin#to_int}
+          - ContentLength lt {ContentLengthMax#to_int}
+          - (ContentLength ge {ContentLengthMin#to_int} and ContentLength le {ContentLengthMax#to_int})
+          - ContentType eq '{ContentType}'
+          - ContentType in ({ContentTypes})
+          - ProductionType eq '{ProductionType}'
+          - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
+            and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
+            and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
+            and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
+            and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
+            and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
+            and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
+            and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
+            and att/OData.CSC.StringAttribute/Value eq '{processingCenter}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion'
+            and att/OData.CSC.StringAttribute/Value eq '{processorVersion}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName'
+            and att/OData.CSC.StringAttribute/Value eq '{instrumentShortName#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels'
+            and att/OData.CSC.StringAttribute/Value eq '{polarisationChannels}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass'
+            and att/OData.CSC.StringAttribute/Value eq {productClass})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber'
+            and att/OData.CSC.StringAttribute/Value eq '{orbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber'
+            and att/OData.CSC.StringAttribute/Value eq '{relativeOrbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber'
+            and att/OData.CSC.StringAttribute/Value eq '{cycleNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection'
+            and att/OData.CSC.StringAttribute/Value eq '{orbitDirection#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID'
+            and att/OData.CSC.StringAttribute/Value eq '{datatakeID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates'
+            and att/OData.CSC.StringAttribute/Value eq {coordinates})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID'
+            and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime'
+            and att/OData.CSC.StringAttribute/Value eq '{Start#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime'
+            and att/OData.CSC.StringAttribute/Value eq '{End#to_iso_utc_datetime}')
+          - '{t_before}'
+          - '{t_after}'
+          - '{t_meets}'
+          - '{t_metby}'
+          - '{t_overlaps}'
+          - '{t_overlappedby}'
+          - '{t_starts}'
+          - '{t_startedby}'
+          - '{t_during}'
+          - '{t_contains}'
+          - '{t_finishes}'
+          - '{t_finishedby}'
+          - '{t_equals}'
+          - '{t_disjoint}'
+          - '{t_intersects}'
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: Name
+        prip:id: Id
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        created: processingDate
+        published: PublicationDate
+        start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+    pagination:
+      max_items_per_page: 10000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
+      total_items_nb_key_path: $.total
+  download:
+    type: HTTPDownload
+    base_uri: http://127.0.0.1:5000/Products
+    metadata_mapping:
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5000/Products({uid})/$value
+s2b:
+  auth:
+    type: TokenAuth
+    auth_uri: PLACEHOLDER
+    token_type: json
+    token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
+    request_method: POST
+    req_data:
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
+    credentials:
+      auth_for_token: PLACEHOLDER
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
+  products:
+    S2_MSI_L0_DS:
+      productType: OPER_MSI
+    S2_MSI_L0_GR:
+      productType: OPER_MSI_L0
+    S2_MSI_L2A:
+      productType: OPER_MSI_L2A
+  search:
+    type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5000/Products
+    need_auth: true
+    results_entry: $.value | $
+    metadata_mapping:
+      id:
+      - null
+      - $.Id
+      prip:id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      ContentLength:
+      - null
+      - $.ContentLength
+      ContentType:
+      - null
+      - $.ContentType
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      DatetimeStart:
+      - null
+      - $.ContentDate.Start
+      Start:
+      - null
+      - $.ContentDate.Start
+      End:
+      - null
+      - $.ContentDate.End
+      StartPublicationDate:
+      - null
+      - $.PublicationDate
+      StopPublicationDate:
+      - null
+      - $.PublicationDate
+      GeoFootprint:
+      - null
+      - $.GeoFootprint
+      OriginDate:
+      - null
+      - $.OriginDate
+      ProductionType:
+      - null
+      - $.ProductionType
+      ChecksumValue:
+      - null
+      - '{$.Checksum[0].Value#to_lower}'
+      attr_ptype:
+      - null
+      - $.attr_ptype
+      attr_ptypes:
+      - null
+      - $.attr_ptype
+      geometry:
+      - null
+      - POLYGON EMPTY
+      productType:
+      - null
+      - $.Attributes[?(@.Name=='productType')].Value
+      processingDate:
+      - null
+      - $.Attributes[?(@.Name=='processingDate')].Value
+      processingCenter:
+      - null
+      - $.Attributes[?(@.Name=='processingCenter')].Value
+      processorVersion:
+      - null
+      - $.Attributes[?(@.Name=='processorVersion')].Value
+      platformShortName:
+      - null
+      - $.Attributes[?(@.Name=='platformShortName')].Value
+      platformSerialIdentifier:
+      - null
+      - $.Attributes[?(@.Name=='platformSerialIdentifier')].Value
+      instrumentShortName:
+      - null
+      - $.Attributes[?(@.Name=='instrumentShortName')].Value
+      orbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='orbitNumber')].Value
+      relativeOrbitNumber:
+      - null
+      - $.Attributes[?(@.Name=='relativeOrbitNumber')].Value
+      cycleNumber:
+      - null
+      - $.Attributes[?(@.Name=='cycleNumber')].Value
+      orbitDirection:
+      - null
+      - $.Attributes[?(@.Name=='orbitDirection')].Value
+      polarisationChannels:
+      - null
+      - $.Attributes[?(@.Name=='polarisationChannels')].Value
+      datatakeID:
+      - null
+      - $.Attributes[?(@.Name=='datatakeID')].Value
+      instrumentConfigurationID:
+      - null
+      - $.Attributes[?(@.Name=='instrumentConfigurationID')].Value
+      platformSerialIdentifiers:
+      - null
+      - $.platformSerialIdentifier
+      platformShortNames:
+      - null
+      - $.platformShortName
+      href:
+      - null
+      - http://127.0.0.1:5000/Products({id})/$value
+      downloadLink: http://127.0.0.1:5000/Products({id})/$value
+      title: $.Name
+      intersects:
+      - null
+      - $.intersects
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '{}'
+        operations:
+          and:
+          - contains(Name, '{Name}')
+          - contains(Id, '{prip:id}')
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - EvictionDate eq {EvictionDate#to_iso_utc_datetime}
+          - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
+          - OriginDate eq {OriginDate#to_iso_utc_datetime}
+          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
+          - ContentDate/Start eq {Start#to_iso_utc_datetime}
+          - ContentDate/End eq {End#to_iso_utc_datetime}
+          - ContentLength eq {ContentLength#to_int}
+          - ContentLength gt {ContentLengthMin#to_int}
+          - ContentLength lt {ContentLengthMax#to_int}
+          - (ContentLength ge {ContentLengthMin#to_int} and ContentLength le {ContentLengthMax#to_int})
+          - ContentType eq '{ContentType}'
+          - ContentType in ({ContentTypes})
+          - ProductionType eq '{ProductionType}'
+          - OData.CSC.Intersects(area=geography'SRID=4326;{intersects}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
+            and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
+            and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
+            and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
+            and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
+            and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
+            and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
+            and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
+            and att/OData.CSC.StringAttribute/Value eq '{processingCenter}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion'
+            and att/OData.CSC.StringAttribute/Value eq '{processorVersion}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName'
+            and att/OData.CSC.StringAttribute/Value eq '{instrumentShortName#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels'
+            and att/OData.CSC.StringAttribute/Value eq '{polarisationChannels}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass'
+            and att/OData.CSC.StringAttribute/Value eq {productClass})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber'
+            and att/OData.CSC.StringAttribute/Value eq '{orbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber'
+            and att/OData.CSC.StringAttribute/Value eq '{relativeOrbitNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber'
+            and att/OData.CSC.StringAttribute/Value eq '{cycleNumber}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection'
+            and att/OData.CSC.StringAttribute/Value eq '{orbitDirection#to_upper}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID'
+            and att/OData.CSC.StringAttribute/Value eq '{datatakeID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates'
+            and att/OData.CSC.StringAttribute/Value eq {coordinates})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID'
+            and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime'
+            and att/OData.CSC.StringAttribute/Value eq '{Start#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime'
+            and att/OData.CSC.StringAttribute/Value eq '{End#to_iso_utc_datetime}')
+          - '{t_before}'
+          - '{t_after}'
+          - '{t_meets}'
+          - '{t_metby}'
+          - '{t_overlaps}'
+          - '{t_overlappedby}'
+          - '{t_starts}'
+          - '{t_startedby}'
+          - '{t_during}'
+          - '{t_contains}'
+          - '{t_finishes}'
+          - '{t_finishedby}'
+          - '{t_equals}'
+          - '{t_disjoint}'
+          - '{t_intersects}'
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: Name
+        prip:id: Id
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        created: processingDate
+        published: PublicationDate
+        start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+    pagination:
+      max_items_per_page: 10000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
+      total_items_nb_key_path: $.total
+  download:
+    type: HTTPDownload
+    base_uri: http://127.0.0.1:5000/Products
+    metadata_mapping:
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5000/Products({uid})/$value

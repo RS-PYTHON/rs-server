@@ -20,6 +20,10 @@ inputs:
     description: "'poetry install' options e.g. '--with dev'"
     required: false
     default: --with dev
+  rm-plugin-dir:
+    description: "Remove the installed poetry plugin directory that triggers quality issues"
+    required: false
+    default: "false"
 
   working-directory:
     description: "the working directory in which poetry is run."
@@ -32,9 +36,18 @@ runs:
     - uses: ./.github/actions/install-python
     - uses: snok/install-poetry@v1
       with:
-        version: 1.8.5 # note: poetry v2 has breaking changes
+        version: 2.2.1
+
     - run: |
-        poetry -q install ${{ inputs.options }} # don't use quotes around options
+        set -x
+        poetry install ${{ inputs.options }} # don't use quotes around options
         poetry -q run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+
+    - if: ${{ inputs.rm-plugin-dir == 'true' }}
+      run: |
+        set -x
+        rm -rf .poetry/plugins
       working-directory: ${{ inputs.working-directory }}
       shell: bash

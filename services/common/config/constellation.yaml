@@ -30,6 +30,11 @@ satellites:
         code: S1C
         serialid: C
         active: false
+    - sentinel-1d:
+        constellation: sentinel-1
+        code: S1D
+        serialid: D
+        active: false
     - sentinel-2a:
         constellation: sentinel-2
         code: S2A

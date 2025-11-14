@@ -24,6 +24,233 @@ Changed
 
 None
 
+[1.0a3] - Sprint 29 - 2025-10-23
+================================
+
+## Added
+
+- RSPY-226: Enable HA for pgstac catalog database
+- RSPY-738: Create a prefect @task to record 'product_expected' for S3 Level-0
+- RSPY-743: Create a prefect @task to record missing and unexpected products
+- RSPY-759: Deploy stac-browser for PRIP
+- RSPY-773: ARD step1: CSLC product (reference DEM)
+- RSPY-774: ARD step1: CSLC product (reference geometry)
+- RSPY-775: ARD step1: CSLC product (co-registration)
+- RSPY-797: Update dpr-processing to retrieve processing units list
+- RSPY-798: Update the generic prefect flow “auxip-staging” to call CQL2 query
+- RSPY-799: invoke “auxip-staging” to retrieve auxiliary files from “dpr-process”
+- RSPY-801: Update to latest stable version of Oauth2-Proxy to remove Bitnami chart
+- RSPY-805: Invalid catalog URL displayed via stac browser
+- RSPY-810: Sprint 29 corrections of issues
+- RSPY-816: Improve rs-infra-core CI/CD
+- RSPY-822: Update prip mockup to support s3 stored products
+
+## Fixed
+
+- RSPY-792: Not enough resources in rs-testmeans [1pt]
+- RSPY-793: Ansible 12 is not compatible with rs-infra-core [1pt]
+- RSPY-806: CORS error when accessing Stac browser catalog locally [1pt]
+- RSPY-819: PRIP: error for products without geometry [1 pt]
+
+[1.0a2] - Sprint 28 - 2025-09-24
+================================
+
+## Added
+
+- RSPY-324: Implement STAC view of PRIP products
+- RSPY-519: Implement "First" button in STAC Browser
+- RSPY-612: CADIP/AUXIP: Fill titles in STAC links
+- RSPY-742: Create a prefect @task to record 'product_realised'
+- RSPY-760: Create product mapping configuration map
+- RSPY-761: Implement staging of PRIP products
+- RSPY-762: Deploy Wazuh on the Publication service node
+- RSPY-764: Update timeout mechanism for staging feature
+- RSPY-766: Add s1-l12-rp processor 0.2.1 (for S1 ARD)
+- RSPY-769: ARD step1: CSLC product (calibration)
+- RSPY-790: S1-L0 : deliver some integration test results.
+
+[1.0a1] - Sprint 27 - 2025-08-27
+================================
+
+## Added
+
+- RSPY-168: Perform 0.2 release delivery
+- RSPY-402: Implement a PRIP mockup
+- RSPY-615: Conformance of STAC landing pages to ESA requirements
+- RSPY-667: Update to stac-fastapi 6.0.x
+- RSPY-728: Update to latest stable version of Oauth2-Proxy
+- RSPY-729: Use OVH managed private registry instead of docker hub
+- RSPY-735: Create database 'Performance'
+- RSPY-736: Create a prefect @task to record a 'flow_run'
+- RSPY-768: Add /dpr/jobs and /dpr/processes endpoints
+- RSPY-776: S3-L0 : deliver some integration test results.
+- RSPY-777: Sprint 27 corrections of issues
+
+## Fixed
+
+- RSPY-176: Platform deployment: first application deployment execution failed for the step cluster-issuer [2 pts]
+- RSPY-649: Some datetime formats not supported in cadip/auxip STAC API (1 pt)
+- RSPY-724: dask-cluster launcher create many dask-cluster (1 pt )
+- RSPY-765: STAC validation GET /cadip/search: multithreading issue (1 pt)
+- RSPY-767: STAC pagination validation failed due to authentification error (1 pt)
+- RSPY-784: AUXIP/CADIP service-desc URLs are not correct (2 pt)
+- RSPY-787: Fix alloy configuration (5 pts)
+
+[0.2] - Sprint 26 - 2025-07-30
+================================
+
+## Added
+
+- RSPY-156: Implement RS data lifecycle (cleanup of expired STAC items)
+- RSPY-212: Deploy Grafana Alloy on K8S cluster
+- RSPY-269: [Monitoring] Update to latest stable version of Grafana
+- RSPY-301: Means to scale-up/scale-down the cluster
+- RSPY-314: Sort roles in apikeymanager
+- RSPY-460: [Monitoring] Update to Loki 3
+- RSPY-461: [Monitoring] Update to latest version of Tempo
+- RSPY-621: Catalog: Allow to download products from S3
+- RSPY-622: STAC error management
+- RSPY-698: Move to SonarQube Cloud solution
+- RSPY-703: Merge processing and operational namespaces to share the same configmap
+- RSPY-709: Support refresh token without "refresh_expires_in" field (2 pts)
+- RSPY-715: Create an user friendly @flow "session-stage"
+- RSPY-716: Fix SARIF upload category
+- RSPY-717: OSAM: apply OBS access rights for one user (/storage/account/{account_name}/update )
+- RSPY-718: Create an user friendly @flow "aux-stage"
+- RSPY-719: Sprint 26 corrections of issues
+- RSPY-727: Update right applied for user with OSAM component
+- RSPY-737: Make S3L0 processing work (title to change!)
+
+## Fixed
+
+- RSPY-201: New code is not fully covered by tests SonarQube (0 pts)
+- RSPY-272: [Deployment] Node label not set (terraform error) ( 0 pt)
+- RSPY-313: Optional usage of owner_id for catalog endpoints (0 pt)
+- RSPY-443: [Deployment] Jupyter-Hub failed to be deployed (0 pt)
+- RSPY-477: CADIP STAC validation: media type used in Accept header must get response with same Content-Type header (2 pts)
+- RSPY-545: CADIP chunks are no longer sorted by date (1 pt)
+- RSPY-706: AUXIP search performs too many requests (1 per collection) (0 point)
+- RSPY-721: Do not reveal S3 credentials when calling SAFE to ZARR transformation (2 pts)
+- RSPY-722: Error staging to a collection named "collection10" [1pt]
+- RSPY-723: Composite CQL2 filters don't work in Auxip staging (mockup only) (3 pts)
+- RSPY-726: The search from stac-browser-auxip returns items with bad url ( 2 points )
+
+[0.2a15] - Sprint 25 - 2025-07-02
+================================
+
+## Added
+
+- RSPY-498: Staging: create output collection automatically
+- RSPY-569: Staging: support S3 authentication and download
+- RSPY-605: OSAM: Get OBS access rights (update /storage/account/{account_name}/rights )
+- RSPY-606: OSAM: Create endpoint to deliver S3 credentials ( /storage/account/credentials )
+- RSPY-609: Implement processing Prefect flow with real S3L0Processor 1.0.0 (/develop branch)
+- RSPY-659: Include staging dask cluster as part of the deployment
+- RSPY-675: SAFE conversion process in DPR service
+- RSPY-694: Write pytests for latest rs-client-libraries
+- RSPY-697: Update NodePool name and description
+- RSPY-699: Add a parser for the Neuvector logs in Wazuh.
+- RSPY-700: Deploy Vault on OVH cluster
+- RSPY-701: Migration Publication service image from Artifactory to Github Repository
+- RSPY-702: Sprint 25 corrections of issues
+- RSPY-707: Product assets URL should start with /bucket/user/collection
+
+## Fixed
+
+- RSPY-505: Wrong role name for AUXIP access ( 2 pts )
+- RSPY-710: [RS-OSAM] OSAM pod restarted by kubernetes due to timeout on his liveness probe during update ( 2 pts )
+
+[0.2a14] - Sprint 24 - 2025-06-04
+================================
+
+## Added
+
+- RSPY-468: Configure rs-catalog from a configMap
+- RSPY-488: Configure rs-staging from a configMap
+- RSPY-601: OSAM : Develop POD skeleton for “object storage access manager”
+- RSPY-603: OSAM: Link rs-python users and OBS users (/storage/accounts/update)
+- RSPY-604: OSAM: Build S3 access right lists ( /storage/account/{account_name}/rights )
+- RSPY-657: Update to latest stable version of Wazuh
+- RSPY-658: Retrieve NeuVector logs in Wazuh
+- RSPY-671: Update to Poetry 2
+- RSPY-672: Split and move the DPR processing flow
+- RSPY-674: Test the dynamic start of flows from a single one
+- RSPY-676: CADIP: Use of StationId to distinguish INS, KSE and PAR stations
+- RSPY-682: Sprint 24 corrections of issues
+
+## Fixed
+
+- RSPY-436: Inconsistent staging URLs [0 pt]
+- RSPY-508: LOG format not compliant with ICD COPRS-ICD-ADST-001919935 [3 pt]
+- RSPY-512: CADIP validation errors in STAC Browser [0 pt]
+- RSPY-681: AUXIP: STAC rs-client search with limit=1 paginates over all results [1 pt]
+- RSPY-687: "Trace to logs" Grafana feature is disabled [2 pt]
+- RSPY-689: [PREFECT] Too many prefect flow run down the platform [1 pt]
+- RSPY-693: Wrong links in the catalog: "http://localhost:8003/search" [1 pt]
+
+[0.2a13] - Sprint 23 - 2025-05-07
+================================
+
+## Added
+
+- RSPY-160: Implement basic Data Selection Policies (AUX get from Catalog, no custom function)
+- RSPY-487: Deploy a configmap to configure both rs-catalog and rs-staging
+- RSPY-557: Smarter handling of AUXIP/CADIP OAuth2 tokens
+- RSPY-588: Staging: precise implementation of /processes and /processes/staging endpoints
+- RSPY-589: Staging: precise implementation of /processes/staging/execution endpoint
+- RSPY-590: Staging: precise implementation of /jobs* endpoints
+- RSPY-594: [CI/CD] use latest rs-server-staging and rs-client-libraries
+- RSPY-617: Remove extension from AUXIP item identifiers
+- RSPY-633: Re-implement the S3L0 processing flow
+- RSPY-640: [S3L0 demo] Update rs-testmeans for S3 bucket
+- RSPY-641: Implement CQL2 temporal operators in rs-server-auxip
+- RSPY-642: [S3L0 demo] Write a new Jupyter notebook
+- RSPY-643: [S3L0 demo] New Prefect tasks using rs-client-libraries
+- RSPY-645: [S3L0 demo] Test everything on local then on cluster
+- RSPY-652: Implement "DPR as a service": execution endpoint
+- RSPY-653: Implement "DPR as a service": job endpoint
+- RSPY-654: Implement "DPR as a service": tasktable endpoint
+- RSPY-656: Patch pygeofilter CQL2 filter handling
+- RSPY-664: Test and optimize staging performance
+- RSPY-668: Sprint 23 corrections of issues
+
+## Fixed
+
+- RSPY-452: Pydantic version conflict in rs-staging (2 pt: requires pygeoapi 0.21)
+- RSPY-662: AUXIP: cannot search by id in CQL2 filter (1 pt)
+- RSPY-666: Use API key when the staging calls the catalog (2 pt)
+- RSPY-670: Secret for adgs2 is not mounted to the rs-server-staging pod
+
+[0.2a12] - Sprint 22 - 2025-04-14
+================================
+
+## Added
+
+- RSPY-236: Upgrade to Ubuntu 24.04.1
+- RSPY-343: Implement access control to the Staging service (with execute UAC)
+- RSPY-561: Smarter handling of Staging OAuth2 tokens
+- RSPY-611: Publish our own STAC extension(s)
+- RSPY-631: Update to latest stable version of Prefect 3 and drop Prefect 2
+- RSPY-634: Sprint 22 corrections of issues
+- RSPY-638: [S3L0 demo] Test EOPF with Stéphane's Sentinel-3 data
+- RSPY-639: handle token expiration for wazuh agent install ( 1 pt )
+- RSPY-644: [S3L0 demo] Use OpenTelemetry
+- RSPY-650: Remove /catalog/collections/{collectionId}/search endpoint
+- RSPY-589: Staging: precise implementation of /processes/staging/execution endpoint
+- RSPY-588: Staging: precise implementation of /processes and /processes/staging endpoints
+- RSPY-590: Staging: precise implementation of /jobs* endpoints
+
+## Fixed
+
+- RSPY-535: RS-Client cannot be used from laptop or GitHub because of RSPY_UAC_CHECK_URL
+- RSPY-551: No opentelemetry data for rs-server-adgs, rs-server-cadip, rs-server-staging after start/stop platform
+- RSPY-595: The RS-Documentation can't be generated anymore
+- RSPY-632: [RS-SERVER-STAGING] 422 Error when staging session with null value for parameters start_datetime, end_datetime,cadip:antenna_status_ok, cadip:front_end_status_ok, cadip:downlink_status_ok or cadip:delivery_push_ok
+- RSPY-635: STAC validation: invalid content-type header (CADIP/AUXIP) (1 pt)
+- RSPY-636: CADIP/AUXIP STAC APIs return HTTP 422 for request validation errors instead of HTTP 400 (1 pt)
+- RSPY-637: CADIP/AUXIP STAC APIs reject search request containing bbox parameter (1 pt)
+- RSPY-646: Can't retrieve AX___OSF_AX products from ADGS (1 pt)
+
 [0.2a11] - Sprint 21 - 2025-03-12
 ================================
 

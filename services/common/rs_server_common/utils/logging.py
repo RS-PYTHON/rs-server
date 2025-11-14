@@ -15,7 +15,6 @@
 """Logging utility."""
 
 import logging
-import logging.handlers
 import os
 from multiprocessing import Queue
 from threading import Lock
@@ -92,7 +91,10 @@ class CustomFormatter(logging.Formatter):
     _PURPLE = "\x1b[35m"
     _RESET = "\x1b[0m"
 
-    _FORMAT = f"%(asctime)s.%(msecs)03d [{{color}}%(levelname)s{_RESET}] (%(name)s) %(message)s"
+    _FORMAT = (
+        f"%(asctime)s.%(msecs)03d {{color}}%(levelname)s{_RESET} [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s"
+        " resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] (%(name)s) %(message)s"
+    )
     _DATETIME = "%H:%M:%S"
 
     _FORMATS = {
@@ -105,6 +107,12 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record):
+
+        # Set default OpenTelemetry values if missing
+        for key in "otelTraceID", "otelSpanID", "otelServiceName", "otelTraceSampled":
+            if key not in record.__dict__:
+                record.__dict__[key] = None
+
         level_format = self._FORMATS.get(record.levelno)
         formatter = logging.Formatter(level_format, self._DATETIME)
         return formatter.format(record)

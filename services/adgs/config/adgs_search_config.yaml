@@ -21,10 +21,7 @@ collections:
 - id: adgs
   station: adgs
   query: null
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: All from 'adgs' station
   description: All from 'adgs' station
   license: other
@@ -41,7 +38,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -53,7 +50,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -61,10 +58,7 @@ collections:
 - id: adgs2
   station: adgs2
   query: null
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: All from 'adgs2' station
   description: All from 'adgs2' station
   license: other
@@ -81,7 +75,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -93,7 +87,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -102,10 +96,7 @@ collections:
   station: adgs
   query:
     productType: AUX_PP2
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: AUX_PP2 'adgs' station
   description: AUX_PP2 'adgs' station
   license: other
@@ -122,7 +113,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -134,7 +125,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -143,10 +134,7 @@ collections:
   station: adgs
   query:
     productType: OPER_AUX_ECMWFD_PDMC
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_ECMWFD_PDMC 'adgs' station
   description: OPER_AUX_ECMWFD_PDMC 'adgs' station
   license: other
@@ -163,7 +151,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -175,7 +163,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -184,10 +172,7 @@ collections:
   station: adgs
   query:
     productType: OPER_AUX_OBMEMC
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_OBMEMC 'adgs' station
   description: OPER_AUX_OBMEMC 'adgs' station
   license: other
@@ -204,7 +189,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -216,7 +201,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -225,10 +210,7 @@ collections:
   station: adgs
   query:
     productType: OPER_AUX_OBMEMC_PDMC
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_OBMEMC_PDMC 'adgs' station
   description: OPER_AUX_OBMEMC_PDMC 'adgs' station
   license: other
@@ -245,7 +227,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -257,7 +239,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -266,10 +248,7 @@ collections:
   station: adgs
   query:
     productType: OPER_AUX_PREORB_OPOD
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_PREORB_OPOD 'adgs' station
   description: OPER_AUX_PREORB_OPOD 'adgs' station
   license: other
@@ -286,7 +265,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -298,7 +277,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -307,10 +286,7 @@ collections:
   station: adgs
   query:
     productType: OPER_AUX_RESORB_OPOD
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_RESORB_OPOD 'adgs' station
   description: OPER_AUX_RESORB_OPOD 'adgs' station
   license: other
@@ -327,7 +303,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -339,7 +315,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -348,10 +324,7 @@ collections:
   station: adgs
   query:
     productType: OPER_AUX_RESORB_OPODs
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_RESORB_OPODs 'adgs' station
   description: OPER_AUX_RESORB_OPODs 'adgs' station
   license: other
@@ -368,7 +341,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -380,7 +353,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -389,10 +362,7 @@ collections:
   station: adgs
   query:
     productType: OPER_MPL_ORBPRE
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_MPL_ORBPRE 'adgs' station
   description: OPER_MPL_ORBPRE 'adgs' station
   license: other
@@ -409,7 +379,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -421,7 +391,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -430,10 +400,7 @@ collections:
   station: adgs
   query:
     productType: OPER_MPL_ORBSCT
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_MPL_ORBSCT 'adgs' station
   description: OPER_MPL_ORBSCT 'adgs' station
   license: other
@@ -450,7 +417,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -462,7 +429,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -471,10 +438,7 @@ collections:
   station: adgs2
   query:
     productType: AUX_PP2
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: AUX_PP2 'adgs2' station
   description: AUX_PP2 'adgs2' station
   license: other
@@ -491,7 +455,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -503,7 +467,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -512,10 +476,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_AUX_ECMWFD_PDMC
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_ECMWFD_PDMC 'adgs2' station
   description: OPER_AUX_ECMWFD_PDMC 'adgs2' station
   license: other
@@ -532,7 +493,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -544,7 +505,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -553,10 +514,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_AUX_OBMEMC
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_OBMEMC 'adgs2' station
   description: OPER_AUX_OBMEMC 'adgs2' station
   license: other
@@ -573,7 +531,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -585,7 +543,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -594,10 +552,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_AUX_OBMEMC_PDMC
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_OBMEMC_PDMC 'adgs2' station
   description: OPER_AUX_OBMEMC_PDMC 'adgs2' station
   license: other
@@ -614,7 +569,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -626,7 +581,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -635,10 +590,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_AUX_PREORB_OPOD
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_PREORB_OPOD 'adgs2' station
   description: OPER_AUX_PREORB_OPOD 'adgs2' station
   license: other
@@ -655,7 +607,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -667,7 +619,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -676,10 +628,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_AUX_RESORB_OPOD
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_RESORB_OPOD 'adgs2' station
   description: OPER_AUX_RESORB_OPOD 'adgs2' station
   license: other
@@ -696,7 +645,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -708,7 +657,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -717,10 +666,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_AUX_RESORB_OPODs
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_AUX_RESORB_OPODs 'adgs2' station
   description: OPER_AUX_RESORB_OPODs 'adgs2' station
   license: other
@@ -737,7 +683,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -749,7 +695,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -758,10 +704,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_MPL_ORBPRE
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_MPL_ORBPRE 'adgs2' station
   description: OPER_MPL_ORBPRE 'adgs2' station
   license: other
@@ -778,7 +721,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -790,7 +733,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -799,10 +742,7 @@ collections:
   station: adgs2
   query:
     productType: OPER_MPL_ORBSCT
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: OPER_MPL_ORBSCT 'adgs2' station
   description: OPER_MPL_ORBSCT 'adgs2' station
   license: other
@@ -819,7 +759,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -831,7 +771,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host

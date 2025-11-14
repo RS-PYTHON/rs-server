@@ -21,7 +21,11 @@ ARG USER=dask:dask
 
 # Install dependencies for compilation
 USER root
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
+
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+
+RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y libpq-dev gcc git && layer-cleanup.sh
 USER $USER
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
@@ -32,20 +36,25 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install -U --no-cache-dir rs_server_staging-*.whl
+# https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
+RUN cd /tmp/whl && pip install -U --no-cache-dir \
+    --extra-index-url=https://home.rs-python.eu/local-pypi/ \
+    rs_server_common-*.whl rs_server_staging-*.whl && \
+    layer-cleanup.sh
 
 # Install opentelemetry instrumentation packages for dependencies
-RUN opentelemetry-bootstrap -a install
+RUN opentelemetry-bootstrap -a install && layer-cleanup.sh
 
 # Remove dependencies for compilation
 USER root
-RUN apt autoremove -y gcc
+RUN apt autoremove -y gcc git && layer-cleanup.sh
 
 # Install dependencies necessary for execution not compilation
-RUN apt install -y libexpat1
+RUN restore-apt.sh && apt install -y libexpat1 && layer-cleanup.sh
 
-# Clean everything
-RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+# Remove apt repository list and custom scripts
+RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+
 USER $USER
 
 # Set labels based on the Open Containers Initiative (OCI):

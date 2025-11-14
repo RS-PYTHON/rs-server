@@ -20,14 +20,15 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
     WRONG_APIKEY_HEADER,
-    init_test,
+    init_authentication_test,
 )
 from rs_server_staging.main import app, must_be_authenticated
-from rs_server_staging.processors import Staging
+from rs_server_staging.processors.processor_staging import Staging
+from rs_server_staging.utils.asset_info import AssetInfo
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
-    HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_422_UNPROCESSABLE_CONTENT,
 )
 
 from .resources.sample_data import sample_process_metadata_model
@@ -42,6 +43,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     mocker,
     staging_client,
     staging_instance: Staging,
+    client,
     httpx_mock: HTTPXMock,
     test_apikey,
     test_oauth2,
@@ -51,7 +53,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     """
     owner_id = "pyteam"
     # pylint: disable=duplicate-code
-    await init_test(
+    await init_authentication_test(
         mocker,
         httpx_mock,
         staging_client,
@@ -91,7 +93,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
                 assert response.status_code not in (
                     HTTP_401_UNAUTHORIZED,
                     HTTP_403_FORBIDDEN,
-                    HTTP_422_UNPROCESSABLE_ENTITY,  # with 422, the authentication is not called and not tested
+                    HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
                 )
                 # With a wrong apikey, we should have a 403 error
                 if test_apikey:
@@ -108,11 +110,16 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     collection = "test_collection"
     station_id = "station_id"
     role = f"RS_PROCESSES_STAGING_DOWNLOAD_{station_id}"
-    error_auth = f"Missing {role.upper()} authorization role"
-    mocker.patch.object(staging_instance, "assets_info", new="some_asset")
+    error_auth = f"Loading station token service failed: 401: Missing {role.upper()} authorization role"
+    mocker.patch.object(staging_instance, "assets_info", new=[AssetInfo("some_asset", "fake_s3_file", "fake_bucket")])
     mock_load = mocker.Mock()
     mock_load.station_id = station_id
-    mocker.patch("rs_server_staging.processors.load_external_auth_config_by_domain", return_value=mock_load)
+    mocker.patch(
+        "rs_server_staging.processors.processor_staging.load_external_auth_config_by_domain",
+        return_value=mock_load,
+    )
+    mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
+    mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
     mock_request = mocker.Mock()
     mocker.patch.object(staging_instance, "request", new=mock_request)
     spy_log_job = mocker.spy(staging_instance, "log_job_execution")
@@ -121,7 +128,6 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     mock_request.state.auth_roles = []
     await staging_instance.process_rspy_features(collection)
     assert spy_log_job.call_args[0][2] == error_auth
-
     # With the righ role, it should fail for whatever other reason
     # (because we didn't mock the right values, but it's OK it is not what we are testing here)
     spy_log_job.reset_mock()

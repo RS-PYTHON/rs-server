@@ -103,7 +103,7 @@ jobs:
 #      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
 #      - id: build-wheel
@@ -120,7 +120,7 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - id: build-wheel
@@ -137,23 +137,30 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
-          done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
           package_directory: services/adgs
+
+  services-prip-whl:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "'services/prip' wheel"
+    outputs:
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
+        with:
+          package_directory: services/prip
 
   services-cadip-whl:
     if: github.actor != 'dependabot[bot]'
@@ -164,19 +171,9 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/cadip/pyproject.toml
-          done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -191,30 +188,9 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # TEMP: because of the pydantic conflict:
-      # For line: { include = "rs_server_common", from = "../common" },
-      # Copy the rs_server_common directory and remove the from=../common part.
-      - run: |
-          set -x
-          cd services/staging
-          cp -r ../common/rs_server_common/ .
-          sed -i "s|^\(\s*\).*include.*rs_server_common.*$|\1{include=\"rs_server_common\"},|g" pyproject.toml
-        shell: bash
-
-      # NOTE: when the pydantic conflict is resolved, remove the above step and uncomment the below step.
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      # - run: |
-      #     set -x
-      #     for dep in rs-server-common; do
-      #       sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/staging/pyproject.toml
-      #     done
-      #   shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -229,19 +205,9 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
-          done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -256,7 +222,7 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - uses: ./.github/actions/install-python
@@ -281,12 +247,12 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "Publish wheels and sdists"
-    needs: [services-common-whl, services-adgs-whl, services-cadip-whl, services-staging-whl, services-catalog-whl, services-frontend-whl]
+    needs: [services-common-whl, services-adgs-whl, services-prip-whl, services-cadip-whl, services-staging-whl, services-catalog-whl, services-frontend-whl]
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
       - name: Download dist dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           merge-multiple: true
           path: ./dist
@@ -311,19 +277,24 @@ jobs:
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
+
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-adgs-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
@@ -344,6 +315,53 @@ jobs:
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
+  services-prip-img:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "'services/prip' Docker image"
+    needs: [set-env, services-common-whl, services-prip-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Download .whl files into a local dir
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./build_context_path
+
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ needs.services-prip-whl.outputs.package_name }}
+          path: ./build_context_path
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
+
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/prip/.github/Dockerfile
+          build_context_path: ./build_context_path
+          image_suffix: -prip
+          version_name: ${{ needs.services-prip-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
+
   services-cadip-img:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -353,19 +371,24 @@ jobs:
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
+
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-cadip-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
@@ -395,18 +418,23 @@ jobs:
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
+
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-catalog-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
@@ -436,11 +464,11 @@ jobs:
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-frontend-whl.outputs.package_name }}
           path: ./build_context_path
@@ -448,6 +476,10 @@ jobs:
       # Copy the entrypoint script under the same dir
       - name: Copy entrypoint script
         run: cp ./services/frontend/.github/entrypoint_frontend.sh ./build_context_path
+        shell: bash
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
       - name: Copy debug mode dependencies
@@ -473,28 +505,29 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/staging' Docker image"
-    # TODO: this has to be activated when the pydantic conflict is solved
-    #needs: [set-env, services-common-whl, services-staging-whl]
-    # TODO: this has to be deleted when the pydantic conflict is solved
-    needs: [set-env, services-staging-whl]
+    needs: [set-env, services-common-whl, services-staging-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Download .whl files into a local dir
-      # TODO: the next 5 commented lines must be reactivated when the pydantic conflict is solved
-      #- name: Download .whl dependencies
-      #  uses: actions/download-artifact@v4
-      #  with:
-      #    name: ${{ needs.services-common-whl.outputs.package_name }}
-      #    path: ./whl
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./build_context_path
+
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
@@ -518,29 +551,30 @@ jobs:
   dask-staging-local-img:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    name: "'dask-gateway-server/staging/local' Docker image"
-    # TODO: this has to be activated when the pydantic conflict is solved
-    #needs: [set-env, services-common-whl, services-staging-whl]
-    # TODO: this has to be deleted when the pydantic conflict is solved
-    needs: [set-env, services-staging-whl]
+    name: "Dask staging Docker image"
+    needs: [set-env, services-common-whl, services-staging-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Download .whl files into a local dir
-      # TODO: the next 5 commented lines must be reactivated when the pydantic conflict is solved
-      #- name: Download .whl dependencies
-      #  uses: actions/download-artifact@v4
-      #  with:
-      #    name: ${{ needs.services-common-whl.outputs.package_name }}
-      #    path: ./whl
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./build_context_path
+
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
@@ -566,7 +600,15 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "Test rs-demo"
-    needs: [set-env, services-adgs-img, services-cadip-img, services-catalog-img, services-frontend-img]
+    needs:
+      - set-env
+      - services-adgs-img
+      - services-prip-img
+      - services-cadip-img
+      - services-catalog-img
+      - services-frontend-img
+      - services-staging-img
+      - dask-staging-local-img
     steps:
       - name: Log into Docker registry
         uses: docker/login-action@v3
@@ -581,7 +623,7 @@ jobs:
           set -x
 
           # Copy the s3cmd config file to be able to access the "real" s3 bucket
-          echo "${{ secrets.S3CFG_ORANGE_BUCKET }}" > ~/.s3cfg
+          echo "${{ secrets.S3CFG_OVH_BUCKET }}" > ~/.s3cfg
 
           # Clone the rs-demo repository
           git clone https://github.com/RS-PYTHON/rs-demo.git
@@ -597,7 +639,30 @@ jobs:
           docker_tag="${{ needs.set-env.outputs.docker_tag }}"
           docker_tag="${docker_tag:-latest}" # latest by default
           ./test-docker-tag.sh "$docker_tag"
-          docker compose -f docker-compose-test-tag.yml up -d
-          ./run-notebooks.sh "$docker_tag"
+          docker compose -f docker-compose-test-tag.yml up cicd -d
+          ./run-notebooks.sh
+          docker compose down -v
 
+        shell: bash
+
+  ###########################
+  # Trigger other workflows #
+  ###########################
+
+  # See https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
+  trigger-rs-infra-core:
+    needs: [set-env, test-demo] # this must be the last job to run
+    if: (github.actor != 'dependabot[bot]') && (needs.set-env.outputs.branch_name == 'develop')
+    runs-on: ubuntu-latest
+    name: "Trigger rs-infra-core workflow"
+    steps:
+      - run: |
+          set -x
+          curl -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.TRIGGER_WORKFLOWS }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/RS-PYTHON/rs-infra-core/actions/workflows/publish-image.yml/dispatches \
+            -d '{"ref":"develop","inputs":{"docker_tag":"latest"}}'
         shell: bash

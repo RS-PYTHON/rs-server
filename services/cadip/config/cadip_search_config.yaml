@@ -21,10 +21,7 @@ collections:
 - id: cadip
   station: cadip
   query: null
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: All from 'cadip' station
   description: All from 'cadip' station
   license: other
@@ -41,7 +38,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -53,7 +50,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -61,10 +58,7 @@ collections:
 - id: mti
   station: mti
   query: null
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: All from 'mti' station
   description: All from 'mti' station
   license: other
@@ -81,7 +75,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -93,7 +87,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -101,10 +95,7 @@ collections:
 - id: sgs
   station: sgs
   query: null
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: All from 'sgs' station
   description: All from 'sgs' station
   license: other
@@ -121,7 +112,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -133,7 +124,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -142,10 +133,7 @@ collections:
   station: cadip
   query:
     Satellite: S1A, S1B, S1C
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-1 'cadip' station
   description: Sentinel-1 'cadip' station
   license: other
@@ -162,7 +150,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -174,7 +162,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -183,10 +171,7 @@ collections:
   station: cadip
   query:
     Satellite: S2A, S2B, S2C
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-2 'cadip' station
   description: Sentinel-2 'cadip' station
   license: other
@@ -203,7 +188,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -215,7 +200,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -224,10 +209,7 @@ collections:
   station: cadip
   query:
     Satellite: S3A, S3B
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-3 'cadip' station
   description: Sentinel-3 'cadip' station
   license: other
@@ -244,7 +226,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -256,7 +238,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -265,10 +247,7 @@ collections:
   station: cadip
   query:
     Satellite: S5P
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-5 'cadip' station
   description: Sentinel-5 'cadip' station
   license: other
@@ -285,7 +264,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -297,7 +276,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -306,10 +285,7 @@ collections:
   station: mti
   query:
     Satellite: S1A, S1B, S1C
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-1 'mti' station
   description: Sentinel-1 'mti' station
   license: other
@@ -326,7 +302,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -338,7 +314,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -347,10 +323,7 @@ collections:
   station: mti
   query:
     Satellite: S2A, S2B, S2C
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-2 'mti' station
   description: Sentinel-2 'mti' station
   license: other
@@ -367,7 +340,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -379,7 +352,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -388,10 +361,7 @@ collections:
   station: mti
   query:
     Satellite: S3A, S3B
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-3 'mti' station
   description: Sentinel-3 'mti' station
   license: other
@@ -408,7 +378,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -420,7 +390,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -429,10 +399,7 @@ collections:
   station: mti
   query:
     Satellite: S5P
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-5 'mti' station
   description: Sentinel-5 'mti' station
   license: other
@@ -449,7 +416,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -461,7 +428,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -470,10 +437,7 @@ collections:
   station: sgs
   query:
     Satellite: S1A, S1B, S1C
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-1 'sgs' station
   description: Sentinel-1 'sgs' station
   license: other
@@ -490,7 +454,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -502,7 +466,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -511,10 +475,7 @@ collections:
   station: sgs
   query:
     Satellite: S2A, S2B, S2C
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-2 'sgs' station
   description: Sentinel-2 'sgs' station
   license: other
@@ -531,7 +492,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -543,7 +504,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -552,10 +513,7 @@ collections:
   station: sgs
   query:
     Satellite: S3A, S3B
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-3 'sgs' station
   description: Sentinel-3 'sgs' station
   license: other
@@ -572,7 +530,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -584,7 +542,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host
@@ -593,10 +551,7 @@ collections:
   station: sgs
   query:
     Satellite: S5P
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v1.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v1.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.0.0/schema.json
+  stac_extensions: []
   title: Sentinel-5 'sgs' station
   description: Sentinel-5 'sgs' station
   license: other
@@ -613,7 +568,7 @@ collections:
         - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
-    href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
   - rel: describedby
@@ -625,7 +580,7 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/s1-mission
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
   - name: Reference System
     roles:
     - host

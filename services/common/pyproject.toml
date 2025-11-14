@@ -1,6 +1,20 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [project]
 name = "rs-server-common"
-version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-common"
@@ -37,52 +51,57 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4"
-fastapi = "^0.115.11"
-starlette = ">=0.45.3,<0.46"
-boto3 = ">=1.35.40"
-botocore = ">=1.35.99"
-sqlalchemy = "^2.0.35"
-# # TODO: replace by official eodag version tag that will contain this feature.
-# # Then, in adgs/cadip/catalog docker images, remove the "RUN apt install -y git"
-# eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "develop" }
-eodag = "==v3.1.0b2"
-pydantic = ">=2.9.2,<2.11.0"
-markdown = "^3.6"
+fastapi = ">=0.120.0,<0.122.0"
+starlette = ">=0.49.1,<0.51"
+boto3 = ">=1.40.2"
+botocore = ">=1.40.2"
+sqlalchemy = "^2.0.43"
+eodag = "==v3.10.0"
+# NOTE: to use a forked eodag version we would use:
+# eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
+pydantic = ">=2.9.2,<2.12.0" # see https://github.com/pyupio/safety/issues/673
+markdown = "^3.8.2"
 python-dotenv = "^1.0.0"
-psycopg2 = "^2.9.9"
-filelock = "^3.16.1"
-uvicorn = ">=0.31,<0.35"
-httpx = "^0.27.2"
+filelock = ">=3.16.1"
+uvicorn = ">=0.35.0"
+httpx = "^0.28.1"
 cachetools = ">=5.5.2" # idem as stac-fastapi-pgstac
 asyncache = "^0.3.1"
-orjson = [ # we need the same markers and versions as in eodag: https://github.com/CS-SI/eodag/blob/develop/setup.cfg
-    {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
-    {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
-]
-opentelemetry-distro = "^0.52b1" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.52b1"
-opentelemetry-test-utils = "^0.52b1"
-opentelemetry-exporter-otlp = "^1.31.1"
+opentelemetry-distro = "^0.59b0" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-instrumentation-aws-lambda = "^0.59b0"
+opentelemetry-test-utils = "^0.59b0"
+opentelemetry-exporter-otlp = "^1.38.0"
+protobuf = ">=6.31.1"
 python-logging-loki = "^0.3.1"
-stac-pydantic = "^3.1.4"
-authlib = "^1.5.0"
-python-keycloak = ">=5.3.1,<6.0"
+authlib = "^1.6.1"
+python-keycloak = ">=5.7.0,<6.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = "^5.0.0"
+stac-fastapi-pgstac = "==6.1.0"
+pydantic-settings = ">2.2.1,<3.0.0,!=2.9.0" # see https://github.com/PrefectHQ/prefect/issues/17852
+pygeofilter = ">=0.3.1.post1"
+stac-pydantic = "^3.4.0"
+geojson-pydantic = "2.0.0"
+stac-fastapi-types = "^6.0.0"
+requests = "^2.32.5"
+urllib3 = ">=2.5.0"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-pytest-asyncio = "^0.24.0"
-pytest-cov = "^6.0.0"
-pytest-docker = "^3.1.0"
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
+pytest = "^8.4.2"
+pytest-asyncio = "^1.2.0"
+pytest-cov = "^7.0.0"
+pytest-docker = "^3.2.3"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = "^0.34.0"
-pytest-mock = "^3.14.0"
-responses = "^0.25.3"
+pytest-httpx = ">=0.35,<0.36"
+pytest-mock = "^3.15.1"
+responses = "^0.25.8"
+moto = "^5.1.10"
+flask = "^3.1.1" # for moto
+flask-cors = "^6.0.1" # for moto
 
 [tool.black]
 line-length = 120
@@ -92,6 +111,7 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 
 [tool.mypy]
@@ -99,7 +119,10 @@ warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
 
-[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
 enable = true
 metadata = false
 

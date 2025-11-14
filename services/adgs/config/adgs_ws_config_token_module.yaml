@@ -122,6 +122,21 @@ adgs:
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          - '{t_before}'
+          - '{t_after}'
+          - '{t_meets}'
+          - '{t_metby}'
+          - '{t_overlaps}'
+          - '{t_overlappedby}'
+          - '{t_starts}'
+          - '{t_startedby}'
+          - '{t_during}'
+          - '{t_contains}'
+          - '{t_finishes}'
+          - '{t_finishedby}'
+          - '{t_equals}'
+          - '{t_disjoint}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -252,6 +267,21 @@ adgs2:
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          - '{t_before}'
+          - '{t_after}'
+          - '{t_meets}'
+          - '{t_metby}'
+          - '{t_overlaps}'
+          - '{t_overlappedby}'
+          - '{t_starts}'
+          - '{t_startedby}'
+          - '{t_during}'
+          - '{t_contains}'
+          - '{t_finishes}'
+          - '{t_finishedby}'
+          - '{t_equals}'
+          - '{t_disjoint}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:

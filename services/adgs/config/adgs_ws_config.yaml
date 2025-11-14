@@ -20,9 +20,11 @@
 adgs:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5000/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -88,10 +90,19 @@ adgs:
       attr_ptype:
       - null
       - $.attr_ptype
+      attr_ptypes:
+      - null
+      - $.attr_ptype
       platformSerialIdentifier:
       - null
       - $.platformSerialIdentifier
+      platformSerialIdentifiers:
+      - null
+      - $.platformSerialIdentifier
       platformShortName:
+      - null
+      - $.platformShortName
+      platformShortNames:
       - null
       - $.platformShortName
       processing:datetime:
@@ -123,11 +134,17 @@ adgs:
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
-            and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
+            and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
+            and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
-            and att/OData.CSC.StringAttribute/Value eq '{platformSerialIdentifier}')
+            and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
+            and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
-            and att/OData.CSC.StringAttribute/Value eq '{platformShortName#to_upper}')
+            and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
+            and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
@@ -135,6 +152,21 @@ adgs:
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          - '{t_before}'
+          - '{t_after}'
+          - '{t_meets}'
+          - '{t_metby}'
+          - '{t_overlaps}'
+          - '{t_overlappedby}'
+          - '{t_starts}'
+          - '{t_startedby}'
+          - '{t_during}'
+          - '{t_contains}'
+          - '{t_finishes}'
+          - '{t_finishedby}'
+          - '{t_equals}'
+          - '{t_disjoint}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -163,9 +195,11 @@ adgs:
 adgs2:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5001/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -231,10 +265,19 @@ adgs2:
       attr_ptype:
       - null
       - $.attr_ptype
+      attr_ptypes:
+      - null
+      - $.attr_ptype
       platformSerialIdentifier:
       - null
       - $.platformSerialIdentifier
+      platformSerialIdentifiers:
+      - null
+      - $.platformSerialIdentifier
       platformShortName:
+      - null
+      - $.platformShortName
+      platformShortNames:
       - null
       - $.platformShortName
       processing:datetime:
@@ -266,11 +309,17 @@ adgs2:
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
-            and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
+            and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
+            and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
-            and att/OData.CSC.StringAttribute/Value eq '{platformSerialIdentifier}')
+            and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
+            and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
-            and att/OData.CSC.StringAttribute/Value eq '{platformShortName#to_upper}')
+            and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
+          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
+            and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
@@ -278,6 +327,21 @@ adgs2:
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          - '{t_before}'
+          - '{t_after}'
+          - '{t_meets}'
+          - '{t_metby}'
+          - '{t_overlaps}'
+          - '{t_overlappedby}'
+          - '{t_starts}'
+          - '{t_startedby}'
+          - '{t_during}'
+          - '{t_contains}'
+          - '{t_finishes}'
+          - '{t_finishedby}'
+          - '{t_equals}'
+          - '{t_disjoint}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:

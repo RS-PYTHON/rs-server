@@ -26,13 +26,15 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker images
+restore-apt.sh
 apt update
-apt install -y git vim emacs-nox
+apt install -y --no-install-recommends git vim-tiny mg
 
 # Add aliases to bash
 cat << EOF >> /home/user/.bashrc
 alias ll='ls -alFh'
 alias ls='ls --color=auto'
+alias vim='vim.tiny'
 EOF
 
 # Git clone the project branch with HTTP authentication so we don't need any
@@ -73,4 +75,4 @@ done
 chown -R user:user /home/user/rs-server
 
 # Clean everything
-rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+layer-cleanup.sh

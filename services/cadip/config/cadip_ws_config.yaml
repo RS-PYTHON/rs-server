@@ -21,9 +21,11 @@
 cadip:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5000/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -127,9 +129,11 @@ cadip:
 ins:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5100/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -233,9 +237,11 @@ ins:
 mps:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5101/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -339,9 +345,11 @@ mps:
 mti:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5102/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -445,9 +453,11 @@ mti:
 nsg:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5103/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -551,9 +561,11 @@ nsg:
 sgs:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5104/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -657,9 +669,11 @@ sgs:
 cadip_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5000/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -708,6 +722,9 @@ cadip_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -786,6 +803,7 @@ cadip_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -807,6 +825,7 @@ cadip_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -836,9 +855,11 @@ cadip_session:
 ins_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5100/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -887,6 +908,9 @@ ins_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -965,6 +989,7 @@ ins_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -986,6 +1011,7 @@ ins_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1015,9 +1041,11 @@ ins_session:
 mps_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5101/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1066,6 +1094,9 @@ mps_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1144,6 +1175,7 @@ mps_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1165,6 +1197,7 @@ mps_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1194,9 +1227,11 @@ mps_session:
 mti_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5102/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1245,6 +1280,9 @@ mti_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1323,6 +1361,7 @@ mti_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1344,6 +1383,7 @@ mti_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1373,9 +1413,11 @@ mti_session:
 nsg_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5103/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1424,6 +1466,9 @@ nsg_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1502,6 +1547,7 @@ nsg_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1523,6 +1569,7 @@ nsg_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
@@ -1552,9 +1599,11 @@ nsg_session:
 sgs_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5104/oauth2/token
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1603,6 +1652,9 @@ sgs_session:
       platforms:
       - null
       - $.Satellite
+      StationId:
+      - null
+      - $.StationId
       StationUnitId:
       - null
       - $.StationUnitId
@@ -1681,6 +1733,7 @@ sgs_session:
           - NumChannels eq {NumChannels}
           - AcquisitionId eq {AcquisitionId}
           - AntennaId eq {AntennaId}
+          - StationId eq {StationId}
           - StationUnitId eq {StationUnitId}
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
@@ -1702,6 +1755,7 @@ sgs_session:
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
+        cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId

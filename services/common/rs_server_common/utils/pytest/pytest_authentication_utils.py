@@ -44,7 +44,6 @@ def init_app_cluster_mode():
 
     os.environ["RSPY_LOCAL_MODE"] = "0"
     os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-    os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
     os.environ["RSPY_UAC_HOMEPAGE"] = RSPY_UAC_HOMEPAGE
     os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
     os.environ["OIDC_ENDPOINT"] = OIDC_ENDPOINT
@@ -54,7 +53,7 @@ def init_app_cluster_mode():
     os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"  # nosec
 
 
-async def init_test(
+async def init_authentication_test(
     mocker,
     httpx_mock: HTTPXMock,
     client: TestClient,
@@ -64,7 +63,7 @@ async def init_test(
     mock_wrong_apikey: bool = False,
     user_login="pyteam",
 ):
-    """init mocker for tests."""
+    """Init mockers for tests in cluster mode with authentication."""
 
     # Needs init_app_cluster_mode()
     from rs_server_common.utils.pytest.pytest_utils import (  # pylint: disable=import-outside-toplevel

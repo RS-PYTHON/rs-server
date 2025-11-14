@@ -37,22 +37,28 @@ info:
 
     <a href="${STAC_BROWSER_URL_ADGS}" target="_blank">ADGS</a> /
     <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
+    <a href="${STAC_BROWSER_URL_PRIP}" target="_blank">PRIP</a> /
     <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
 
     ---
 services:
   adgs:
-    openapi_url: http://localhost:8001/openapi.json
+    openapi_url: http://localhost:8001/auxip/api
     change_tags:
       "": ADGS stations
       Filter Extension: ADGS (Filter Extension)
   cadip:
-    openapi_url: http://localhost:8002/openapi.json
+    openapi_url: http://localhost:8002/cadip/api
     change_tags:
       "": CADIP stations
       Filter Extension: CADIP (Filter Extension)
+  prip:
+    openapi_url: http://localhost:8005/prip/api
+    change_tags:
+      "": PRIP stations
+      Filter Extension: PRIP (Filter Extension)
   catalog:
-    openapi_url: http://localhost:8003/api
+    openapi_url: http://localhost:8003/catalog/api
     change_tags:
       "": Catalog
       Liveliness/Readiness: Catalog (Liveliness/Readiness)
