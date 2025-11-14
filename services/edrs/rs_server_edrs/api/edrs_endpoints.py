@@ -312,9 +312,9 @@ class MockPgstacEdrs(MockPgstac):
         finally:
             try:
                 client.close()
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Connector shutdown errors must be swallowed to avoid masking responses.
-                pass
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                # Connector shutdown errors must be swallowed to avoid masking responses, so log and continue.
+                logger.debug("Failed to close EDRS connector: %s", exc)  # nosec B110
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
