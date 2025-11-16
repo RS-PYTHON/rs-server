@@ -23,12 +23,16 @@ import re
 from datetime import datetime as DateTime
 from functools import lru_cache
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import yaml
 from fastapi import Request
-from rs_server_common.utils.utils import map_stac_platform, odata_to_stac
+from rs_server_common.rspy_models import ItemCollection as RspyItemCollection
+from rs_server_common.stac_api_common import MockPgstac, check_input_type
+from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import map_stac_platform, odata_to_stac
 from stac_pydantic import Item
 from stac_pydantic import ItemCollection as StacItemCollection
 from stac_pydantic.links import Link, Links
@@ -278,3 +282,210 @@ def build_edrs_item_collection(
     )
 
     return StacItemCollection(type="FeatureCollection", features=items, links=ic_links).to_dict()
+
+
+####################################
+# Filtering / pagination utilities #
+####################################
+
+
+def normalize_features(features: list) -> list[dict]:
+    """Convert mixed feature representations into plain dicts."""
+    normalized = []
+    for f in features or []:
+        if isinstance(f, dict):
+            normalized.append(f)
+        elif hasattr(f, "model_dump"):
+            normalized.append(f.model_dump())
+        elif hasattr(f, "to_dict"):
+            normalized.append(f.to_dict())
+        else:
+            raise ValueError("Invalid feature type in collection")
+    return normalized
+
+
+def filter_and_paginate_features(
+    features: list[dict],
+    query_params,
+    queryables_raw: dict,
+    sortby_default: str = "-datetime",
+    limit_default: int = 1000,
+    page_default: int = 1,
+) -> dict:
+    """
+    Apply property/datetime filters + pagination/sort to a list of feature dicts.
+    Returns a paginated dict via MockPgstac.paginate.
+    """
+    sort_by_expr = query_params.get("sortby") or sortby_default
+    limit_value = int(query_params.get("limit") or limit_default)
+    page_value = int(query_params.get("page") or page_default)
+    filter_expr = query_params.get("filter")
+    filter_lang_value = (query_params.get("filter-lang") or "cql2-text").lower()
+    datetime_expr = query_params.get("datetime")
+
+    allowed_props = set(queryables_raw.keys()) | {"id"}
+
+    field_info = {}
+    for k, v in queryables_raw.items():
+        if hasattr(v, "type"):
+            field_info[k] = v
+        elif isinstance(v, dict) and "type" in v:
+            field_info[k] = SimpleNamespace(type=v["type"])
+        else:
+            field_info[k] = SimpleNamespace(type="string")
+
+    conditions = []
+
+    def add_condition(prop_name: str, value):
+        key = prop_name
+        if key.startswith("properties."):
+            key = key.split(".", 1)[1]
+        if key not in allowed_props:
+            raise ValueError(f"Invalid query filter property: {prop_name!r}")
+        if key != "id":
+            check_input_type(field_info, key, value)
+        conditions.append((key, str(value)))
+
+    if filter_expr:
+        if filter_lang_value in {"cql2-json", "application/cql+json"}:
+            node = filter_expr
+            if isinstance(node, str):
+                node = json.loads(node)
+            parse_cql2_json_node(process_filter_extensions(node), add_condition)
+        elif filter_lang_value == "cql2-text":
+            parse_cql2_text(str(filter_expr), add_condition)
+        else:
+            raise ValueError(f"Unsupported filter-lang: {filter_lang_value}")
+
+    q_start, q_end = parse_datetime_interval(datetime_expr)
+
+    def parse_iso(val: str | None):
+        if not val:
+            return None
+        s = str(val).strip()
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        try:
+            return DateTime.fromisoformat(s)
+        except Exception:  # pylint: disable=broad-exception-caught
+            try:
+                return DateTime.fromisoformat(s + "T00:00:00+00:00")
+            except Exception:  # pylint: disable=broad-exception-caught
+                return None
+
+    def match_props(feature: dict) -> bool:
+        for k, v in conditions:
+            if k == "id":
+                if str(feature.get("id", "")) != str(v):
+                    return False
+            else:
+                if str(feature.get("properties", {}).get(k, "")) != str(v):
+                    return False
+        return True
+
+    def match_datetime(feature: dict) -> bool:
+        props = feature.get("properties", {})
+        item_start = parse_iso(props.get("start_datetime") or props.get("datetime"))
+        item_end = parse_iso(props.get("end_datetime") or props.get("datetime"))
+        return intersects_time(item_start, item_end, q_start, q_end)
+
+    filtered_features = [f for f in features if match_props(f) and match_datetime(f)]
+
+    item_collection_model = RspyItemCollection.model_validate(
+        {
+            "type": "FeatureCollection",
+            "features": filtered_features,
+        },
+    )
+
+    paging_ctx = SimpleNamespace(sortby=str(sort_by_expr), limit=limit_value, page=page_value)
+    return MockPgstac.paginate(paging_ctx, item_collection_model)
+
+
+def parse_cql2_text(expr: str, add_condition):
+    """Parse CQL2 text expression into conditions via callback."""
+    parts = re.split(r"\\bAND\\b", expr, flags=re.IGNORECASE)
+    for raw in parts:
+        segment = raw.strip()
+        if not segment:
+            continue
+        m = re.match(r"^([\\w\\:\\.\\-]+)\\s*=\\s*(.+)$", segment)
+        if not m:
+            raise ValueError(f"Invalid filter condition: {segment!r}")
+        left, right = m.group(1).strip(), m.group(2).strip()
+        if right.startswith(("'", '"')) and right.endswith(("'", '"')) and len(right) >= 2:
+            right = right[1:-1]
+        add_condition(left, right)
+
+
+def parse_cql2_json_node(node, add_condition):
+    """Walk a CQL2 JSON tree and invoke add_condition on equality ops."""
+    if not isinstance(node, dict):
+        raise ValueError("Invalid CQL2-JSON filter")
+    op = str(node.get("op", "")).lower()
+    args = node.get("args", [])
+    if op == "and":
+        for a in args:
+            parse_cql2_json_node(a, add_condition)
+    elif op in {"=", "eq"} and len(args) == 2:
+        left, right = args[0], args[1]
+        if isinstance(left, dict) and "property" in left:
+            prop_name = left["property"]
+        elif isinstance(left, str):
+            prop_name = left
+        else:
+            raise ValueError("Invalid CQL2-JSON left operand")
+        if isinstance(right, dict) and "literal" in right:
+            value = right["literal"]
+        else:
+            value = right
+        add_condition(prop_name, value)
+    else:
+        raise ValueError(f"Unsupported CQL2-JSON operator: {op}")
+
+
+def parse_datetime_interval(expr: str | None):
+    """Parse a datetime or interval string into (start, end) datetimes."""
+
+    def parse_iso(val: str | None):
+        if not val:
+            return None
+        s = str(val).strip()
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        try:
+            return DateTime.fromisoformat(s)
+        except Exception:  # pylint: disable=broad-exception-caught
+            try:
+                return DateTime.fromisoformat(s + "T00:00:00+00:00")
+            except Exception:  # pylint: disable=broad-exception-caught
+                return None
+
+    if not expr:
+        return None, None
+    s = str(expr).strip()
+    if "/" in s:
+        a, b = s.split("/", 1)
+        return (parse_iso(a) if a and a != ".." else None), (parse_iso(b) if b and b != ".." else None)
+    t = parse_iso(s)
+    return t, t
+
+
+def intersects_time(item_start, item_end, q_start, q_end):
+    """Return True if item time interval intersects query interval."""
+    if q_start is None and q_end is None:
+        return True
+    if item_start is None and item_end is None:
+        return True
+    s = item_start or item_end
+    e = item_end or item_start
+    if s is None and e is None:
+        return True
+    result = True
+    if q_start and q_end:
+        result = (s <= q_end) and (e >= q_start)
+    elif q_start:
+        result = e >= q_start
+    elif q_end:
+        result = s <= q_end
+    return result
