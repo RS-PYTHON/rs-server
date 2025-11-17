@@ -37,11 +37,11 @@ end_datetime:
   title: end_datetime
   format: date-time
   description: Session end time
-satellite:
+published:
   type: string
-  title: satellite
-  format: string
-  description: Satellite code (e.g., S1A, S1C, S2B)
+  title: published
+  format: date-time
+  description: Session published time
 platform:
   type: string
   title: platform
@@ -52,23 +52,3 @@ constellation:
   title: constellation
   format: string
   description: Constellation (e.g., sentinel-1)
-"edrs:center":
-  type: string
-  title: edrs:center
-  format: string
-  description: EDRS center (pedc|bedc)
-"edrs:channel":
-  type: integer
-  title: edrs:channel
-  format: integer
-  description: Channel number (1|2)
-"edrs:dcsu":
-  type: string
-  title: edrs:dcsu
-  format: string
-  description: DCSU identifier
-"edrs:session_id":
-  type: string
-  title: edrs:session_id
-  format: string
-  description: EDRS session name
