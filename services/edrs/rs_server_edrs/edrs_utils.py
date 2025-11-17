@@ -235,16 +235,15 @@ def build_edrs_item_collection(
     items: list[Item] = []
 
     service_base = str(request.url).split("/collections/", maxsplit=1)[0].rstrip("/")
-    collection_href = f"{service_base}/collections/{collection_id}"
-    root_href = f"{service_base}/"
+    collection_href, root_href = (
+        f"{service_base}/collections/{collection_id}",
+        f"{service_base}/",
+    )
 
     for sat in satellites:
-        entries = client.walk(sat) or []
-
-        # collect session directories
         session_dirs = [
             e["path"]
-            for e in entries
+            for e in (client.walk(sat) or [])
             if e.get("type") == "dir" and re.fullmatch(rf"/NOMINAL/{re.escape(sat)}/DCS_\d+_\d+_dat", e.get("path", ""))
         ]
 
@@ -257,17 +256,19 @@ def build_edrs_item_collection(
                 edrs_sessions_stac_mapper(),
             )
 
-            feature["collection"] = collection_id
-            item = Item(**feature)
+            item = Item(**{**feature, "collection": collection_id})
 
             apply_asset_mapping_to_item(item, asset_products)
-            self_href = f"{collection_href}/items/{item.id}"
             item.links = Links(
                 root=[
                     Link(rel="collection", type="application/json", href=collection_href),
                     Link(rel="parent", type="application/json", href=collection_href),
                     Link(rel="root", type="application/json", href=root_href),
-                    Link(rel="self", type="application/geo+json", href=self_href),
+                    Link(
+                        rel="self",
+                        type="application/geo+json",
+                        href=f"{collection_href}/items/{item.id}",
+                    ),
                 ],
             )
             items.append(item)
@@ -325,14 +326,18 @@ def filter_and_paginate_features(
 
     allowed_props = set(queryables_raw.keys()) | {"id"}
 
-    field_info = {}
-    for k, v in queryables_raw.items():
-        if hasattr(v, "type"):
-            field_info[k] = v
-        elif isinstance(v, dict) and "type" in v:
-            field_info[k] = SimpleNamespace(type=v["type"])
-        else:
-            field_info[k] = SimpleNamespace(type="string")
+    field_info = {
+        k: (
+            v
+            if hasattr(v, "type")
+            else (
+                SimpleNamespace(type=v["type"])
+                if isinstance(v, dict) and "type" in v
+                else SimpleNamespace(type="string")
+            )
+        )
+        for k, v in queryables_raw.items()
+    }
 
     conditions = []
 
