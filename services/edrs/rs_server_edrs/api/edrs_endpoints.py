@@ -144,7 +144,7 @@ async def get_allowed_edrs_collections(request: Request) -> dict:
 
 
 @router.get("/edrs/collections/{collection_id}")
-async def get_cadip_collection(
+async def get_edrs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="EDRS collection ID.", max_length=100, description="E.G. s1_pedc")],
 ) -> list[dict] | dict | stac_pydantic.Collection:
