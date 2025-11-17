@@ -745,7 +745,6 @@ async def test_authorization_search(
     feature_toto_s1_l1_0,
     feature_toto_s1_l1_1,
     feature_toto_s2_l3_0,
-    feature_toto_s2_l3_1,
     method: str,
 ):
     """Test the GET and POST /catalog/search endpoints"""
@@ -806,14 +805,11 @@ async def test_authorization_search(
     elif should_succeed:
         assert response.status_code == HTTP_200_OK
         returned_features = json.loads(response.content)["features"]
-        assert sorted([feature["id"] for feature in returned_features]) == sorted(
-            [
-                feature_toto_s1_l1_0.id_,
-                feature_toto_s1_l1_1.id_,
-                feature_toto_s2_l3_0.id_,
-                feature_toto_s2_l3_1.id_,
-            ],
-        )
+        assert [feature["id"] for feature in returned_features] == [
+            feature_toto_s2_l3_0.id_,
+            feature_toto_s1_l1_0.id_,
+            feature_toto_s1_l1_1.id_,
+        ]
     else:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
