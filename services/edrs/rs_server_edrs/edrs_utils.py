@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Module for interacting with EDRS system through a FastAPI APIRouter.
+Helpers for exposing EDRS sessions as STAC resources.
+Load YAML configs, walk station directories, build Items/Collections, and apply
+basic CQL2 filters for /items.
 """
 
 import copy
@@ -231,7 +233,13 @@ def build_edrs_item_collection(
     collection_id: str,
     request: Request,
 ) -> dict[str, Any]:
-    """Collect and convert EDRS FTP sessions into a STAC ItemCollection dict."""
+    """
+    Collect and convert EDRS FTP sessions into a STAC ItemCollection dict.
+
+    Each satellite folder is walked, session dirs are converted to Items via the
+    mapper templates, assets are attached, and STAC links are populated so the
+    response matches the other STAC-driven station collections.
+    """
     items: list[Item] = []
 
     service_base = str(request.url).split("/collections/", maxsplit=1)[0].rstrip("/")
@@ -291,7 +299,7 @@ def build_edrs_item_collection(
 
 
 def normalize_features(features: list) -> list[dict]:
-    """Convert mixed feature representations into plain dicts."""
+    """Convert mixed feature representations (pystac/stac-pydantic/dicts) into plain dicts."""
     normalized = []
     for f in features or []:
         if isinstance(f, dict):
@@ -315,7 +323,8 @@ def filter_and_paginate_features(
 ) -> dict:
     """
     Apply property/datetime filters + pagination/sort to a list of feature dicts.
-    Returns a paginated dict via MockPgstac.paginate.
+    Supports CQL2-text and CQL2-JSON equality filters plus datetime interval,
+    then delegates sorting/pagination to MockPgstac to mimic STAC /items paging.
     """
     sort_by_expr = query_params.get("sortby") or sortby_default
     limit_value = int(query_params.get("limit") or limit_default)
@@ -408,7 +417,7 @@ def filter_and_paginate_features(
 
 
 def parse_cql2_text(expr: str, add_condition):
-    """Parse CQL2 text expression into conditions via callback."""
+    """Parse CQL2 text expression (eq + AND) into conditions via callback."""
     parts = re.split(r"\\bAND\\b", expr, flags=re.IGNORECASE)
     for raw in parts:
         segment = raw.strip()
@@ -424,7 +433,7 @@ def parse_cql2_text(expr: str, add_condition):
 
 
 def parse_cql2_json_node(node, add_condition):
-    """Walk a CQL2 JSON tree and invoke add_condition on equality ops."""
+    """Walk a CQL2 JSON tree (eq/and) and invoke add_condition on equality ops."""
     if not isinstance(node, dict):
         raise ValueError("Invalid CQL2-JSON filter")
     op = str(node.get("op", "")).lower()
@@ -450,7 +459,7 @@ def parse_cql2_json_node(node, add_condition):
 
 
 def parse_datetime_interval(expr: str | None):
-    """Parse a datetime or interval string into (start, end) datetimes."""
+    """Parse a datetime or interval string into (start, end) datetimes (closed range)."""
 
     def parse_iso(val: str | None):
         if not val:
@@ -477,7 +486,7 @@ def parse_datetime_interval(expr: str | None):
 
 
 def intersects_time(item_start, item_end, q_start, q_end):
-    """Return True if item time interval intersects query interval."""
+    """Return True if item time interval intersects the query interval."""
     if q_start is None and q_end is None:
         return True
     if item_start is None and item_end is None:

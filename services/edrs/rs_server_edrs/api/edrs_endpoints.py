@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""FastAPI endpoints and helpers for the EDRS service."""
+"""
+FastAPI endpoints and helpers for the EDRS STAC view.
+Implements landing, collections, and /items (no /search for EDRS).
+"""
 
 from typing import Annotated, Literal
 
@@ -58,7 +61,7 @@ router = APIRouter()
 
 
 class MockPgstacEdrs(MockPgstac):
-    """pgSTAC mock for EDRS (collections from YAML)."""
+    """pgSTAC mock for EDRS (collections from YAML, no search support)."""
 
     def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         super().__init__(
@@ -106,7 +109,7 @@ class MockPgstacEdrs(MockPgstac):
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
-    """Ensure the caller has the required CADIP permission for the collection."""
+    """Ensure the caller has the required EDRS permission for the station/collection."""
 
     # Find the collection which id == the input collection_id
     collection = select_config(collection_id)
@@ -126,7 +129,7 @@ async def home():
 
 @router.get("/edrs")
 async def get_root_catalog(request: Request):
-    """Return the landing-page document for the EDRS API."""
+    """Return the landing-page document for the EDRS API (STAC landing page)."""
     logger.info("Starting %s", request.url.path)
     authentication.auth_validation("edrs", "landing_page", request=request)
     return await request.app.state.pgstac_client.landing_page(request=request)
@@ -134,7 +137,7 @@ async def get_root_catalog(request: Request):
 
 @router.get("/edrs/collections")
 async def get_allowed_edrs_collections(request: Request) -> dict:
-    """List every EDRS collection the caller is allowed to view."""
+    """List every EDRS collection the caller is allowed to view (via MockPgstacEdrs)."""
     logger.info("Starting %s", request.url.path)
     authentication.auth_validation("edrs", "landing_page", request=request)
     return await request.app.state.pgstac_client.all_collections(request=request)
@@ -145,7 +148,7 @@ async def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="EDRS collection ID.", max_length=100, description="E.G. s1_pedc")],
 ) -> list[dict] | dict | stac_pydantic.Collection:
-    """Return the metadata for a single CADIP-backed collection."""
+    """Return the metadata for a single EDRS-backed collection (YAML-defined)."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
@@ -164,7 +167,10 @@ async def get_edrs_collection_items(
     limit: LimitType = None,
     page: PageType = None,
 ) -> dict:
-    """Filter, sort, and page STAC Items for the requested collection."""
+    """
+    Filter, sort, and page STAC Items for the requested collection.
+    Supports ids/props equality filters, datetime intervals, and pagination.
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
 
