@@ -868,7 +868,16 @@ class Staging(
 
         def set_dask_env(host_env: dict):
             """Pass environment variables to the dask workers."""
-            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]:
+            for name in [
+                "S3_ACCESSKEY",
+                "S3_SECRETKEY",
+                "S3_ENDPOINT",
+                "S3_REGION",
+                "FTP_HOST",
+                "FTP_PORT",
+                "FTP_USER",
+                "FTP_PASS",
+            ]:
                 os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside
@@ -977,7 +986,11 @@ class Staging(
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
         domains = list(
-            {urlparse(asset.product_url).hostname for asset in self.assets_info if asset.origin_service != "s3"},
+            {
+                urlparse(asset.product_url).hostname or "FTP"
+                for asset in self.assets_info
+                if asset.origin_service != "s3"
+            },
         )
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
@@ -1000,7 +1013,7 @@ class Staging(
         try:
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
-            if domain != "s3":
+            if domain and domain.lower() not in ("s3", "ftp"):
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:

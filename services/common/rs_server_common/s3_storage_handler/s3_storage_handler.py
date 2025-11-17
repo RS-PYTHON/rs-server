@@ -16,6 +16,7 @@
 
 import asyncio
 import concurrent.futures
+import io
 import logging
 import ntpath
 import os
@@ -24,6 +25,7 @@ import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from ftplib import FTP
 from typing import Any
 from urllib.parse import urlparse
 
@@ -1103,3 +1105,65 @@ retried for %s times. Aborting",
 
         # Start streaming with formatted request
         self.s3_streaming_upload(request, trusted_domains, destination_bucket, destination_key)
+
+    def s3_streaming_from_ftp(
+        self,
+        ftp_path: str,
+        bucket: str,
+        key: str,
+        chunk_size: int = 8 * 1024 * 1024,
+    ):
+        # Connect to FTP
+        ftp_host = os.environ.get("FTP_HOST")
+        ftp_port = int(os.environ.get("FTP_PORT"))
+        ftp = FTP()
+
+        ftp.connect(host=ftp_host, port=ftp_port, timeout=10)
+        ftp.login(user=os.environ.get("FTP_USER"), passwd=os.environ.get("FTP_PASS"))
+        self.logger.info("Connected to FTP server %s:%s", ftp_host, ftp_port)
+        # Start multipart upload
+        multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
+        upload_id = multipart["UploadId"]
+        parts = []
+        part_number = 1
+        buffer = io.BytesIO()
+
+        def handle_chunk(data):
+            """Callback function that receives binary data from FTP."""
+            nonlocal buffer, part_number
+            buffer.write(data)
+            # When buffer reaches chunk size, upload it as a part
+            if buffer.tell() >= chunk_size:
+                buffer.seek(0)
+                response = self.s3_client.upload_part(
+                    Bucket=bucket, Key=key, PartNumber=part_number, UploadId=upload_id, Body=buffer.read(),
+                )
+                parts.append({"PartNumber": part_number, "ETag": response["ETag"]})
+                buffer.seek(0)
+                buffer.truncate(0)
+                part_number += 1
+
+        try:
+            # Stream data from FTP
+            ftp.retrbinary(f"RETR {ftp_path}", callback=handle_chunk)
+
+            # Upload any remaining data
+            if buffer.tell() > 0:
+                buffer.seek(0)
+                response = self.s3_client.upload_part(
+                    Bucket=bucket, Key=key, PartNumber=part_number, UploadId=upload_id, Body=buffer.read(),
+                )
+                parts.append({"PartNumber": part_number, "ETag": response["ETag"]})
+
+            # Complete multipart upload
+            self.s3_client.complete_multipart_upload(
+                Bucket=bucket, Key=key, UploadId=upload_id, MultipartUpload={"Parts": parts},
+            )
+            self.logger.info(f"Successfully uploaded {ftp_path} to s3://{bucket}/{key}")
+
+        except Exception as e:
+            # Abort on failure
+            self.s3_client.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+            raise RuntimeError(f"FTP→S3 upload failed: {e}") from e
+        finally:
+            ftp.quit()
