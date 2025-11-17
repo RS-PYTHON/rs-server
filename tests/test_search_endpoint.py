@@ -2774,7 +2774,7 @@ def test_prip_bbox_converted_to_intersects(
 
     assert response.status_code == status.HTTP_200_OK
 
-    called_url = unquote(responses.calls[1].request.url  or "")
+    called_url = unquote(responses.calls[1].request.url or "")
 
     match = re.search(r"POLYGON\s*\(\((.*?)\)\)", called_url)
     assert match, f"No POLYGON found in backend URL: {called_url}"
