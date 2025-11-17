@@ -284,6 +284,100 @@ class TestCatalogSearchEndpoint:
             finally:
                 pathlib.Path("queryables.json").unlink(missing_ok=True)
 
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_token_in_url(self, client, method):
+        """Used to test if application correctly builds next/previous token."""
+
+        def request(url: str, **kwargs):
+            if method == "POST":
+                return client.post(url, json=kwargs)
+            else:
+                return client.get(url, params=kwargs) if kwargs else client.get(url)
+
+        search_url = "/catalog/search"
+
+        import os
+
+        os.environ["toto"] = "tata"
+
+        all_response = request(search_url)
+        assert all_response.status_code == fastapi.status.HTTP_200_OK
+        all_contents = all_response.json()
+        all_features = all_contents["features"]
+
+        response = request(search_url, limit=1)
+        contents = None
+        first_contents = response.json()
+
+        for page, expected_feature in enumerate(all_features):
+
+            page += 1
+
+            is_first_page = page == 1
+            is_last_page = page == len(all_features)
+
+            previous_contents = contents
+
+            assert response.status_code == fastapi.status.HTTP_200_OK
+            contents = response.json()
+            assert contents["numberReturned"] == 1
+            feature = contents["features"][0]
+
+            links = contents["links"]
+            first_urls = [link["href"] for link in links if link["rel"] == "first"]
+            previous_urls = [link["href"] for link in links if link["rel"] == "previous"]
+            next_urls = [link["href"] for link in links if link["rel"] == "next"]
+
+            if is_first_page:
+                assert len(first_urls) == 0
+                assert len(previous_urls) == 0
+                first_url = None
+                previous_url = None
+            else:
+                assert len(first_urls) == 1
+                assert len(previous_urls) == 1
+                first_url = first_urls[0]
+                previous_url = previous_urls[0]
+
+            if is_last_page:
+                assert len(next_urls) == 0
+                next_url = None
+            else:
+                assert len(next_urls) == 1
+                next_url = next_urls[0]
+
+            print(
+                f"""
+expected id: {expected_feature['id']} {expected_feature['properties']['owner']}:{expected_feature['collection']}
+returned id: {feature['id']} {feature['properties']['owner']}:{feature['collection']}
+next url: {next_url}
+""",
+            )
+
+            # TODO: add a sortby parameter ?
+            # sortby id, is it possible ? will the features be sorted by collection name also ?
+
+            # TODO UNCOMMENT
+            # page_contents = request(search_url, page=page, limit=1).json()
+            # if not is_last_page:
+            #     page_next = [link for link in page_contents["links"] if link["rel"] == "next"][0]
+            #     page_next["href"] = page_next["href"].replace(f"page={page}&", "")
+            # assert contents == page_contents
+
+            # TODO UNCOMMENT
+            # assert expected_feature == feature
+
+            # TODO UNCOMMENT
+            # if not is_first_page:
+            #     assert first_contents == request(first_url).json()
+            #     assert previous_contents == request(previous_url).json()
+
+            if not is_last_page:
+                response = request(next_url)
+
 
 class TestCatalogSearchEndpointWithTemporalFilters:
     """This class contains integration tests for the endpoint '/catalog/search' using advanced temporal filters.
