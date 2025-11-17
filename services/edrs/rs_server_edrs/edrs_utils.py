@@ -298,6 +298,25 @@ def build_edrs_item_collection(
 ####################################
 
 
+def parse_iso_value(val: str | None):
+    """Parse an ISO datetime string (or date) into a datetime, tolerant to Z suffix."""
+    if not val:
+        return None
+    s = str(val).strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        return DateTime.fromisoformat(s)
+    except Exception:  # pylint: disable=broad-exception-caught
+        try:
+            return DateTime.fromisoformat(s + "T00:00:00+00:00")
+        except Exception:  # pylint: disable=broad-exception-caught
+            return None
+
+
+TEMPORAL_KEYS = {"datetime", "start_datetime", "end_datetime", "published"}
+
+
 def normalize_features(features: list) -> list[dict]:
     """Convert mixed feature representations (pystac/stac-pydantic/dicts) into plain dicts."""
     normalized = []
@@ -373,34 +392,32 @@ def filter_and_paginate_features(
 
     q_start, q_end = parse_datetime_interval(datetime_expr)
 
-    def parse_iso(val: str | None):
-        if not val:
-            return None
-        s = str(val).strip()
-        if s.endswith("Z"):
-            s = s[:-1] + "+00:00"
-        try:
-            return DateTime.fromisoformat(s)
-        except Exception:  # pylint: disable=broad-exception-caught
-            try:
-                return DateTime.fromisoformat(s + "T00:00:00+00:00")
-            except Exception:  # pylint: disable=broad-exception-caught
-                return None
-
     def match_props(feature: dict) -> bool:
+        props = feature.get("properties", {})
         for k, v in conditions:
             if k == "id":
                 if str(feature.get("id", "")) != str(v):
                     return False
             else:
-                if str(feature.get("properties", {}).get(k, "")) != str(v):
-                    return False
+                prop_val = props.get(k, "")
+                if k in TEMPORAL_KEYS:
+                    left = parse_iso_value(prop_val)
+                    right = parse_iso_value(v)
+                    if left and right:
+                        if left != right:
+                            return False
+                    else:
+                        if str(prop_val) != str(v):
+                            return False
+                else:
+                    if str(prop_val) != str(v):
+                        return False
         return True
 
     def match_datetime(feature: dict) -> bool:
         props = feature.get("properties", {})
-        item_start = parse_iso(props.get("start_datetime") or props.get("datetime"))
-        item_end = parse_iso(props.get("end_datetime") or props.get("datetime"))
+        item_start = parse_iso_value(props.get("start_datetime") or props.get("datetime"))
+        item_end = parse_iso_value(props.get("end_datetime") or props.get("datetime"))
         return intersects_time(item_start, item_end, q_start, q_end)
 
     filtered_features = [f for f in features if match_props(f) and match_datetime(f)]
@@ -418,12 +435,12 @@ def filter_and_paginate_features(
 
 def parse_cql2_text(expr: str, add_condition):
     """Parse CQL2 text expression (eq + AND) into conditions via callback."""
-    parts = re.split(r"\\bAND\\b", expr, flags=re.IGNORECASE)
+    parts = re.split(r"\bAND\b", expr, flags=re.IGNORECASE)
     for raw in parts:
         segment = raw.strip()
         if not segment:
             continue
-        m = re.match(r"^([\\w\\:\\.\\-]+)\\s*=\\s*(.+)$", segment)
+        m = re.match(r"^([\w\:\.\-]+)\s*=\s*(.+)$", segment)
         if not m:
             raise ValueError(f"Invalid filter condition: {segment!r}")
         left, right = m.group(1).strip(), m.group(2).strip()
