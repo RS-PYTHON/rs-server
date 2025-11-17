@@ -101,14 +101,6 @@ def validate(queryables: dict):
 class MockPgstacCadip(MockPgstac):
     """Cadip implementation of MockPgstac"""
 
-    cadip_temporal_mapping = {
-        "start_datetime": "DownlinkStart",
-        "datetime": "PublicationDate",
-        "published": "PublicationDate",
-        "cadip:planned_data_start": "PlannedDataStart",
-        "cadip:planned_data_stop": "PlannedDataStop",
-    }
-
     def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         """Constructor"""
         super().__init__(
@@ -119,7 +111,15 @@ class MockPgstacCadip(MockPgstac):
             select_config=select_config,
             stac_to_odata=stac_to_odata,
             map_mission=cadip_map_mission,
-            temporal_mapping=self.cadip_temporal_mapping,
+            temporal_mapping={
+                "start_datetime": "DownlinkStart",
+                "datetime": "PublicationDate",
+                "published": "PublicationDate",
+                "cadip:planned_data_start": "PlannedDataStart",
+                "cadip:planned_data_stop": "PlannedDataStop",
+                # impossible to define a temporal OData mapping that would be
+                # "end_datetime": "max(Files.PublicationDate)"
+            },
         )
 
         # Default sortby value
