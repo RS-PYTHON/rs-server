@@ -65,7 +65,7 @@ class TestCatalogSearchEndpoint:
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 4
 
     def test_search_endpoint_without_filter(self, client):
         test_params = {"collections": "toto_S1_L1", "limit": "5"}
@@ -200,7 +200,7 @@ class TestCatalogSearchEndpoint:
             }
             response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
-        assert len(json.loads(response.content)["features"]) == 3
+        assert len(json.loads(response.content)["features"]) == 4
 
         # Use implicit naming mechanism for some collections of the list + specify owner in the content/query parameters
         if method == "POST":
@@ -217,7 +217,7 @@ class TestCatalogSearchEndpoint:
             }
             response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
-        assert len(json.loads(response.content)["features"]) == 3
+        assert len(json.loads(response.content)["features"]) == 4
 
         # Use implicit naming mechanism for some collections of the list + specify owner in the filter
         if method == "POST":
@@ -240,7 +240,7 @@ class TestCatalogSearchEndpoint:
             response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert response.status_code == fastapi.status.HTTP_200_OK
-        assert len(json.loads(response.content)["features"]) == 3
+        assert len(json.loads(response.content)["features"]) == 4
 
         # Implicit naming mechanism will not produce the right owner_id if we don't specify it in the
         # content/query parameters or in the filter
