@@ -20,7 +20,7 @@ git pull || exit 30
 git clean -f || exit 40
 git checkout -b "updates-$d" || exit 60
 
-./update_dependencies.sh || exit 75
+./resources/update_dependencies.sh || exit 75
 
 git add . || exit 90
 git commit -m "Dependency updates" || exit 100
