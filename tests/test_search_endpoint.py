@@ -2761,8 +2761,11 @@ def test_prip_bbox_converted_to_intersects(
     # Mock the expected backend call
     responses.add(
         responses.GET,
-        re.compile(
-            r"http://127\.0\.0\.1:5000/Products\?.*OData\.CSC\.Intersects.*POLYGON.*105.*0.*105.*1.*100.*1.*100.*0.*105.*0",  # noqa: E501   # pylint: disable=line-too-long
+        (
+            "http://127.0.0.1:5000/Products?"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))')"
+            " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"  # noqa: E501 # pylint: disable=line-too-long
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
         ),
         json={"value": []},
         status=200,
@@ -2770,11 +2773,17 @@ def test_prip_bbox_converted_to_intersects(
     response = client.get(endpoint)
 
     assert response.status_code == status.HTTP_200_OK
-    called_url = responses.calls[1].request.url
 
-    assert called_url is not None
-    assert "bbox=" not in called_url
-    assert "POLYGON%20((" in called_url, f"Expected polygon WKT missing in URL: {called_url}"
+    called_url = unquote(responses.calls[1].request.url  or "")
+
+    match = re.search(r"POLYGON\s*\(\((.*?)\)\)", called_url)
+    assert match, f"No POLYGON found in backend URL: {called_url}"
+
+    actual_polygon = match.group(0)
+    # the bbox should be translated to (105 0, 105 1, 100 1, 100 0, 105 0) as per box(west, south, east, north)
+    expected_polygon = "POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))"
+
+    assert actual_polygon == expected_polygon
 
 
 @pytest.mark.unit
@@ -2826,7 +2835,12 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
         # Mock GET request for overlapping bbox
         responses.add(
             responses.GET,
-            re.compile(r"http://127\.0\.0\.1:5000/Products.*"),
+            (
+                "http://127.0.0.1:5000/Products?"
+                "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 1, 105 0.5, 104 0.5, 104 1, 105 1))')"  # noqa: E501 # pylint: disable=line-too-long
+                " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"  # noqa: E501 # pylint: disable=line-too-long
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
+            ),
             json={"value": []},
             status=200,
         )
@@ -2839,13 +2853,6 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
 
     else:
         # Mock GET request for non-overlapping bbox
-        responses.add(
-            responses.GET,
-            re.compile(r"http://127\.0\.0\.1:5000/Products.*"),
-            json={"error": "Polygons do not overlap"},
-            status=422,
-        )
-
         bbox_str = ",".join(map(str, coords))
         endpoint = f"/prip/collections/S1A_L0_IW_RAW/items?bbox={bbox_str}&filter=intersects={filter_wkt}"
         response = client.get(endpoint)
