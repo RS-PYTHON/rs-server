@@ -2764,7 +2764,8 @@ def test_prip_bbox_converted_to_intersects(
         (
             "http://127.0.0.1:5000/Products?"
             "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))')"
-            " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"  # noqa: E501 # pylint: disable=line-too-long
+            " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/"
+            "OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
         ),
         json={"value": []},
@@ -2837,8 +2838,10 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
             responses.GET,
             (
                 "http://127.0.0.1:5000/Products?"
-                "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 1, 105 0.5, 104 0.5, 104 1, 105 1))')"  # noqa: E501 # pylint: disable=line-too-long
-                " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"  # noqa: E501 # pylint: disable=line-too-long
+                "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON "
+                "((105 1, 105 0.5, 104 0.5, 104 1, 105 1))')"
+                " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+                "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
             ),
             json={"value": []},
