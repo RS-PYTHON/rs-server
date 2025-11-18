@@ -1128,7 +1128,8 @@ retried for %s times. Aborting",
         # Start streaming with formatted request
         self.s3_streaming_upload(request, trusted_domains, destination_bucket, destination_key)
 
-    def parse_ftps_path(self, url: str) -> tuple[str, str]:
+    @staticmethod
+    def parse_ftps_path(url: str) -> tuple[str, str]:
         """
         Parse an FTPS-style path with format: ftps://<station>/NOMINAL/<path>
 
@@ -1181,7 +1182,7 @@ retried for %s times. Aborting",
             RuntimeError: If any FTP or S3 upload operation fails.
         """
         try:
-            station, ftp_path = self.parse_ftps_path(ftp_path)
+            station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
             ftp_config = FTPConfig(station)
             ftp = FTP()
 

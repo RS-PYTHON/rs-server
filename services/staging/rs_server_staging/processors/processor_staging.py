@@ -954,7 +954,7 @@ class Staging(
 
         return refresh_token
 
-    async def process_rspy_features(  # pylint: disable=too-many-return-statements
+    async def process_rspy_features(  # pylint: disable=too-many-return-statements, too-many-branches
         self,
         catalog_collection: str,
     ) -> tuple[str, dict]:
@@ -1022,6 +1022,23 @@ class Staging(
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
+                if domain == "FTP" and not LOCAL_MODE:
+                    self.logger.info("Staging from EDRS-Station FTP server, no token retrieval needed")
+                    # On FTP and cluster mode, check api key roles for EDRS staging
+                    from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
+                        auth_validation,
+                    )
+
+                    for station, _ in {
+                        S3StorageHandler.parse_ftps_path(asset.product_url) for asset in self.assets_info
+                    }:
+                        # for each unique station, validate the api key roles
+                        auth_validation(
+                            station,
+                            "staging_download",
+                            request=self.request,
+                            staging_process=True,
+                        )
                 refresh_token = None
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")
