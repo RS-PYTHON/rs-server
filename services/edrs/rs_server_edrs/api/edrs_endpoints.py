@@ -99,7 +99,7 @@ class MockPgstacEdrs(MockPgstac):
         client.connect()
 
         try:
-            return build_edrs_item_collection(client, satellites, collection_id, request)
+            return build_edrs_item_collection(client, satellites, collection_id, request, center)
         finally:
             try:
                 client.close()

@@ -124,7 +124,7 @@ def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str
     return None, iso(start), iso(stop), iso(created), iso(finished)
 
 
-def collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list[dict]]:
+def collect_session_stats(client, sat: str, session_id: str, station_name: str) -> tuple[dict, list[dict]]:
     """Returns (session_odata, assets_products)."""
     ch_entries = client.walk(f"{sat}/{session_id}") or []
     channel_dirs = [
@@ -167,7 +167,7 @@ def collect_session_stats(client, sat: str, session_id: str) -> tuple[dict, list
                         "SessionId": session_id.removesuffix("_dat"),
                         "File_Name": Path(p).name,
                         "Size_Bytes": int(f.get("size") or 0),
-                        "href": p,  # absolut ftp
+                        "href": f"ftps://{station_name}{p}",
                         "Channel": ch_num,
                         "Created": gens[-1] if gens else None,
                         "Updated": gens[-1] if gens else None,
@@ -232,6 +232,7 @@ def build_edrs_item_collection(
     satellites: list[str],
     collection_id: str,
     request: Request,
+    station_name: str,
 ) -> dict[str, Any]:
     """
     Collect and convert EDRS FTP sessions into a STAC ItemCollection dict.
@@ -257,7 +258,7 @@ def build_edrs_item_collection(
 
         for sess_path in session_dirs:
             session_id = Path(sess_path).name
-            session, asset_products = collect_session_stats(client, sat, session_id)
+            session, asset_products = collect_session_stats(client, sat, session_id, station_name)
             feature = odata_to_stac(
                 copy.deepcopy(edrs_session_odata_to_stac_template()),
                 session,
