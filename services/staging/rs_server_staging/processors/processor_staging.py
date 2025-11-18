@@ -875,13 +875,13 @@ class Staging(
                 "S3_ENDPOINT",
                 "S3_REGION",
                 "EDRS-STATION_HOST",
-                "EDRS-STATION_FTP_PORT",
-                "EDRS-STATION_FTP_USER",
-                "EDRS-STATION_FTP_PASS",
+                "EDRS-STATION_PORT",
+                "EDRS-STATION_USER",
+                "EDRS-STATION_PASS",
                 "EDRS-STATION2_HOST",
-                "EDRS-STATION2_FTP_PORT",
-                "EDRS-STATION2_FTP_USER",
-                "EDRS-STATION2_FTP_PASS",
+                "EDRS-STATION2_PORT",
+                "EDRS-STATION2_USER",
+                "EDRS-STATION2_PASS",
             ]:
                 os.environ[name] = host_env[name]
 
