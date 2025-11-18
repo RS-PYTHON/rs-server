@@ -25,7 +25,7 @@ import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from ftplib import FTP
+from ftplib import FTP  # nosec B402 # NOSONAR
 from typing import Any
 from urllib.parse import urlparse
 
@@ -1113,13 +1113,34 @@ retried for %s times. Aborting",
         key: str,
         chunk_size: int = 8 * 1024 * 1024,
     ):
+        """
+        Stream a remote file from an FTP server and upload it to Amazon S3 using
+        multipart upload, avoiding local disk usage and keeping memory consumption
+        low. The file is retrieved in binary mode, chunked in memory, and each chunk
+        is uploaded as an individual S3 multipart part until the entire transfer is
+        complete.
+
+        Args:
+            ftp_path (str): Path of the file to read from the FTP server.
+            bucket (str): Target S3 bucket where the file will be stored.
+            key (str): S3 object key for the uploaded file.
+            chunk_size (int): In-memory buffer size used for multipart uploads.
+
+        Raises:
+            RuntimeError: If any FTP or S3 upload operation fails.
+        """
         # Connect to FTP
         ftp_host = os.environ.get("FTP_HOST")
-        ftp_port = int(os.environ.get("FTP_PORT"))
-        ftp = FTP()
+        ftp_port_raw = os.environ.get("FTP_PORT")
+        ftp_user = os.environ.get("FTP_USER")
+        ftp_pass = os.environ.get("FTP_PASS")
+        if not ftp_host or not ftp_port_raw or not ftp_user or not ftp_pass:
+            raise ValueError("Missing required FTP environment variables")
+        ftp_port = int(ftp_port_raw)
 
+        ftp = FTP()  # nosec B321 # NOSONAR
         ftp.connect(host=ftp_host, port=ftp_port, timeout=10)
-        ftp.login(user=os.environ.get("FTP_USER"), passwd=os.environ.get("FTP_PASS"))
+        ftp.login(user=ftp_user, passwd=ftp_pass)
         self.logger.info("Connected to FTP server %s:%s", ftp_host, ftp_port)
         # Start multipart upload
         multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
@@ -1129,14 +1150,22 @@ retried for %s times. Aborting",
         buffer = io.BytesIO()
 
         def handle_chunk(data):
-            """Callback function that receives binary data from FTP."""
+            """
+            Handle a streamed binary chunk retrieved from FTP, buffering it until the
+            configured chunk size is reached, then uploading that portion as a part of an
+            ongoing S3 multipart upload.
+            """
             nonlocal buffer, part_number
             buffer.write(data)
             # When buffer reaches chunk size, upload it as a part
             if buffer.tell() >= chunk_size:
                 buffer.seek(0)
                 response = self.s3_client.upload_part(
-                    Bucket=bucket, Key=key, PartNumber=part_number, UploadId=upload_id, Body=buffer.read(),
+                    Bucket=bucket,
+                    Key=key,
+                    PartNumber=part_number,
+                    UploadId=upload_id,
+                    Body=buffer.read(),
                 )
                 parts.append({"PartNumber": part_number, "ETag": response["ETag"]})
                 buffer.seek(0)
@@ -1151,13 +1180,20 @@ retried for %s times. Aborting",
             if buffer.tell() > 0:
                 buffer.seek(0)
                 response = self.s3_client.upload_part(
-                    Bucket=bucket, Key=key, PartNumber=part_number, UploadId=upload_id, Body=buffer.read(),
+                    Bucket=bucket,
+                    Key=key,
+                    PartNumber=part_number,
+                    UploadId=upload_id,
+                    Body=buffer.read(),
                 )
                 parts.append({"PartNumber": part_number, "ETag": response["ETag"]})
 
             # Complete multipart upload
             self.s3_client.complete_multipart_upload(
-                Bucket=bucket, Key=key, UploadId=upload_id, MultipartUpload={"Parts": parts},
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={"Parts": parts},
             )
             self.logger.info(f"Successfully uploaded {ftp_path} to s3://{bucket}/{key}")
 
