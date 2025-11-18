@@ -1155,7 +1155,7 @@ retried for %s times. Aborting",
         if nominal.upper() != "NOMINAL":
             raise ValueError(f"Invalid segment: expected 'NOMINAL', got '{nominal}'")
 
-        return station, path
+        return station, f"/{nominal}/{path}"
 
     def s3_streaming_from_ftp(
         self,
