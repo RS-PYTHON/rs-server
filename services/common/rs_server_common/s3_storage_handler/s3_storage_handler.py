@@ -25,7 +25,13 @@ import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from ftplib import FTP  # nosec B402 # NOSONAR
+from ftplib import (  # nosec B402 # NOSONAR
+    FTP,
+    error_perm,
+    error_proto,
+    error_reply,
+    error_temp,
+)
 from typing import Any
 from urllib.parse import urlparse
 
@@ -1174,14 +1180,25 @@ retried for %s times. Aborting",
         Raises:
             RuntimeError: If any FTP or S3 upload operation fails.
         """
-        # Connect to FTP
-        station, ftp_path = self.parse_ftps_path(ftp_path)
-        ftp_config = FTPConfig(station)
-        ftp = FTP()  # nosec B321 # NOSONAR
+        try:
+            station, ftp_path = self.parse_ftps_path(ftp_path)
+            ftp_config = FTPConfig(station)
+            ftp = FTP()
 
-        ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
-        ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
+            ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
+            ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
+
+        except ValueError as ve:
+            raise ve
+        except (error_perm, error_temp, error_reply, error_proto) as ftp_err:
+            raise RuntimeError(f"FTP communication error: {ftp_err}") from ftp_err
+        except (TimeoutError, ConnectionRefusedError, OSError) as net_err:
+            raise ConnectionError(f"Network error while connecting to FTP: {net_err}") from net_err
+        except Exception as e:
+            raise RuntimeError(f"Unexpected FTP error: {e}") from e
+
         self.logger.info("Connected to FTP server %s:%s", ftp_config.host, ftp_config.port)
+        self.logger.info("Starting streaming upload from station %s to s3://%s/%s", station, bucket, key)
         # Start multipart upload
         multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
         upload_id = multipart["UploadId"]

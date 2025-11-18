@@ -1294,10 +1294,10 @@ def env(monkeypatch):
     Automatically sets fake FTP environment variables for all tests.
     Individual tests can override or remove them when needed.
     """
-    monkeypatch.setenv("FTP_HOST", "host")
-    monkeypatch.setenv("FTP_PORT", "21")
-    monkeypatch.setenv("FTP_USER", "user")
-    monkeypatch.setenv("FTP_PASS", "pass")
+    monkeypatch.setenv("STATION_HOST", "host")
+    monkeypatch.setenv("STATION_PORT", "21")
+    monkeypatch.setenv("STATION_USER", "user")
+    monkeypatch.setenv("STATION_PASS", "pass")
 
 
 # --------------------
@@ -1313,7 +1313,7 @@ def test_env_missing(monkeypatch, mocker):
     """
 
     # Remove all FTP env vars to trigger validation failure
-    for var in ["FTP_HOST", "FTP_PORT", "FTP_USER", "FTP_PASS"]:
+    for var in ["STATION_HOST", "STATION_PORT", "STATION_USER", "STATION_PASS"]:
         monkeypatch.delenv(var, raising=False)
 
     # Patch FTP class so no connection is ever attempted
@@ -1332,7 +1332,7 @@ def test_env_missing(monkeypatch, mocker):
 
     # Assert the error is raised immediately
     with pytest.raises(ValueError):
-        handler.s3_streaming_from_ftp("file.txt", "bucket", "key")
+        handler.s3_streaming_from_ftp("ftps://station/NOMINAL/file.txt", "bucket", "key")
 
 
 def test_success_flow(mocker, handler):
@@ -1359,7 +1359,7 @@ def test_success_flow(mocker, handler):
     handler.s3_client.upload_part.return_value = {"ETag": "etag123"}
 
     # Act
-    handler.s3_streaming_from_ftp("test.txt", "mybucket", "mykey")
+    handler.s3_streaming_from_ftp("ftps://station/NOMINAL/test.txt", "mybucket", "mykey")
 
     # Assert correct S3 upload flow
     handler.s3_client.create_multipart_upload.assert_called_once()
@@ -1390,7 +1390,7 @@ def test_abort_on_error(mocker, handler):
 
     # Assert RuntimeError propagation
     with pytest.raises(RuntimeError):
-        handler.s3_streaming_from_ftp("broken.txt", "bucketB", "keyB")
+        handler.s3_streaming_from_ftp("ftps://station/NOMINAL/broken.txt", "bucketB", "keyB")
 
     # Assert abort was called
     handler.s3_client.abort_multipart_upload.assert_called_once_with(Bucket="bucketB", Key="keyB", UploadId="uploadX")
