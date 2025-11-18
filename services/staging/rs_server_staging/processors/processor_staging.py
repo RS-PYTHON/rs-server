@@ -871,11 +871,20 @@ class Staging(
             """Pass environment variables to the dask workers."""
             # find a way to improve this part in future
             pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
-            # copy the env variables needed for s3 and ftp access
-            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"] + [
-                key for key in os.environ if pattern.match(key)
-            ]:
-                os.environ[name] = host_env[name]
+
+            required_keys = [
+                "S3_ACCESSKEY",
+                "S3_SECRETKEY",
+                "S3_ENDPOINT",
+                "S3_REGION",
+            ]
+
+            # Add all keys that match the FTP/S3 pattern
+            required_keys.extend([key for key in os.environ.keys() if pattern.fullmatch(key)])
+
+            for name in required_keys:
+                if name in host_env:
+                    os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside
             # the file contents uploaded to the s3 bucket e.g. x-amz-checksum-crc32:xxx
