@@ -1025,7 +1025,7 @@ class Staging(
                 if domain == "FTP" and not LOCAL_MODE:
                     self.logger.info("Staging from EDRS-Station FTP server, no token retrieval needed")
                     # On FTP and cluster mode, check api key roles for EDRS staging
-                    from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
+                    from rs_server_common.authentication.authentication import (  # pylint: disable=C0415
                         auth_validation,
                     )
 

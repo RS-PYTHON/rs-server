@@ -1184,7 +1184,7 @@ retried for %s times. Aborting",
         try:
             station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
             ftp_config = FTPConfig(station)
-            ftp = FTP()
+            ftp = FTP()  # nosec B321 # NOSONAR
 
             ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
             ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
