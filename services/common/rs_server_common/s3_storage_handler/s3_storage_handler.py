@@ -16,6 +16,7 @@
 
 import asyncio
 import concurrent.futures
+import io
 import logging
 import ntpath
 import os
@@ -24,6 +25,13 @@ import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from ftplib import (  # nosec B402 # NOSONAR
+    FTP,
+    error_perm,
+    error_proto,
+    error_reply,
+    error_temp,
+)
 from typing import Any
 from urllib.parse import urlparse
 
@@ -76,6 +84,22 @@ class GetKeysFromS3Config:
     local_prefix: str
     overwrite: bool = False
     max_retries: int = DWN_S3FILE_RETRIES
+
+
+@dataclass
+class FTPConfig:
+    """Configuration for FTP connection."""
+
+    def __init__(self, station: str):
+        """Initialize FTPConfig with environment variables."""
+        prefix = station.upper()
+        self.host = os.environ.get(f"{prefix}_HOST")
+        self.port = int(os.environ.get(f"{prefix}_PORT", "21"))
+        self.user = os.environ.get(f"{prefix}_USER")
+        self.password = os.environ.get(f"{prefix}_PASS")
+
+        if not all([self.host, self.port, self.user, self.password]):
+            raise ValueError(f"Incomplete environment configuration for station: {station}")
 
 
 @dataclass
@@ -1103,3 +1127,137 @@ retried for %s times. Aborting",
 
         # Start streaming with formatted request
         self.s3_streaming_upload(request, trusted_domains, destination_bucket, destination_key)
+
+    @staticmethod
+    def parse_ftps_path(url: str) -> tuple[str, str]:
+        """
+        Parse an FTPS-style path with format: ftps://<station>/NOMINAL/<path>
+
+        Returns:
+            station (str): extracted station key
+            remote_path (str): remaining FTP file path after NOMINAL/
+
+        Raises:
+            ValueError: if format is invalid
+        """
+        if not url.lower().startswith("ftps://"):
+            raise ValueError(f"Invalid path scheme: expected 'ftps://', got '{url}'")
+
+        # remove scheme
+        cleaned = url[7:]  # remove ftps://
+
+        parts = cleaned.split("/", 2)  # PREFIX, NOMINAL, REST
+
+        if len(parts) < 3:
+            raise ValueError(f"Invalid FTPS structure, missing NOMINAL or path: {url}")
+
+        station, nominal, path = parts
+
+        if nominal.upper() != "NOMINAL":
+            raise ValueError(f"Invalid segment: expected 'NOMINAL', got '{nominal}'")
+
+        return station, f"/{nominal}/{path}"
+
+    def s3_streaming_from_ftp(
+        self,
+        ftp_path: str,
+        bucket: str,
+        key: str,
+        chunk_size: int = 8 * 1024 * 1024,
+    ):
+        """
+        Stream a remote file from an FTP server and upload it to Amazon S3 using
+        multipart upload, avoiding local disk usage and keeping memory consumption
+        low. The file is retrieved in binary mode, chunked in memory, and each chunk
+        is uploaded as an individual S3 multipart part until the entire transfer is
+        complete.
+
+        Args:
+            ftp_path (str): Path of the file to read from the FTP server.
+            bucket (str): Target S3 bucket where the file will be stored.
+            key (str): S3 object key for the uploaded file.
+            chunk_size (int): In-memory buffer size used for multipart uploads.
+
+        Raises:
+            RuntimeError: If any FTP or S3 upload operation fails.
+        """
+        try:
+            station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
+            ftp_config = FTPConfig(station)
+            ftp = FTP()  # nosec B321 # NOSONAR
+
+            ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
+            ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
+
+        except ValueError as ve:
+            raise ve
+        except (error_perm, error_temp, error_reply, error_proto) as ftp_err:
+            raise RuntimeError(f"FTP communication error: {ftp_err}") from ftp_err
+        except (TimeoutError, ConnectionRefusedError, OSError) as net_err:
+            raise ConnectionError(f"Network error while connecting to FTP: {net_err}") from net_err
+        except Exception as e:
+            raise RuntimeError(f"Unexpected FTP error: {e}") from e
+
+        self.logger.info("Connected to FTP server %s:%s", ftp_config.host, ftp_config.port)
+        self.logger.info("Starting streaming upload from station %s to s3://%s/%s", station, bucket, key)
+        # Start multipart upload
+        multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
+        upload_id = multipart["UploadId"]
+        parts = []
+        part_number = 1
+        buffer = io.BytesIO()
+
+        def handle_chunk(data):
+            """
+            Handle a streamed binary chunk retrieved from FTP, buffering it until the
+            configured chunk size is reached, then uploading that portion as a part of an
+            ongoing S3 multipart upload.
+            """
+            nonlocal buffer, part_number  # noqa: F824
+            buffer.write(data)
+            # When buffer reaches chunk size, upload it as a part
+            if buffer.tell() >= chunk_size:
+                buffer.seek(0)
+                response = self.s3_client.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    PartNumber=part_number,
+                    UploadId=upload_id,
+                    Body=buffer.read(),
+                )
+                parts.append({"PartNumber": part_number, "ETag": response["ETag"]})
+                buffer.seek(0)
+                buffer.truncate(0)
+                part_number += 1
+
+        try:
+            # Stream data from FTP
+            ftp.retrbinary(f"RETR {ftp_path}", callback=handle_chunk)
+
+            # Upload any remaining data
+            if buffer.tell() > 0:
+                buffer.seek(0)
+                response = self.s3_client.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    PartNumber=part_number,
+                    UploadId=upload_id,
+                    Body=buffer.read(),
+                )
+                parts.append({"PartNumber": part_number, "ETag": response["ETag"]})
+
+            # Complete multipart upload
+            self.s3_client.complete_multipart_upload(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={"Parts": parts},
+            )
+            self.logger.info(f"Successfully uploaded {ftp_path} to s3://{bucket}/{key}")
+
+        except Exception as e:
+            # Abort on failure
+            self.s3_client.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+            raise RuntimeError(f"FTP→S3 upload failed: {e}") from e
+        finally:
+            ftp.quit()

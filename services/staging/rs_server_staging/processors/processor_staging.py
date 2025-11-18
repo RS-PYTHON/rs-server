@@ -868,7 +868,21 @@ class Staging(
 
         def set_dask_env(host_env: dict):
             """Pass environment variables to the dask workers."""
-            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]:
+            # find a way to improve this part in future
+            for name in [
+                "S3_ACCESSKEY",
+                "S3_SECRETKEY",
+                "S3_ENDPOINT",
+                "S3_REGION",
+                "EDRS-STATION_HOST",
+                "EDRS-STATION_PORT",
+                "EDRS-STATION_USER",
+                "EDRS-STATION_PASS",
+                "EDRS-STATION2_HOST",
+                "EDRS-STATION2_PORT",
+                "EDRS-STATION2_USER",
+                "EDRS-STATION2_PASS",
+            ]:
                 os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside
@@ -940,7 +954,7 @@ class Staging(
 
         return refresh_token
 
-    async def process_rspy_features(  # pylint: disable=too-many-return-statements
+    async def process_rspy_features(  # pylint: disable=too-many-return-statements, too-many-branches
         self,
         catalog_collection: str,
     ) -> tuple[str, dict]:
@@ -977,7 +991,11 @@ class Staging(
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
         domains = list(
-            {urlparse(asset.product_url).hostname for asset in self.assets_info if asset.origin_service != "s3"},
+            {
+                ("FTP" if "/NOMINAL" in asset.product_url else urlparse(asset.product_url).hostname)
+                for asset in self.assets_info
+                if asset.origin_service != "s3"
+            },
         )
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
@@ -1000,10 +1018,27 @@ class Staging(
         try:
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
-            if domain != "s3":
+            if domain not in ("s3", "FTP"):
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
+                if domain == "FTP" and not LOCAL_MODE:
+                    self.logger.info("Staging from EDRS-Station FTP server, no token retrieval needed")
+                    # On FTP and cluster mode, check api key roles for EDRS staging
+                    from rs_server_common.authentication.authentication import (  # pylint: disable=C0415
+                        auth_validation,
+                    )
+
+                    for station, _ in {
+                        S3StorageHandler.parse_ftps_path(asset.product_url) for asset in self.assets_info
+                    }:
+                        # for each unique station, validate the api key roles
+                        auth_validation(
+                            station,
+                            "staging_download",
+                            request=self.request,
+                            staging_process=True,
+                        )
                 refresh_token = None
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")

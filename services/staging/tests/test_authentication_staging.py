@@ -15,6 +15,7 @@
 """Unit tests for the authentication."""
 
 import pytest
+from fastapi import HTTPException
 from pytest_httpx import HTTPXMock
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
@@ -39,7 +40,7 @@ logger = Logging.default(__name__)
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
-async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
+async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals, too-many-statements
     mocker,
     staging_client,
     staging_instance: Staging,
@@ -133,6 +134,39 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     spy_log_job.reset_mock()
     mock_request.state.auth_roles = [role]
     await staging_instance.process_rspy_features(collection)
+    assert spy_log_job.call_args[0][2] != error_auth
+
+    # EDRS access test
+    station_id = "EDRS_STATION"
+    spy_log_job.reset_mock()
+    # Mock the error message
+    error_auth = f"Missing RS_PROCESSES_STAGING_DOWNLOAD_{station_id} authorization role"
+    mock_request.state.auth_roles = []
+    # Put an asset with an ftps:// URL to trigger the EDRS authentication
+    mocker.patch.object(
+        staging_instance,
+        "assets_info",
+        new=[AssetInfo(f"ftps://{station_id}/NOMINAL/some_asset", "fake_s3_file", "fake_bucket")],
+    )
+    mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
+    mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
+    mocker.patch.object(staging_instance, "request", new=mock_request)
+    with pytest.raises(HTTPException) as exc_info:
+        # This should raise an exception because of missing role
+        await staging_instance.process_rspy_features(collection)
+        # Check that the error message is correct
+        assert exc_info.value.detail == error_auth
+
+    # Reset everything and test with the right role
+    spy_log_job.reset_mock()
+    mock_request.state.auth_roles = [f"RS_PROCESSES_STAGING_DOWNLOAD_{station_id}"]
+    mocker.patch.object(
+        staging_instance,
+        "assets_info",
+        new=[AssetInfo(f"ftps://{station_id}/NOMINAL/some_asset", "fake_s3_file", "fake_bucket")],
+    )
+    await staging_instance.process_rspy_features(collection)
+    # Should pass this time, no error about authentication
     assert spy_log_job.call_args[0][2] != error_auth
 
 

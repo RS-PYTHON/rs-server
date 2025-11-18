@@ -97,8 +97,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-
-            if not auth:
+            if "/NOMINAL" in asset_info.product_url:
+                s3_handler.s3_streaming_from_ftp(product_url, bucket, s3_file)
+            elif not auth:
                 s3_handler.s3_streaming_from_s3(
                     product_url,
                     asset_info.external_s3_endpoint_url,
