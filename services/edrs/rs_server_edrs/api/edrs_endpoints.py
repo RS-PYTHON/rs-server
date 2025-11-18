@@ -114,11 +114,11 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     # Find the collection which id == the input collection_id
     collection = select_config(collection_id)
     if not collection:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown CADIP collection: {collection_id!r}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown EDRS collection: {collection_id!r}")
     station = collection["station"]
 
     # Call the authentication function from the authentication module
-    authentication.auth_validation("cadip", access_type, request=request, station=station)
+    authentication.auth_validation("edrs", access_type, request=request, station=station)
 
 
 @router.get("/", include_in_schema=False)
