@@ -57,6 +57,8 @@ from rs_server_common.utils.utils import (
     run_in_threads,
     validate_inputs_format,
 )
+from shapely import wkt
+from shapely.geometry import box
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
@@ -364,7 +366,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Merge pagination parameters into input params.
             # Convert lists with one element into this single value.
             for key, values in query_params.items():
-                if key not in ("limit", "page", "sortby"):
+                if key not in ("limit", "page", "sortby", "bbox"):
                     continue
                 if isinstance(values, list) and (len(values) == 1):
                     params[key] = values[0]
@@ -454,6 +456,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     "'YYYY-MM-DDThh:mm:ssZ/..' or '../YYYY-MM-DDThh:mm:ssZ'",
                 ) from exception
 
+        bbox = params.pop("bbox", None)
         #
         # Read query and/or CQL filter
 
@@ -599,9 +602,37 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
         if self.cadip:
             stac_params["platform"] = mission  # type: ignore
+        if self.prip and bbox:
+
+            if isinstance(bbox, str):
+                coords = [float(x) for x in bbox.split(",")]
+            elif isinstance(bbox, list):
+                coords = list(map(float, bbox))
+
+            west, south, east, north = coords  # pylint: disable=E0606
+
+            # if 'intersects' wasn't previously set
+            if "intersects" not in stac_params or not stac_params["intersects"]:
+                stac_params["intersects"] = (box(west, south, east, north)).wkt
+            else:
+                # will set the value of the two intersecting polygons
+                bbox_polygon = box(west, south, east, north)
+
+                # also convert the 'intersects' value
+                poly = wkt.loads(stac_params["intersects"])
+                west, south, east, north = poly.bounds
+                filter_polygon = box(west, south, east, north)
+
+                if bbox_polygon.intersects(filter_polygon):
+                    stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
+                else:
+                    stac_params.pop("intersects", None)
+                    raise log_http_exception(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        "The provided 'bbox' and 'intersects' polygons do not overlap.",
+                    )
 
         # Discard these search parameters
-        params.pop("bbox", None)
         params.pop("conf", None)
         params.pop("filter-lang", None)
 

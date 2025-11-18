@@ -16,6 +16,7 @@
 
 """Unittests for rs-server search endpoints."""
 import os
+import re
 from copy import deepcopy
 from urllib.parse import quote, unquote
 
@@ -33,6 +34,8 @@ from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
+from shapely.geometry import box
+from shapely.wkt import loads as wkt_loads
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
 
@@ -2733,3 +2736,127 @@ def test_search_all_collections(
         features = response.json()["features"]
         assert spy_search.call_count == 1
         assert len(spy_search.spy_return) == len(features) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        (
+            # PRIP endpoint example (bbox → intersects)
+            "/prip/collections/S1A_L0_IW_RAW/items?bbox=100.0,0.0,105.0,1.0"
+        ),
+    ],
+)
+@responses.activate
+def test_prip_bbox_converted_to_intersects(
+    client: TestClient,
+    endpoint: str,
+):
+    """
+    Test that for PRIP collections, a bbox parameter is correctly converted
+    into an 'intersects' polygon (WKT) in the outgoing OData request.
+    """
+
+    # Mock the expected backend call
+    responses.add(
+        responses.GET,
+        (
+            "http://127.0.0.1:5000/Products?"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))')"
+            " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/"
+            "OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
+        ),
+        json={"value": []},
+        status=200,
+    )
+    response = client.get(endpoint)
+
+    assert response.status_code == status.HTTP_200_OK
+
+    called_url = unquote(responses.calls[1].request.url or "")
+
+    match = re.search(r"POLYGON\s*\(\((.*?)\)\)", called_url)
+    assert match, f"No POLYGON found in backend URL: {called_url}"
+
+    actual_polygon = match.group(0)
+    # the bbox should be translated to (105 0, 105 1, 100 1, 100 0, 105 0) as per box(west, south, east, north)
+    expected_polygon = "POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))"
+
+    assert actual_polygon == expected_polygon
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "bbox, filter_wkt, expected_intersection_wkt, should_intersect",
+    [
+        # bbox as list, overlapping
+        (
+            [100.0, 0.0, 105.0, 1.0],
+            "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))",
+            "POLYGON((104.0 0.5,105.0 0.5,105.0 1.0,104.0 1.0,104.0 0.5))",
+            True,
+        ),
+        # bbox as list, not overlapping
+        ([100.0, 0.0, 101.0, 1.0], "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))", None, False),
+        # bbox as string, overlapping
+        (
+            "100.0,0.0,105.0,1.0",
+            "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))",
+            "POLYGON((104.0 0.5,105.0 0.5,105.0 1.0,104.0 1.0,104.0 0.5))",
+            True,
+        ),
+    ],
+)
+@responses.activate
+def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_intersection_wkt, should_intersect):
+    """
+    Test bbox and filter 'intersects' logic with bbox as list or string.
+    """
+
+    # Convert bbox to coords
+    if isinstance(bbox, str):
+        coords = [float(x) for x in bbox.split(",")]
+    elif isinstance(bbox, list):
+        coords = list(map(float, bbox))
+    else:
+        raise ValueError("bbox must be list or str")
+
+    bbox_poly = box(*coords)
+    filter_poly = wkt_loads(filter_wkt)
+
+    if bbox_poly.intersects(filter_poly):
+        intersection_poly = bbox_poly.intersection(filter_poly)
+        assert intersection_poly.equals(
+            wkt_loads(expected_intersection_wkt),
+        ), f"Intersection mismatch:\nExpected: {expected_intersection_wkt}\nGot: {intersection_poly.wkt}"
+        assert should_intersect == bbox_poly.intersects(filter_poly)
+
+        # Mock GET request for overlapping bbox
+        responses.add(
+            responses.GET,
+            (
+                "http://127.0.0.1:5000/Products?"
+                "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON "
+                "((105 1, 105 0.5, 104 0.5, 104 1, 105 1))')"
+                " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+                "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
+            ),
+            json={"value": []},
+            status=200,
+        )
+
+        # Build URL query
+        bbox_str = ",".join(map(str, coords))
+        endpoint = f"/prip/collections/S1A_L0_IW_RAW/items?bbox={bbox_str}&filter=intersects={filter_wkt}"
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_200_OK
+
+    else:
+        # Mock GET request for non-overlapping bbox
+        bbox_str = ",".join(map(str, coords))
+        endpoint = f"/prip/collections/S1A_L0_IW_RAW/items?bbox={bbox_str}&filter=intersects={filter_wkt}"
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
