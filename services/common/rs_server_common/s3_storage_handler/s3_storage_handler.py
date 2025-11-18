@@ -1155,7 +1155,7 @@ retried for %s times. Aborting",
             configured chunk size is reached, then uploading that portion as a part of an
             ongoing S3 multipart upload.
             """
-            nonlocal buffer, part_number
+            nonlocal buffer, part_number  # noqa: F824
             buffer.write(data)
             # When buffer reaches chunk size, upload it as a part
             if buffer.tell() >= chunk_size:

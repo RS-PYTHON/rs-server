@@ -987,7 +987,7 @@ class Staging(
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
         domains = list(
             {
-                urlparse(asset.product_url).hostname or "FTP"
+                ("FTP" if "/NOMINAL" in asset.product_url else urlparse(asset.product_url).hostname)
                 for asset in self.assets_info
                 if asset.origin_service != "s3"
             },
@@ -1013,7 +1013,7 @@ class Staging(
         try:
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
-            if domain and domain.lower() not in ("s3", "ftp"):
+            if domain not in ("s3", "FTP"):
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
