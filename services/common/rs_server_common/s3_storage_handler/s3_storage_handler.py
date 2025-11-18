@@ -81,6 +81,22 @@ class GetKeysFromS3Config:
 
 
 @dataclass
+class FTPConfig:
+    """Configuration for FTP connection."""
+
+    def __init__(self, station: str):
+        """Initialize FTPConfig with environment variables."""
+        prefix = station.upper()
+        self.host = os.environ.get(f"{prefix}_HOST")
+        self.port = int(os.environ.get(f"{prefix}_PORT", "21"))
+        self.user = os.environ.get(f"{prefix}_USER")
+        self.password = os.environ.get(f"{prefix}_PASS")
+
+        if not all([self.host, self.port, self.user, self.password]):
+            raise ValueError(f"Incomplete environment configuration for station: {station}")
+
+
+@dataclass
 class PutFilesToS3Config:
     """Configuration for uploading files to S3.
 
@@ -1106,6 +1122,35 @@ retried for %s times. Aborting",
         # Start streaming with formatted request
         self.s3_streaming_upload(request, trusted_domains, destination_bucket, destination_key)
 
+    def parse_ftps_path(self, url: str) -> tuple[str, str]:
+        """
+        Parse an FTPS-style path with format: ftps://<station>/NOMINAL/<path>
+
+        Returns:
+            station (str): extracted station key
+            remote_path (str): remaining FTP file path after NOMINAL/
+
+        Raises:
+            ValueError: if format is invalid
+        """
+        if not url.lower().startswith("ftps://"):
+            raise ValueError(f"Invalid path scheme: expected 'ftps://', got '{url}'")
+
+        # remove scheme
+        cleaned = url[7:]  # remove ftps://
+
+        parts = cleaned.split("/", 2)  # PREFIX, NOMINAL, REST
+
+        if len(parts) < 3:
+            raise ValueError(f"Invalid FTPS structure, missing NOMINAL or path: {url}")
+
+        station, nominal, path = parts
+
+        if nominal.upper() != "NOMINAL":
+            raise ValueError(f"Invalid segment: expected 'NOMINAL', got '{nominal}'")
+
+        return station, path
+
     def s3_streaming_from_ftp(
         self,
         ftp_path: str,
@@ -1130,18 +1175,13 @@ retried for %s times. Aborting",
             RuntimeError: If any FTP or S3 upload operation fails.
         """
         # Connect to FTP
-        ftp_host = os.environ.get("FTP_HOST")
-        ftp_port_raw = os.environ.get("FTP_PORT")
-        ftp_user = os.environ.get("FTP_USER")
-        ftp_pass = os.environ.get("FTP_PASS")
-        if not ftp_host or not ftp_port_raw or not ftp_user or not ftp_pass:
-            raise ValueError("Missing required FTP environment variables")
-        ftp_port = int(ftp_port_raw)
-
+        station, ftp_path = self.parse_ftps_path(ftp_path)
+        ftp_config = FTPConfig(station)
         ftp = FTP()  # nosec B321 # NOSONAR
-        ftp.connect(host=ftp_host, port=ftp_port, timeout=10)
-        ftp.login(user=ftp_user, passwd=ftp_pass)
-        self.logger.info("Connected to FTP server %s:%s", ftp_host, ftp_port)
+
+        ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
+        ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
+        self.logger.info("Connected to FTP server %s:%s", ftp_config.host, ftp_config.port)
         # Start multipart upload
         multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
         upload_id = multipart["UploadId"]

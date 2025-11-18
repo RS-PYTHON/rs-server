@@ -868,15 +868,20 @@ class Staging(
 
         def set_dask_env(host_env: dict):
             """Pass environment variables to the dask workers."""
+            # find a way to improve this part in future
             for name in [
                 "S3_ACCESSKEY",
                 "S3_SECRETKEY",
                 "S3_ENDPOINT",
                 "S3_REGION",
-                "FTP_HOST",
-                "FTP_PORT",
-                "FTP_USER",
-                "FTP_PASS",
+                "EDRS-STATION_HOST",
+                "EDRS-STATION_FTP_PORT",
+                "EDRS-STATION_FTP_USER",
+                "EDRS-STATION_FTP_PASS",
+                "EDRS-STATION2_HOST",
+                "EDRS-STATION2_FTP_PORT",
+                "EDRS-STATION2_FTP_USER",
+                "EDRS-STATION2_FTP_PASS",
             ]:
                 os.environ[name] = host_env[name]
 
