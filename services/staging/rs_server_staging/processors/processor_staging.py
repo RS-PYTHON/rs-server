@@ -17,6 +17,7 @@
 import asyncio  # for handling asynchronous tasks
 import getpass
 import os
+import re
 import threading
 import time
 import uuid
@@ -869,19 +870,10 @@ class Staging(
         def set_dask_env(host_env: dict):
             """Pass environment variables to the dask workers."""
             # find a way to improve this part in future
-            for name in [
-                "S3_ACCESSKEY",
-                "S3_SECRETKEY",
-                "S3_ENDPOINT",
-                "S3_REGION",
-                "EDRS-STATION_HOST",
-                "EDRS-STATION_PORT",
-                "EDRS-STATION_USER",
-                "EDRS-STATION_PASS",
-                "EDRS-STATION2_HOST",
-                "EDRS-STATION2_PORT",
-                "EDRS-STATION2_USER",
-                "EDRS-STATION2_PASS",
+            pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
+            # copy the env variables needed for s3 and ftp access
+            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"] + [
+                key for key in os.environ if pattern.match(key)
             ]:
                 os.environ[name] = host_env[name]
 
@@ -1010,9 +1002,9 @@ class Staging(
         # to the external station if the connection to the dask cluster fails
         try:
             dask_client = self.dask_cluster_connect()
-        except RuntimeError as re:
+        except RuntimeError as runtime_error:
             self.logger.error("Failed to start the staging process")
-            return self.log_job_execution(JobStatus.failed, 0, str(re))
+            return self.log_job_execution(JobStatus.failed, 0, str(runtime_error))
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
@@ -1040,9 +1032,9 @@ class Staging(
                             staging_process=True,
                         )
                 refresh_token = None
-        except RuntimeError as re:
+        except RuntimeError as runtime_error:
             self.logger.error("Failed to start the staging process")
-            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {re}")
+            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {runtime_error}")
 
         # Step 5: Manage dask tasks in a separate thread
         # starting a thread for managing the dask callbacks
