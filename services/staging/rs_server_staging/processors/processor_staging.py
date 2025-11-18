@@ -883,8 +883,7 @@ class Staging(
             required_keys.extend([key for key in os.environ.keys() if pattern.fullmatch(key)])
 
             for name in required_keys:
-                if name in host_env:
-                    os.environ[name] = host_env[name]
+                os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside
             # the file contents uploaded to the s3 bucket e.g. x-amz-checksum-crc32:xxx
