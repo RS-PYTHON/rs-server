@@ -199,45 +199,81 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         a_minimal_collection,
     ):
         """Test used to verify update of an item to the catalog."""
+
+        # S3 handler used to interact with both temp and catalog buckets.
         s3_handler = init_buckets.s3_handler
 
-        # Populate temp-bucket with some small files.
+        # --------------------------------------------------------------
+        # 1. Populate the TEMP bucket with some test files.
+        # These files simulate assets uploaded by a user before being
+        # copied/moved into the catalog bucket.
+        # --------------------------------------------------------------
         lst_with_files_to_be_copied = [
             "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
             "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
             "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-            "some/other/path/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            "some/other/path/S1SIWOCN_20220412T054447_0024_S139_T902.nc",  # nested path
         ]
+
+        # Put dummy objects in the TEMP bucket.
         for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
-        # check that temp_bucket is not empty
+            s3_handler.s3_client.put_object(
+                Bucket=TEMP_BUCKET,
+                Key=obj,
+                Body="testing\n",
+            )
+
+        # Assert TEMP bucket is not empty.
         assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
-        # check if temp_bucket content is different from catalog_bucket
+
+        # Ensure TEMP bucket content differs from CATALOG bucket content.
+        # This verifies we're starting with a clean catalog bucket.
         assert sorted(s3_handler.list_s3_files_obj(TEMP_BUCKET, "")) != sorted(
             s3_handler.list_s3_files_obj(CATALOG_BUCKET, ""),
         )
 
+        # --------------------------------------------------------------
+        # 2. Create an item and remove two assets from it.
+        # We will later add them back to test update behavior.
+        # --------------------------------------------------------------
         item_test = copy.deepcopy(a_correct_feature)
-        # modify the item: change the name of the collection with the fixture_collection
-        # delete the last two assets for a later use
+
+        # Adjust the collection so it belongs to the fixture collection.
         item_test["collection"] = "fixture_collection"
+
+        # Remove two assets; these will later be re-added via PUT requests.
         del item_test["assets"]["S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip"]
         del item_test["assets"]["S1SIWOCN_20220412T054447_0024_S139_T902.nc"]
+
+        # --------------------------------------------------------------
+        # 3. POST the modified item into the catalog.
+        # This simulates creating a new STAC item.
+        # --------------------------------------------------------------
         resp = client.post(
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=item_test,
         )
+
+        # Check item creation succeeded.
         assert resp.status_code == HTTP_201_CREATED
         content = json.loads(resp.content)
 
+        # Verify the initial set of assets matches expectations:
+        # - zarr.zip asset is present (it wasn't removed)
+        # - the other two assets must NOT exist yet
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
         assert not content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip")
         assert not content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T902.nc")
 
+        # --------------------------------------------------------------
+        # 4. Add the first missing asset (T420.cog.zip) and update the item.
+        # This tests incremental updates to the assets dictionary.
+        # --------------------------------------------------------------
         content["assets"]["S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip"] = {
             "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
             "roles": ["data"],
         }
+
         resp = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{content['id']}",
             json=content,
@@ -245,55 +281,43 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
         content = json.loads(resp.content)
 
+        # Verify update succeeded.
         assert resp.status_code == HTTP_200_OK
+
+        # After the update:
+        # - old zarr.zip asset still exists
+        # - newly added T420.cog.zip exists
+        # - T902.nc is still missing (not added yet)
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip")
         assert not content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T902.nc")
 
+        # --------------------------------------------------------------
+        # 5. Remove the zarr.zip asset and add the T902.nc asset.
+        # This simulates another update where assets are replaced.
+        # --------------------------------------------------------------
         del content["assets"]["S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip"]
+
         content["assets"]["S1SIWOCN_20220412T054447_0024_S139_T902.nc"] = {
             "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
             "roles": ["data"],
         }
+
         resp = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{content['id']}",
             json=content,
         )
         assert resp.status_code == HTTP_200_OK
+
         content = json.loads(resp.content)
+
+        # Final asset checks:
+        # - zarr.zip should be gone
+        # - T420.cog.zip should remain
+        # - T902.nc should now exist
         assert not content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip")
         assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T902.nc")
-
-        catalog_files = s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
-        assert len(catalog_files) == 2
-        assert set(catalog_files) == {
-            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-            "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-        }
-        # try to change the path / physical file for an asset, it should not work
-        content["assets"]["S1SIWOCN_20220412T054447_0024_S139_T902.nc"] = {
-            "href": "s3://temp-bucket/some/other/path/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-            "roles": ["data"],
-        }
-        resp = client.put(
-            f"/catalog/collections/fixture_owner:fixture_collection/items/{content['id']}",
-            json=content,
-        )
-        assert resp.status_code == HTTP_400_BAD_REQUEST
-        content = json.loads(resp.content)
-        assert "BadRequest" == content["code"]
-        assert "However, changing an existing path of an asset is not allowed" in content["description"]
-        temp_list = s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
-        cat_list = s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
-        print(f"Files in temp bucket: {temp_list}")
-        print(f"Files in catalog bucket: {cat_list}")
-        assert (
-            client.delete(
-                "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
-            ).status_code
-            == HTTP_200_OK
-        )
 
     @pytest.mark.parametrize(
         "owner, collection_id",

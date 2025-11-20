@@ -92,8 +92,13 @@ class MockPgstacPrip(MockPgstac):
             stac_to_odata=stac_to_odata,
             map_mission=map_auxip_prip_mission,
             temporal_mapping={
+                "eopf:origin_datetime": "OriginDate",
                 "start_datetime": "ContentDate/Start",
+                "datetime": "ContentDate/Start",
                 "end_datetime": "ContentDate/End",
+                "created": "Attributes[Name=processingDate]",
+                "processing:datetime": "Attributes[Name=processingDate]",
+                "published": "PublicationDate",
             },
         )
         self.sortby = "-published"

@@ -160,6 +160,8 @@ template:
             - FrontEndStatusOK eq {FrontEndStatusOK}
             - DownlinkStatusOK eq {DownlinkStatusOK}
             - DeliveryPushOK eq {DeliveryPushOK}
+            - "{t_contains}"
+            - "{t_intersects}"
 
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
