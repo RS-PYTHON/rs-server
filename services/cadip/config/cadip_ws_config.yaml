@@ -813,6 +813,8 @@ cadip_session:
           - FrontEndStatusOK eq {FrontEndStatusOK}
           - DownlinkStatusOK eq {DownlinkStatusOK}
           - DeliveryPushOK eq {DeliveryPushOK}
+          - '{t_contains}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -999,6 +1001,8 @@ ins_session:
           - FrontEndStatusOK eq {FrontEndStatusOK}
           - DownlinkStatusOK eq {DownlinkStatusOK}
           - DeliveryPushOK eq {DeliveryPushOK}
+          - '{t_contains}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1185,6 +1189,8 @@ mps_session:
           - FrontEndStatusOK eq {FrontEndStatusOK}
           - DownlinkStatusOK eq {DownlinkStatusOK}
           - DeliveryPushOK eq {DeliveryPushOK}
+          - '{t_contains}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1371,6 +1377,8 @@ mti_session:
           - FrontEndStatusOK eq {FrontEndStatusOK}
           - DownlinkStatusOK eq {DownlinkStatusOK}
           - DeliveryPushOK eq {DeliveryPushOK}
+          - '{t_contains}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1557,6 +1565,8 @@ nsg_session:
           - FrontEndStatusOK eq {FrontEndStatusOK}
           - DownlinkStatusOK eq {DownlinkStatusOK}
           - DeliveryPushOK eq {DeliveryPushOK}
+          - '{t_contains}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1743,6 +1753,8 @@ sgs_session:
           - FrontEndStatusOK eq {FrontEndStatusOK}
           - DownlinkStatusOK eq {DownlinkStatusOK}
           - DeliveryPushOK eq {DeliveryPushOK}
+          - '{t_contains}'
+          - '{t_intersects}'
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
