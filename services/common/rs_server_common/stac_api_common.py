@@ -551,7 +551,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
                         f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                     )
-                value = str(kv[1]).strip("'\"")
+                value = kv[1].strip().strip("'\"")
                 check_input_type(self.get_queryables(), prop, value)
                 # Update stac params
                 stac_params[prop] = value  # type: ignore
