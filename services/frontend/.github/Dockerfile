@@ -37,7 +37,8 @@ ADD ./*.whl /tmp/whl
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl && layer-cleanup.sh
 
 # Set env var to the aggregated openapi.json released in the .whl package
-ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.*/site-packages/resources/openapi.json
+RUN ln -sf /usr/local/lib/python3.* /usr/local/lib/python3
+ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3/site-packages/resources/openapi.json
 
 # Copy the script that will be run as this image entrypoint
 RUN mkdir -p /scripts
