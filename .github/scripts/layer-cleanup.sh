@@ -33,6 +33,6 @@ rm -rf /tmp/whl
 
 # WARNING: this removes the apt repository list. To restore it and be able to run 'apt update',
 # you need to run ./restore-apt.sh
-rm -rf /etc/apt/sources.list.d/*
+rm -rf /etc/apt/sources.list /etc/apt/sources.list.d/*
 
 exit 0

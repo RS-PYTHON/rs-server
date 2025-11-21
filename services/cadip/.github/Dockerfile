@@ -17,11 +17,11 @@ ARG PYTHON_VERSION=3.13.9
 # Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
 
-COPY ./layer-cleanup.sh /usr/local/bin/
-RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
 # Install git to install dependencies from forked repositories
-RUN apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
+RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
@@ -55,9 +55,9 @@ WORKDIR /home/$USER
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
-# Remove apt repository list and custom scripts
+# Remove custom scripts
 USER root
-RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 USER $USER
 
 ENTRYPOINT [ \
