@@ -16,33 +16,30 @@
 # Build the base Docker images that are used in the cluster and in the ci/cd.
 
 set -euo pipefail
-#set -x
+set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-BUILD_DIR="$(realpath $SCRIPT_DIR/build_base_images)"
+BUILD_DIR="$(realpath $SCRIPT_DIR/../.github/scripts)"
 
-PYTHON_VERSION=3.13.2
+PYTHON_VERSION=3.13.9
 
 # For each dockerfile and associated docker image name, separated by a ;
 for params in \
     "Dockerfile.python;python:${PYTHON_VERSION}-slim-bookworm" \
-    "Dockerfile.jupyter;quay.io/jupyter/base-notebook:hub-5.2.1"
+    "Dockerfile.jupyter;quay.io/jupyter/base-notebook:hub-5.4.2;-py${PYTHON_VERSION}" # see: https://quay.io/repository/jupyter/base-notebook?tab=tags
 do
     dockerfile=$(echo $params | cut -d ";" -f 1)
     base=$(echo $params | cut -d ";" -f 2)
+    suffix=$(echo $params | cut -d ";" -f 3)
 
     # Add our hosting github organization to the docker image
-    target="ghcr.io/rs-python/$base"
+    target="ghcr.io/rs-python/${base}${suffix}"
 
     # Build the docker image
     docker build \
         --build-arg BASE=${base} \
-        --build-arg DASK_TAG=2025.3.0 \
-        --build-arg DASK_GATEWAY_TAG=2024.1.0 \
-        --build-arg PREFECT_TAG=3.2.13 \
-        --build-arg PREFECT_DASK_TAG=0.3.3 \
         --progress plain \
-        -f "${BUILD_DIR}/${dockerfile}" \
+        -f "${SCRIPT_DIR}/build_base_images/${dockerfile}" \
         -t "$target" \
         "${BUILD_DIR}"
 

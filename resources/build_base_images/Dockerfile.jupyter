@@ -13,30 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# quay.io/jupyter/base-notebook:<tag>
+# quay.io/jupyter/base-notebook:hub-<tag>
 ARG BASE=xxx
 FROM ${BASE}
+ARG BASE=xxx
 
 ENV PATH=/home/jovyan/.local/bin:${PATH}
 
-ARG DASK_TAG=xxx
-ARG DASK_GATEWAY_TAG=xxx
-ARG PREFECT_TAG=xxx
-ARG PREFECT_DASK_TAG=xxx
-
-COPY ./layer-cleanup.sh /usr/local/bin/
-
-USER root
-RUN chmod 755 /usr/local/bin/layer-cleanup.sh
-RUN apt update && apt upgrade -y && layer-cleanup.sh
-USER jovyan
-
-# Upgrade pip version
-RUN pip install -U pip && layer-cleanup.sh
+ARG DASK_TAG=2024.5.2
+ARG DASK_GATEWAY_TAG=2024.1.0
+ARG PREFECT_TAG=3.2.13
+ARG PREFECT_DASK_TAG=0.3.3
 
 # Additional python kernel to install to run the notebooks
-ARG PYTHON_VERSION=3.11.7
-ARG KERNEL_NAME=py3.11.7
+ARG PYTHON_VERSION=3.13.9
+ARG KERNEL_NAME="py${PYTHON_VERSION}"
+
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+
+USER root
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+RUN apt update && apt upgrade -y && pip install -U pip && layer-cleanup.sh
+USER jovyan
 
 # Install additional python kernel
 RUN conda create -y -n "$KERNEL_NAME" python="$PYTHON_VERSION" && \
@@ -71,7 +69,7 @@ RUN source activate "$KERNEL_NAME" && \
 
 # Install dot and clean conda
 USER root
-RUN apt update && apt install -y python3-pydot graphviz && layer-cleanup.sh
+RUN restore-apt.sh && apt update && apt install -y python3-pydot graphviz && layer-cleanup.sh
 USER jovyan
 
 # Use default python version from bash session
@@ -79,11 +77,12 @@ RUN echo -e "\nsource activate $KERNEL_NAME" >> /home/jovyan/.bashrc
 
 USER root
 RUN chown -R jovyan /home/jovyan
+RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 USER jovyan
 
 # Set labels based on the Open Containers Initiative (OCI):
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/quay.io/jupyter/base-notebook:hub-5.2.1"
-LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/build_base_images/Dockerfile.jupyter.k8s"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/${BASE}"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/build_base_images/Dockerfile.jupyter"
