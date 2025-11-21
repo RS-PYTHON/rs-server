@@ -15,13 +15,13 @@
 ARG PYTHON_VERSION=3.13.9
 
 # Build stage for multi stage build.
-FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm AS builder
+FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
 
 COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
-# Install dependencies
-RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y libpq-dev gcc && layer-cleanup.sh
+# Update system
+RUN restore-apt.sh && apt update && apt upgrade -y && layer-cleanup.sh
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
@@ -35,18 +35,6 @@ ADD ./*.whl /tmp/whl
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl && layer-cleanup.sh
-
-# Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
-
-COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
-RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
-
-# Update dependencies
-RUN restore-apt.sh && apt update && apt upgrade -y && layer-cleanup.sh
-
-# Copy the python installation from the build stage
-COPY --from=builder /usr/local/lib/python3.*/site-packages /usr/local/lib/python3.*/site-packages
 
 # Set env var to the aggregated openapi.json released in the .whl package
 ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.*/site-packages/resources/openapi.json

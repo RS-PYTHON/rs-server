@@ -47,7 +47,8 @@ COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN apt update && apt upgrade -y && \
+RUN restore-apt.sh && \
+    apt update && apt upgrade -y && \
     apt install -y libpq-dev libexpat1 && \
     layer-cleanup.sh
 
