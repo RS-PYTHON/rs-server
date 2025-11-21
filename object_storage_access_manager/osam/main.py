@@ -29,6 +29,7 @@ from osam.tasks import (
     build_users_data_map,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
+    read_bucket_config_file,
     update_s3_rights_lists,
 )
 from rs_server_common.authentication import oauth2
@@ -200,6 +201,20 @@ async def get_credentials(request: Request):
     auth_info = await oauth2.get_user_info(request)
     logger.info(f"Getting ovh s3 credentials for keycloak user {auth_info.user_login}")
     return get_user_s3_credentials(auth_info.user_login)
+
+
+@app.get("/storage/configuration", summary="Get storage configuration table as JSON")
+def get_storage_configuration() -> list[list[str]]:
+    """
+    Returns the parsed CSV as JSON: list[list[str]].
+    """
+
+    try:
+        return read_bucket_config_file()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 def main_osam_task(timeout: int = 60):
