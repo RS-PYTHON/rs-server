@@ -2243,9 +2243,7 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2271,9 +2269,7 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2286,9 +2282,7 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
             "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2301,9 +2295,7 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
             "&$orderby=PublicationDate desc&$top=5&$skip=0&$expand=Attributes",
         ),
         (
@@ -2316,9 +2308,7 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2460,8 +2450,10 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "http://127.0.0.1:5000/Products?"
             "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
+            "and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' "
-            "and att/OData.CSC.StringAttribute/Value eq 'sentinel-1a')"
+            "and att/OData.CSC.StringAttribute/Value eq 'A')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2583,8 +2575,10 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "http://127.0.0.1:5000/Products?"
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a') and "
+            "att/OData.CSC.StringAttribute/Value eq 'A') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and "
             "att/OData.CSC.StringAttribute/Value eq '2022-06-26T06:30:34.558Z')"
             "&$orderby=ContentLength desc&$top=10&$skip=0&$expand=Attributes",
@@ -2607,8 +2601,10 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "http://127.0.0.1:5000/Products?"
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
-            "att/OData.CSC.StringAttribute/Value eq 'sentinel-1a') and "
+            "att/OData.CSC.StringAttribute/Value eq 'A') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
             "att/OData.CSC.StringAttribute/Value eq '2.0') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
