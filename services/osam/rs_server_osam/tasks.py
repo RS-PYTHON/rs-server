@@ -15,6 +15,7 @@
 """Main tasks executed by OSAM service."""
 # pylint: disable = wrong-import-order
 import copy
+import csv
 import json
 import logging
 import os
@@ -38,7 +39,6 @@ from osam.utils.tools import (
     match_roles,
     parse_role,
 )
-from rs_server_common.s3_storage_handler import s3_storage_config
 from rs_server_common.utils.logging import Logging
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
@@ -81,14 +81,32 @@ BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
-configmap_data = s3_storage_config.S3StorageConfigurationSingleton().get_s3_bucket_configuration(
-    os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
-)
+# configmap_data = s3_storage_config.S3StorageConfigurationSingleton().get_s3_bucket_configuration(
+#     os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
+# )
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
+
+
+def read_bucket_config_file() -> list[list[str]]:
+    """Reads the CSV file and returns a list of rows."""
+    filepath = os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH)
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Bucket expiration csv file not found: {filepath}")
+
+    data = []
+    try:
+        with open(filepath, newline="", encoding="utf-8") as csvfile:
+            reader = csv.reader(csvfile, skipinitialspace=True)
+            for row in reader:
+                data.append(row)
+    except Exception as exc:
+        raise RuntimeError(f"Error reading bucket expiration csv file {filepath}: {exc}") from exc
+
+    return data
 
 
 # Get keycloak/ovh handler (it doesn't creates duplicates)
@@ -138,6 +156,11 @@ def get_keycloak_configmap_values():
             - kc_users (list): List of Keycloak user dictionaries.
             - user_allowed_buckets (dict): A mapping of usernames to lists of allowed buckets.
     """
+    try:
+        configmap_data = read_bucket_config_file()
+    except (FileNotFoundError, RuntimeError) as exc:
+        logger.error(f"Bucket expiration csv file not found or error reading file: {exc}")
+        configmap_data = []
     kc_users = get_keycloak_handler().get_keycloak_users()
     user_allowed_buckets = {}
     for user in kc_users:

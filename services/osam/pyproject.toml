@@ -27,7 +27,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-rs-server-common = "*"
+#rs-server-common = "*"
 uvicorn = ">=0.34.1,<0.35.0"
 fastapi = ">=0.115.12,<0.116.0"
 jsonpatch = "^1.33"
@@ -49,7 +49,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 python = "^3.11"
-rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
+#rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^3.3.2"
