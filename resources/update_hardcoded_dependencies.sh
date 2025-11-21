@@ -23,12 +23,12 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 # Hardcode here the versions to use, with the same variable names as in the files below
+PYTHON_VERSION=3.13.9
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
 PREFECT_TAG=3.2.13
 PREFECT_DASK_TAG=0.3.3
 PREFECT_AWS_TAG=0.5.9
-PYTHON_VERSION=3.13.9
 all_variables=(DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG PREFECT_AWS_TAG PYTHON_VERSION) # var names
 
 #
@@ -55,6 +55,10 @@ all_files+=($(_realpath rs-server/services/frontend/.github/Dockerfile))
 all_files+=($(_realpath rs-server/services/prip/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-staging]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile))
+
+# [ci/cd] [rs-server]
+all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml)) # + run rs-server ci/cd
+all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [dask base image] [ghcr.io/rs-python/dask-gateway-server/base/local]
 all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh)) # + re-run with --push
@@ -93,10 +97,10 @@ all_files+=($(_realpath rs-infra-core/.github/jupyter/Dockerfile)) # + run rs-in
 for file in "${all_files[@]}"; do
   for var_name in "${all_variables[@]}"; do
 
-    # In the file, replace <my_var>=<my_value> by the right value.
+    # In the file, replace <my_var>=<my_value> or <my_var>:<my_value> by the right value.
     # Only for lines that don't contain a $ to avoid updating e.g. <my_var>=$<other_var>
     # NOTE: ${!var_name} = the var value
-    sed -i "/\\$/! s/${var_name}\(=\+\)[^[:space:]]\+/${var_name}\1${!var_name}/g" "$file"
+    sed -i "/\\$/! s/${var_name}\([=:][[:space:]]*\)[^[:space:]]\+/${var_name}\1${!var_name}/g" "$file"
   done
 done
 
