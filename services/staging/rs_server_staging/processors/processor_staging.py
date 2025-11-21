@@ -867,20 +867,14 @@ class Staging(
         # Forward logging from dask workers to the caller
         client.forward_logging()
 
-        def set_dask_env(host_env: dict):
+        def set_dask_env(host_env: dict, extra_keys: None):
             """Pass environment variables to the dask workers."""
-            # find a way to improve this part in future
-            pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
 
-            required_keys = [
-                "S3_ACCESSKEY",
-                "S3_SECRETKEY",
-                "S3_ENDPOINT",
-                "S3_REGION",
-            ]
+            required_keys = ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]
 
-            # Add all keys that match the FTP/S3 pattern
-            required_keys.extend([key for key in os.environ.keys() if pattern.fullmatch(key)])
+            if extra_keys:
+                # Add all keys that match the FTP/S3 pattern
+                required_keys.extend(extra_keys)
 
             for name in required_keys:
                 os.environ[name] = host_env[name]
@@ -891,7 +885,9 @@ class Staging(
             os.environ["AWS_REQUEST_CHECKSUM_CALCULATION"] = "when_required"
             os.environ["AWS_RESPONSE_CHECKSUM_VALIDATION"] = "when_required"
 
-        client.run(set_dask_env, os.environ)
+        pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
+        extra_keys = [key for key in os.environ if pattern.fullmatch(key)]
+        client.run(set_dask_env, os.environ, extra_keys)
 
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
@@ -1010,9 +1006,9 @@ class Staging(
         # to the external station if the connection to the dask cluster fails
         try:
             dask_client = self.dask_cluster_connect()
-        except RuntimeError as runtime_error:
+        except RuntimeError as run_time_error:
             self.logger.error("Failed to start the staging process")
-            return self.log_job_execution(JobStatus.failed, 0, str(runtime_error))
+            return self.log_job_execution(JobStatus.failed, 0, str(run_time_error))
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
@@ -1040,9 +1036,9 @@ class Staging(
                             staging_process=True,
                         )
                 refresh_token = None
-        except RuntimeError as runtime_error:
+        except RuntimeError as rte:
             self.logger.error("Failed to start the staging process")
-            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {runtime_error}")
+            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {rte}")
 
         # Step 5: Manage dask tasks in a separate thread
         # starting a thread for managing the dask callbacks

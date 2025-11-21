@@ -25,13 +25,7 @@ import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from ftplib import (  # nosec B402 # NOSONAR
-    FTP,
-    error_perm,
-    error_proto,
-    error_reply,
-    error_temp,
-)
+from ftplib import FTP  # nosec B402 # NOSONAR
 from typing import Any
 from urllib.parse import urlparse
 
@@ -1191,10 +1185,6 @@ retried for %s times. Aborting",
 
         except ValueError as ve:
             raise ve
-        except (error_perm, error_temp, error_reply, error_proto) as ftp_err:
-            raise RuntimeError(f"FTP communication error: {ftp_err}") from ftp_err
-        except (TimeoutError, ConnectionRefusedError, OSError) as net_err:
-            raise ConnectionError(f"Network error while connecting to FTP: {net_err}") from net_err
         except Exception as e:
             raise RuntimeError(f"Unexpected FTP error: {e}") from e
 
