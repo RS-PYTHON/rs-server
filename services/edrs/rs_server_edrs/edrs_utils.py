@@ -49,9 +49,9 @@ logger = Logging.default(__name__)
 @lru_cache
 def edrs_read_conf() -> dict:
     """Used each time to read EDRS_COLLECTIONS_YAML config yaml."""
-    edrs_cfg_path = os.environ.get("RSPY_EDRS_COLLECTIONS_CONFIG", str(EDRS_CONFIG_COLLECTIONS))
-    with open(edrs_cfg_path, encoding="utf-8") as cfg:
-        return yaml.safe_load(cfg) or {}
+    config_path = os.environ.get("RSPY_EDRS_COLLECTIONS_CONFIG", str(EDRS_CONFIG_COLLECTIONS))
+    with open(config_path, encoding="utf-8") as config_file:
+        return yaml.safe_load(config_file) or {}
 
 
 def edrs_select_config(configuration_id: str) -> dict | None:
@@ -91,20 +91,20 @@ def edrs_stac_mapper() -> dict:
 def platform_constellation_from_code(code: str) -> tuple[str | None, str | None]:
     """Return (platform, constellation) that matches the short satellite code."""
     # code ex.: "S1A", "S1C", "S2B" => returns satellites and constellation
-    cfg = map_stac_platform()
-    for sat in cfg["satellites"]:
-        for plat, info in sat.items():
-            if info.get("code") == code:
-                return plat, info.get("constellation")
+    platform_mapping = map_stac_platform()
+    for satellite_entry in platform_mapping["satellites"]:
+        for platform_key, platform_info in satellite_entry.items():
+            if platform_info.get("code") == code:
+                return platform_key, platform_info.get("constellation")
     return None, None
 
 
-def iso(s: str | None) -> str | None:
+def iso(datetime_value: str | None) -> str | None:
     """Convert a datetime string to ISO-8601 with a trailing Z when relevant."""
-    if not s:
+    if not datetime_value:
         return None
     # normalize "2024-04-10T08:37:00Z" -> ISO with 'Z'
-    return s.replace("+00:00", "Z")
+    return datetime_value.replace("+00:00", "Z")
 
 
 def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None, str | None]:
@@ -124,25 +124,34 @@ def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str
     return None, iso(start), iso(stop), iso(created), iso(finished)
 
 
-def collect_session_stats(client, sat: str, session_id: str, station_name: str) -> tuple[dict, list[dict]]:
+def collect_session_stats(
+    client,
+    satellite_code: str,
+    session_id: str,
+    station_name: str,
+) -> tuple[dict, list[dict]]:
     """Returns (session_odata, assets_products)."""
-    ch_entries = client.walk(f"{sat}/{session_id}") or []
+    ch_entries = client.walk(f"{satellite_code}/{session_id}") or []
     channel_dirs = [
         e["path"] for e in ch_entries if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))
     ]
 
-    starts, stops, gens = [], [], []
+    start_times, stop_times, generation_times = [], [], []
     assets_products: list[dict] = []
-    platform_name, constellation = platform_constellation_from_code(sat)
+    platform_name, constellation = platform_constellation_from_code(satellite_code)
 
-    for ch_dir in channel_dirs:
-        ch_name = ch_dir.rsplit("/", 1)[-1]  # ch_1
-        ch_num = int(ch_name.split("_")[1]) if "_" in ch_name else None
+    for channel_dir in channel_dirs:
+        channel_name = channel_dir.rsplit("/", 1)[-1]  # ch_1
+        channel_number = int(channel_name.split("_")[1]) if "_" in channel_name else None
 
-        files = client.walk(f"{sat}/{session_id}/{ch_name}") or []
+        channel_entries = client.walk(f"{satellite_code}/{session_id}/{channel_name}") or []
         # DSIB
         dsib_entry = next(
-            (f for f in files if f.get("type") == "file" and f.get("path", "").lower().endswith("_dsib.xml")),
+            (
+                entry
+                for entry in channel_entries
+                if entry.get("type") == "file" and entry.get("path", "").lower().endswith("_dsib.xml")
+            ),
             None,
         )
         dsib_dict = None
@@ -152,57 +161,57 @@ def collect_session_stats(client, sat: str, session_id: str, station_name: str) 
         if dsib_dict:
             _, start, stop, created, _ = parse_dsib_dict(dsib_dict)
             if start:
-                starts.append(start)
+                start_times.append(start)
             if stop:
-                stops.append(stop)
+                stop_times.append(stop)
             if created:
-                gens.append(created)
+                generation_times.append(created)
 
         # assets din walk (.raw)
-        for f in files:
-            p = f.get("path", "")
-            if f.get("type") == "file" and p.lower().endswith(".raw"):
+        for entry in channel_entries:
+            entry_path = entry.get("path", "")
+            if entry.get("type") == "file" and entry_path.lower().endswith(".raw"):
                 assets_products.append(
                     {
                         "SessionId": session_id.removesuffix("_dat"),
-                        "File_Name": Path(p).name,
-                        "Size_Bytes": int(f.get("size") or 0),
-                        "href": f"ftps://{station_name}{p}",
-                        "Channel": ch_num,
-                        "Created": gens[-1] if gens else None,
-                        "Updated": gens[-1] if gens else None,
+                        "File_Name": Path(entry_path).name,
+                        "Size_Bytes": int(entry.get("size") or 0),
+                        "href": f"ftps://{station_name}{entry_path}",
+                        "Channel": channel_number,
+                        "Created": generation_times[-1] if generation_times else None,
+                        "Updated": generation_times[-1] if generation_times else None,
                     },
                 )
 
     session_odata = {
         "SessionId": session_id.removesuffix("_dat"),
-        "MinStart": min(starts) if starts else None,
-        "MaxStop": max(stops) if stops else None,
-        "MinCreated": min(gens) if gens else None,
-        "MaxFinished": max(gens) if gens else None,  # fallback to Generation_Time
+        "MinStart": min(start_times) if start_times else None,
+        "MaxStop": max(stop_times) if stop_times else None,
+        "MinCreated": min(generation_times) if generation_times else None,
+        "MaxFinished": max(generation_times) if generation_times else None,  # fallback to Generation_Time
         "Platform": platform_name,
         "Constellation": constellation,
     }
     return session_odata, assets_products
 
 
-def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]:
+def build_assets_list(file_entries: list[dict], channel_name: str) -> list[tuple[str, dict]]:
     """Build the asset tuple list for a channel traversal."""
-    m = re.fullmatch(r"ch_(\d+)", ch_name)
-    channel = int(m.group(1)) if m else None
+    channel_match = re.fullmatch(r"ch_(\d+)", channel_name)
+    channel_number = int(channel_match.group(1)) if channel_match else None
 
     assets: list[tuple[str, dict]] = []
-    for f in files:
-        p = f.get("path", "")
-        if f.get("type") == "file" and p.lower().endswith(".raw"):
-            fname = Path(p).name
+    for entry in file_entries:
+        entry_path = entry.get("path", "")
+        if entry.get("type") == "file" and entry_path.lower().endswith(".raw"):
+            file_name = Path(entry_path).name
             assets.append(
                 (
-                    fname,
+                    file_name,
                     {
-                        "path": p,
-                        "channel": channel,
-                        "file:size": int(f.get("size") or 0),
+                        "path": entry_path,
+                        "channel": channel_number,
+                        "file:size": int(entry.get("size") or 0),
                     },
                 ),
             )
@@ -211,20 +220,20 @@ def build_assets_list(files: list[dict], ch_name: str) -> list[tuple[str, dict]]
 
 def apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:
     """Populate Item assets based on the configured mapper definition."""
-    mapper = edrs_stac_mapper()
-    key_field = mapper["id"]
-    out_specs = {k: v for k, v in mapper.items() if k != "id"}
+    mapper_definition = edrs_stac_mapper()
+    key_field = mapper_definition["id"]
+    output_specs = {k: v for k, v in mapper_definition.items() if k != "id"}
 
-    for a in asset_items:
-        key = a.get(key_field)
+    for asset_entry in asset_items:
+        key = asset_entry.get(key_field)
         if not key:
             continue
-        out = {
-            ok: (a.get(spec) if isinstance(spec, str) else spec)
-            for ok, spec in out_specs.items()
-            if not (isinstance(spec, str) and a.get(spec) is None)
+        asset_payload = {
+            output_key: (asset_entry.get(mapping_spec) if isinstance(mapping_spec, str) else mapping_spec)
+            for output_key, mapping_spec in output_specs.items()
+            if not (isinstance(mapping_spec, str) and asset_entry.get(mapping_spec) is None)
         }
-        item.assets[key] = Asset.model_validate(out)
+        item.assets[key] = Asset.model_validate(asset_payload)
 
 
 def build_edrs_item_collection(
@@ -249,16 +258,17 @@ def build_edrs_item_collection(
         f"{service_base}/",
     )
 
-    for sat in satellites:
+    for satellite_code in satellites:
         session_dirs = [
-            e["path"]
-            for e in (client.walk(sat) or [])
-            if e.get("type") == "dir" and re.fullmatch(rf"/NOMINAL/{re.escape(sat)}/DCS_\d+_\d+_dat", e.get("path", ""))
+            entry["path"]
+            for entry in (client.walk(satellite_code) or [])
+            if entry.get("type") == "dir"
+            and re.fullmatch(rf"/NOMINAL/{re.escape(satellite_code)}/DCS_\d+_\d+_dat", entry.get("path", ""))
         ]
 
-        for sess_path in session_dirs:
-            session_id = Path(sess_path).name
-            session, asset_products = collect_session_stats(client, sat, session_id, station_name)
+        for session_path in session_dirs:
+            session_id = Path(session_path).name
+            session, asset_products = collect_session_stats(client, satellite_code, session_id, station_name)
             feature = odata_to_stac(
                 copy.deepcopy(edrs_session_odata_to_stac_template()),
                 session,
@@ -299,18 +309,18 @@ def build_edrs_item_collection(
 ####################################
 
 
-def parse_iso_value(val: str | None):
+def parse_iso_value(value: str | None):
     """Parse an ISO datetime string (or date) into a datetime, tolerant to Z suffix."""
-    if not val:
+    if not value:
         return None
-    s = str(val).strip()
-    if s.endswith("Z"):
-        s = s[:-1] + "+00:00"
+    normalized_value = str(value).strip()
+    if normalized_value.endswith("Z"):
+        normalized_value = normalized_value[:-1] + "+00:00"
     try:
-        return DateTime.fromisoformat(s)
+        return DateTime.fromisoformat(normalized_value)
     except Exception:  # pylint: disable=broad-exception-caught
         try:
-            return DateTime.fromisoformat(s + "T00:00:00+00:00")
+            return DateTime.fromisoformat(normalized_value + "T00:00:00+00:00")
         except Exception:  # pylint: disable=broad-exception-caught
             return None
 
@@ -321,13 +331,13 @@ TEMPORAL_KEYS = {"datetime", "start_datetime", "end_datetime", "published"}
 def normalize_features(features: list) -> list[dict]:
     """Convert mixed feature representations (pystac/stac-pydantic/dicts) into plain dicts."""
     normalized = []
-    for f in features or []:
-        if isinstance(f, dict):
-            normalized.append(f)
-        elif hasattr(f, "model_dump"):
-            normalized.append(f.model_dump())
-        elif hasattr(f, "to_dict"):
-            normalized.append(f.to_dict())
+    for feature_obj in features or []:
+        if isinstance(feature_obj, dict):
+            normalized.append(feature_obj)
+        elif hasattr(feature_obj, "model_dump"):
+            normalized.append(feature_obj.model_dump())
+        elif hasattr(feature_obj, "to_dict"):
+            normalized.append(feature_obj.to_dict())
         else:
             raise ValueError("Invalid feature type in collection")
     return normalized
@@ -394,34 +404,34 @@ def filter_and_paginate_features(
     q_start, q_end = parse_datetime_interval(datetime_expr)
 
     def match_props(feature: dict) -> bool:
-        props = feature.get("properties", {})
-        for k, v in conditions:
-            if k == "id":
-                if str(feature.get("id", "")) != str(v):
+        properties = feature.get("properties", {})
+        for field_name, expected_value in conditions:
+            if field_name == "id":
+                if str(feature.get("id", "")) != str(expected_value):
                     return False
             else:
-                prop_val = props.get(k, "")
-                if k in TEMPORAL_KEYS:
-                    left = parse_iso_value(prop_val)
-                    right = parse_iso_value(v)
+                property_value = properties.get(field_name, "")
+                if field_name in TEMPORAL_KEYS:
+                    left = parse_iso_value(property_value)
+                    right = parse_iso_value(expected_value)
                     if left and right:
                         if left != right:
                             return False
                     else:
-                        if str(prop_val) != str(v):
+                        if str(property_value) != str(expected_value):
                             return False
                 else:
-                    if str(prop_val) != str(v):
+                    if str(property_value) != str(expected_value):
                         return False
         return True
 
     def match_datetime(feature: dict) -> bool:
-        props = feature.get("properties", {})
-        item_start = parse_iso_value(props.get("start_datetime") or props.get("datetime"))
-        item_end = parse_iso_value(props.get("end_datetime") or props.get("datetime"))
+        properties = feature.get("properties", {})
+        item_start = parse_iso_value(properties.get("start_datetime") or properties.get("datetime"))
+        item_end = parse_iso_value(properties.get("end_datetime") or properties.get("datetime"))
         return intersects_time(item_start, item_end, q_start, q_end)
 
-    filtered_features = [f for f in features if match_props(f) and match_datetime(f)]
+    filtered_features = [feature for feature in features if match_props(feature) and match_datetime(feature)]
 
     item_collection_model = RspyItemCollection.model_validate(
         {
@@ -430,21 +440,21 @@ def filter_and_paginate_features(
         },
     )
 
-    paging_ctx = SimpleNamespace(sortby=str(sort_by_expr), limit=limit_value, page=page_value)
-    return MockPgstac.paginate(paging_ctx, item_collection_model)
+    paging_context = SimpleNamespace(sortby=str(sort_by_expr), limit=limit_value, page=page_value)
+    return MockPgstac.paginate(paging_context, item_collection_model)
 
 
 def parse_cql2_text(expr: str, add_condition):
     """Parse CQL2 text expression (eq + AND) into conditions via callback."""
     parts = re.split(r"\bAND\b", expr, flags=re.IGNORECASE)
-    for raw in parts:
-        segment = raw.strip()
+    for raw_segment in parts:
+        segment = raw_segment.strip()
         if not segment:
             continue
-        m = re.match(r"^([\w\:\.\-]+)\s*=\s*(.+)$", segment)
-        if not m:
+        match_obj = re.match(r"^([\w\:\.\-]+)\s*=\s*(.+)$", segment)
+        if not match_obj:
             raise ValueError(f"Invalid filter condition: {segment!r}")
-        left, right = m.group(1).strip(), m.group(2).strip()
+        left, right = match_obj.group(1).strip(), match_obj.group(2).strip()
         if right.startswith(("'", '"')) and right.endswith(("'", '"')) and len(right) >= 2:
             right = right[1:-1]
         add_condition(left, right)
@@ -457,8 +467,8 @@ def parse_cql2_json_node(node, add_condition):
     op = str(node.get("op", "")).lower()
     args = node.get("args", [])
     if op == "and":
-        for a in args:
-            parse_cql2_json_node(a, add_condition)
+        for argument in args:
+            parse_cql2_json_node(argument, add_condition)
     elif op in {"=", "eq"} and len(args) == 2:
         left, right = args[0], args[1]
         if isinstance(left, dict) and "property" in left:
@@ -476,31 +486,34 @@ def parse_cql2_json_node(node, add_condition):
         raise ValueError(f"Unsupported CQL2-JSON operator: {op}")
 
 
-def parse_datetime_interval(expr: str | None):
+def parse_datetime_interval(expression: str | None):
     """Parse a datetime or interval string into (start, end) datetimes (closed range)."""
 
-    def parse_iso(val: str | None):
-        if not val:
+    def parse_iso(value: str | None):
+        if not value:
             return None
-        s = str(val).strip()
-        if s.endswith("Z"):
-            s = s[:-1] + "+00:00"
+        normalized_value = str(value).strip()
+        if normalized_value.endswith("Z"):
+            normalized_value = normalized_value[:-1] + "+00:00"
         try:
-            return DateTime.fromisoformat(s)
+            return DateTime.fromisoformat(normalized_value)
         except Exception:  # pylint: disable=broad-exception-caught
             try:
-                return DateTime.fromisoformat(s + "T00:00:00+00:00")
+                return DateTime.fromisoformat(normalized_value + "T00:00:00+00:00")
             except Exception:  # pylint: disable=broad-exception-caught
                 return None
 
-    if not expr:
+    if not expression:
         return None, None
-    s = str(expr).strip()
-    if "/" in s:
-        a, b = s.split("/", 1)
-        return (parse_iso(a) if a and a != ".." else None), (parse_iso(b) if b and b != ".." else None)
-    t = parse_iso(s)
-    return t, t
+    normalized_expr = str(expression).strip()
+    if "/" in normalized_expr:
+        start_expr, end_expr = normalized_expr.split("/", 1)
+        return (
+            parse_iso(start_expr) if start_expr and start_expr != ".." else None,
+            parse_iso(end_expr) if end_expr and end_expr != ".." else None,
+        )
+    moment = parse_iso(normalized_expr)
+    return moment, moment
 
 
 def intersects_time(item_start, item_end, q_start, q_end):
@@ -509,15 +522,15 @@ def intersects_time(item_start, item_end, q_start, q_end):
         return True
     if item_start is None and item_end is None:
         return True
-    s = item_start or item_end
-    e = item_end or item_start
-    if s is None and e is None:
+    range_start = item_start or item_end
+    range_end = item_end or item_start
+    if range_start is None and range_end is None:
         return True
     result = True
     if q_start and q_end:
-        result = (s <= q_end) and (e >= q_start)
+        result = (range_start <= q_end) and (range_end >= q_start)
     elif q_start:
-        result = e >= q_start
+        result = range_end >= q_start
     elif q_end:
-        result = s <= q_end
+        result = range_start <= q_end
     return result

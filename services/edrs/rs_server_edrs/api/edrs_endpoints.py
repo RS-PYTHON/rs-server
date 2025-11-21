@@ -19,10 +19,12 @@ Implements landing, collections, and /items (no /search for EDRS).
 
 from typing import Annotated, Literal
 
+import pystac
 import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Request, status
+from fastapi.encoders import ENCODERS_BY_TYPE, jsonable_encoder
 from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
 
@@ -58,6 +60,11 @@ from stac_fastapi.api.models import GeoJSONResponse
 
 logger = Logging.default(__name__)
 router = APIRouter()
+
+ENCODERS_BY_TYPE.setdefault(pystac.ItemCollection, lambda obj: obj.to_dict())
+ENCODERS_BY_TYPE.setdefault(pystac.Item, lambda obj: obj.to_dict())
+ENCODERS_BY_TYPE.setdefault(pystac.Asset, lambda obj: obj.to_dict())
+ENCODERS_BY_TYPE.setdefault(pystac.Link, lambda obj: obj.to_dict())
 
 
 class MockPgstacEdrs(MockPgstac):
@@ -154,7 +161,11 @@ async def get_edrs_collection(
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
 
 
-@router.get(path="/edrs/collections/{collection_id}/items", response_class=GeoJSONResponse)
+@router.get(
+    path="/edrs/collections/{collection_id}/items",
+    response_class=GeoJSONResponse,
+    response_model=None,
+)
 @handle_exceptions
 async def get_edrs_collection_items(
     request: Request,
@@ -166,7 +177,7 @@ async def get_edrs_collection_items(
     sortby: SortByType = None,
     limit: LimitType = None,
     page: PageType = None,
-) -> dict:
+) -> pystac.ItemCollection:
     """
     Filter, sort, and page STAC Items for the requested collection.
     Supports ids/props equality filters, datetime intervals, and pagination.
@@ -178,7 +189,7 @@ async def get_edrs_collection_items(
 
     try:
         features_list = normalize_features(item_collection.get("features", []))
-        return filter_and_paginate_features(
+        filtered = filter_and_paginate_features(
             features_list,
             request.query_params,
             get_edrs_queryables(),
@@ -186,6 +197,17 @@ async def get_edrs_collection_items(
             limit_default=int(limit or 1000),
             page_default=int(page or 1),
         )
+        filtered_collection = filtered if isinstance(filtered, dict) else {"features": filtered}
+        feature_collection = dict(item_collection)
+        feature_collection["type"] = (
+            filtered_collection.get("type") or feature_collection.get("type") or "FeatureCollection"
+        )
+        feature_collection["features"] = filtered_collection.get("features", [])
+        for key, value in filtered_collection.items():
+            if key not in {"type", "features"}:
+                feature_collection[key] = value
+        feature_collection = jsonable_encoder(feature_collection)
+        return pystac.ItemCollection.from_dict(feature_collection, preserve_dict=False)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
