@@ -29,17 +29,17 @@ The source code is hosted on GitHub. Personal Access Token (PAT) with specific r
 Install Python
 ==============
 
-RS-Server is using Python 3.11.
+RS-Server is using Python 3
 
 Using [pyenv](https://github.com/pyenv/pyenv) is recommended for managing Python versions. Pyenv offers a straightforward method to switch between various Python versions.
 
     cd $RSPY_ROOT/src
-    pyenv install 3.11.3
-    pyenv local 3.11.3
+    pyenv install 3.<y.z>
+    pyenv local 3.<y.z>
 
 The Python version is an example, more recent version can be used.
 
-The following commands install Python 3.11 on the workstation and ensure that this version is used exclusively for RS-Server.
+The following commands install Python 3 on the workstation and ensure that this version is used exclusively for RS-Server.
 
 Install Poetry
 ==============

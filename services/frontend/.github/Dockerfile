@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ARG PYTHON_VERSION=3.13.9
 
 # Build stage for multi stage build.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
+FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm AS builder
 
 COPY ./layer-cleanup.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/layer-cleanup.sh
@@ -36,7 +37,7 @@ ADD ./*.whl /tmp/whl
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl && layer-cleanup.sh
 
 # Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
+FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
 
 COPY ./layer-cleanup.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/layer-cleanup.sh
@@ -45,10 +46,10 @@ RUN chmod 755 /usr/local/bin/layer-cleanup.sh
 RUN apt update && apt upgrade -y && layer-cleanup.sh
 
 # Copy the python installation from the build stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.*/site-packages /usr/local/lib/python3.*/site-packages
 
 # Set env var to the aggregated openapi.json released in the .whl package
-ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.11/site-packages/resources/openapi.json
+ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.*/site-packages/resources/openapi.json
 
 # Copy the script that will be run as this image entrypoint
 RUN mkdir -p /scripts

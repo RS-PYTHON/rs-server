@@ -66,7 +66,6 @@ psycopg2 = "^2.9.11"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-python = ">=3.11,<4"
 rs-server-common = {path = "../common", develop = true}
 # pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }

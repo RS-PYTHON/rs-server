@@ -42,43 +42,49 @@ _realpath(){
     realpath "${ROOT_DIR}/../$1"
 }
 
+# [local mode] [cluster mode] [rs-server]
+# [ghcr.io/rs-python/rs-server-adgs]
+all_files+=($(_realpath rs-server/services/adgs/.github/Dockerfile)) # + run rs-server ci/cd
+# [ghcr.io/rs-python/rs-server-cadip]
+all_files+=($(_realpath rs-server/services/cadip/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-server-catalog]
+all_files+=($(_realpath rs-server/services/catalog/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-server-frontend]
+all_files+=($(_realpath rs-server/services/frontend/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-server-prip]
+all_files+=($(_realpath rs-server/services/prip/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-server-staging]
+all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile))
+
 # [local mode] [dask base image] [ghcr.io/rs-python/dask-gateway-server/base/local]
-a=$(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh) # + re-run with --push
-all_files+=($a)
+all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh)) # + re-run with --push
 
 # [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
-b=$(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.py) # + re-run with --push
-all_files+=($b)
+all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.py)) # + re-run with --push
 
 # [local mode] [dask staging] [ghcr.io/rs-python/dask-gateway-server/staging/local]
-d=$(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local) # + run rs-server ci/cd
-all_files+=($d)
+all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local)) # + run rs-server ci/cd
 
 # [cluster mode] [dask eopf] [dask staging]
 # [ghcr.io/rs-python/rs-infra-core-dask-staging] [ghcr.io/rs-python/rs-infra-core-dask-eopf]
-e=$(_realpath rs-infra-core/.github/dask-gateway/Dockerfile) # + run rs-infra-core ci/cd
-f=$(_realpath rs-infra-core/.github/common/resources/requirements-dask-eopf.txt)
-all_files+=($e $f)
+all_files+=($(_realpath rs-infra-core/.github/dask-gateway/Dockerfile)) # + run rs-infra-core ci/cd
+all_files+=($(_realpath rs-infra-core/.github/common/resources/requirements-dask-eopf.txt))
 
 # [local mode] [cluster mode] [jupyter base image]
 # [ghcr.io/rs-python/jupyter/minimal-notebook] [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
-g=$(_realpath rs-server/resources/build_base_images.sh) # + re-run with --push
-g2=$(_realpath rs-server/resources/build_base_images/Dockerfile.python) # + re-run with --push
-g3=$(_realpath rs-server/resources/build_base_images/Dockerfile.jupyter) # + re-run with --push
-all_files+=($g $g2 $g3)
+all_files+=($(_realpath rs-server/resources/build_base_images.sh)) # + re-run with --push
+all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.python)) # + re-run with --push
+all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.jupyter)) # + re-run with --push
 
 # [local mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/jupyter/rs-client-libraries/local]
-h=$(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.jupyter) # + run rs-client-libraries ci/cd
-all_files+=($h)
+all_files+=($(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.jupyter)) # + run rs-client-libraries ci/cd
 
 # [local mode] [cluster mode] [prefect with rs-client-libraries]
 # [ghcr.io/rs-python/prefect/rs-client-libraries/local] [ghcr.io/rs-python/prefect/rs-client-libraries/k8s]
-i=$(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.prefect) # + run rs-client-libraries ci/cd
-all_files+=($i)
+all_files+=($(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.prefect)) # + run rs-client-libraries ci/cd
 
 # [cluster mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/rs-infra-core-jupyter]
-j=$(_realpath rs-infra-core/.github/jupyter/Dockerfile) # + run rs-infra-core ci/cd
-all_files+=($j)
+all_files+=($(_realpath rs-infra-core/.github/jupyter/Dockerfile)) # + run rs-infra-core ci/cd
 
 #
 # Update files
