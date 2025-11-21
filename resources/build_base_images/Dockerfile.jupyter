@@ -20,42 +20,22 @@ ARG BASE=xxx
 
 ENV PATH=/home/jovyan/.local/bin:${PATH}
 
+ARG PYTHON_VERSION=3.13.9
 ARG DASK_TAG=2024.5.2
 ARG DASK_GATEWAY_TAG=2024.1.0
 ARG PREFECT_TAG=3.2.13
 ARG PREFECT_DASK_TAG=0.3.3
 
-# Additional python kernel to install to run the notebooks
-ARG PYTHON_VERSION=3.13.9
-ARG KERNEL_NAME="py${PYTHON_VERSION}"
+USER root
 
 COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
-
-USER root
 RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 RUN apt update && apt upgrade -y && pip install -U pip && layer-cleanup.sh
-USER jovyan
 
-# Install additional python kernel
-RUN conda create -y -n "$KERNEL_NAME" python="$PYTHON_VERSION" && \
-    source activate "$KERNEL_NAME" && \
+# Install python version and dependencies
+RUN conda install --yes conda-forge::python=${PYTHON_VERSION} && \
     python -V && \
     pip install -U pip && \
-    pip install ipykernel && \
-    layer-cleanup.sh
-USER root
-RUN source activate "$KERNEL_NAME" && \
-    python -m ipykernel install --name "$KERNEL_NAME" --display-name "$KERNEL_NAME" && \
-    layer-cleanup.sh
-USER jovyan
-
-# Set default kernel... does not seem to work
-RUN jupyter notebook --generate-config && \
-    layer-cleanup.sh && \
-    echo "c.MappingKernelManager.default_kernel_name='$KERNEL_NAME'" >> /home/jovyan/.jupyter/jupyter_notebook_config.py
-
-# Note: put s3fs before boto3 to have a recent version
-RUN source activate "$KERNEL_NAME" && \
     pip install \
         dask[complete]=="${DASK_TAG}" \
         distributed=="${DASK_TAG}" \
@@ -65,19 +45,15 @@ RUN source activate "$KERNEL_NAME" && \
         ipywidgets \
         s3fs \
         boto3 && \
+    conda clean --all --yes && \
     layer-cleanup.sh
 
-# Install dot and clean conda
-USER root
+# Install packages
 RUN restore-apt.sh && apt update && apt install -y python3-pydot graphviz && layer-cleanup.sh
-USER jovyan
 
-# Use default python version from bash session
-RUN echo -e "\nsource activate $KERNEL_NAME" >> /home/jovyan/.bashrc
-
-USER root
 RUN chown -R jovyan /home/jovyan
 RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+
 USER jovyan
 
 # Set labels based on the Open Containers Initiative (OCI):
