@@ -67,9 +67,10 @@ all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile))
 all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml)) # + run rs-server ci/cd
 all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
-# [local mode] [dask base image] [ghcr.io/rs-python/dask-gateway-server/base/local]
-all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh)) # + re-run with --push
-all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base-local))
+# [local mode] [cluster mode] [dask base image]
+# [ghcr.io/rs-python/dask-gateway-server/base/local] [ghcr.io/rs-python/dask/dask-gateway]
+all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base.sh)) # + re-run with --push
+all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base))
 
 # [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
 # + re-run rs-demo/local-mode/docker/build.dask-eopf-local.py -p all
