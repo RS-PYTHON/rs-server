@@ -16,20 +16,27 @@
 set -euo pipefail
 # set -x
 
-# Update the hardcoded versions of the following dependencies: Python, Dask, Prefect
-# that are used in all the repository scripts, Docker images, ci/cd, ...
+# Update the versions of the frameworks used in the project: Python, Dask, Prefect
+# These versions appear in the repository scripts, Docker images, ci/cd, ...
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
+#
 # Hardcode here the versions to use, with the same variable names as in the files below
+
+# We use a different python version in eopf + the dpr processors + rs-dpr-service
 PYTHON_VERSION=3.13.9
+PYTHON_VERSION_DPR=3.11.7
+
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
+
 PREFECT_TAG=3.2.13
 PREFECT_DASK_TAG=0.3.3
 PREFECT_AWS_TAG=0.5.9
-all_variables=(DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG PREFECT_AWS_TAG PYTHON_VERSION) # var names
+
+all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG PREFECT_AWS_TAG) # var names
 
 #
 # Bash scripts, dockerfiles and github action workflows to update,
@@ -62,6 +69,7 @@ all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [dask base image] [ghcr.io/rs-python/dask-gateway-server/base/local]
 all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh)) # + re-run with --push
+all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base-local))
 
 # [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
 all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.py)) # + re-run with --push
