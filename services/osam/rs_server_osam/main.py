@@ -32,6 +32,7 @@ from osam.tasks import (
     read_bucket_config_file,
     update_s3_rights_lists,
 )
+from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
@@ -277,6 +278,7 @@ async def ping():
 app.include_router(router)
 app.add_middleware(HandleExceptionsMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("RSPY_COOKIE_SECRET", ""))
-app = apply_middlewares(app)
+if common_settings.CLUSTER_MODE:
+    app = apply_middlewares(app)
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
