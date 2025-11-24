@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# We will add rs-server-staging to the dask-gateway-server image for local mode
+# This Dockerfiles installs rs-server-staging in the dask-gateway-server image for local mode.
+
+ARG PYTHON_VERSION=3.13.9
 ARG DASK_GATEWAY_TAG=2024.1.0
-FROM ghcr.io/rs-python/dask-gateway-server/base/local:${DASK_GATEWAY_TAG}
+
+FROM ghcr.io/rs-python/dask-gateway-server/base/local:${DASK_GATEWAY_TAG}-py${PYTHON_VERSION}
 
 # Default user from parent image
 ARG USER=dask:dask
