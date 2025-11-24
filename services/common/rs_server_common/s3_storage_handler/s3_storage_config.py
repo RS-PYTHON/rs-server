@@ -18,6 +18,8 @@ import csv
 import os
 import threading
 
+import requests
+
 FILEPATH_ENV_VAR = "BUCKET_CONFIG_FILE_PATH"
 DEFAULT_FILEPATH = "/app/conf/expiration_bucket.csv"
 
@@ -99,6 +101,38 @@ class S3StorageConfigurationSingleton:
         return cls.bucket_configuration_csv
 
 
+def fetch_csv_from_endpoint(endpoint: str) -> list[list[str]]:
+    """
+    Fetches a CSV file from rs-osam endpoint and returns it
+    as a list of rows (each row is a list of strings).
+
+    Raises:
+        S3StorageConfigurationError: If the endpoint cannot be reached
+        or response cannot be parsed as CSV.
+    """
+    try:
+        response = requests.get(endpoint, timeout=10)
+        response.raise_for_status()
+        data = response.json()  # already list[list[str]]
+    except Exception as exc:
+        raise S3StorageConfigurationError(
+            f"Failed to fetch storage configuration from endpoint '{endpoint}': {exc}",
+        ) from exc
+
+    if not isinstance(data, list):
+        raise S3StorageConfigurationError(
+            f"Invalid configuration format returned by endpoint: expected list[list[str]], got {type(data)}",
+        )
+
+    for row in data:
+        if not isinstance(row, list) or not all(isinstance(x, str) for x in row):
+            raise S3StorageConfigurationError(
+                "Invalid configuration format: expected list[list[str]] containing only strings",
+            )
+
+    return data
+
+
 def get_storage_settings_from_config(
     owner: str,
     collection: str,
@@ -117,9 +151,11 @@ def get_storage_settings_from_config(
     Returns:
         tuple: Expiration delay and bucket name for these parameters.
     """
-    if not config_file_path:
-        config_file_path = os.getenv(FILEPATH_ENV_VAR, default=DEFAULT_FILEPATH)
-    config_table = S3StorageConfigurationSingleton().get_s3_bucket_configuration(config_file_path)
+    # if not config_file_path:
+    #    config_file_path = os.getenv(FILEPATH_ENV_VAR, default=DEFAULT_FILEPATH)
+    # config_table = S3StorageConfigurationSingleton().get_s3_bucket_configuration(config_file_path)
+
+    config_table = fetch_csv_from_endpoint(os.environ["RSPY_HOST_OSAM"] + "/storage/configuration")
     settings = get_settings_from_table(config_table, owner, collection, eopf_type)
     try:
         return (int(settings[0]), settings[1])
