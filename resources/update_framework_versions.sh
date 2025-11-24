@@ -72,7 +72,9 @@ all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh)) # +
 all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base-local))
 
 # [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
-all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.py)) # + re-run with --push
+# + re-run rs-demo/local-mode/docker/build.dask-eopf-local.py -p all
+all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-local))
+all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-mockup-local))
 
 # [local mode] [dask staging] [ghcr.io/rs-python/dask-gateway-server/staging/local]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local)) # + run rs-server ci/cd
