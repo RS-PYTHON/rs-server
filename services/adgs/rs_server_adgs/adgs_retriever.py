@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Docstring will be here."""
+"""ADGS retriever module."""
 
 import os
 import os.path as osp
