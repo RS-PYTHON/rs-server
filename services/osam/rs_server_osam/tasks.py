@@ -92,7 +92,23 @@ trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
 
 
 def read_bucket_config_file() -> list[list[str]]:
-    """Reads the CSV file and returns a list of rows."""
+    """
+    Reads and returns the bucket expiration configuration from a CSV file.
+
+    The function retrieves the CSV filepath from the environment variable
+    `BUCKET_CONFIG_FILE_PATH`. If not set, it falls back to `DEFAULT_CSV_PATH`.
+
+    Each row in the CSV file is returned exactly as read, without validation.
+    The caller is responsible for further structural or semantic validation.
+
+    Returns:
+        list[list[str]]: A list of rows parsed from the CSV file, where each row
+        is a list of string fields.
+
+    Raises:
+        FileNotFoundError: If the CSV configuration file does not exist.
+        RuntimeError: If the file cannot be read due to I/O or parsing errors.
+    """
     filepath = os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH)
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Bucket expiration csv file not found: {filepath}")
