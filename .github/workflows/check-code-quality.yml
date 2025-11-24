@@ -278,13 +278,16 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.sources=services/*/rs_server_*
-            -Dsonar.tests=tests
-            -Dsonar.exclusions=**/tests/**,tests/**
-            -Dsonar.coverage.exclusions=**/tests/**,tests/**
+
+            -Dsonar.sources=${{ steps.sonar_dirs.outputs.sources }}
+            -Dsonar.tests=${{ steps.sonar_dirs.outputs.tests }}
+
+            -Dsonar.exclusions=tests/**,**/tests/**
+            -Dsonar.coverage.exclusions=tests/**,**/tests/**
+
             -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
+
             -Dsonar.python.pylint.reportPaths=./pylint-report.txt
             -Dsonar.python.flake8.reportPaths=./flake8-report.txt
             -Dsonar.python.bandit.reportPaths=./bandit-report.json
