@@ -17,6 +17,7 @@
 import asyncio  # for handling asynchronous tasks
 import getpass
 import os
+import re
 import threading
 import time
 import uuid
@@ -866,9 +867,10 @@ class Staging(
         # Forward logging from dask workers to the caller
         client.forward_logging()
 
-        def set_dask_env(host_env: dict):
+        def set_dask_env(host_env: dict, extra_keys: None):
             """Pass environment variables to the dask workers."""
-            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]:
+
+            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"] + extra_keys:  # type: ignore
                 os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside
@@ -877,7 +879,9 @@ class Staging(
             os.environ["AWS_REQUEST_CHECKSUM_CALCULATION"] = "when_required"
             os.environ["AWS_RESPONSE_CHECKSUM_VALIDATION"] = "when_required"
 
-        client.run(set_dask_env, os.environ)
+        pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
+        extra_keys = [key for key in os.environ if pattern.fullmatch(key)]
+        client.run(set_dask_env, os.environ, extra_keys)
 
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
@@ -940,7 +944,7 @@ class Staging(
 
         return refresh_token
 
-    async def process_rspy_features(  # pylint: disable=too-many-return-statements
+    async def process_rspy_features(  # pylint: disable=too-many-return-statements, too-many-branches
         self,
         catalog_collection: str,
     ) -> tuple[str, dict]:
@@ -977,7 +981,11 @@ class Staging(
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
         domains = list(
-            {urlparse(asset.product_url).hostname for asset in self.assets_info if asset.origin_service != "s3"},
+            {
+                ("FTP" if "/NOMINAL" in asset.product_url else urlparse(asset.product_url).hostname)
+                for asset in self.assets_info
+                if asset.origin_service != "s3"
+            },
         )
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
@@ -992,22 +1000,39 @@ class Staging(
         # to the external station if the connection to the dask cluster fails
         try:
             dask_client = self.dask_cluster_connect()
-        except RuntimeError as re:
+        except RuntimeError as run_time_error:
             self.logger.error("Failed to start the staging process")
-            return self.log_job_execution(JobStatus.failed, 0, str(re))
+            return self.log_job_execution(JobStatus.failed, 0, str(run_time_error))
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
-            if domain != "s3":
+            if domain not in ("s3", "FTP"):
                 refresh_token = self.get_refresh_token(domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
+                if domain == "FTP" and not LOCAL_MODE:
+                    self.logger.info("Staging from EDRS-Station FTP server, no token retrieval needed")
+                    # On FTP and cluster mode, check api key roles for EDRS staging
+                    from rs_server_common.authentication.authentication import (  # pylint: disable=C0415
+                        auth_validation,
+                    )
+
+                    for station, _ in {
+                        S3StorageHandler.parse_ftps_path(asset.product_url) for asset in self.assets_info
+                    }:
+                        # for each unique station, validate the api key roles
+                        auth_validation(
+                            station,
+                            "staging_download",
+                            request=self.request,
+                            staging_process=True,
+                        )
                 refresh_token = None
-        except RuntimeError as re:
+        except RuntimeError as rte:
             self.logger.error("Failed to start the staging process")
-            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {re}")
+            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {rte}")
 
         # Step 5: Manage dask tasks in a separate thread
         # starting a thread for managing the dask callbacks

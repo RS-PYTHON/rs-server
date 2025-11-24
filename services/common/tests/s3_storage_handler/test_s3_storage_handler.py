@@ -16,7 +16,7 @@
 
 """Docstring to be added."""
 
-# pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
+# pylint: disable=R0913,R0914, W0613, W0621  # Too many arguments, Too many local variables, unused-argument
 import filecmp
 import os
 import os.path as osp
@@ -1264,3 +1264,213 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
 
 
 # end of the helper functions
+
+
+@pytest.fixture
+def handler(mocker):
+    """
+    Creates a fully mocked S3StorageHandler instance using test secrets.
+    Ensures logger and s3_client are mocked so no real AWS calls are triggered.
+    """
+    secrets, _, _, _ = streaming_setup_test_env()
+
+    h = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    # Replace real AWS client and logger with mocks
+    h.s3_client = mocker.MagicMock()
+    h.logger = mocker.MagicMock()
+
+    return h
+
+
+@pytest.fixture(autouse=True)
+def env(monkeypatch):
+    """
+    Automatically sets fake FTP environment variables for all tests.
+    Individual tests can override or remove them when needed.
+    """
+    monkeypatch.setenv("STATION_HOST", "host")
+    monkeypatch.setenv("STATION_PORT", "21")
+    monkeypatch.setenv("STATION_USER", "user")
+    monkeypatch.setenv("STATION_PASS", "pass")
+
+
+# --------------------
+# Tests
+# --------------------
+
+
+def test_env_missing(monkeypatch, mocker):
+    """
+    When any of the required FTP environment variables is missing,
+    the method should immediately raise ValueError and never attempt
+    to connect to FTP or upload to S3.
+    """
+
+    # Remove all FTP env vars to trigger validation failure
+    for var in ["STATION_HOST", "STATION_PORT", "STATION_USER", "STATION_PASS"]:
+        monkeypatch.delenv(var, raising=False)
+
+    # Patch FTP class so no connection is ever attempted
+    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+
+    # Create handler AFTER environment cleanup
+    secrets, _, _, _ = streaming_setup_test_env()
+    handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    handler.s3_client = mocker.MagicMock()
+    handler.logger = mocker.MagicMock()
+
+    # Assert the error is raised immediately
+    with pytest.raises(ValueError):
+        handler.s3_streaming_from_ftp("ftps://station/NOMINAL/file.txt", "bucket", "key")
+
+
+def test_success_flow(mocker, handler):
+    """
+    Ensures that valid streaming flow triggers:
+    - multipart upload creation
+    - upload_part call
+    - complete_multipart_upload
+    - FTP quit
+    """
+
+    # Patch FTP to avoid real connection
+    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock = ftp_mock_cls.return_value
+
+    # Valid fake streaming callback that simulates reading one chunk
+    def fake_retrbinary(cmd, callback=None, blocksize=8192, rest=None):
+        callback(b"DATA")
+
+    ftp_mock.retrbinary.side_effect = fake_retrbinary
+
+    # Mock multipart and upload part results
+    handler.s3_client.create_multipart_upload.return_value = {"UploadId": "upload123"}
+    handler.s3_client.upload_part.return_value = {"ETag": "etag123"}
+
+    # Act
+    handler.s3_streaming_from_ftp("ftps://station/NOMINAL/test.txt", "mybucket", "mykey")
+
+    # Assert correct S3 upload flow
+    handler.s3_client.create_multipart_upload.assert_called_once()
+    handler.s3_client.upload_part.assert_called_once()
+    handler.s3_client.complete_multipart_upload.assert_called_once()
+
+    # Assert FTP cleanup ran
+    ftp_mock.quit.assert_called_once()
+
+
+def test_abort_on_error(mocker, handler):
+    """
+    If retrbinary fails, the code must:
+    - abort multipart upload
+    - propagate RuntimeError
+    - still call FTP.quit()
+    """
+
+    # Patch FTP so no real connection
+    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock = ftp_mock_cls.return_value
+
+    # Simulate multipart upload started successfully
+    handler.s3_client.create_multipart_upload.return_value = {"UploadId": "uploadX"}
+
+    # Simulate FTP read error
+    ftp_mock.retrbinary.side_effect = Exception("FTP FAIL")
+
+    # Assert RuntimeError propagation
+    with pytest.raises(RuntimeError):
+        handler.s3_streaming_from_ftp("ftps://station/NOMINAL/broken.txt", "bucketB", "keyB")
+
+    # Assert abort was called
+    handler.s3_client.abort_multipart_upload.assert_called_once_with(Bucket="bucketB", Key="keyB", UploadId="uploadX")
+
+    # Ensure FTP quit is always called
+    ftp_mock.quit.assert_called_once()
+
+
+def test_handle_chunk_triggers_single_part(mocker, handler):
+    """
+    Ensures that handle_chunk() uploads exactly one part when the combined
+    streamed data exceeds chunk_size, because the buffer is cleared and no
+    remainder bytes are preserved for a second upload.
+    """
+
+    chunk_size = 4  # small threshold
+
+    # Patch FTP
+    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock = ftp_mock_cls.return_value
+
+    # Two chunks: second one triggers an upload
+    fake_chunks = [b"AAA", b"BBBBB"]
+
+    def fake_retrbinary(cmd, callback=None, blocksize=8192, rest=None):
+        for ch in fake_chunks:
+            callback(ch)
+
+    ftp_mock.retrbinary.side_effect = fake_retrbinary
+
+    handler.s3_client.create_multipart_upload.return_value = {"UploadId": "u123"}
+    handler.s3_client.upload_part.return_value = {"ETag": "etag"}
+
+    # Act
+    handler.s3_streaming_from_ftp(
+        "ftps://station/NOMINAL/file.bin",
+        "bucket",
+        "key",
+        chunk_size=chunk_size,
+    )
+
+    # Assert: only ONE upload inside handle_chunk()
+    handler.s3_client.upload_part.assert_called_once()
+
+    # Then complete_multipart_upload must be called
+    handler.s3_client.complete_multipart_upload.assert_called_once()
+
+    # FTP should quit
+    ftp_mock.quit.assert_called_once()
+
+
+def test_parse_ftps_path_valid():
+    """
+    Ensure that a well-formed FTPS URL is parsed correctly.
+    The function should extract the station component and return
+    the correct remote path beginning with /NOMINAL/.
+    """
+    url = "ftps://STATION123/NOMINAL/some/dir/file.txt"
+
+    # Act
+    station, remote_path = S3StorageHandler.parse_ftps_path(url)
+
+    # Assert
+    assert station == "STATION123"
+    assert remote_path == "/NOMINAL/some/dir/file.txt"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://wrong/scheme",
+        "ftps://ONLYSTATION",
+        "ftps://station/WRONGSEGMENT/file",
+    ],
+)
+def test_parse_ftps_path_invalid(url):
+    """
+    Verify that malformed FTPS URLs raise ValueError.
+    This includes wrong schemes, missing segments, or incorrect
+    NOMINAL structure.
+    """
+    with pytest.raises(ValueError):
+        S3StorageHandler.parse_ftps_path(url)
