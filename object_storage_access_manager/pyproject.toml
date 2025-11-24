@@ -27,19 +27,19 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-#rs-server-common = "*"
-uvicorn = ">=0.34.1,<0.35.0"
-fastapi = ">=0.115.12,<0.116.0"
+rs-server-common = "*"
+uvicorn = ">=0.35.0"
+fastapi = ">=0.120.0,<0.122.0"
 jsonpatch = "^1.33"
 openapi-core = "^0.19.5"
 opentelemetry-api = "^1.34.1"
 opentelemetry-sdk = "^1.34.1"
-opentelemetry-instrumentation = "^0.55b1"
-opentelemetry-instrumentation-fastapi = "^0.55b1"
+opentelemetry-instrumentation = "^0.59b0"
+opentelemetry-instrumentation-fastapi = "^0.59b0"
 opentelemetry-exporter-otlp = "^1.34.1"
-opentelemetry-distro = "^0.55b1"
-opentelemetry-instrumentation-aws-lambda = "^0.55b1"
-opentelemetry-instrumentation-httpx = "^0.55b1"
+opentelemetry-distro = "^0.59b0"
+opentelemetry-instrumentation-aws-lambda = "^0.59b0"
+opentelemetry-instrumentation-httpx = "^0.59b0"
 python-keycloak = ">=5.5.0"
 ovh = "^1.2.0"
 # opentelemetry comes with rs-server-common
@@ -49,7 +49,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 python = "^3.11"
-#rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
+rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^3.3.2"
