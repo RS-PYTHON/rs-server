@@ -19,15 +19,14 @@
 import getpass
 import itertools
 import json
+import os
 from dataclasses import dataclass
 from typing import Any, Literal
 
 import pytest
 import requests
-from moto.server import ThreadedMotoServer
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.app import app, must_be_authenticated
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
@@ -52,7 +51,6 @@ from .helpers import (  # pylint: disable=no-name-in-module
     Collection,
     Feature,
     clear_aws_credentials,
-    export_aws_credentials,
 )
 
 ####################
@@ -320,36 +318,42 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
     )
 
 
-@pytest.fixture(scope="module", name="_init_bucket_for_auth_download")
-def init_bucket_for_auth_download(client, feature_toto_s1_l1_0):
+@pytest.fixture(scope="function", name="_init_bucket_for_auth_download")
+def init_bucket_for_auth_download(init_buckets_module):
     """Init the bucket only once for all the test_authorization_download test cases."""
 
-    # Start moto server
-    moto_endpoint = "http://localhost:8077"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
-    )
-    server = ThreadedMotoServer(port=8077)
-    server.start()
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
 
+    s3_handler, moto_endpoint, _ = init_buckets_module
     requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-    # Upload a file to rspython-ops-catalog-all-production
-    catalog_bucket = "rspython-ops-catalog-all-production"  # Name of default catalog from config file
-    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
     object_content = "testing\n"
-    s3_handler.s3_client.put_object(
-        Bucket=catalog_bucket,
-        Key="S1_L1/images/may24C355000e4102500n.tif",
-        Body=object_content,
-    )
 
-    yield {"object_content": object_content}
+    def upload_object():
+        """Upload a dummy file to the catalog bucket"""
+        catalog_bucket = "rspython-ops-catalog-all-production"  # Name of default catalog from config file
+        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+        s3_handler.s3_client.put_object(
+            Bucket=catalog_bucket,
+            Key="S1_L1/images/may24C355000e4102500n.tif",
+            Body=object_content,
+        )
 
+    # Upload dummy file at the start of each test (scope="function")
+    upload_object()
+    yield {"object_content": object_content, "upload_object": upload_object}
+
+    # Clear bucket at the end of the scope
+    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def stop_bucket(init_buckets_module, client, feature_toto_s1_l1_0):
+    """Clear bucket at the end of the scope (scope="module")"""
+
+    _, _, server = init_buckets_module
+
+    yield  # wait for the end of the scope
     server.stop()
     # Remove bucket credentials form env variables / should create a s3_handler without credentials error
     clear_aws_credentials()
@@ -882,12 +886,12 @@ async def test_authorization_download(
 @get_test_cases("POST/DELETE one item", AuthorizationInfo("toto", "S1_L1", "write"))
 async def test_authorization_post_and_delete_one_item(
     _init_authorization_test,
+    _init_bucket_for_auth_download,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
     user_login: str,
     should_succeed: bool,
-    _init_bucket_for_auth_download,  # the DELETE endpoint needs this fixture, I don't know why
 ):
     """
     Test the POST /catalog/collections/{owner}:{collection_id}/items
@@ -901,6 +905,9 @@ async def test_authorization_post_and_delete_one_item(
 
     # The 'owner:' is needed in the url, except in the 'implicit owner' case (when user == collection owner)
     for owner_in_url in f"{owner}:", "":
+
+        # Upload dummy object before each post and delete
+        _init_bucket_for_auth_download["upload_object"]()
 
         # Create the item
         post_response = client.post(

@@ -24,6 +24,38 @@ Changed
 
 None
 
+[1.0a4] - Sprint 30 - 2025-11-19
+================================
+
+## Added
+
+- RSPY-347: Provide an Ansible playbook to deploy API key manager
+- RSPY-613: Catalog: Fill titles in STAC links
+- RSPY-616: Add eopf:origin_datetime to STAC item sessions
+- RSPY-744: Create a prefect @task to update timeliness fields
+- RSPY-807: Implement EDRS mockup
+- RSPY-812: Implement support for + and - operators with datetime and duration types
+- RSPY-813: Update to stac-fastapi-pgstac 6.1.0
+- RSPY-818: S3-L0 : deliver some integration test results with recent version ( >= 1.3.1)
+- RSPY-833: Support regex in product mapping configuration map
+- RSPY-834: Implement CQL2 temporal operators in rs-server-cadip
+- RSPY-837: Integrate Trivy with Wazuh for container image vulnerability detection
+- RSPY-838: Create rs-server-edrs datalink module
+- RSPY-839: Sprint 30 corrections of issues
+- RSPY-842: Improve rs-workflow-env CI/CD
+- RSPY-843: Improve rs-server-deployment CI/CD
+- RSPY-844: Improve rs-infra-security CI/CD
+- RSPY-855: Support assets that point to a S3 directory
+
+## Fixed
+
+- RSPY-692: [Prometheus] Alert due to wrong prometheus configuration ( 2 pts)
+- RSPY-835: Catalog collections are created twice and search fails ( 3 points )
+- RSPY-840: Catalog: owner_id wildcard "*" is not implemented (3 pts)
+- RSPY-848: PRIP filter by bbox is ignored
+- RSPY-850: PRIP search requests with 'in' operator should not separate values by spaces (1pt)
+- RSPY-851: Cannot retrieve products from PRIP with a geometry type other than Polygon (1pt)
+
 [1.0a3] - Sprint 29 - 2025-10-23
 ================================
 

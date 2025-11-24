@@ -16,6 +16,7 @@
 
 import os
 from collections import namedtuple
+from contextlib import contextmanager
 
 import requests
 from moto.server import ThreadedMotoServer
@@ -122,8 +123,8 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
         yield client  # Does NOT trigger setup_database!
 
 
-@pytest.fixture(scope="function", name="init_buckets")
-def init_buckets_fixture():
+@contextmanager
+def _init_buckets():
     """Initialize s3 moto server and create buckets"""
 
     # Create moto server and temp / catalog bucket
@@ -148,15 +149,33 @@ def init_buckets_fixture():
         assert not s3_handler.list_s3_files_obj(bucket, "")
 
     # Return info
-    yield namedtuple("InitBucketsInfo", ["s3_handler", "moto_endpoint"])(
-        s3_handler,
-        moto_endpoint,
-    )  # type: ignore[call-arg]
+    try:
+        yield namedtuple("InitBucketsInfo", ["s3_handler", "moto_endpoint", "server"])(
+            s3_handler,
+            moto_endpoint,
+            server,
+        )  # type: ignore[call-arg]
+    except GeneratorExit:
+        pass
 
-    # Clear bucket at the end of each test (scope="function")
+    # Clear bucket at the end of the scope (scope="function" or "module")
     server.stop()
     clear_aws_credentials()
     os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+
+@pytest.fixture(scope="function", name="init_buckets")
+def _init_buckets_function():
+    """Fixture to call _init_buckets with scope=function"""
+    with _init_buckets() as result:
+        yield result
+
+
+@pytest.fixture(scope="module", name="init_buckets_module")
+def _init_buckets_module():
+    """Fixture to call _init_buckets with scope=module"""
+    with _init_buckets() as result:
+        yield result
 
 
 @pytest.fixture(scope="session", name="toto_s1_l1")

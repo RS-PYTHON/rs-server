@@ -47,6 +47,7 @@ packages = [
     { include = "rs_server_common", from = "services/common"},
     { include = "rs_server_frontend", from = "services/frontend"},
     { include = "rs_server_staging", from = "services/staging"},
+    { include = "rs_server_edrs", from = "services/edrs" },
 
     { include = "tests", format = "sdist" },
     # { include = "services/adgs/tests", format = "sdist" },
@@ -66,6 +67,7 @@ python = "^3.11"
 rs-server-adgs = {path = "services/adgs", develop = true}
 rs-server-prip = {path = "services/prip", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
+rs-server-edrs = {path = "services/edrs", develop = true}
 rs-server-catalog = {path = "services/catalog", develop = true}
 rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
@@ -88,10 +90,10 @@ pytest-httpx = ">=0.35,<0.36"
 pytest-mock = "^3.15.1"
 black = "^25.1.0"
 mypy = "^1.17.1"
-pre-commit = "^4.4.0"
+pre-commit = "^4.5.0"
 types-requests = "^2.32.4.20250809"
 flake8 = "^7.1.2"
-bandit = "^1.8.5"
+bandit = "^1.9.1"
 safety = "^3.6.0"
 pylint = "^4.0.2"
 flake8-pyproject = "^1.2.3"
@@ -99,7 +101,7 @@ httpx = "^0.28.1"
 sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.42.0"
-click = "8.3.0"
+click = "8.3.1"
 responses = "^0.25.8"
 
 [tool.poetry.requires-plugins]
