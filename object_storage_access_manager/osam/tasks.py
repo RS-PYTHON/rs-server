@@ -15,10 +15,8 @@
 """Main tasks executed by OSAM service."""
 # pylint: disable = wrong-import-order
 import copy
-import csv
 import json
 import logging
-import os
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from functools import wraps
@@ -30,7 +28,6 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProces
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
 from osam.utils.tools import (
-    DEFAULT_CSV_PATH,
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
@@ -38,6 +35,7 @@ from osam.utils.tools import (
     get_keycloak_user_from_description,
     match_roles,
     parse_role,
+    read_bucket_config_file,
 )
 from rs_server_common.utils.logging import Logging
 
@@ -81,48 +79,11 @@ BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
-# configmap_data = s3_storage_config.S3StorageConfigurationSingleton().get_s3_bucket_configuration(
-#     os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
-# )
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
-
-
-def read_bucket_config_file() -> list[list[str]]:
-    """
-    Reads and returns the bucket expiration configuration from a CSV file.
-
-    The function retrieves the CSV filepath from the environment variable
-    `BUCKET_CONFIG_FILE_PATH`. If not set, it falls back to `DEFAULT_CSV_PATH`.
-
-    Each row in the CSV file is returned exactly as read, without validation.
-    The caller is responsible for further structural or semantic validation.
-
-    Returns:
-        list[list[str]]: A list of rows parsed from the CSV file, where each row
-        is a list of string fields.
-
-    Raises:
-        FileNotFoundError: If the CSV configuration file does not exist.
-        RuntimeError: If the file cannot be read due to I/O or parsing errors.
-    """
-    filepath = os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH)
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"Bucket expiration csv file not found: {filepath}")
-
-    data = []
-    try:
-        with open(filepath, newline="", encoding="utf-8") as csvfile:
-            reader = csv.reader(csvfile, skipinitialspace=True)
-            for row in reader:
-                data.append(row)
-    except Exception as exc:
-        raise RuntimeError(f"Error reading bucket expiration csv file {filepath}: {exc}") from exc
-
-    return data
 
 
 # Get keycloak/ovh handler (it doesn't creates duplicates)
@@ -194,16 +155,12 @@ def build_users_data_map():
     For each user retrieved from Keycloak, this function gathers:
       - Custom attributes from Keycloak
       - Assigned Keycloak roles
-      - Associated collections, EOPF types, and buckets from the configmap
 
     Returns:
         dict: A dictionary where each key is a username and the value is another
               dictionary containing:
                 - "keycloak_attribute": Custom user attribute from Keycloak
                 - "keycloak_roles": List of roles assigned to the user
-                - "collections": List of collections the user has access to
-                - "eopf:type": List of EOPF types linked to the user
-                - "buckets": List of buckets associated with the user
     """
     users = get_keycloak_handler().get_keycloak_users()
     return {
