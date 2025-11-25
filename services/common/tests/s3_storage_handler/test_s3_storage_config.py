@@ -14,44 +14,89 @@
 
 """Unit tests for s3_storage_config functions."""
 
-import os
-
 import pytest
 from rs_server_common.s3_storage_handler import s3_storage_config
 
-from .helpers import RESOURCES_FOLDER
 
-S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "expiration_bucket.csv")
-EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "empty_expiration_bucket.csv")
+def test_fetch_csv_success(_mock_get_success):
+    """
+    Tests that `fetch_csv_from_endpoint` successfully parses a valid CSV response.
 
+    This test uses a mocked successful http get request that returns a well-formed
+    csv payload encoded as JSON. The function is expected to:
 
-def test_singleton():
-    """Test if singleton works properly"""
-    singleton = s3_storage_config.S3StorageConfigurationSingleton()
-    assert not singleton.config_file_path
-    assert not singleton.bucket_configuration_csv
-    assert singleton.last_config_file_modification_date == 0
-
-    singleton.get_s3_bucket_configuration(S3_EXPIRATION_BUCKET_CSV_FILE)
-    assert singleton.config_file_path == S3_EXPIRATION_BUCKET_CSV_FILE
-    assert singleton.bucket_configuration_csv
-    assert singleton.last_config_file_modification_date == singleton.get_last_modification_date_of_config_file(
-        S3_EXPIRATION_BUCKET_CSV_FILE,
-    )
-
-    singleton.get_s3_bucket_configuration(EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE)
-    assert singleton.config_file_path == EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
-    assert not singleton.bucket_configuration_csv
-    assert singleton.last_config_file_modification_date == singleton.get_last_modification_date_of_config_file(
-        EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE,
-    )
+    - correctly parse the CSV rows,
+    - return a list of lists,
+    - preserve field order,
+    - contain the expected number of rows.
+    """
+    result = s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+    assert len(result) == 4
+    assert result[0] == ["*", "*", "*", "30", "rspython-ops-catalog-all-production"]
 
 
-def test_get_settings_with_correct_inputs():
+def test_fetch_csv_network_error(_mock_get_network_error):
+    """
+    Tests that network-related failures are converted into `S3StorageConfigurationError`.
+
+    The mocked get request simulates a network-layer error (requests.ConnectionError("network down")).
+    The function is expected to catch the underlying `requests` exception and raise
+    an `S3StorageConfigurationError`.
+
+    Asserts:
+        A `S3StorageConfigurationError` exception is raised.
+    """
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+
+
+def test_fetch_csv_invalid_json(_mock_get_invalid_json):
+    """
+    Tests the behavior when the get response JSON cannot be decoded.
+
+    The mocked request returns malformed JSON (a dictionary). Since the
+    function expects the JSON field to contain CSV data, it must detect this
+    condition and raise `S3StorageConfigurationError`.
+
+    Asserts:
+        A `S3StorageConfigurationError` exception is raised.
+    """
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+
+
+def test_fetch_csv_row_not_list(_mock_get_row_not_list):
+    """
+    Tests handling of rows that are not lists inside the returned JSON payload.
+
+    The mocked response returns a JSON structure where a row is not a list
+    (e.g., a dict or string), which breaks the expected CSV structure.
+    The function should fail to validate
+
+    Asserts:
+        A `S3StorageConfigurationError` exception is raised.
+    """
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+
+
+def test_fetch_csv_non_string(_mock_get_non_string):
+    """
+    Tests validation of non-string fields inside CSV rows.
+
+    The mocked JSON response contains at least one row with a non-string
+    element, which is invalid for CSV data. The function must reject such rows
+    and raise `S3StorageConfigurationError`.
+
+    Asserts:
+        A `S3StorageConfigurationError` exception is raised.
+    """
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+
+
+def test_get_settings_with_correct_inputs(_mock_os_env, _mock_get_success):
     """Test for correct use"""
-    # Setting up correct env var
-    os.environ["BUCKET_CONFIG_FILE_PATH"] = S3_EXPIRATION_BUCKET_CSV_FILE
-
     # Inputs 1
     owner_name = "copernicus"
     collection_name = "s1-aux"
@@ -83,15 +128,99 @@ def test_get_settings_with_correct_inputs():
     )
 
 
-def test_errors_when_config_file_empty():
-    """Test of errors throwing for one specific failing case"""
-    empty_config_file = EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
+def test_errors_when_osam_endpoint_fails(_mock_os_env):
+    """Test of errors throwing for one specific failing case
+    The requests.get is not mocked anymore, so fetch_csv_from_endpoint will fail
+    because there is no real OSAM endpoint at the given URL.
+    """
 
     owner_name = "titi"
     collection_name = "tata"
     eopf_type = "toto"
 
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.get_expiration_delay_from_config(owner_name, collection_name, eopf_type, empty_config_file)
+        s3_storage_config.get_expiration_delay_from_config(owner_name, collection_name, eopf_type)
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.get_bucket_name_from_config(owner_name, collection_name, eopf_type, empty_config_file)
+        s3_storage_config.get_bucket_name_from_config(owner_name, collection_name, eopf_type)
+
+
+def test_get_settings_from_table_exact_match():
+    """
+    Returns the correct result when an exact match exists for owner, collection, and eopf_type.
+    The first row matches all three fields exactly, so the function should
+    immediately return the associated expiration value and bucket name.
+    """
+    table = [
+        ["copernicus", "s1-aux", "orbsct", "7300", "bucket-exact"],
+        ["copernicus", "s1-aux", "*", "40", "bucket-collection"],
+        ["copernicus", "*", "orbsct", "111", "bucket-eopf"],
+        ["*", "*", "*", "30", "bucket-default"],
+    ]
+
+    result = s3_storage_config.get_settings_from_table(
+        table,
+        owner="copernicus",
+        collection="s1-aux",
+        eopf_type="orbsct",
+    )
+    assert result == ("7300", "bucket-exact")
+
+
+def test_get_settings_from_table_owner_collection_fallback():
+    """
+    Fallback logic when owner and collection match but eopf_type does not.
+    The table has no exact match for all three fields, but contains a row where
+    the owner and collection match and eopf_type is '*'. This row should be returned.
+    """
+    table = [
+        ["copernicus", "s1-aux", "*", "40", "bucket-collection"],
+        ["copernicus", "*", "orbsct", "999", "bucket-eopf"],
+        ["*", "*", "*", "30", "bucket-default"],
+    ]
+
+    result = s3_storage_config.get_settings_from_table(
+        table,
+        owner="copernicus",
+        collection="s1-aux",
+        eopf_type="nonexisting",
+    )
+    assert result == ("40", "bucket-collection")
+
+
+def test_get_settings_from_table_owner_eopf_fallback():
+    """
+    Fallback logic when owner and eopf_type match but collection does not.
+
+    In this case the function should return the row with the matching owner
+    and eopf_type and wildcard collection.
+    """
+    table = [
+        ["copernicus", "*", "orbsct", "111", "bucket-eopf"],
+        ["*", "*", "*", "30", "bucket-default"],
+    ]
+
+    result = s3_storage_config.get_settings_from_table(
+        table,
+        owner="copernicus",
+        collection="notfound",
+        eopf_type="orbsct",
+    )
+    assert result == ("111", "bucket-eopf")
+
+
+def test_get_settings_from_table_invalid_row_length():
+    """
+    Tests that a malformed table row (fewer than 5 columns) raises an error.
+
+    A valid configmap row must contain exactly 5 fields. Any row with an invalid
+    structure must trigger `S3StorageConfigurationError`.
+    """
+    table = [["a", "b", "c"]]  # < 5 items
+
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.get_settings_from_table(
+            table,
+            owner="a",
+            collection="b",
+            eopf_type="c",
+        )
