@@ -68,22 +68,20 @@ all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml)) # +
 all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [cluster mode] [dask base image]
-# [ghcr.io/rs-python/dask-gateway-server/base/local] [ghcr.io/rs-python/dask/dask-gateway]
+# [ghcr.io/rs-python/dask/dask-gateway]
 all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base.sh)) # + re-run with --push
 all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base))
 
-# [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
+# [local mode] [cluster mode] [dask eopf]
+# [ghcr.io/rs-python/dask/l0]
+# [ghcr.io/rs-python/dask/s1ard]
+# [ghcr.io/rs-python/dask/mockup]
 # + re-run rs-demo/local-mode/docker/build.dask-eopf-local.py -p all
-all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-local))
-all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-mockup-local))
+all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf))
+all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-mockup))
 
-# [local mode] [dask staging] [ghcr.io/rs-python/dask-gateway-server/staging/local]
-all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local)) # + run rs-server ci/cd
-
-# [cluster mode] [dask eopf] [dask staging]
-# [ghcr.io/rs-python/rs-infra-core-dask-staging] [ghcr.io/rs-python/rs-infra-core-dask-eopf]
-all_files+=($(_realpath rs-infra-core/.github/dask-gateway/Dockerfile)) # + run rs-infra-core ci/cd
-all_files+=($(_realpath rs-infra-core/.github/common/resources/requirements-dask-eopf.txt))
+# [local mode] [cluster mode] [dask staging] [ghcr.io/rs-python/dask/staging]
+all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging)) # + run rs-server ci/cd
 
 # [local mode] [cluster mode] [jupyter base image]
 # [ghcr.io/rs-python/jupyter/minimal-notebook] [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
@@ -157,10 +155,6 @@ $b
 $g
 
 # Build docker images
-docker build -f $d --progress=plain \
-  -t ghcr.io/rs-python/dask-gateway-server/staging/local:latest $whl_dir
-docker build -f $h --progress=plain \
-  -t ghcr.io/rs-python/jupyter/rs-client-libraries/local:latest $whl_dir
 docker build -f $i --progress=plain \
   -t ghcr.io/rs-python/prefect/rs-client-libraries/local:latest --build-arg K8S_IMAGE= $whl_dir
 set +x

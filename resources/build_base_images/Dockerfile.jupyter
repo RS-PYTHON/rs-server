@@ -33,7 +33,8 @@ RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 RUN apt update && apt upgrade -y && pip install -U pip && layer-cleanup.sh
 
 # Install python version and dependencies
-RUN conda install --yes conda-forge::python=${PYTHON_VERSION} && \
+RUN conda update -n base -c conda-forge conda && \
+    conda install --yes conda-forge::python=${PYTHON_VERSION} && \
     python -V && \
     pip install -U pip && \
     pip install \

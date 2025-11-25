@@ -581,8 +581,8 @@ jobs:
         with:
           dockerfile: ./services/staging/.github/Dockerfile.dask-staging-local
           build_context_path: ./build_context_path
-          image_basename: "${{ github.repository_owner }}/dask-gateway-server"
-          image_suffix: /staging/local
+          image_basename: "${{ github.repository_owner }}"
+          image_suffix: /dask/staging
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
