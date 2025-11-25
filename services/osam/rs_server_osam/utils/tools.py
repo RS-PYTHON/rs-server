@@ -13,14 +13,16 @@
 # limitations under the License.
 
 """A collection of varied and versatile utility functions"""
+import csv
 import logging
 import os
 from fnmatch import fnmatch
 
-from rs_server_common.s3_storage_handler import s3_storage_config
 from rs_server_common.utils.logging import Logging
 
+FILEPATH_ENV_VAR = "BUCKET_CONFIG_FILE_PATH"
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
+
 KEYCLOAK_USER_PLACEHOLDER = "%keycloak-user%"
 DEFAULT_DESCRIPTION_TEMPLATE = f"## linked to keycloak user {KEYCLOAK_USER_PLACEHOLDER}"
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE", default=DEFAULT_DESCRIPTION_TEMPLATE)
@@ -37,9 +39,44 @@ LIST_CHECK_OVH_DESCRIPTION = DESCRIPTION_TEMPLATE.split(KEYCLOAK_USER_PLACEHOLDE
 
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
-configmap_data = s3_storage_config.S3StorageConfigurationSingleton().get_s3_bucket_configuration(
-    os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
-)
+
+
+def read_bucket_config_file() -> list[list[str]]:
+    """
+    Reads and returns the bucket expiration configuration from a CSV file.
+    From the reading aspect, the function is thread-safe. If in future
+    this file is modified frequently, consider implementing threading locks.
+    The function retrieves the CSV filepath from the environment variable
+    BUCKET_CONFIG_FILE_PATH. If not set, it falls back to DEFAULT_FILEPATH.
+
+    Each row in the CSV file is returned exactly as read, without validation.
+    The caller is responsible for further structural or semantic validation.
+
+    Returns:
+        list[list[str]]: A list of rows parsed from the CSV file, where each row
+        is a list of string fields.
+
+    Raises:
+        FileNotFoundError: If the CSV configuration file does not exist.
+        RuntimeError: If the file cannot be read due to I/O or parsing errors.
+    """
+    filepath = os.environ.get(FILEPATH_ENV_VAR, DEFAULT_CSV_PATH)
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Bucket expiration csv file not found: {filepath}")
+
+    data = []
+    try:
+        with open(filepath, newline="", encoding="utf-8") as csvfile:
+            reader = csv.reader(csvfile, skipinitialspace=True)
+            for row in reader:
+                data.append(row)
+    except Exception as exc:
+        raise RuntimeError(f"Error reading bucket expiration csv file {filepath}: {exc}") from exc
+
+    return data
+
+
+configmap_data = read_bucket_config_file()
 
 
 def create_description_from_template(keycloak_user: str, template: str) -> str:
