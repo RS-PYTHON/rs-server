@@ -41,15 +41,15 @@ from stac_pydantic.links import Link, Links
 from stac_pydantic.shared import Asset
 
 EDRS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
-EDRS_CONFIG_COLLECTIONS = EDRS_CONFIG / "edrs_collections.yaml"
+EDRS_SEARCH_CONFIG = EDRS_CONFIG / "edrs_search_config.yaml"
 
 logger = Logging.default(__name__)
 
 
 @lru_cache
 def edrs_read_conf() -> dict:
-    """Used each time to read EDRS_COLLECTIONS_YAML config yaml."""
-    config_path = os.environ.get("RSPY_EDRS_COLLECTIONS_CONFIG", str(EDRS_CONFIG_COLLECTIONS))
+    """Used each time to read the EDRS search config YAML."""
+    config_path = os.environ.get("RSPY_EDRS_COLLECTIONS_CONFIG", str(EDRS_SEARCH_CONFIG))
     with open(config_path, encoding="utf-8") as config_file:
         return yaml.safe_load(config_file) or {}
 
@@ -412,7 +412,7 @@ def filter_and_paginate_features(
         else:
             raise ValueError(f"Unsupported filter-lang: {filter_lang_value}")
 
-    q_start, q_end = parse_datetime_interval(datetime_expr)
+    query_start, query_end = parse_datetime_interval(datetime_expr)
 
     def match_props(feature: dict) -> bool:
         properties = feature.get("properties", {})
@@ -440,7 +440,7 @@ def filter_and_paginate_features(
         properties = feature.get("properties", {})
         item_start = parse_iso_value(properties.get("start_datetime") or properties.get("datetime"))
         item_end = parse_iso_value(properties.get("end_datetime") or properties.get("datetime"))
-        return intersects_time(item_start, item_end, q_start, q_end)
+        return intersects_time(item_start, item_end, query_start, query_end)
 
     filtered_features = [feature for feature in features if match_props(feature) and match_datetime(feature)]
 
@@ -498,9 +498,16 @@ def parse_cql2_json_node(node, add_condition):
 
 
 def parse_datetime_interval(expression: str | None):
-    """Parse a datetime or interval string into (start, end) datetimes (closed range)."""
+    """
+    Parse a datetime or interval string into a (start, end) tuple (closed range).
+
+    - None -> (None, None)
+    - Single datetime string -> (instant_start, instant_end)
+    - Interval "start/end" -> (start_dt_or_None, end_dt_or_None), with ".." treated as open bound -> None.
+    """
 
     def parse_iso(value: str | None):
+        """Return a datetime from a single ISO string, tolerant to trailing 'Z'; None if unparsable."""
         if not value:
             return None
         normalized_value = str(value).strip()
@@ -523,25 +530,29 @@ def parse_datetime_interval(expression: str | None):
             parse_iso(start_expr) if start_expr and start_expr != ".." else None,
             parse_iso(end_expr) if end_expr and end_expr != ".." else None,
         )
+    # Single instant: treat it as a closed interval at that instant.
     moment = parse_iso(normalized_expr)
     return moment, moment
 
 
-def intersects_time(item_start, item_end, q_start, q_end):
-    """Return True if item time interval intersects the query interval."""
-    if q_start is None and q_end is None:
+def intersects_time(
+    item_start: DateTime | None,
+    item_end: DateTime | None,
+    query_start: DateTime | None,
+    query_end: DateTime | None,
+) -> bool:
+    """Return True if the item interval intersects the query interval."""
+    if query_start is None and query_end is None:
         return True
     if item_start is None and item_end is None:
         return True
     range_start = item_start or item_end
     range_end = item_end or item_start
-    if range_start is None and range_end is None:
-        return True
     result = True
-    if q_start and q_end:
-        result = (range_start <= q_end) and (range_end >= q_start)
-    elif q_start:
-        result = range_end >= q_start
-    elif q_end:
-        result = range_start <= q_end
+    if query_start and query_end:
+        result = (range_start <= query_end) and (range_end >= query_start)
+    elif query_start:
+        result = range_end >= query_start
+    elif query_end:
+        result = range_start <= query_end
     return result
