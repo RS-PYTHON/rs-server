@@ -107,7 +107,7 @@ def iso(datetime_value: str | None) -> str | None:
     return datetime_value.replace("+00:00", "Z")
 
 
-def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None, str | None]:
+def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str | None]:
     """Extract the start/stop/creation timestamps stored in a DSIB document."""
     block = dsib.get("DCSU_Session_Information_Block") or {}
     start = block.get("time_start") or block.get("start_time") or block.get("start_datetime")
@@ -121,7 +121,7 @@ def parse_dsib_dict(dsib: dict) -> tuple[str | None, str | None, str | None, str
     if not finished:
         finished = created or stop or start
 
-    return None, iso(start), iso(stop), iso(created), iso(finished)
+    return iso(start), iso(stop), iso(created), iso(finished)
 
 
 def collect_session_stats(
@@ -130,7 +130,8 @@ def collect_session_stats(
     session_id: str,
     station_name: str,
 ) -> tuple[dict, list[dict]]:
-    """Returns (session_odata, assets_products)."""
+    """Collect session metadata and raw asset records for a given station session."""
+    # Walk the session root to locate channel subfolders.
     ch_entries = client.walk(f"{satellite_code}/{session_id}") or []
     channel_dirs = [
         e["path"] for e in ch_entries if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))
@@ -144,8 +145,9 @@ def collect_session_stats(
         channel_name = channel_dir.rsplit("/", 1)[-1]  # ch_1
         channel_number = int(channel_name.split("_")[1]) if "_" in channel_name else None
 
+        # Enumerate files for this channel and try to read the DSIB metadata.
         channel_entries = client.walk(f"{satellite_code}/{session_id}/{channel_name}") or []
-        # DSIB
+        # Locate the DSIB manifest in this channel to extract timestamps.
         dsib_entry = next(
             (
                 entry
@@ -157,17 +159,19 @@ def collect_session_stats(
         dsib_dict = None
         if dsib_entry:
             dsib_dict = client.read_file(dsib_entry["path"])
-        # time din DSIB
+        # Parse timing information from DSIB if available.
         if dsib_dict:
-            _, start, stop, created, _ = parse_dsib_dict(dsib_dict)
-            if start:
-                start_times.append(start)
-            if stop:
-                stop_times.append(stop)
-            if created:
-                generation_times.append(created)
+            start, stop, created, _ = parse_dsib_dict(dsib_dict)
+            for value, target in (
+                (start, start_times),
+                (stop, stop_times),
+                (created, generation_times),
+            ):
+                if value:
+                    target.append(value)
 
-        # assets din walk (.raw)
+        # Build asset entries for .raw files, carrying channel info and timestamps.
+        latest_generation_time = next(reversed(generation_times), None)
         for entry in channel_entries:
             entry_path = entry.get("path", "")
             if entry.get("type") == "file" and entry_path.lower().endswith(".raw"):
@@ -175,20 +179,20 @@ def collect_session_stats(
                     {
                         "SessionId": session_id.removesuffix("_dat"),
                         "File_Name": Path(entry_path).name,
-                        "Size_Bytes": int(entry.get("size") or 0),
+                        "Size_Bytes": int(entry.get("size", 0)),
                         "href": f"ftps://{station_name}{entry_path}",
                         "Channel": channel_number,
-                        "Created": generation_times[-1] if generation_times else None,
-                        "Updated": generation_times[-1] if generation_times else None,
+                        "Created": latest_generation_time,
+                        "Updated": latest_generation_time,
                     },
                 )
 
     session_odata = {
         "SessionId": session_id.removesuffix("_dat"),
-        "MinStart": min(start_times) if start_times else None,
-        "MaxStop": max(stop_times) if stop_times else None,
-        "MinCreated": min(generation_times) if generation_times else None,
-        "MaxFinished": max(generation_times) if generation_times else None,  # fallback to Generation_Time
+        "MinStart": min(start_times, default=None),
+        "MaxStop": max(stop_times, default=None),
+        "MinCreated": min(generation_times, default=None),
+        "MaxFinished": max(generation_times, default=None),  # fallback to Generation_Time
         "Platform": platform_name,
         "Constellation": constellation,
     }
@@ -258,12 +262,19 @@ def build_edrs_item_collection(
         f"{service_base}/",
     )
 
+    def is_session_dir(path_str: str, sat_code: str) -> bool:
+        """Return True if the path matches /NOMINAL/<sat_code>/DCS_<num>_<num>_dat."""
+        if not path_str or not path_str.startswith(f"/NOMINAL/{sat_code}/"):
+            return False
+        tail = Path(path_str).name
+        parts = tail.split("_")
+        return len(parts) == 4 and parts[0] == "DCS" and parts[1].isdigit() and parts[2].isdigit() and parts[3] == "dat"
+
     for satellite_code in satellites:
         session_dirs = [
             entry["path"]
             for entry in (client.walk(satellite_code) or [])
-            if entry.get("type") == "dir"
-            and re.fullmatch(rf"/NOMINAL/{re.escape(satellite_code)}/DCS_\d+_\d+_dat", entry.get("path", ""))
+            if entry.get("type") == "dir" and is_session_dir(entry.get("path", ""), satellite_code)
         ]
 
         for session_path in session_dirs:
