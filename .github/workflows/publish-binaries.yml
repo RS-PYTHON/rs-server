@@ -579,7 +579,7 @@ jobs:
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
-          dockerfile: ./services/staging/.github/Dockerfile.dask-staging-local
+          dockerfile: ./services/staging/.github/Dockerfile.dask-staging
           build_context_path: ./build_context_path
           image_basename: "${{ github.repository_owner }}"
           image_suffix: /dask/staging
