@@ -870,13 +870,7 @@ class Staging(
         def set_dask_env(host_env: dict, extra_keys: None):
             """Pass environment variables to the dask workers."""
 
-            required_keys = ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]
-
-            if extra_keys:
-                # Add all keys that match the FTP/S3 pattern
-                required_keys.extend(extra_keys)
-
-            for name in required_keys:
+            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"] + extra_keys:  # type: ignore
                 os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside

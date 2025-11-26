@@ -1397,3 +1397,80 @@ def test_abort_on_error(mocker, handler):
 
     # Ensure FTP quit is always called
     ftp_mock.quit.assert_called_once()
+
+
+def test_handle_chunk_triggers_single_part(mocker, handler):
+    """
+    Ensures that handle_chunk() uploads exactly one part when the combined
+    streamed data exceeds chunk_size, because the buffer is cleared and no
+    remainder bytes are preserved for a second upload.
+    """
+
+    chunk_size = 4  # small threshold
+
+    # Patch FTP
+    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock = ftp_mock_cls.return_value
+
+    # Two chunks: second one triggers an upload
+    fake_chunks = [b"AAA", b"BBBBB"]
+
+    def fake_retrbinary(cmd, callback=None, blocksize=8192, rest=None):
+        for ch in fake_chunks:
+            callback(ch)
+
+    ftp_mock.retrbinary.side_effect = fake_retrbinary
+
+    handler.s3_client.create_multipart_upload.return_value = {"UploadId": "u123"}
+    handler.s3_client.upload_part.return_value = {"ETag": "etag"}
+
+    # Act
+    handler.s3_streaming_from_ftp(
+        "ftps://station/NOMINAL/file.bin",
+        "bucket",
+        "key",
+        chunk_size=chunk_size,
+    )
+
+    # Assert: only ONE upload inside handle_chunk()
+    handler.s3_client.upload_part.assert_called_once()
+
+    # Then complete_multipart_upload must be called
+    handler.s3_client.complete_multipart_upload.assert_called_once()
+
+    # FTP should quit
+    ftp_mock.quit.assert_called_once()
+
+
+def test_parse_ftps_path_valid():
+    """
+    Ensure that a well-formed FTPS URL is parsed correctly.
+    The function should extract the station component and return
+    the correct remote path beginning with /NOMINAL/.
+    """
+    url = "ftps://STATION123/NOMINAL/some/dir/file.txt"
+
+    # Act
+    station, remote_path = S3StorageHandler.parse_ftps_path(url)
+
+    # Assert
+    assert station == "STATION123"
+    assert remote_path == "/NOMINAL/some/dir/file.txt"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://wrong/scheme",
+        "ftps://ONLYSTATION",
+        "ftps://station/WRONGSEGMENT/file",
+    ],
+)
+def test_parse_ftps_path_invalid(url):
+    """
+    Verify that malformed FTPS URLs raise ValueError.
+    This includes wrong schemes, missing segments, or incorrect
+    NOMINAL structure.
+    """
+    with pytest.raises(ValueError):
+        S3StorageHandler.parse_ftps_path(url)
