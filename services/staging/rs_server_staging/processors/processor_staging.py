@@ -879,7 +879,7 @@ class Staging(
             os.environ["AWS_REQUEST_CHECKSUM_CALCULATION"] = "when_required"
             os.environ["AWS_RESPONSE_CHECKSUM_VALIDATION"] = "when_required"
 
-        pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
+        pattern = re.compile(r".*_(HOST|PORT|USER|PASS|_CLIENT_CRT|_CLIENT_KEY|_CA_CRT)$")
         extra_keys = [key for key in os.environ if pattern.fullmatch(key)]
         client.run(set_dask_env, os.environ, extra_keys)
 
