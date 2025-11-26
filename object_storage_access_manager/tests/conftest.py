@@ -23,6 +23,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from osam.utils.keycloak_handler import KeycloakHandler
+from osam.utils.tools import S3StorageConfigurationSingleton
 from rs_server_common import settings as common_settings
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
@@ -124,3 +125,20 @@ def client_(mocker):
     # Test the FastAPI application, opens the database session
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_s3_singleton():
+    """Reset singleton state between tests (important!)
+    The autouse=True makes this fixture be used automatically for each test function.
+    """
+    for attr in [
+        "instance",
+        "file_lock",
+        "bucket_configuration_csv",
+        "config_file_path",
+        "last_config_file_modification_date",
+    ]:
+        if hasattr(S3StorageConfigurationSingleton, attr):
+            delattr(S3StorageConfigurationSingleton, attr)
+    yield
