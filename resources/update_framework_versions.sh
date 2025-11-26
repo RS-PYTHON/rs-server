@@ -49,9 +49,28 @@ _realpath(){
     realpath "${ROOT_DIR}/../$1"
 }
 
-# [local mode] [cluster mode] [rs-server]
+# [local mode] [cluster mode]
+# [python base image] [jupyter base image] [dask base image] [prefect base image]
+# [ghcr.io/rs-python/python]
+# [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
+# [ghcr.io/rs-python/dask/dask-gateway]
+# [ghcr.io/rs-python/prefecthq/prefect]
+all_files+=($(_realpath rs-server/resources/build_base_images.sh)) # + re-run with --push
+all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.dask))
+all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.jupyter))
+all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.python))
+
+# [local mode] [cluster mode] [ci/cd]
+# + run rs-server ci/cd
+all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml))
+all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
+all_files+=($(_realpath rs-client-libraries/.github/workflows/check-code-quality.yml))
+all_files+=($(_realpath rs-client-libraries/.github/workflows/publish-binaries.yml))
+
+# [local mode] [cluster mode] [rs-server] [docker images]
 # [ghcr.io/rs-python/rs-server-adgs]
-all_files+=($(_realpath rs-server/services/adgs/.github/Dockerfile)) # + run rs-server ci/cd
+# + run rs-server ci/cd
+all_files+=($(_realpath rs-server/services/adgs/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-cadip]
 all_files+=($(_realpath rs-server/services/cadip/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-catalog]
@@ -63,15 +82,6 @@ all_files+=($(_realpath rs-server/services/prip/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-staging]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile))
 
-# [ci/cd] [rs-server]
-all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml)) # + run rs-server ci/cd
-all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
-
-# [local mode] [cluster mode] [dask base image]
-# [ghcr.io/rs-python/dask/dask-gateway]
-all_files+=($(_realpath rs-demo/local-mode/docker/build.dask-base.sh)) # + re-run with --push
-all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base))
-
 # [local mode] [cluster mode] [dask eopf]
 # [ghcr.io/rs-python/dask/l0]
 # [ghcr.io/rs-python/dask/s1ard]
@@ -82,12 +92,6 @@ all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-mockup))
 
 # [local mode] [cluster mode] [dask staging] [ghcr.io/rs-python/dask/staging]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging)) # + run rs-server ci/cd
-
-# [local mode] [cluster mode] [jupyter base image]
-# [ghcr.io/rs-python/jupyter/minimal-notebook] [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
-all_files+=($(_realpath rs-server/resources/build_base_images.sh)) # + re-run with --push
-all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.python)) # + re-run with --push
-all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.jupyter)) # + re-run with --push
 
 # [local mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/jupyter/rs-client-libraries/local]
 all_files+=($(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.jupyter)) # + run rs-client-libraries ci/cd
