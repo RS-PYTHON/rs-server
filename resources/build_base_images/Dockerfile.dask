@@ -67,6 +67,7 @@ ENV PATH=/home/dask/.local/bin:$PATH
 WORKDIR /home/dask/
 
 ENTRYPOINT ["tini", "-g", "--"]
+CMD ["dask-gateway-server"]
 
 # Set labels based on the Open Containers Initiative (OCI):
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
