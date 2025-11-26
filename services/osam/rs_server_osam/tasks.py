@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
-# pylint: disable = wrong-import-order
 import copy
 import json
 import logging
+
+# pylint: disable = wrong-import-order
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from functools import wraps
@@ -33,9 +34,9 @@ from osam.utils.tools import (
     create_description_from_template,
     get_allowed_buckets,
     get_keycloak_user_from_description,
+    load_configmap_data,
     match_roles,
     parse_role,
-    read_bucket_config_file,
 )
 from rs_server_common.utils.logging import Logging
 
@@ -78,6 +79,7 @@ BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
 
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
+
 
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
@@ -133,13 +135,12 @@ def get_keycloak_configmap_values():
             - kc_users (list): List of Keycloak user dictionaries.
             - user_allowed_buckets (dict): A mapping of usernames to lists of allowed buckets.
     """
-    try:
-        configmap_data = read_bucket_config_file()
-    except (FileNotFoundError, RuntimeError) as exc:
-        logger.error(f"Bucket expiration csv file not found or error reading file: {exc}")
-        configmap_data = []
     kc_users = get_keycloak_handler().get_keycloak_users()
-    user_allowed_buckets = {}
+    user_allowed_buckets: dict[str, list[str]] = {}
+    configmap_data = load_configmap_data()
+    if configmap_data is None:
+        return kc_users, user_allowed_buckets
+
     for user in kc_users:
         allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
         logger.debug(f"User {user['username']} allowed buckets: {allowed_buckets}")

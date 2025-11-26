@@ -29,7 +29,7 @@ from osam.tasks import (
     build_users_data_map,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
-    read_bucket_config_file,
+    load_configmap_data,
     update_s3_rights_lists,
 )
 from rs_server_common import settings as common_settings
@@ -211,10 +211,10 @@ def get_storage_configuration() -> list[list[str]]:
     """
 
     try:
-        return read_bucket_config_file()
+        return load_configmap_data()
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
+    except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
