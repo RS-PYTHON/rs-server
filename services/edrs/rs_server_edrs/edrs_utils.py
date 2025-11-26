@@ -62,14 +62,6 @@ def edrs_select_config(configuration_id: str) -> dict | None:
     )
 
 
-def select_config(configuration_id: str) -> dict | None:
-    """Used to select a specific configuration from yaml file, returns None if not found."""
-    return next(
-        (item for item in edrs_read_conf()["collections"] if item["id"] == configuration_id),
-        None,
-    )
-
-
 @lru_cache
 def edrs_session_odata_to_stac_template() -> dict:
     """Return the cached STAC template used for session items."""
@@ -506,10 +498,8 @@ def parse_datetime_interval(expression: str | None):
     - Interval "start/end" -> (start_dt_or_None, end_dt_or_None), with ".." treated as open bound -> None.
     """
 
-    def parse_iso(value: str | None):
-        """Return a datetime from a single ISO string, tolerant to trailing 'Z'; None if unparsable."""
-        if not value:
-            return None
+    def parse_iso(value: str):
+        """Return a datetime from a single ISO string, tolerant to trailing 'Z'; raise if empty."""
         normalized_value = str(value).strip()
         if normalized_value.endswith("Z"):
             normalized_value = normalized_value[:-1] + "+00:00"

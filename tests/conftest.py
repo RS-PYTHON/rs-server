@@ -52,6 +52,7 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import map_stac_platform
+from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
 from rs_server_prip import prip_retriever, prip_utils
 
 from tests.app import init_app
@@ -60,9 +61,11 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
 PRIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "prip_search.yaml"
+EDRS_SEARCH = Path(__file__).resolve().parent.parent / "services" / "edrs" / "config" / "edrs_search_config.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
 os.environ["RSPY_PRIP_SEARCH_CONFIG"] = str(PRIP_SEARCH.absolute())
+os.environ["RSPY_EDRS_COLLECTIONS_CONFIG"] = str(EDRS_SEARCH)
 
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
@@ -142,6 +145,13 @@ def fastapi_app_(
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
+
+    if router_prefix == "/edrs":
+
+        async def fake_landing_page(self, request, **kwargs):  # pylint: disable=unused-argument
+            return {"type": "Catalog", "links": [{"rel": "self", "href": str(request.url)}]}
+
+        mocker.patch.object(MockPgstacEdrs, "landing_page", fake_landing_page, create=True)
 
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:

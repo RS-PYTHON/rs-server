@@ -54,7 +54,6 @@ from rs_server_edrs.edrs_utils import (
     edrs_select_config,
     filter_and_paginate_features,
     normalize_features,
-    select_config,
 )
 from stac_fastapi.api.models import GeoJSONResponse
 
@@ -119,7 +118,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     """Ensure the caller has the required EDRS permission for the station/collection."""
 
     # Find the collection which id == the input collection_id
-    collection = select_config(collection_id)
+    collection = edrs_select_config(collection_id)
     if not collection:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown EDRS collection: {collection_id!r}")
     station = collection["station"]
@@ -212,14 +211,14 @@ async def get_edrs_collection_items(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@router.get(path="/edrs/collections/{collection_id}/items/{session_id}", response_class=GeoJSONResponse)
+@router.get(path="/edrs/collections/{collection_id}/items/{item_id}", response_class=GeoJSONResponse)
 @handle_exceptions
 async def get_edrs_item(
     request: Request,
     collection_id: CollectionType,
-    session_id: str,
+    item_id: str,
 ) -> dict:
-    """Return a single STAC Item identified by session_id within the collection."""
+    """Return a single STAC Item identified by item_id within the collection."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
 
@@ -228,13 +227,13 @@ async def get_edrs_item(
     features = item_collection.get("features", [])
 
     # Session IDs in items are stored without the "_dat" suffix
-    wanted = session_id.removesuffix("_dat")
+    wanted = item_id.removesuffix("_dat")
     feature = next((f for f in features if f.get("id") == wanted), None)
 
     if not feature:
         raise HTTPException(
             status_code=404,
-            detail=f"Session '{session_id}' not found in collection '{collection_id}'",
+            detail=f"Session '{item_id}' not found in collection '{collection_id}'",
         )
 
     # Return the single STAC Item (Feature)

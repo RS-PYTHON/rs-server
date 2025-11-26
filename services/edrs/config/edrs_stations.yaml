@@ -16,13 +16,13 @@ stations: |
   pedc:
     service:
       name: edrs
-      url: 127.0.0.1
-      port: 5005
+      url: {URL}
+      port: {PORT}
     domain: mockup-station-pedc.processing.svc.cluster.local
     authentication:
       auth_type: ftpes
-      username: user
-      password: password
+      username: {USER}
+      password: {PASS}
       ca_crt: /certs/ca.crt
       client_crt: /certs/client.crt
       client_key: /certs/client.key
@@ -30,13 +30,13 @@ stations: |
   bedc:
     service:
       name: edrs
-      url: 127.0.0.1
-      port: 5005
+      url: {URL}
+      port: {PORT}
     domain: mockup-station-pedc.processing.svc.cluster.local
     authentication:
       auth_type: ftpes
-      username: user
-      password: password
+      username: {USER}
+      password: {PASS}
       ca_crt: /path/to/ca.crt
       client_crt: /path/to/client.crt
       client_key: /path/to/client.key
