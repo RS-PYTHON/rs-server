@@ -53,7 +53,7 @@ USER root
 RUN apt autoremove -y gcc git && layer-cleanup.sh
 
 # Install dependencies necessary for execution not compilation
-RUN restore-apt.sh && apt install -y libexpat1 && layer-cleanup.sh
+RUN restore-apt.sh && apt update && apt install -y libexpat1 && layer-cleanup.sh
 
 # Remove custom scripts
 RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
