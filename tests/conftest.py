@@ -156,16 +156,21 @@ def fastapi_app_(
         mocker.patch.object(MockPgstacEdrs, "landing_page", fake_landing_page, create=True)
 
         class FakeConnector:
-            def __init__(self, *args, **kwargs):
+            """Lightweight stand-in to avoid FTP calls during EDRS tests."""
+
+            def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
                 self.connected = False
 
             def connect(self):
+                """Mark connector as connected."""
                 self.connected = True
 
             def close(self):
+                """Mark connector as disconnected."""
                 self.connected = False
 
             def walk(self, path):
+                """Return fake directory listings for the expected EDRS structure."""
                 if path == "S1A":
                     return [{"path": "/NOMINAL/S1A/DCS_1_1_dat", "type": "dir"}]
                 if path == "S1A/DCS_1_1_dat":
@@ -178,6 +183,7 @@ def fastapi_app_(
                 return []
 
             def read_file(self, path):
+                """Return a minimal DSIB dict for XML paths; bytes otherwise."""
                 if str(path).lower().endswith("_dsib.xml"):
                     return {
                         "DCSU_Session_Information_Block": {
