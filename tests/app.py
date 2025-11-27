@@ -26,6 +26,7 @@ from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
 from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
+from rs_server_edrs.edrs_utils import edrs_read_conf
 from rs_server_edrs.fastapi.edrs_routers import edrs_routers
 from rs_server_prip.api.prip_search import MockPgstacPrip
 from rs_server_prip.fastapi.prip_routers import prip_routers
@@ -79,4 +80,19 @@ def init_app(router_prefix: str = "") -> FastAPI:
     app.state.readpool = MockPgstacTest.readpool()
     if router_prefix == "/edrs":
         app.state.pgstac_client = MockPgstacEdrs()
+
+        async def fake_all_collections(request=None):  # pylint: disable=unused-argument
+            return {"collections": edrs_read_conf().get("collections", [])}
+
+        app.state.pgstac_client.all_collections = fake_all_collections
+
+        async def fake_get_collection(collection_id: str, request=None):  # pylint: disable=unused-argument
+            collections_cfg = edrs_read_conf().get("collections", [])
+            matched_collection = next(
+                (collection for collection in collections_cfg if collection.get("id") == collection_id),
+                None,
+            )
+            return matched_collection or {}
+
+        app.state.pgstac_client.get_collection = fake_get_collection
     return app

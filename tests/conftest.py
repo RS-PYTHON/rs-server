@@ -52,6 +52,8 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import map_stac_platform
+from rs_server_edrs import edrs_client, edrs_connector
+from rs_server_edrs.api import edrs_endpoints
 from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
 from rs_server_prip import prip_retriever, prip_utils
 
@@ -61,7 +63,7 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
 PRIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "prip_search.yaml"
-EDRS_SEARCH = Path(__file__).resolve().parent.parent / "services" / "edrs" / "config" / "edrs_search_config.yaml"
+EDRS_SEARCH = RESOURCES_FOLDER / "endpoints" / "edrs_search_config.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
 os.environ["RSPY_PRIP_SEARCH_CONFIG"] = str(PRIP_SEARCH.absolute())
@@ -152,6 +154,69 @@ def fastapi_app_(
             return {"type": "Catalog", "links": [{"rel": "self", "href": str(request.url)}]}
 
         mocker.patch.object(MockPgstacEdrs, "landing_page", fake_landing_page, create=True)
+
+        class FakeConnector:
+            def __init__(self, *args, **kwargs):
+                self.connected = False
+
+            def connect(self):
+                self.connected = True
+
+            def close(self):
+                self.connected = False
+
+            def walk(self, path):
+                if path == "S1A":
+                    return [{"path": "/NOMINAL/S1A/DCS_1_1_dat", "type": "dir"}]
+                if path == "S1A/DCS_1_1_dat":
+                    return [{"path": "/NOMINAL/S1A/DCS_1_1_dat/ch_1", "type": "dir"}]
+                if path == "S1A/DCS_1_1_dat/ch_1":
+                    return [
+                        {"path": "/NOMINAL/S1A/DCS_1_1_dat/ch_1/file_dsib.xml", "type": "file"},
+                        {"path": "/NOMINAL/S1A/DCS_1_1_dat/ch_1/data.raw", "type": "file", "size": 10},
+                    ]
+                return []
+
+            def read_file(self, path):
+                if str(path).lower().endswith("_dsib.xml"):
+                    return {
+                        "DCSU_Session_Information_Block": {
+                            "time_start": "2024-01-01T00:00:00Z",
+                            "time_stop": "2024-01-01T01:00:00Z",
+                            "time_created": "2024-01-01T01:00:00Z",
+                        },
+                    }
+                return b""
+
+        mocker.patch.object(edrs_client, "EDRSConnector", FakeConnector)
+        mocker.patch.object(edrs_connector, "EDRSConnector", FakeConnector)
+        mocker.patch.object(edrs_endpoints, "EDRSConnector", FakeConnector)
+        mocker.patch.object(
+            edrs_client,
+            "load_station_config",
+            lambda *args, **kwargs: {
+                "host": "fake",
+                "port": 21,
+                "login": "user",
+                "password": "pass",
+                "ca_cert": "",
+                "client_cert": "",
+                "client_key": "",
+            },
+        )
+        mocker.patch.object(
+            edrs_endpoints,
+            "load_station_config",
+            lambda *args, **kwargs: {
+                "host": "fake",
+                "port": 21,
+                "login": "user",
+                "password": "pass",
+                "ca_cert": "",
+                "client_cert": "",
+                "client_key": "",
+            },
+        )
 
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:
