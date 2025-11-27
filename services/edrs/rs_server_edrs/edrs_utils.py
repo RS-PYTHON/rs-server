@@ -129,7 +129,9 @@ def collect_session_stats(
         e["path"] for e in ch_entries if e.get("type") == "dir" and re.search(r"/ch_\d+$", e.get("path", ""))
     ]
 
-    start_times, stop_times, generation_times = [], [], []
+    start_times: list[str] = []
+    stop_times: list[str] = []
+    generation_times: list[str] = []
     assets_products: list[dict] = []
     platform_name, constellation = platform_constellation_from_code(satellite_code)
 
@@ -539,10 +541,11 @@ def intersects_time(
     range_start = item_start or item_end
     range_end = item_end or item_start
     result = True
+    # At this point range_start/range_end are non-None; only mypy complains about optional comparisons.
     if query_start and query_end:
-        result = (range_start <= query_end) and (range_end >= query_start)
+        result = (range_start <= query_end) and (range_end >= query_start)  # type: ignore[operator]
     elif query_start:
-        result = range_end >= query_start
+        result = range_end >= query_start  # type: ignore[operator]
     elif query_end:
-        result = range_start <= query_end
+        result = range_start <= query_end  # type: ignore[operator]
     return result
