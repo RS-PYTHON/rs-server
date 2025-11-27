@@ -1343,7 +1343,7 @@ def test_success_flow(mocker, handler):
     - complete_multipart_upload
     - FTP quit
     """
-
+    os.environ["USE_SSL"] = "False"
     # Patch FTP to avoid real connection
     ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
     ftp_mock = ftp_mock_cls.return_value
@@ -1474,3 +1474,54 @@ def test_parse_ftps_path_invalid(url):
     """
     with pytest.raises(ValueError):
         S3StorageHandler.parse_ftps_path(url)
+
+
+def test_success_flow_ssl(mocker, handler):
+    """
+    Test a successful FTPS streaming flow with SSL enabled, using only mocks.
+    Ensures:
+      - FTP_TLS is used
+      - SSL context is created
+      - retrbinary is called
+      - multipart upload completes
+      - FTP.quit is called
+    """
+    # Force USE_SSL to True
+    os.environ["USE_SSL"] = "1"
+
+    # Patch SSL context to avoid real cert operations
+    mock_ssl_ctx = mocker.MagicMock()
+    mocker.patch("ssl.create_default_context", return_value=mock_ssl_ctx)
+
+    # Patch FTP_TLS so no real connection happens
+    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP_TLS")
+    ftp_mock = ftp_mock_cls.return_value
+    ftp_config_mock = mocker.MagicMock()
+    ftp_config_mock.use_ssl = True
+    ftp_config_mock.client_crt = "dummy"
+    ftp_config_mock.client_key = "dummy"
+    ftp_config_mock.ca_crt = "dummy"
+
+    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTPConfig", return_value=ftp_config_mock)
+    # Simulate FTP streaming one chunk
+    ftp_mock.retrbinary.side_effect = lambda cmd, callback=None, **kwargs: callback(b"DATA")
+
+    # Mock S3 multipart results
+    handler.s3_client.create_multipart_upload.return_value = {"UploadId": "uploadSSL"}
+    handler.s3_client.upload_part.return_value = {"ETag": "etagSSL"}
+
+    # Act
+    handler.s3_streaming_from_ftp("ftps://station/NOMINAL/test_ssl.txt", "bucket", "key")
+
+    # Assertions
+    ftp_mock.connect.assert_called_once()
+    ftp_mock.auth.assert_called_once()
+    ftp_mock.prot_p.assert_called_once()
+    ftp_mock.login.assert_called_once()
+    ftp_mock.retrbinary.assert_called_once()
+    ftp_mock.quit.assert_called_once()
+
+    handler.s3_client.create_multipart_upload.assert_called_once()
+    handler.s3_client.upload_part.assert_called_once()
+    handler.s3_client.complete_multipart_upload.assert_called_once()
+    mock_ssl_ctx.load_cert_chain.assert_called_once()  # ensures SSL certs are loaded
