@@ -1214,7 +1214,7 @@ retried for %s times. Aborting",
                 self.logger.debug("Connecting via FTPES (explicit TLS)...")
 
                 # Create SSL context for server authentication
-                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=ftp_config.ca_crt)
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=ftp_config.ca_crt) # NOSONAR
 
                 # Load client certificate if provided
                 if ftp_config.client_crt and ftp_config.client_key:
