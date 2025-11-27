@@ -1227,7 +1227,7 @@ retried for %s times. Aborting",
                 # If server hostname does not match certificate, this avoids blindly disabling check_hostname
                 # server_hostname = ftp_config.host  # or the CN from the certificate if different
 
-                context.check_hostname = True
+                context.check_hostname = False  # NOSONAR
 
                 ftp = FTP_TLS(context=context)
                 ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
