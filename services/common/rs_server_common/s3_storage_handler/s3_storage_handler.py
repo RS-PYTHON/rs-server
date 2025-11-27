@@ -88,7 +88,7 @@ class FTPConfig:
     def __init__(self, station: str):
         """Initialize FTPConfig with environment variables."""
         prefix = station.upper()
-        self.use_ssl = os.environ.get("USE_SSL", False)
+        self.use_ssl = os.environ.get("USE_SSL", True)
         self.host = os.environ.get(f"{prefix}_HOST")
         self.port = int(os.environ.get(f"{prefix}_PORT", "21"))
         self.user = os.environ.get(f"{prefix}_USER")
