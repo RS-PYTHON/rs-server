@@ -163,7 +163,9 @@ def test_load_configmap_data_file_not_found(monkeypatch):
 def test_load_configmap_data_runtime_error_returns_none():
     """RuntimeError during load -> returns None."""
     with patch.object(
-        S3StorageConfigurationSingleton, "get_s3_bucket_configuration", side_effect=RuntimeError("Failed to parse CSV"),
+        S3StorageConfigurationSingleton,
+        "get_s3_bucket_configuration",
+        side_effect=RuntimeError("Failed to parse CSV"),
     ):
         assert load_configmap_data() is None
 
