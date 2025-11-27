@@ -62,14 +62,24 @@ all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.python)
 
 # [local mode] [cluster mode] [ci/cd]
 # + run rs-server ci/cd
-all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml))
-all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
+all_files+=($(_realpath operational-services/.github/workflows/check-code-quality.yml))
+all_files+=($(_realpath operational-services/.github/workflows/publish-binaries.yml))
 all_files+=($(_realpath rs-client-libraries/.github/workflows/check-code-quality.yml))
 all_files+=($(_realpath rs-client-libraries/.github/workflows/publish-binaries.yml))
+all_files+=($(_realpath rs-demo/.github/workflows/run_demos.yml))
+all_files+=($(_realpath rs-dpr-service/.github/workflows/check-code-quality.yml))
+all_files+=($(_realpath rs-dpr-service/.github/workflows/publish-binaries.yml))
+all_files+=($(_realpath rs-infra-core/.github/common/resources/install-requirements.sh))
+all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml))
+all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
-# [local mode] [cluster mode] [rs-server] [docker images]
-# [ghcr.io/rs-python/rs-server-adgs]
+# [local mode] [cluster mode] [docker images]
 # + run rs-server ci/cd
+# [ghcr.io/rs-python/rs-osam]
+all_files+=($(_realpath operational-services/object_storage_access_manager/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-dpr-service]
+all_files+=($(_realpath rs-dpr-service/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-server-adgs]
 all_files+=($(_realpath rs-server/services/adgs/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-cadip]
 all_files+=($(_realpath rs-server/services/cadip/.github/Dockerfile))
@@ -81,6 +91,16 @@ all_files+=($(_realpath rs-server/services/frontend/.github/Dockerfile))
 all_files+=($(_realpath rs-server/services/prip/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-staging]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-testmeans_adgs-station-mock]
+all_files+=($(_realpath rs-testmeans/src/ADGS/Dockerfile))
+# [ghcr.io/rs-python/rs-testmeans_prip-station-mock]
+all_files+=($(_realpath rs-testmeans/src/PRIP/Dockerfile))
+# [ghcr.io/rs-python/rs-testmeans_lta-station-mock]
+all_files+=($(_realpath rs-testmeans/src/LTA/Dockerfile))
+# [ghcr.io/rs-python/rs-testmeans_dpr-station-mock]
+all_files+=($(_realpath rs-testmeans/src/DPR/Dockerfile))
+# [ghcr.io/rs-python/rs-testmeans_cadip-station-mock]
+all_files+=($(_realpath rs-testmeans/src/CADIP/Dockerfile))
 
 # [local mode] [cluster mode] [dask eopf]
 # [ghcr.io/rs-python/dask/l0]
