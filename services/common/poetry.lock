@@ -4250,7 +4250,7 @@ version = "1.0.2"
 description = "Makes working with XML feel like you are working with JSON"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d"},
     {file = "xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649"},
@@ -4297,4 +4297,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "4da97e54a85c02919a818164f7af090d2791ffd9531ab4dcd22b9480878b8c71"
+content-hash = "9b9efa14db2bc04ba3e4f302ce614d190601c6b8df5b29f950a46a3cdc772f40"

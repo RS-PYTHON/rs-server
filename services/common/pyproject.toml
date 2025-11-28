@@ -85,6 +85,7 @@ geojson-pydantic = "2.0.0"
 stac-fastapi-types = "^6.0.0"
 requests = "^2.32.5"
 urllib3 = ">=2.5.0"
+xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev]
 optional = true
