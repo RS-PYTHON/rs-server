@@ -20,7 +20,7 @@ All external dependencies are mocked to avoid real network or file operations.
 """
 
 import ssl
-from ftplib import FTP, FTP_TLS # nosec B402 # NOSONAR
+from ftplib import FTP, FTP_TLS  # nosec B402 # NOSONAR
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,7 @@ def ftp_client_direct(monkeypatch):
         host="localhost",
         port=21,
         user="user",
-        password="pass", # nosec B106 # NOSONAR
+        password="pass",  # nosec B106 # NOSONAR
         ca_crt="ca.pem",
         client_crt="client.pem",
         client_key="client.key",
@@ -65,7 +65,7 @@ def test_init_station_mode(monkeypatch):
     assert client.host == "127.0.0.1"
     assert client.port == 2121
     assert client.user == "user1"
-    assert client.password == "pass1" # nosec B106 B105 # NOSONAR
+    assert client.password == "pass1"  # nosec B106 B105 # NOSONAR
     assert client.use_ssl is True
     assert client.ca_cert == "ca.pem"
     assert client.client_cert == "client.pem"
@@ -75,9 +75,9 @@ def test_init_station_mode(monkeypatch):
 def test_init_direct_missing_args():
     """Test that direct mode raises ValueError if host/user/password missing."""
     with pytest.raises(ValueError):
-        FTPClient(host=None, user="user", password="pass") # nosec B106 # NOSONAR
+        FTPClient(host=None, user="user", password="pass")  # nosec B106 # NOSONAR
     with pytest.raises(ValueError):
-        FTPClient(host="h", user=None, password="pass") # nosec B106 # NOSONAR
+        FTPClient(host="h", user=None, password="pass")  # nosec B106 # NOSONAR
     with pytest.raises(ValueError):
         FTPClient(host="h", user="u", password=None)
 
@@ -93,11 +93,11 @@ def test_connect_plain_ftp(mocker):
     mock_ftp = mocker.Mock(spec=FTP)
     mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP", return_value=mock_ftp)
 
-    client = FTPClient(host="localhost", port=21, user="user", password="pass", use_ssl=False) # nosec B106 # NOSONAR
+    client = FTPClient(host="localhost", port=21, user="user", password="pass", use_ssl=False)  # nosec B106 # NOSONAR
     client.connect()
 
     mock_ftp.connect.assert_called_once_with(host="localhost", port=21, timeout=10)
-    mock_ftp.login.assert_called_once_with(user="user", passwd="pass") # nosec B106 # NOSONAR
+    mock_ftp.login.assert_called_once_with(user="user", passwd="pass")  # nosec B106 # NOSONAR
     assert client.ftp == mock_ftp
 
 
@@ -121,7 +121,7 @@ def test_connect_ftps(mocker):
         host="localhost",
         port=21,
         user="user",
-        password="pass", # nosec B106 # NOSONAR
+        password="pass",  # nosec B106 # NOSONAR
         ca_crt="ca.pem",
         client_crt="client.pem",
         client_key="key.pem",
@@ -139,7 +139,7 @@ def test_connect_ftps(mocker):
     mock_ftp_tls.connect.assert_called_once_with(host="localhost", port=21, timeout=10)
     mock_ftp_tls.auth.assert_called_once()
     mock_ftp_tls.prot_p.assert_called_once()
-    mock_ftp_tls.login.assert_called_once_with(user="user", passwd="pass") # nosec B106 # NOSONAR
+    mock_ftp_tls.login.assert_called_once_with(user="user", passwd="pass")  # nosec B106 # NOSONAR
     assert client.ftp == mock_ftp_tls
 
 

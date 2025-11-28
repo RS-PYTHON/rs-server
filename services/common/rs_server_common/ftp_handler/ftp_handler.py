@@ -21,7 +21,7 @@ Includes detailed logging for debugging and traceability.
 import io
 import os
 import ssl
-from ftplib import FTP, FTP_TLS # nosec B402 # NOSONAR
+from ftplib import FTP, FTP_TLS  # nosec B402 # NOSONAR
 from pathlib import Path
 from typing import Any
 
@@ -127,7 +127,7 @@ class FTPClient:
             self.ftp.login(user=self.user, passwd=self.password)
 
         else:
-            self.ftp = FTP() # nosec B321 # NOSONAR
+            self.ftp = FTP()  # nosec B321 # NOSONAR
             self.ftp.connect(host=self.host, port=self.port, timeout=10)
             self.ftp.login(user=self.user, passwd=self.password)
 

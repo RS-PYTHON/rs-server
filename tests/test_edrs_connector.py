@@ -35,7 +35,7 @@ def connector(monkeypatch):
         host="test_host",
         port=21,
         login="test_user",
-        password="dummy_pass",
+        password="dummy_pass",  # nosec B106 B105 # NOSONAR
         ca_cert="ca.pem",
         client_cert="client.crt",
         client_key="client.key",
@@ -49,7 +49,7 @@ def test_init_attributes(monkeypatch):
         host="h",
         port=21,
         login="login_test",
-        password="pass",
+        password="pass",  # nosec B106 B105 # NOSONAR
         ca_cert="ca",
         client_cert="crt",
         client_key="key",
@@ -57,7 +57,7 @@ def test_init_attributes(monkeypatch):
     assert conn.host == "h"
     assert conn.port == 21
     assert conn.user == "login_test"
-    assert conn.password == "pass"
+    assert conn.password == "pass"  # nosec B106 B105 # NOSONAR
     assert conn.ca_cert == "ca"
     assert conn.use_ssl is True
 
@@ -69,7 +69,7 @@ def test_load_station_config_valid(tmp_path: Path):
             "stationA": {
                 "authentication": {
                     "username": "user",
-                    "password": "pass",
+                    "password": "pass",  # nosec B106 B105 # NOSONAR
                     "ca_crt": "ca.pem",
                     "client_crt": "client.pem",
                     "client_key": "client.key",
@@ -90,7 +90,7 @@ def test_load_station_config_valid(tmp_path: Path):
         "host": "example.com",
         "port": 443,
         "login": "user",
-        "password": "pass",
+        "password": "pass",  # nosec B106 B105 # NOSONAR
         "ca_cert": "ca.pem",
         "client_cert": "client.pem",
         "client_key": "client.key",
