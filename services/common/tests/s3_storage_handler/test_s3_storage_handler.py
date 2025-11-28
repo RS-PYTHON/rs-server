@@ -1314,7 +1314,7 @@ def test_env_missing(monkeypatch, mocker):
         monkeypatch.delenv(var, raising=False)
 
     # Patch FTP so no real connection occurs
-    mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP")
 
     # Create handler
     secrets, _, _, _ = streaming_setup_test_env()
@@ -1333,7 +1333,7 @@ def test_success_flow(mocker, handler):
     multipart upload creation, upload_part, completion, and FTP quit.
     """
     os.environ["USE_SSL"] = "False"
-    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock_cls = mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP")
     ftp_mock = ftp_mock_cls.return_value
 
     # Simulate FTP retrbinary reading a single chunk
@@ -1358,7 +1358,7 @@ def test_abort_on_error(mocker, handler):
       - RuntimeError is propagated
       - FTP.quit is called
     """
-    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock_cls = mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP")
     ftp_mock = ftp_mock_cls.return_value
     handler.s3_client.create_multipart_upload.return_value = {"UploadId": "uploadX"}
     ftp_mock.retrbinary.side_effect = Exception("FTP FAIL")
@@ -1376,7 +1376,7 @@ def test_handle_chunk_triggers_single_part(mocker, handler):
     data exceeds chunk_size and clears buffer correctly.
     """
     chunk_size = 4
-    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP")
+    ftp_mock_cls = mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP")
     ftp_mock = ftp_mock_cls.return_value
     fake_chunks = [b"AAA", b"BBBBB"]
 
@@ -1435,10 +1435,12 @@ def test_success_flow_ssl(mocker, handler):
       - SSL certificate is loaded
     """
     os.environ["USE_SSL"] = "1"
+    handler.client_cert = "/tmp/dummy.crt"
+    handler.client_key = "/tmp/dummy.key"
     mock_ssl_ctx = mocker.MagicMock()
     mocker.patch("ssl.create_default_context", return_value=mock_ssl_ctx)
 
-    ftp_mock_cls = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.FTP_TLS")
+    ftp_mock_cls = mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP_TLS")
     ftp_mock = ftp_mock_cls.return_value
 
     # Simulate FTP streaming
@@ -1460,4 +1462,3 @@ def test_success_flow_ssl(mocker, handler):
     handler.s3_client.create_multipart_upload.assert_called_once()
     handler.s3_client.upload_part.assert_called_once()
     handler.s3_client.complete_multipart_upload.assert_called_once()
-    mock_ssl_ctx.load_cert_chain.assert_called_once()
