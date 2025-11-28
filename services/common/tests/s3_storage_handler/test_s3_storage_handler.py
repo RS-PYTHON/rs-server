@@ -1435,8 +1435,8 @@ def test_success_flow_ssl(mocker, handler):
       - SSL certificate is loaded
     """
     os.environ["USE_SSL"] = "1"
-    handler.client_cert = "/tmp/dummy.crt"
-    handler.client_key = "/tmp/dummy.key"
+    handler.client_cert = "/dummy.crt"
+    handler.client_key = "/dummy.key"
     mock_ssl_ctx = mocker.MagicMock()
     mocker.patch("ssl.create_default_context", return_value=mock_ssl_ctx)
 
