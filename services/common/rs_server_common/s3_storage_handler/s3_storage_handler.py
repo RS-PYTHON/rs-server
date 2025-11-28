@@ -32,7 +32,7 @@ import boto3
 import botocore
 import botocore.exceptions
 import requests
-from rs_server_common.data_retrieval.ftp_handler import FTPClient
+from rs_server_common.ftp_handler.ftp_handler import FTPClient
 from rs_server_common.utils.logging import Logging
 
 # seconds

@@ -18,14 +18,14 @@ listing directories, downloading files, reading XML content, and closing connect
 Includes detailed logging for debugging and traceability.
 """
 
+import io
 import os
 import ssl
-import io
-from ftplib import FTP, FTP_TLS
+from ftplib import FTP, FTP_TLS # nosec B402 # NOSONAR
 from pathlib import Path
-from typing import Any, List, Dict, Optional
-import xmltodict
+from typing import Any
 
+import xmltodict
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
@@ -36,15 +36,15 @@ class FTPClient:
 
     def __init__(
         self,
-        station: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-        ca_crt: Optional[str] = None,
-        client_crt: Optional[str] = None,
-        client_key: Optional[str] = None,
-        use_ssl: Optional[bool] = None,
+        station: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        user: str | None = None,
+        password: str | None = None,
+        ca_crt: str | None = None,
+        client_crt: str | None = None,
+        client_key: str | None = None,
+        use_ssl: bool | None = None,
         disable_mlsd: bool = True,
     ):
         """
@@ -97,7 +97,7 @@ class FTPClient:
             self.use_ssl = use_ssl if use_ssl else os.getenv("USE_SSL", "false").strip().lower() in ("1", "true", "T")
 
         self.disable_mlsd = disable_mlsd
-        self.ftp: Optional[FTP] = None
+        self.ftp: FTP | None = None
         logger.debug("Initialized FTPClient: host=%s, use_ssl=%s", self.host, self.use_ssl)
 
     def connect(self) -> None:
@@ -109,16 +109,14 @@ class FTPClient:
 
         if self.use_ssl:
             # Create SSL context for server authentication
-            context: ssl.SSLContext = ssl.create_default_context(
-                ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert
-            )
+            context: ssl.SSLContext = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=self.ca_cert)
 
             # Load client certificate if provided
             if self.client_cert is not None and self.client_key is not None:
                 context.load_cert_chain(certfile=self.client_cert, keyfile=self.client_key)
 
             context.verify_mode = ssl.CERT_REQUIRED
-            context.check_hostname = False # NOSONAR
+            context.check_hostname = False  # NOSONAR
 
             self.ftp = FTP_TLS(context=context)
 
@@ -129,26 +127,25 @@ class FTPClient:
             self.ftp.login(user=self.user, passwd=self.password)
 
         else:
-            self.ftp = FTP()
+            self.ftp = FTP() # nosec B321 # NOSONAR
             self.ftp.connect(host=self.host, port=self.port, timeout=10)
             self.ftp.login(user=self.user, passwd=self.password)
 
-
-    def walk(self, path: str) -> List[Dict[str, Any]]:
+    def walk(self, path: str) -> list[dict[str, Any]]:
         """List directory contents at the given remote path."""
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
         base_path = path.rstrip("/")
         entries = self._list_directory_entries(base_path)
         current_dir = self.ftp.pwd()
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         for entry in entries:
             info = self._get_entry_info(entry, current_dir)
             results.append(info)
         return results
 
-    def _list_directory_entries(self, base_path: str) -> List[str]:
+    def _list_directory_entries(self, base_path: str) -> list[str]:
         """List entries using MLSD or NLST depending on disable_mlsd flag."""
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
@@ -162,7 +159,7 @@ class FTPClient:
             self.disable_mlsd = True
             return self.ftp.nlst(base_path)
 
-    def _get_entry_info(self, entry: str, current_dir: str) -> Dict[str, Any]:
+    def _get_entry_info(self, entry: str, current_dir: str) -> dict[str, Any]:
         """Return dict with path, type, and size for a file or directory."""
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
@@ -178,7 +175,7 @@ class FTPClient:
                 info["size"] = 0
         return info
 
-    def download(self, remote_path: str, local_path = "") -> str:
+    def download(self, remote_path: str, local_path="") -> str:
         """Download remote file to local filesystem."""
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
