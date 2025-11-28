@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
+# Target Docker image name:
+# ghcr.io/rs-python/python:xxx-slim-bookworm
+#
+
 # python:${PYTHON_VERSION}-slim-bookworm
 ARG BASE=xxx
 FROM ${BASE}
@@ -33,5 +38,4 @@ RUN \
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/${BASE}"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/build_base_images/Dockerfile.python"

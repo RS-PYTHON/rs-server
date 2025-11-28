@@ -13,7 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# quay.io/jupyter/base-notebook:hub-<tag>
+#
+# Target Docker image names:
+# ghcr.io/rs-python/quay.io/jupyter/base-notebook:hub-xxx
+#
+
+# quay.io/jupyter/base-notebook:hub-<tag>-py<python_version>
 ARG BASE=xxx
 FROM ${BASE}
 ARG BASE=xxx
@@ -59,5 +64,4 @@ USER jovyan
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/${BASE}"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/build_base_images/Dockerfile.jupyter"

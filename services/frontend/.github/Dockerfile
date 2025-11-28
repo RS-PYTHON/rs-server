@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
+# Target Docker image name:
+# ghcr.io/rs-python/rs-server-frontend
+#
+
 ARG PYTHON_VERSION=3.13.9
 
 # Build stage for multi stage build.
@@ -69,5 +74,4 @@ ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh [DEBUG_
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-server-frontend"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/frontend/.github/Dockerfile"

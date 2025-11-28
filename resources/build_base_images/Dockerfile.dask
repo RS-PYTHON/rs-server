@@ -16,7 +16,11 @@
 # We copy paste https://github.com/dask/dask-gateway/blob/main/dask-gateway-server/Dockerfile
 # and make modifications for the local mode.
 
+#
 # Build the base dask-gateway image for local and cluster modes.
+# Target Docker image name:
+# ghcr.io/rs-python/dask/dask-gateway
+#
 
 ARG PYTHON_VERSION_BASE=xxx
 FROM python:${PYTHON_VERSION_BASE}-slim-bookworm
@@ -73,5 +77,4 @@ CMD ["dask-gateway-server"]
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-demo"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/dask/dask-gateway"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/build_base_images/Dockerfile.dask"
