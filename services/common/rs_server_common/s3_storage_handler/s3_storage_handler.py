@@ -25,6 +25,7 @@ import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from ftplib import FTP  # nosec B402 # NOSONAR
 from typing import Any
 from urllib.parse import urlparse
 
@@ -32,7 +33,6 @@ import boto3
 import botocore
 import botocore.exceptions
 import requests
-from rs_server_common.ftp_handler.ftp_handler import FTPClient
 from rs_server_common.utils.logging import Logging
 
 # seconds
@@ -78,6 +78,22 @@ class GetKeysFromS3Config:
     local_prefix: str
     overwrite: bool = False
     max_retries: int = DWN_S3FILE_RETRIES
+
+
+@dataclass
+class FTPConfig:
+    """Configuration for FTP connection."""
+
+    def __init__(self, station: str):
+        """Initialize FTPConfig with environment variables."""
+        prefix = station.upper()
+        self.host = os.environ.get(f"{prefix}_HOST")
+        self.port = int(os.environ.get(f"{prefix}_PORT", "21"))
+        self.user = os.environ.get(f"{prefix}_USER")
+        self.password = os.environ.get(f"{prefix}_PASS")
+
+        if not all([self.host, self.port, self.user, self.password]):
+            raise ValueError(f"Incomplete environment configuration for station: {station}")
 
 
 @dataclass
@@ -1159,12 +1175,21 @@ retried for %s times. Aborting",
         Raises:
             RuntimeError: If any FTP or S3 upload operation fails.
         """
-        station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
-        client = FTPClient(station)
-        client.connect()
-        self.logger.info("Connected to FTP server %s:%s", client.host, client.port)
-        self.logger.info("Starting streaming upload from station %s to s3://%s/%s", station, bucket, key)
+        try:
+            station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
+            ftp_config = FTPConfig(station)
+            ftp = FTP()  # nosec B321 # NOSONAR
 
+            ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
+            ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
+
+        except ValueError as ve:
+            raise ve
+        except Exception as e:
+            raise RuntimeError(f"Unexpected FTP error: {e}") from e
+
+        self.logger.info("Connected to FTP server %s:%s", ftp_config.host, ftp_config.port)
+        self.logger.info("Starting streaming upload from station %s to s3://%s/%s", station, bucket, key)
         # Start multipart upload
         multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
         upload_id = multipart["UploadId"]
@@ -1197,7 +1222,7 @@ retried for %s times. Aborting",
 
         try:
             # Stream data from FTP
-            client.ftp.retrbinary(f"RETR {ftp_path}", callback=handle_chunk)
+            ftp.retrbinary(f"RETR {ftp_path}", callback=handle_chunk)
 
             # Upload any remaining data
             if buffer.tell() > 0:
@@ -1225,4 +1250,4 @@ retried for %s times. Aborting",
             self.s3_client.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
             raise RuntimeError(f"FTP→S3 upload failed: {e}") from e
         finally:
-            client.close()
+            ftp.quit()
