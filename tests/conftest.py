@@ -171,25 +171,59 @@ def fastapi_app_(
 
             def walk(self, path):
                 """Return fake directory listings for the expected EDRS structure."""
-                if path == "S1A":
-                    return [{"path": "/NOMINAL/S1A/DCS_1_1_dat", "type": "dir"}]
-                if path == "S1A/DCS_1_1_dat":
-                    return [{"path": "/NOMINAL/S1A/DCS_1_1_dat/ch_1", "type": "dir"}]
-                if path == "S1A/DCS_1_1_dat/ch_1":
-                    return [
-                        {"path": "/NOMINAL/S1A/DCS_1_1_dat/ch_1/file_dsib.xml", "type": "file"},
-                        {"path": "/NOMINAL/S1A/DCS_1_1_dat/ch_1/data.raw", "type": "file", "size": 10},
-                    ]
+                sessions = {
+                    "S1A": ["DCS_01_202501270945000000112233_dat"],
+                    "S1C": ["DCS_02_2025013112300000987654_dat"],
+                    "S2B": ["DCS_03_202504191237000000445566_dat"],
+                }
+
+                if path in sessions:
+                    return [{"path": f"/NOMINAL/{path}/{sess}", "type": "dir"} for sess in sessions[path]]
+
+                for sat, sess_list in sessions.items():
+                    for sess in sess_list:
+                        if path == f"{sat}/{sess}":
+                            return [
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_1", "type": "dir"},
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_2", "type": "dir"},
+                            ]
+                        if path == f"{sat}/{sess}/ch_1":
+                            return [
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_1/{sess}_ch_1_DSIB.xml", "type": "file"},
+                                {
+                                    "path": f"/NOMINAL/{sat}/{sess}/ch_1/{sess}_ch_1_DSDB_00001.raw",
+                                    "type": "file",
+                                    "size": 5,
+                                },
+                                {
+                                    "path": f"/NOMINAL/{sat}/{sess}/ch_1/{sess}_ch_1_DSDB_00002.raw",
+                                    "type": "file",
+                                    "size": 5,
+                                },
+                            ]
+                        if path == f"{sat}/{sess}/ch_2":
+                            return [
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_2/{sess}_ch_2_DSIB.xml", "type": "file"},
+                                {
+                                    "path": f"/NOMINAL/{sat}/{sess}/ch_2/{sess}_ch_2_DSDB_00001.raw",
+                                    "type": "file",
+                                    "size": 5,
+                                },
+                            ]
                 return []
 
             def read_file(self, path):
                 """Return a minimal DSIB dict for XML paths; bytes otherwise."""
-                if str(path).lower().endswith("_dsib.xml"):
+                lower_path = str(path).lower()
+                if lower_path.endswith("_dsib.xml"):
+                    is_ch1 = "_ch_1_" in lower_path
+                    start = "2024-01-01T00:00:00Z" if is_ch1 else "2024-01-02T00:00:00Z"
+                    stop = "2024-01-01T01:00:00Z" if is_ch1 else "2024-01-02T01:00:00Z"
                     return {
                         "DCSU_Session_Information_Block": {
-                            "time_start": "2024-01-01T00:00:00Z",
-                            "time_stop": "2024-01-01T01:00:00Z",
-                            "time_created": "2024-01-01T01:00:00Z",
+                            "time_start": start,
+                            "time_stop": stop,
+                            "time_created": stop,
                         },
                     }
                 return b""
