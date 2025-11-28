@@ -23,7 +23,7 @@ from typing import Any
 
 import xmltodict
 import yaml
-from rs_server_common.data_retrieval.ftp_handler import FTPClient
+from rs_server_common.ftp_handler.ftp_handler import FTPClient
 
 # Default path to stations configuration YAML
 DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (

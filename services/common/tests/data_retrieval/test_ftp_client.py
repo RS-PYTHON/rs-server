@@ -24,7 +24,7 @@ from ftplib import FTP, FTP_TLS
 import ssl
 
 import pytest
-from rs_server_common.data_retrieval.ftp_handler import FTPClient
+from rs_server_common.ftp_handler.ftp_handler import FTPClient
 
 # pylint: disable=redefined-outer-name, no-member
 
@@ -91,7 +91,7 @@ def test_connect_plain_ftp(mocker):
       - login() is called with correct user/password
     """
     mock_ftp = mocker.Mock(spec=FTP)
-    mocker.patch("rs_server_common.data_retrieval.ftp_handler.FTP", return_value=mock_ftp)
+    mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP", return_value=mock_ftp)
 
     client = FTPClient(host="localhost", port=21, user="user", password="pass", use_ssl=False)
     client.connect()
@@ -115,7 +115,7 @@ def test_connect_ftps(mocker):
 
     # Mock FTP_TLS object
     mock_ftp_tls = mocker.Mock(spec=FTP_TLS)
-    mocker.patch("rs_server_common.data_retrieval.ftp_handler.FTP_TLS", return_value=mock_ftp_tls)
+    mocker.patch("rs_server_common.ftp_handler.ftp_handler.FTP_TLS", return_value=mock_ftp_tls)
 
     client = FTPClient(
         host="localhost",
