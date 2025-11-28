@@ -52,7 +52,7 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import map_stac_platform
-from rs_server_edrs import edrs_client, edrs_connector
+from rs_server_edrs import edrs_connector
 from rs_server_edrs.api import edrs_endpoints
 from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
 from rs_server_prip import prip_retriever, prip_utils
@@ -228,11 +228,10 @@ def fastapi_app_(
                     }
                 return b""
 
-        mocker.patch.object(edrs_client, "EDRSConnector", FakeConnector)
         mocker.patch.object(edrs_connector, "EDRSConnector", FakeConnector)
         mocker.patch.object(edrs_endpoints, "EDRSConnector", FakeConnector)
         mocker.patch.object(
-            edrs_client,
+            edrs_connector,
             "load_station_config",
             lambda *args, **kwargs: {
                 "host": "fake",

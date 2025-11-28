@@ -43,7 +43,7 @@ from rs_server_common.stac_api_common import (
     handle_exceptions,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_edrs.edrs_client import (
+from rs_server_edrs.edrs_connector import (
     EDRS_STATIONS_CONFIG,
     EDRSConnector,
     load_station_config,
