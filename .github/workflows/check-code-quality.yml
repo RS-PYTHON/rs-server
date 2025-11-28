@@ -30,6 +30,15 @@ env:
   PYTHON_VERSION: 3.13.9
 
 jobs:
+
+  # Ugly workaround for: https://github.com/actions/runner/issues/2372
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+    steps:
+       - run: echo "All set!"
+
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -76,7 +85,6 @@ jobs:
     name: Check linting (pylint, flake8)
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    # continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
@@ -111,7 +119,6 @@ jobs:
     name: Check typing (mypy)
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    # continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
@@ -124,7 +131,6 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    # continue-on-error: true
     permissions: write-all
     steps:
       - uses: actions/checkout@v6
@@ -202,9 +208,26 @@ jobs:
   run-all-pytests:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
+    needs: [setup]
+
+    # Only for this job: try to install and run different python versions.
+    # All other jobs only use the env PYTHON_VERSION that is set above in this file.
+    strategy:
+      matrix:
+        python-version: [3.11.7, "${{ needs.setup.outputs.PYTHON_VERSION }}", 3.14, 3.15 ]
+        include:
+          - experimental: false
+          - python-version: 3.14
+            experimental: true
+          - python-version: 3.15
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Run pytest
         run: ./resources/all_pytests.sh --install
         shell: bash
@@ -216,6 +239,7 @@ jobs:
 
       - name: Save reports
         uses: actions/upload-artifact@v5
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         with:
           name: run-all-pytests
           path: |
@@ -315,9 +339,6 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Mark the job as OK even if the sonarqube quality gate doesn't pass.
-        # We will resolve these issues later.
-        # continue-on-error: true
 
       - if: always()
         run: >
