@@ -30,6 +30,8 @@ from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
 
+NOT_CONNECTED_ERROR_MSG = "Not connected. Call connect() first."
+
 
 class FTPClient:
     """Unified FTP/FTPS client supporting both station-based and direct configuration."""
@@ -134,7 +136,7 @@ class FTPClient:
     def walk(self, path: str) -> list[dict[str, Any]]:
         """List directory contents at the given remote path."""
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         base_path = path.rstrip("/")
         entries = self._list_directory_entries(base_path)
         current_dir = self.ftp.pwd()
@@ -148,7 +150,7 @@ class FTPClient:
     def _list_directory_entries(self, base_path: str) -> list[str]:
         """List entries using MLSD or NLST depending on disable_mlsd flag."""
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         if self.disable_mlsd:
             return self.ftp.nlst(base_path)
 
@@ -162,7 +164,7 @@ class FTPClient:
     def _get_entry_info(self, entry: str, current_dir: str) -> dict[str, Any]:
         """Return dict with path, type, and size for a file or directory."""
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         info = {"path": entry, "type": "dir", "size": 0}
         try:
             self.ftp.cwd(entry)
@@ -178,7 +180,7 @@ class FTPClient:
     def download(self, remote_path: str, local_path="") -> str:
         """Download remote file to local filesystem."""
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         local_path = Path(local_path) if local_path else Path(Path(remote_path).name)
         local_path.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -194,7 +196,7 @@ class FTPClient:
     def read_file(self, remote_path: str) -> Any:
         """Read remote file into memory; parse XML if extension is .xml."""
         if not self.ftp:
-            raise ConnectionError("Not connected. Call connect() first.")
+            raise ConnectionError(NOT_CONNECTED_ERROR_MSG)
         buffer = io.BytesIO()
         try:
             self.ftp.retrbinary(f"RETR {remote_path}", buffer.write)

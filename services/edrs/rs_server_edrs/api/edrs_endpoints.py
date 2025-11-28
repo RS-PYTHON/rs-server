@@ -27,8 +27,6 @@ from fastapi import Request, status
 from fastapi.encoders import ENCODERS_BY_TYPE, jsonable_encoder
 from fastapi.responses import RedirectResponse
 from rs_server_common.authentication import authentication
-
-# from rs_server_common.stac_api_common import sort_feature_collection
 from rs_server_common.stac_api_common import (
     BBoxType,
     CollectionType,
