@@ -32,8 +32,8 @@ PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
 
-PREFECT_TAG=3.2.13
-PREFECT_AWS_TAG=0.5.9
+PREFECT_TAG=3.6.4
+PREFECT_AWS_TAG=0.7.1
 
 all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_AWS_TAG) # var names
 
@@ -113,7 +113,8 @@ all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-mockup))
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging)) # + run rs-server ci/cd
 
 # [local mode] [cluster mode] [prefect with rs-client-libraries]
-# [ghcr.io/rs-python/prefect/rs-client-libraries/local] [ghcr.io/rs-python/prefect/rs-client-libraries/k8s]
+# [ghcr.io/rs-python/prefect/rs-client-libraries/local]
+# [ghcr.io/rs-python/prefect/rs-client-libraries/k8s]
 all_files+=($(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.prefect)) # + run rs-client-libraries ci/cd
 
 # [local mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/jupyter/rs-client-libraries/local]
@@ -136,96 +137,10 @@ for file in "${all_files[@]}"; do
   done
 done
 
-#
-# Build everything locally to test the local mode
+cat << EOF
+TODO:
++ Search all Git repositories for old version numbers (e.g. search for '3.1.0' if you changed a component version \
+from '3.1.0" to '4.2.0') in case some were missed by this script.
++ Check all files that have changed in all Git repositories and how to rebuild the associated CI/CDs and Dockerfiles.
 
-if [[ -z "${GITLAB_EOPF_TOKEN:-}" ]]; then
-    >&2 echo -e "usage: GITLAB_EOPF_TOKEN=*** $0\n(see: https://gitlab.eopf.copernicus.eu/help/user/profile/personal_access_tokens)"
-    exit 1
-fi
-export GITLAB_EOPF_TOKEN
-
-# Wheel packages must be downloaded manually into the local ./whl dir
-whl_dir=$(realpath ${SCRIPT_DIR}/whl)
-
-if [[ \
-  ($(ls ${whl_dir}/rs_server_staging-*.whl | wc -l) != 1) || \
-  ($(ls ${whl_dir}/rs_client_libraries-*.whl | wc -l) != 1) \
-]]; then
-
-  echo -e "
-Instructions:
-#############
-
-  - Go to the latest ci/cd runs for the 'develop' branch:
-    + https://github.com/RS-PYTHON/rs-server/actions/workflows/publish-binaries.yml?query=branch%3Adevelop
-    + https://github.com/RS-PYTHON/rs-client-libraries/actions/workflows/publish-binaries.yml?query=branch%3Adevelop
-
-  - From the 'Artifacts' section at the bottom of the page, download AND UNZIP into '$whl_dir' the wheel packages:
-    + rs_server_staging-<version>.whl
-    + rs_client_libraries-<version>.whl
-
-  - Re-run this script.
-  "
-  exit 2
-fi
-
-set -x
-
-# Run bash scripts
-$a
-$b
-$g
-
-# Build docker images
-docker build -f $i --progress=plain \
-  -t ghcr.io/rs-python/prefect/rs-client-libraries/local:latest --build-arg K8S_IMAGE= $whl_dir
-set +x
-
-echo -e "
-Instructions:
-#############
-
-  - Run all rs-demo notebooks, check that they are OK:
-      cd $(_realpath rs-demo/local-mode)
-      docker compose pull
-      # Re-run this script because docker compose pull has overriden the images built from this script
-      GITLAB_EOPF_TOKEN=*** $0
-      docker compose up
-      # In another terminal, check the dependency versions
-      for c in prefect-server dask-staging dask-eopf jupyter; do
-        docker compose exec \$c pip list | grep -i -e dask -e eopf -e l0 -e prefect
-      done
-      # Run all notebooks
-      ./run-notebooks.sh
-      # Also open Jupyter and run manually the notebooks that were ignored by the previous command
-      docker compose logs jupyter
-
-  - Create a new git branch (from develop) with the same name for the git repositories that were modified:
-    + $(_realpath rs-client-libraries)
-    + $(_realpath rs-demo)
-    + $(_realpath rs-infra-core)
-    + $(_realpath rs-server)
-
-  - Commit and push the changes. Create Pull Requests in github. Check that the ci/cd runs are OK \
-(warning: may need the next step).
-
-  - Build these local Docker images and push them into the Docker registry.
-    WARNING: this may impact other branches in the ci/cd, but this may be necessary for your ci/cd to pass.
-    Do this only when you are ready to merge your Pull Requests.
-    NOTE: other Docker images are built from the ci/cd.
-      export GITLAB_EOPF_TOKEN=***
-      $a --push && \\
-      $b --push && \\
-      $g --push
-
-  - After pushing the Docker images (previous step), run again the ci/cd for all your branches. \
-Check that they are OK. Merge your Pull Requests.
-
-  - Run the infra ci/cd to build the cluster Docker images, then redeploy them on the cluster.
-
-  - Run command 'pip list | grep -i -e dask -e eopf -e l0 -e prefect' on the cluster Dask, Prefect and Jupyter pods \
-to check the dependency versions.
-
-  - Run all notebooks on the cluster JupyterHub, check that they are OK.
-"
+EOF

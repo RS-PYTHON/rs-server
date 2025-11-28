@@ -13,7 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
 # Build the base Docker images that are used in the cluster and in the ci/cd.
+# Target Docker image names:
+# ghcr.io/rs-python/python:xxx-slim-bookworm
+# ghcr.io/rs-python/quay.io/jupyter/base-notebook:hub-xxx
+# ghcr.io/rs-python/dask/dask-gateway
+# ghcr.io/rs-python/prefecthq/prefect:xxx-pyzzz
+# ghcr.io/rs-python/prefecthq/prefect:xxx-pyzzz-k8s
+#
 
 set -euo pipefail
 set -x
@@ -30,7 +38,7 @@ PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
 
-PREFECT_TAG=3.2.13
+PREFECT_TAG=3.6.4
 
 ######################
 # Python and Jupyter #
