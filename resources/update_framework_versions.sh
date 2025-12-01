@@ -105,9 +105,9 @@ all_files+=($(_realpath rs-testmeans/src/CADIP/Dockerfile))
 # [ghcr.io/rs-python/dask/l0]
 # [ghcr.io/rs-python/dask/s1ard]
 # [ghcr.io/rs-python/dask/mockup]
-# + re-run rs-demo/local-mode/docker/build.dask-eopf-local.py -p all
-all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf))
-all_files+=($(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-mockup))
+# + re-run rs-workflow-env/docker/build.dask-eopf.py -p all
+all_files+=($(_realpath rs-workflow-env/docker/Dockerfile.dask-eopf))
+all_files+=($(_realpath rs-workflow-env/docker/Dockerfile.dask-eopf-mockup))
 
 # [local mode] [cluster mode] [dask staging] [ghcr.io/rs-python/dask/staging]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging)) # + run rs-server ci/cd
