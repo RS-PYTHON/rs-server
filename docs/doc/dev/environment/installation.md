@@ -29,17 +29,28 @@ The source code is hosted on GitHub. Personal Access Token (PAT) with specific r
 Install Python
 ==============
 
-RS-Server is using Python 3
+RS-Server is using Python 3.
 
-Using [pyenv](https://github.com/pyenv/pyenv) is recommended for managing Python versions. Pyenv offers a straightforward method to switch between various Python versions.
+Using `pyenv` (https://github.com/pyenv/pyenv) is recommended to manage Python versions. Pyenv offers a straightforward method to switch between various Python versions.
 
-    cd $RSPY_ROOT/src
-    pyenv install 3.<y.z>
-    pyenv local 3.<y.z>
+Follow instructions from https://github.com/pyenv/pyenv?tab=readme-ov-file#a-getting-pyenv to install pyenv, then:
+```sh
+# Install the python versions that are used in the project
+pyenv install 3.11.7
+pyenv install 3.13.9
 
-The Python version is an example, more recent version can be used.
+# Go to the root folder of your rspy project, that contains all you local git repositories
+# and use newest version in all this folder and subfolders
+cd /path/to/parent/rspy
+pyenv local 3.13.9
+# Or if you prefer to use this version everywhere in your system, use: pyenv global 3.13.9
+python -V # should display 3.13.9
 
-The following commands install Python 3 on the workstation and ensure that this version is used exclusively for RS-Server.
+# WARNING: in rs-dpr-service we still need the old version
+cd rs-dpr-service
+pyenv local 3.11.7
+python -V # should display 3.11.7
+```
 
 Install Poetry
 ==============
