@@ -18,6 +18,8 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 PROJECT_ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 PYDOC_DIR="${PROJECT_ROOT_DIR}/docs/doc/pydoc"
 MODULES_DIR="${PROJECT_ROOT_DIR}/services"
+MKDOCS_FILE="${SCRIPT_DIR}/mkdocs.txt"
+BASE_FOR_MKDOCS_LOCATIONS="rs-server/docs/doc/pydoc/"
 
 # LIST OF MODULES IN THE PROJECT
 # To add or remove one, make sure the lists are on the same order with the same number of elements
@@ -130,4 +132,68 @@ create_documentation_for_rs_server() {
 }
 
 
+mkdocs_for_folder() {
+    # Generates recursively the mkdocs table of contents of one folder in the "pydoc" folder, with correct indentation
+    #
+    # USAGE:
+    # mkdocs_for_folder FOLDER_NAME FOLDER_LEVEL PREVIOUS_FOLDER
+    # (where FOLDER_LEVEL is the the level of the given folder relatively to the first folder given)
+    #
+    # EXAMPLE
+    # mkdocs_for_folder rs_server_adgs/api/ 1 rs_server_adgs/
+
+    folder_name=$1
+    folder_level=$2
+    previous_folders=$3
+
+    # Compute indentation: 4 spaces as a base, then add two spaces for each folder level
+    mkdocs_indent="    "
+    for i in $(seq 1 $folder_level); do
+        mkdocs_indent="${mkdocs_indent}  "
+    done
+    # Create line for folder name
+    mkdocs="${mkdocs_indent}- ${folder_name::-1}:\n"
+
+    cd $folder_name
+
+    # For each file in the folder: add it as a line with a reference to the md file location
+    files_list=$(ls -p | grep -v /)
+    readarray -t files_list <<< "$files_list"
+    for file in "${files_list[@]}"; do
+        mkdocs="${mkdocs}${mkdocs_indent}  - ${file::-3}: ${BASE_FOR_MKDOCS_LOCATIONS}${previous_folders}${folder_name}${file}\n"
+    done
+
+    # For each folder in the folder: repeat the process to create a correct folders tree
+    folders=$(ls -p | grep / )
+    if [[ "$folders" ]]; then
+        readarray -t folders_list <<< "$folders"
+        for folder in "${folders_list[@]}"; do
+            new_level=$((folder_level + 1))
+            new_mkdocs=$(mkdocs_for_folder $folder $new_level "${previous_folders}${folder_name}")
+            mkdocs="${mkdocs}${new_mkdocs}"
+        done
+    fi
+
+    cd ..
+    echo "${mkdocs}"
+}
+
+
+build_mkdocs_file() {
+    # Generates complete mkdocs file, for everything in the module names list
+    #
+    # USAGE:
+    # build_mkdocs_file
+    rm $MKDOCS_FILE
+    cd $PYDOC_DIR
+    for module in "${MODULE_NAMES[@]}"; do
+        module_mkdocs=$(mkdocs_for_folder "${module}/" 0 "")
+        echo -e "${module_mkdocs}" >> $MKDOCS_FILE
+    done
+
+    echo "✓ Generated mkdocs table of contents at ${MKDOCS_FILE}."
+}
+
+
 create_documentation_for_rs_server
+build_mkdocs_file
