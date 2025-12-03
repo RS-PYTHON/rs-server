@@ -22,7 +22,7 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
@@ -34,6 +34,7 @@ from osam.tasks import (
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
+from rs_server_common.authentication.apikey import apikey_security
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -50,10 +51,39 @@ from starlette.status import (  # pylint: disable=C0411
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
 # Default timeout of the synchronization logic (2 minutes)
 DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))
+RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 
 
 # Initialize a FastAPI application
-app = FastAPI(title="osam-service", root_path="", debug=True)
+app = FastAPI(
+    title="OSAM-Service",
+    root_path="",
+    debug=True,
+    swagger_ui_init_oauth={
+        "clientId": "(this value is not used)",
+        "appName": "API-Key Manager",
+        "usePkceWithAuthorizationCodeGrant": True,
+    },
+    description=f"""
+This service is designed to manage access to object storage resources.
+It provides a unified, secure interface and tooling to handle **authorization, access controls** and **storage access policies** for object buckets, enabling safe, consistent and centralized object-storage usage across services.
+
+---
+#### Authentication
+
+<a href="/auth/login" target="_self">Login</a> /
+<a href="/auth/logout" target="_blank">Logout</a>
+
+---
+#### Links
+
+<a href="https://home.rs-python.eu/" target="_blank">Website</a> /
+<a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
+<a href="{RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
+
+---
+""",
+)
 router = APIRouter(tags=["OSAM service"])
 
 logger = Logging.default(__name__)
@@ -95,7 +125,7 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 
 @router.post("/storage/accounts/update")
-async def accounts_update():
+async def accounts_update(auth=Depends(apikey_security)):
     """
     Triggers the synchronization of Keycloak and OVH (OBS) account information.
 
@@ -103,8 +133,8 @@ async def accounts_update():
     logic between Keycloak and the Object Storage Access Manager (OSAM). It doesn't wait for a completion signal
     from the background task and returns a success response.
 
-    Returns:
-        JSONResponse: Always a success message saying that the sync algorythm of the accounts started.
+    ### Returns:
+    JSONResponse — Always a success message saying that the sync algorythm of the accounts started.
 
     """
     # Trigger the background task. This was also requested by the operations team: the endpoint should return
@@ -144,21 +174,29 @@ def get_user_rights(user):
 
 
 @router.get("/storage/account/{user}/update")
-async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: disable=unused-argument
+async def apply_user_obs_access_policy(
+    request: Request,
+    user: str,
+    auth=Depends(apikey_security),
+):  # pylint: disable=unused-argument
     """
     Applies the S3 access policy for a given user.
 
-    This endpoint:
-      - Retrieves the user's current rights based on Keycloak roles.
-      - Applies the corresponding s3 access policy via the object storage provider,
-      by calling the ovh endpoint
+    This endpoint retrieves the user's effective S3 access rights from their
+    Keycloak roles and applies the corresponding policy to their Object
+    Storage account using the OVH API. The operation ensures that the user's
+    OBS permissions match their Keycloak permissions. If the user does not
+    exist or if the policy update fails, an error response is returned.
 
-    Args:
-        request (Request): FastAPI request object (currently unused).
-        user (str): Username of the account for which to apply access rights.
+    ### Args
+    user (str) — The Keycloak username for which the policy should be applied.
 
-    Returns:
-        JSONResponse: A JSON response confirming that the access policy has been applied.
+    ### Returns
+    JSONResponse — A JSON response confirming that the access policy has been applied.
+
+    ### Raises
+    404 — If the user does not exist in Keycloak.
+    400 — If the policy could not be applied by the Object Storage provider.
     """
 
     logger.debug("Endpoint for applying the user access policy")
@@ -173,19 +211,24 @@ async def apply_user_obs_access_policy(request: Request, user: str):  # pylint: 
 
 
 @router.get("/storage/account/{user}/rights")
-async def user_rights(request: Request, user: str):  # pylint: disable=unused-argument
+async def user_rights(request: Request, user: str, auth=Depends(apikey_security)):  # pylint: disable=unused-argument
     """
     Retrieves the S3 access rights policy for a given user.
 
-    This endpoint:
-      - Returns the full S3 access policy as determined from the user's Keycloak roles.
+    This endpoint checks the user's access rights based on the roles
+    assigned to them in Keycloak. The resulting policy describes the buckets,
+    paths, and permission levels (such as read, write and download) that
+    the user is entitled to access. If the user does not exist, a 404 error is
+    returned.
 
-    Args:
-        request (Request): FastAPI request object (currently unused).
-        user (str): Username of the account for which to retrieve access rights.
+    ### Args
+    user (str) — Username of the account for which to retrieve access rights.
 
-    Returns:
-        JSONResponse: A JSON response containing the user's S3 access rights policy.
+    ### Returns
+    JSONResponse — The computed S3/OBS access policy for the user.
+
+    ### Raises
+    404 — If the user does not exist in Keycloak.
     """
 
     logger.debug("Endpoint for getting the user rights")
@@ -197,17 +240,42 @@ async def user_rights(request: Request, user: str):  # pylint: disable=unused-ar
 
 @router.get("/storage/account/credentials")
 async def get_credentials(request: Request):
-    """Endpoint used to get user credentials from cloud provider.
-    Request MUST contain oauth2 cookie in header"""
+    """
+    Retrieve temporary S3/OBS access credentials for the authenticated user.
+
+    The endpoint returns short-lived S3 credentials associated with that user.
+    The request must include a valid OAuth2 cookie, which is used to identify
+    the Keycloak user. If the cookie is missing or invalid, the
+    request is rejected.
+
+    ### Returns
+    JSONResponse — The temporary S3/OBS access credentials for the user.
+
+    ### Raises
+    401 — If the OAuth2 cookie is missing or invalid.
+    """
+
     auth_info = await oauth2.get_user_info(request)
     logger.info(f"Getting ovh s3 credentials for keycloak user {auth_info.user_login}")
     return get_user_s3_credentials(auth_info.user_login)
 
 
-@app.get("/storage/configuration", summary="Get storage configuration table as JSON")
+@app.get("/storage/configuration", summary="Get storage configuration", tags=["OSAM service"])
 def get_storage_configuration() -> list[list[str]]:
     """
-    Returns the parsed CSV as JSON: list[list[str]].
+    Retrieve the current storage configuration from the configuration file.
+
+    This endpoint reads the CSV-based configuration stored in Object Storage
+    and returns it as a JSON array of arrays. Each inner array represents a
+    row of the configuration file. If the configuration file is missing or
+    cannot be read, an error response is returned.
+
+    ### Returns
+    list[list[str]] — The parsed configuration file as a JSON array.
+
+    ### Raises
+    404 — If the configuration file does not exist.
+    500 — If an unexpected error occurs while reading the file
     """
 
     try:
