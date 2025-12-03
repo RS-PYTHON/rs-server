@@ -46,7 +46,7 @@ def fetch_csv_from_endpoint(endpoint: str) -> list[list[str]]:
         )
 
     for row in data:
-        if not isinstance(row, list) or not all(isinstance(x, str) for x in row):
+        if not isinstance(row, list) or not all(isinstance(x, str) for x in row) or len(row) != 5:
             raise S3StorageConfigurationError(
                 "Invalid configuration format: expected list[list[str]] containing only strings",
             )

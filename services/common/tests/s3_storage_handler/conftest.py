@@ -59,8 +59,8 @@ class MockResponse:
 
         Behavior:
             - Raises requests.HTTPError if:
-                • raise_error is True OR
-                • status_code is >= 400
+                - raise_error is True OR
+                - status_code is >= 400
 
         Raises:
             requests.HTTPError: When an http error condition is simulated.
@@ -71,8 +71,8 @@ class MockResponse:
 
 @pytest.fixture
 def _mock_os_env(monkeypatch):
-    monkeypatch.setenv("RSPY_HOST_OSAM", "https://dummy")
-    return "https://dummy"
+    monkeypatch.setenv("RSPY_HOST_OSAM", "https://dummy-osam")
+    return "https://dummy-osam"
 
 
 @pytest.fixture
@@ -133,6 +133,28 @@ def _mock_get_non_string(monkeypatch):
 
     def _mock_get(url, timeout):
         return MockResponse(json_data=[["a", 123, "b"]])  # 123 invalid
+
+    monkeypatch.setattr(requests, "get", _mock_get)
+    return _mock_get
+
+
+@pytest.fixture
+def _mock_get_row_wrong_length_too_short(monkeypatch):
+    """Row has fewer than 5 columns."""
+
+    def _mock_get(url, timeout):
+        return MockResponse(json_data=[["a", "b", "c"]])  # only 3 entries
+
+    monkeypatch.setattr(requests, "get", _mock_get)
+    return _mock_get
+
+
+@pytest.fixture
+def _mock_get_row_wrong_length_too_long(monkeypatch):
+    """Row has more than 5 columns."""
+
+    def _mock_get(url, timeout):
+        return MockResponse(json_data=[["a", "b", "c", "d", "e", "f"]])  # 6 entries
 
     monkeypatch.setattr(requests, "get", _mock_get)
     return _mock_get

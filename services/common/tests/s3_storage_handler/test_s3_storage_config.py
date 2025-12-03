@@ -20,7 +20,7 @@ from rs_server_common.s3_storage_handler import s3_storage_config
 
 def test_fetch_csv_success(_mock_get_success):
     """
-    Tests that `fetch_csv_from_endpoint` successfully parses a valid CSV response.
+    Tests that fetch_csv_from_endpoint successfully parses a valid CSV response.
 
     This test uses a mocked successful http get request that returns a well-formed
     csv payload encoded as JSON. The function is expected to:
@@ -30,69 +30,57 @@ def test_fetch_csv_success(_mock_get_success):
     - preserve field order,
     - contain the expected number of rows.
     """
-    result = s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+    result = s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
     assert len(result) == 4
     assert result[0] == ["*", "*", "*", "30", "rspython-ops-catalog-all-production"]
 
 
 def test_fetch_csv_network_error(_mock_get_network_error):
     """
-    Tests that network-related failures are converted into `S3StorageConfigurationError`.
-
-    The mocked get request simulates a network-layer error (requests.ConnectionError("network down")).
-    The function is expected to catch the underlying `requests` exception and raise
-    an `S3StorageConfigurationError`.
-
-    Asserts:
-        A `S3StorageConfigurationError` exception is raised.
+    Tests that network-related failures are converted into S3StorageConfigurationError.
     """
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
 
 
 def test_fetch_csv_invalid_json(_mock_get_invalid_json):
     """
     Tests the behavior when the get response JSON cannot be decoded.
-
-    The mocked request returns malformed JSON (a dictionary). Since the
-    function expects the JSON field to contain CSV data, it must detect this
-    condition and raise `S3StorageConfigurationError`.
-
-    Asserts:
-        A `S3StorageConfigurationError` exception is raised.
     """
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
 
 
 def test_fetch_csv_row_not_list(_mock_get_row_not_list):
     """
     Tests handling of rows that are not lists inside the returned JSON payload.
-
-    The mocked response returns a JSON structure where a row is not a list
-    (e.g., a dict or string), which breaks the expected CSV structure.
-    The function should fail to validate
-
-    Asserts:
-        A `S3StorageConfigurationError` exception is raised.
     """
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
 
 
 def test_fetch_csv_non_string(_mock_get_non_string):
     """
     Tests validation of non-string fields inside CSV rows.
-
-    The mocked JSON response contains at least one row with a non-string
-    element, which is invalid for CSV data. The function must reject such rows
-    and raise `S3StorageConfigurationError`.
-
-    Asserts:
-        A `S3StorageConfigurationError` exception is raised.
     """
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.fetch_csv_from_endpoint("https://dummy")
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
+
+
+def test_fetch_csv_row_wrong_length_too_short(_mock_get_row_wrong_length_too_short):
+    """
+    Tests handling of CSV rows that contain fewer than the required 5 fields.
+    """
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
+
+
+def test_fetch_csv_row_wrong_length_too_long(_mock_get_row_wrong_length_too_long):
+    """
+    Tests handling of CSV rows that contain more than the required 5 fields.
+    """
+    with pytest.raises(s3_storage_config.S3StorageConfigurationError):
+        s3_storage_config.fetch_csv_from_endpoint("https://dummy-osam")
 
 
 def test_get_settings_with_correct_inputs(_mock_os_env, _mock_get_success):
@@ -213,7 +201,7 @@ def test_get_settings_from_table_invalid_row_length():
     Tests that a malformed table row (fewer than 5 columns) raises an error.
 
     A valid configmap row must contain exactly 5 fields. Any row with an invalid
-    structure must trigger `S3StorageConfigurationError`.
+    structure must trigger S3StorageConfigurationError.
     """
     table = [["a", "b", "c"]]  # < 5 items
 
