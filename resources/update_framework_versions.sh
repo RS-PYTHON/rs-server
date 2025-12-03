@@ -54,10 +54,10 @@ _realpath(){
 # [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
 # [ghcr.io/rs-python/python]
 # [ghcr.io/rs-python/prefecthq/prefect]
-all_files+=($(_realpath rs-server/resources/build_base_images.sh)) # + re-run with --push
-all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.dask))
-all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.jupyter))
-all_files+=($(_realpath rs-server/resources/build_base_images/Dockerfile.python))
+all_files+=($(_realpath rs-workflow-env/docker/base/build-base-images.sh)) # + re-run with --push
+all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.dask))
+all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.jupyter))
+all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.python))
 
 # [local mode] [cluster mode] [ci/cd]
 # + run rs-server ci/cd
@@ -105,9 +105,9 @@ all_files+=($(_realpath rs-testmeans/src/CADIP/Dockerfile))
 # [ghcr.io/rs-python/dask/l0]
 # [ghcr.io/rs-python/dask/s1ard]
 # [ghcr.io/rs-python/dask/mockup]
-# + re-run rs-workflow-env/docker/build.dask-eopf.py -p all
-all_files+=($(_realpath rs-workflow-env/docker/Dockerfile.dask-eopf))
-all_files+=($(_realpath rs-workflow-env/docker/Dockerfile.dask-eopf-mockup))
+# + re-run rs-workflow-env/docker/eopf/build-dask-eopf.py -p all
+all_files+=($(_realpath rs-workflow-env/docker/eopf/Dockerfile.dask-eopf))
+all_files+=($(_realpath rs-workflow-env/docker/eopf/Dockerfile.dask-eopf-mockup))
 
 # [local mode] [cluster mode] [dask staging] [ghcr.io/rs-python/dask/staging]
 all_files+=($(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging)) # + run rs-server ci/cd
