@@ -61,13 +61,13 @@ BLOCK_LIST_READ_TEMPLATE = {
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
-BLOCk_LIST_READ_DOWNLOAD_TEMPLATE = {
+BLOCK_LIST_READ_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
     "Action": ["s3:GetObject"],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
-BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
+BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
     "Action": [
         "s3:GetObject",
@@ -411,8 +411,8 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     # fields from the s3 access rights lists
     access_rights_list_keys = [
         (STRKEY_ACCESS_RIGHT_READ_LIST, BLOCK_LIST_READ_TEMPLATE),
-        (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCk_LIST_READ_DOWNLOAD_TEMPLATE),
-        (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE),
+        (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCK_LIST_READ_DOWNLOAD_TEMPLATE),
+        (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE),
     ]
     statements: list[dict[str, Any]] = []
     for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks
