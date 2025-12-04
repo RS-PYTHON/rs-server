@@ -456,10 +456,12 @@ def parse_cql2_text(expr: str, add_condition):
         segment = raw_segment.strip()
         if not segment:
             continue
-        match_obj = re.match(r"^([\w\:\.\-]+)\s*=\s*(.+)$", segment)
-        if not match_obj:
+        if "=" not in segment:
             raise ValueError(f"Invalid filter condition: {segment!r}")
-        left, right = match_obj.group(1).strip(), match_obj.group(2).strip()
+        left, right = segment.split("=", 1)
+        left, right = left.strip(), right.strip()
+        if not re.fullmatch(r"[\w:.\-]+", left):
+            raise ValueError(f"Invalid filter condition: {segment!r}")
         if right.startswith(("'", '"')) and right.endswith(("'", '"')) and len(right) >= 2:
             right = right[1:-1]
         add_condition(left, right)
