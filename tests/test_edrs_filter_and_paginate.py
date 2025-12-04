@@ -19,7 +19,6 @@ from fastapi import HTTPException
 from services.common.rs_server_common.stac_api_common import get_edrs_queryables
 from services.edrs.rs_server_edrs.edrs_utils import filter_and_paginate_features
 
-
 # Use the real EDRS queryables definition from the service config
 QUERYABLES = get_edrs_queryables()
 
