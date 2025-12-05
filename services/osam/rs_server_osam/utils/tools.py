@@ -43,7 +43,9 @@ logger.setLevel(logging.DEBUG)
 
 
 class S3StorageConfigurationSingleton:
-    """Singleton to keep the content of the config file in memory, to avoid excessive I/O operations on the file."""
+    """Singleton to keep the content of the config file in memory, to avoid excessive I/O operations on the file.
+    NOTE: We use always the same config file which is bucket_expiration.csv mounted as a configmap.
+    """
 
     def __new__(cls, config_file_path: str = ""):
         if not hasattr(cls, "instance"):
@@ -68,8 +70,12 @@ class S3StorageConfigurationSingleton:
         Args:
             config_file_path (str): Path to the config file.
         """
+        # import pdb; pdb.set_trace()
         if not os.path.exists(config_file_path):
             raise FileNotFoundError(f"Bucket expiration csv file not found: {config_file_path}")
+        # If someone wants to use it with 2 config files, we don't support this. Change the logic here if needed.
+        if cls.config_file_path and (cls.config_file_path != config_file_path):
+            raise RuntimeError("S3StorageConfigurationSingleton can only manage one config file at a time.")
 
         if (
             cls.config_file_path == config_file_path
