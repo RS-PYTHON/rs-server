@@ -16,7 +16,10 @@ Basic endpoint tests for the EDRS service.
 """
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
+from starlette.requests import Request
 
 
 @pytest.mark.unit
@@ -176,6 +179,177 @@ def test_edrs_single_item(client: TestClient, fastapi_app):  # pylint: disable=u
         ],
         "collection": "s1_pedc",
     }
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("fastapi_app", [{"router_prefix": "/edrs"}], indirect=True)
+def test_edrs_single_item_not_found(client: TestClient, fastapi_app):  # pylint: disable=unused-argument
+    """Requesting an unknown item should return a 404."""
+    missing_item_id = "UNKNOWN_SESSION"
+    resp = client.get(f"/edrs/collections/s1_pedc/items/{missing_item_id}")
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["code"] == "NotFound"
+    assert body["description"] == f"Session '{missing_item_id}' not found in collection 's1_pedc'"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("fastapi_app", [{"router_prefix": "/edrs"}], indirect=True)
+def test_edrs_items_preserves_extra_fields(
+    client: TestClient,
+    fastapi_app,
+    monkeypatch,
+):  # pylint: disable=unused-argument
+    """Extra keys from filtering (e.g. paging metadata) are merged into the response."""
+
+    def fake_filter_and_paginate(features_list, *_args, **_kwargs):  # pylint: disable=unused-argument
+        return {"type": "FeatureCollection", "features": features_list, "extra": {"returned": len(features_list)}}
+
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.filter_and_paginate_features", fake_filter_and_paginate)
+
+    resp = client.get("/edrs/collections/s1_pedc/items")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["extra"] == {"returned": len(body.get("features", []))}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("fastapi_app", [{"router_prefix": "/edrs"}], indirect=True)
+def test_edrs_items_invalid_filter_returns_422(
+    client: TestClient,
+    fastapi_app,
+    monkeypatch,
+):  # pylint: disable=unused-argument
+    """ValueError during filtering should surface as a 422 error."""
+
+    def fake_filter_and_paginate(_features_list, *_args, **_kwargs):  # pylint: disable=unused-argument
+        raise ValueError("bad filter")
+
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.filter_and_paginate_features", fake_filter_and_paginate)
+
+    resp = client.get("/edrs/collections/s1_pedc/items?filter=platform='sentinel-1a'")
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["code"] == "UnprocessableEntity"
+    assert body["description"] == "bad filter"
+
+
+@pytest.mark.unit
+def test_mock_pgstac_edrs_process_search_not_supported():
+    """MockPgstacEdrs.process_search should raise the documented 404."""
+    request = Request({"type": "http", "path": "/edrs/search"})
+    pgstac = MockPgstacEdrs(request=request)
+    with pytest.raises(HTTPException) as exc:
+        pgstac.process_search(request)
+    assert exc.value.status_code == 404  # /search is not available for EDRS
+    assert exc.value.detail == "EDRS does not support /search. Use /edrs/collections/{id}/items."
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_items_missing_collection_returns_404(monkeypatch):
+    """When the collection is unknown, get_items should raise the 404 with expected detail."""
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.edrs_select_config", lambda _cid: None)
+    pgstac = MockPgstacEdrs()
+    with pytest.raises(HTTPException) as exc:
+        await pgstac.get_items("unknown", Request({"type": "http"}))  # pylint: disable=not-callable
+    assert exc.value.status_code == 404  # no configuration found for the collection
+    assert exc.value.detail == "Collection not found"  # expected error detail from the guard
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_items_returns_empty_when_no_satellites(monkeypatch):
+    """Collections without satellite entries should yield an empty FeatureCollection."""
+    monkeypatch.setattr(
+        "rs_server_edrs.api.edrs_endpoints.edrs_select_config",
+        lambda _cid: {"station": "pedc", "satellite": ""},
+    )
+    pgstac = MockPgstacEdrs()
+    resp = await pgstac.get_items("s1_pedc", Request({"type": "http"}))  # pylint: disable=not-callable
+    assert resp["type"] == "FeatureCollection"  # still returns a collection wrapper
+    assert resp.get("features") == []  # no satellites => no features
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_items_closes_connector_even_on_close_error(monkeypatch):
+    """Connector.close exceptions must be swallowed while still returning the built collection."""
+    close_called = {"called": False}
+
+    class FakeConnector:
+        """Connector stub to trigger a close error path."""
+
+        def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+            """No-op init."""
+
+        def connect(self):
+            """No-op connect."""
+            return None
+
+        def close(self):
+            """Raise to exercise close error handling."""
+            close_called["called"] = True
+            raise RuntimeError("close failed")
+
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.EDRSConnector", FakeConnector)
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.load_station_config", lambda *_a, **_k: {})
+    monkeypatch.setattr(
+        "rs_server_edrs.api.edrs_endpoints.build_edrs_item_collection",
+        lambda *_a, **_k: {"type": "FeatureCollection", "features": [{"id": "X"}]},
+    )
+    monkeypatch.setattr(
+        "rs_server_edrs.api.edrs_endpoints.edrs_select_config",
+        lambda _cid: {"station": "pedc", "satellite": "S1A"},
+    )
+
+    pgstac = MockPgstacEdrs()
+    resp = await pgstac.get_items("s1_pedc", Request({"type": "http"}))  # pylint: disable=not-callable
+    assert close_called["called"] is True  # close attempted even when it fails
+    assert resp["type"] == "FeatureCollection"  # still returns the built collection
+    assert resp["features"][0]["id"] == "X"  # content from stubbed builder is preserved
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("fastapi_app", [{"router_prefix": "/edrs"}], indirect=True)
+def test_get_items_ignores_non_nominal_directories(
+    client: TestClient,
+    fastapi_app,
+    monkeypatch,
+):  # pylint: disable=unused-argument
+    """Non-NOMINAL folder entries should be skipped by is_session_dir, yielding no items."""
+
+    class FakeConnector:
+        """Connector stub that returns only non-matching session directories."""
+
+        def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+            """No-op init."""
+
+        def connect(self):
+            """No-op connect."""
+            return None
+
+        def close(self):
+            """No-op close."""
+            return None
+
+        def walk(self, path):
+            # Return a directory path that does not match /NOMINAL/<sat>/DCS_..._dat
+            """Yield a fake dir entry outside /NOMINAL to be ignored."""
+            return [{"path": "/WRONGPATH/DCS_99_99_dat", "type": "dir"}]
+
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.EDRSConnector", FakeConnector)
+    monkeypatch.setattr("rs_server_edrs.api.edrs_endpoints.load_station_config", lambda *_a, **_k: {})
+    monkeypatch.setattr(
+        "rs_server_edrs.api.edrs_endpoints.edrs_select_config",
+        lambda _cid: {"station": "pedc", "satellite": "S1A"},
+    )
+
+    resp = client.get("/edrs/collections/s1_pedc/items")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["type"] == "FeatureCollection"
+    assert body.get("features") == []  # no matching session dirs -> empty collection
 
 
 @pytest.mark.unit

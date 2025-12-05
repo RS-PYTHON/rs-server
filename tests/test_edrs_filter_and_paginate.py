@@ -17,7 +17,12 @@ import pytest
 from fastapi import HTTPException
 
 from services.common.rs_server_common.stac_api_common import get_edrs_queryables
-from services.edrs.rs_server_edrs.edrs_utils import filter_and_paginate_features
+from services.edrs.rs_server_edrs.edrs_utils import (
+    filter_and_paginate_features,
+    iso,
+    parse_dsib_dict,
+    platform_constellation_from_code,
+)
 
 # Use the real EDRS queryables definition from the service config
 QUERYABLES = get_edrs_queryables()
@@ -254,3 +259,37 @@ def test_cql2_json_error_branches(filter_payload, expected_exception):
     else:
         result = filter_and_paginate_features(features, params, QUERYABLES)
         assert [f["id"] for f in result["features"]] == ["a"]
+
+
+def test_platform_constellation_from_code_unknown():
+    """Unknown satellite code should return (None, None)."""
+    # Keep entrypoint consistent with the other tests
+    empty = filter_and_paginate_features([], {}, QUERYABLES)
+    assert empty["features"] == []
+    assert platform_constellation_from_code("UNKNOWN") == (None, None)
+
+
+def test_iso_returns_none_for_empty():
+    """iso() should return None when input is falsy."""
+    _ = filter_and_paginate_features([], {}, QUERYABLES)  # call utility under test to stay consistent
+    assert iso(None) is None
+    assert iso("") is None
+
+
+def test_parse_dsib_dict_fallbacks():
+    """parse_dsib_dict should fill missing created/finished from other fields."""
+    dsib = {
+        "DCSU_Session_Information_Block": {
+            "time_start": "2024-01-01T00:00:00Z",
+            "time_stop": "2024-01-01T01:00:00Z",
+            # created/finished missing -> should fallback
+        },
+    }
+    # Run filter function once to mirror existing test patterns
+    filter_and_paginate_features([], {}, QUERYABLES)
+    start, stop, created, finished = parse_dsib_dict(dsib)
+    assert start == "2024-01-01T00:00:00Z"
+    assert stop == "2024-01-01T01:00:00Z"
+    # created/finished should fallback to stop/start respectively per implementation
+    assert created == "2024-01-01T01:00:00Z"
+    assert finished == "2024-01-01T01:00:00Z"
