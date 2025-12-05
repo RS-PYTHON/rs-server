@@ -16,8 +16,8 @@
 # Restore the apt repository list.
 # WARNING: works only in Debian/Ubuntu !
 
-# Source OS release info
-. /etc/os-release
+# shellcheck source=/dev/null
+. /etc/os-release # Source OS release info
 
 if [[ "$ID" == "debian" ]]; then
     cat > /etc/apt/sources.list <<EOF
@@ -27,12 +27,12 @@ deb http://deb.debian.org/debian $VERSION_CODENAME-updates main
 deb http://deb.debian.org/debian $VERSION_CODENAME-backports main
 EOF
 elif [[ "$ID" == "ubuntu" ]]; then
-    cat > /etc/apt/sources.list <<EOF
-deb http://archive.ubuntu.com/ubuntu $VERSION_CODENAME main
-deb http://security.ubuntu.com/ubuntu $VERSION_CODENAME-security main
-deb http://archive.ubuntu.com/ubuntu $VERSION_CODENAME-updates main
-deb http://archive.ubuntu.com/ubuntu $VERSION_CODENAME-backports main
-EOF
+    rm -f /etc/apt/sources.list
+    for a in "" "-security" "-updates" "-backports"; do
+        for b in main multiverse restricted universe; do
+            echo "deb http://archive.ubuntu.com/ubuntu ${VERSION_CODENAME}${a} ${b}" >> /etc/apt/sources.list
+        done
+    done
 else
     echo "Unsupported distribution: $ID"
     exit 1
