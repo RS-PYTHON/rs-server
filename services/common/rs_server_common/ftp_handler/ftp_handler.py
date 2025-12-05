@@ -169,7 +169,7 @@ class FTPClient:
         try:
             self.ftp.cwd(entry)
             self.ftp.cwd(current_dir)
-        except OSError:
+        except Exception:  # pylint: disable=broad-exception-caught
             info["type"] = "file"
             try:
                 info["size"] = self.ftp.size(entry) or 0

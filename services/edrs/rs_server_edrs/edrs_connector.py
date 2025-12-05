@@ -96,7 +96,7 @@ class EDRSConnector(FTPClient):
         if not self.ftp:
             raise ConnectionError("Not connected. Call connect() first.")
 
-        base_path = f"/NOMINAL/{path.strip('/')}"
+        base_path = f"/NOMINAL/{path.strip('/')}" if "/NOMINAL/" not in path else path
         entries = self._list_directory_entries(base_path)
         current_dir = self.ftp.pwd()
         results = []
