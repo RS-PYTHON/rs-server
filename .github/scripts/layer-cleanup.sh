@@ -31,9 +31,8 @@ rm -rf /opt/conda/pkgs/cache
 
 rm -rf /tmp/whl
 
-# WARNING: this removes the apt repository list. To restore it and be able to run 'apt update', 
-# you must run (works only in Debian): 
-# . /etc/os-release && echo "deb http://deb.debian.org/debian $VERSION_CODENAME main" > /etc/apt/sources.list
-rm -rf /etc/apt/sources.list.d/*
+# WARNING: this removes the apt repository list. To restore it and be able to run 'apt update',
+# you need to run ./restore-apt.sh
+rm -rf /etc/apt/sources.list /etc/apt/sources.list.d/*
 
 exit 0
