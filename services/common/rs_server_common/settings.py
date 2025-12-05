@@ -85,23 +85,23 @@ SERVICE_NAME: str | None = None
 # HTTP client #
 ###############
 
-__http_client: AsyncClient | None = None
+__HTTP_CLIENT: AsyncClient | None = None
 
 
 def http_client():
     """Get HTTP client"""
-    return __http_client
+    return __HTTP_CLIENT
 
 
 def set_http_client(value):
     """Set HTTP client"""
-    global __http_client  # pylint: disable=global-statement
-    __http_client = value
+    global __HTTP_CLIENT  # pylint: disable=global-statement
+    __HTTP_CLIENT = value
 
 
 async def del_http_client():
     """Close and delete HTTP client."""
-    global __http_client  # pylint: disable=global-statement
-    if __http_client:
-        await __http_client.aclose()
-    __http_client = None
+    global __HTTP_CLIENT  # pylint: disable=global-statement
+    if __HTTP_CLIENT:
+        await __HTTP_CLIENT.aclose()
+    __HTTP_CLIENT = None
