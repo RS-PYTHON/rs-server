@@ -32,7 +32,7 @@ jobs:
 
       - name: Regenerate lock files
         run: |
-          for dir in services/adgs services/prip services/cadip services/catalog services/frontend services/staging; do
+          for dir in services/adgs services/prip services/cadip services/edrs services/catalog services/frontend services/staging; do
             cd $dir
             poetry lock
             cd -
