@@ -30,7 +30,7 @@ on:
         required: false
 
 env:
-  PYTHON_VERSION: 3.11.7
+  PYTHON_VERSION: 3.13.9
   DOCKER_REGISTRY: ghcr.io
 
 jobs:
@@ -175,13 +175,13 @@ jobs:
           name: ${{ needs.osam-whl.outputs.package_name }}
           path: ./build_context_path
 
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
+
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh ./.github/scripts/restore-apt.sh
-        shell: bash
-
-      - name: Copy layer-cleanup.sh script
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh
         shell: bash
 
       - name: Debug docker_tag value
