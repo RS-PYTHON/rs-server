@@ -416,18 +416,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.41.1"
+version = "1.41.2"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.41.1-py3-none-any.whl", hash = "sha256:05009dadcb0c63a2a4a11780f615362a811aa85e7a6950f2793ecf8055fcd1f2"},
-    {file = "boto3-1.41.1.tar.gz", hash = "sha256:fdee48cff828cfe0fb66295ae4d5f47736ee35f11e1de6be6c6dcd910f0810a4"},
+    {file = "boto3-1.41.2-py3-none-any.whl", hash = "sha256:edcde82fdae4201aa690e3683f8e5b1a846cf1bbf79d03db4fa8a2f6f46dba9c"},
+    {file = "boto3-1.41.2.tar.gz", hash = "sha256:7054fbc61cadab383f40ea6d725013ba6c8f569641dddb14c0055e790280ad6c"},
 ]
 
 [package.dependencies]
-botocore = ">=1.41.1,<1.42.0"
+botocore = ">=1.41.2,<1.42.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.15.0,<0.16.0"
 
@@ -436,14 +436,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.41.1"
+version = "1.41.2"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.41.1-py3-none-any.whl", hash = "sha256:0db40b7dbddef56fe8cfa06b5eda73b327786db9d64c09c3a616fc9b5548120d"},
-    {file = "botocore-1.41.1.tar.gz", hash = "sha256:e98095492ef8f18d0d6a02ba87d9135c663d4627322e049228143b3a4ef4c2a3"},
+    {file = "botocore-1.41.2-py3-none-any.whl", hash = "sha256:154052dfaa7292212f01c8fab822c76cd10a15a7e164e4c45e4634eb40214b90"},
+    {file = "botocore-1.41.2.tar.gz", hash = "sha256:49a3e8f4c1a1759a687941fef8b36efd7bafcf63c1ef74aa75d6497eb4887c9c"},
 ]
 
 [package.dependencies]
@@ -3500,14 +3500,14 @@ files = [
 
 [[package]]
 name = "pre-commit"
-version = "4.4.0"
+version = "4.5.0"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "pre_commit-4.4.0-py2.py3-none-any.whl", hash = "sha256:b35ea52957cbf83dcc5d8ee636cbead8624e3a15fbfa61a370e42158ac8a5813"},
-    {file = "pre_commit-4.4.0.tar.gz", hash = "sha256:f0233ebab440e9f17cabbb558706eb173d19ace965c68cdce2c081042b4fab15"},
+    {file = "pre_commit-4.5.0-py2.py3-none-any.whl", hash = "sha256:25e2ce09595174d9c97860a95609f9f852c0614ba602de3561e267547f2335e1"},
+    {file = "pre_commit-4.5.0.tar.gz", hash = "sha256:dc5a065e932b19fc1d4c653c6939068fe54325af8e741e74e88db4d28a4dd66b"},
 ]
 
 [package.dependencies]
@@ -4915,7 +4915,7 @@ python-keycloak = ">=5.7.0,<6.0"
 python-logging-loki = "^0.3.1"
 requests = "^2.32.5"
 sqlalchemy = "^2.0.43"
-stac-fastapi-pgstac = "==6.1.0"
+stac-fastapi-pgstac = "==6.1.1"
 stac-fastapi-types = "^6.0.0"
 stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1,<0.51"
@@ -5178,14 +5178,14 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "6.1.0"
+version = "6.1.1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_api-6.1.0-py3-none-any.whl", hash = "sha256:99bc5ed2e0ecae76d5f813222d30343146a35c8508b49340f24d1f4c59edeffc"},
-    {file = "stac_fastapi_api-6.1.0.tar.gz", hash = "sha256:71469e9c50580cb3c31cdd16852d825589d61d1a269d704cec2c2ae26bb7eee5"},
+    {file = "stac_fastapi_api-6.1.1-py3-none-any.whl", hash = "sha256:4ecb5759e0bfc057dd26da14f34e1666e7384525bdbe3e49d0bcf47f06b96000"},
+    {file = "stac_fastapi_api-6.1.1.tar.gz", hash = "sha256:98e8cda01e2632104fa205bd6a2df519129a4bc9f315bcb22e0d07f7da4d79c7"},
 ]
 
 [package.dependencies]
@@ -5194,14 +5194,14 @@ stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.1.0"
+version = "6.1.1"
 description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_extensions-6.1.0-py3-none-any.whl", hash = "sha256:2bae84f049dad1898b45d9cdb3bde70837e614cb99d2d4dd109cd472b0445dc1"},
-    {file = "stac_fastapi_extensions-6.1.0.tar.gz", hash = "sha256:bd6c5139226aff766b19d2829c7cbfeaae4d5d2619f3fce74b08ff71d63ff4e1"},
+    {file = "stac_fastapi_extensions-6.1.1-py3-none-any.whl", hash = "sha256:0fa1ada718835889781b8180ee480fc2864b5fce81bf16742fcff6251f47d31e"},
+    {file = "stac_fastapi_extensions-6.1.1.tar.gz", hash = "sha256:0228711a2eb38be8a66386898bba89e0f84c03b493ade110a5399cbaa622dfca"},
 ]
 
 [package.dependencies]
@@ -5210,14 +5210,14 @@ stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "6.1.0"
+version = "6.1.1"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-6.1.0-py3-none-any.whl", hash = "sha256:b464523d17fa9c57ba164effa4c103be9a6c157f334f2fe5e5dd504b2f293117"},
-    {file = "stac_fastapi_pgstac-6.1.0.tar.gz", hash = "sha256:97e94db821b8ece4817c779eb4d567f8163a94947a322ef58c297ab280f55db3"},
+    {file = "stac_fastapi_pgstac-6.1.1-py3-none-any.whl", hash = "sha256:e024e6299de37c649d098be5f3038246950efaf80b22bcc8a8784d3ea181d961"},
+    {file = "stac_fastapi_pgstac-6.1.1.tar.gz", hash = "sha256:cff4611ae0a1587b5a4497bb2abbb4a1a02af4de9acfd1080cd94f819cdc8eb1"},
 ]
 
 [package.dependencies]
@@ -5244,14 +5244,14 @@ validation = ["stac-pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.1.0"
+version = "6.1.1"
 description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_types-6.1.0-py3-none-any.whl", hash = "sha256:ae193a6f023af3a3c1352a905e3b5470da7b4f860c332d924a9e6212948d9169"},
-    {file = "stac_fastapi_types-6.1.0.tar.gz", hash = "sha256:a647632ec7b144f4a233d54e09093cc1dadb1ba7989a36426db56d3de2d07be2"},
+    {file = "stac_fastapi_types-6.1.1-py3-none-any.whl", hash = "sha256:bf7a90132898d7175827b970c0436e6f4e7f3192aa792651fb475a515a01069c"},
+    {file = "stac_fastapi_types-6.1.1.tar.gz", hash = "sha256:b70e9e37cdecb65fc96c7c022c7e4dc948a1a98e652850330a79421329768df4"},
 ]
 
 [package.dependencies]
