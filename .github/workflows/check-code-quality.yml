@@ -161,6 +161,7 @@ jobs:
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
         with:
+          version: v0.68.1
           scan-type: fs
           ignore-unfixed: true
           format: sarif
@@ -214,7 +215,7 @@ jobs:
     # All other jobs only use the env PYTHON_VERSION that is set above in this file.
     strategy:
       matrix:
-        python-version: [3.11.7, "${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15 ]
+        python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15 ]
         include:
           - experimental: false
           - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
