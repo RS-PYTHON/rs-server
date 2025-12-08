@@ -34,7 +34,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing"
 ]
@@ -50,7 +50,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<4"
 rs-server-common = "*"
 pygeoapi = "^0.21"
 flask = "^3.1.1" # for pygeoapi
@@ -67,7 +67,6 @@ xmltodict = "^1.0.2"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-python = "^3.11"
 rs-server-common = {path = "../common", develop = true}
 # pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }

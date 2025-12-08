@@ -34,7 +34,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing"
 ]
@@ -50,8 +50,8 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-fastapi = ">=0.120.0,<0.122.0"
+python = ">=3.11,<4"
+fastapi = ">=0.120.0,<0.124.0"
 starlette = ">=0.49.1,<0.51"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
@@ -59,7 +59,7 @@ sqlalchemy = "^2.0.43"
 eodag = "==v3.10.0"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
-pydantic = ">=2.9.2,<2.12.0" # see https://github.com/pyupio/safety/issues/673
+pydantic = ">=2.9.2,<2.13.0" # see https://github.com/pyupio/safety/issues/673
 markdown = "^3.8.2"
 python-dotenv = "^1.0.0"
 filelock = ">=3.16.1"
@@ -77,11 +77,11 @@ authlib = "^1.6.1"
 python-keycloak = ">=5.7.0,<6.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = "==6.1.1"
+stac-fastapi-pgstac = "==6.1.2"
 pydantic-settings = ">2.2.1,<3.0.0,!=2.9.0" # see https://github.com/PrefectHQ/prefect/issues/17852
 pygeofilter = ">=0.3.1.post1"
 stac-pydantic = "^3.4.0"
-geojson-pydantic = "2.0.0"
+geojson-pydantic = "2.1.0"
 stac-fastapi-types = "^6.0.0"
 requests = "^2.32.5"
 urllib3 = ">=2.5.0"

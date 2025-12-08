@@ -22,7 +22,7 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 for f in $(find "$ROOT_DIR" -name pyproject.toml); do
     (set -x
         cd $(dirname $f)
-        poetry lock
+        poetry lock --regenerate
         poetry install --with dev || poetry install
         if [[ " $@ " == *" --otel "* ]]; then
             poetry run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies

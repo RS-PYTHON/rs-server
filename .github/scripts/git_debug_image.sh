@@ -45,7 +45,7 @@ cd /home/user
 git clone -b "$BRANCH_NAME" https://github.com/RS-PYTHON/rs-server.git
 cd ./rs-server
 
-# The rspy modules used by the fastapi service are installed under /usr/local/lib/python3.11/site-packages
+# The rspy modules used by the fastapi service are installed under /usr/local/lib/python<version>/site-packages
 # We tell the service to use the git dirs instead. So we replace them by symlinks to git.
 py_site_packages=$(python -c "import site; print(site.getsitepackages()[0])")
 for git_pydir in $(pwd)/services/*/rs_server_*; do
@@ -55,7 +55,7 @@ for git_pydir in $(pwd)/services/*/rs_server_*; do
     fi
 done
 
-# Do the same for the files installed under /usr/local/lib/python3.11/site-packages/config and .../resources
+# Do the same for the files installed under /usr/local/lib/python<version>/site-packages/config and .../resources
 for dir in "config" "resources"; do
     if [ -d "$py_site_packages/$dir" ]; then
         for site_packages_file in "$py_site_packages/$dir"/*; do
