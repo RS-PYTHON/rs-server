@@ -1,0 +1,10 @@
+{
+  "id": "File_Name",
+  "href": "href",
+  "title": "File_Name",
+  "roles": ["cadu"],
+  "file:size": "Size_Bytes",
+  "channel": "Channel",
+  "created": "Created",
+  "updated": "Updated"
+}

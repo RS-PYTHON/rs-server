@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2025 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: python
-description: Install python
+"""Main package for EDRS service."""
 
-inputs:
-  python-version:
-    description: "Python version"
-    required: false
+from rs_server_common import settings
 
-runs:
-  using: "composite"
-  steps:
+# Set automatically by running `poetry dynamic-versioning`
+__version__ = "0.0.0"
 
-    # Install default python version
-    - if: ${{ inputs.python-version == '' }}
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+settings.SERVICE_NAME = "rs.server.edrs"
 
-    # Install specified python version
-    - if: ${{ inputs.python-version != '' }}
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ inputs.python-version }}
+# Router tags used by the swagger UI
+edrs_tags = ["EDRS stations"]
