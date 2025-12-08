@@ -18,12 +18,9 @@ import os.path as osp
 from pathlib import Path
 
 import yaml
+from rs_server_edrs.edrs_connector import EDRSConnector
 
-from services.edrs.rs_server_edrs.edrs_connector import EDRSConnector
-
-DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (
-    Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
-)
+DEFAULT_EDRS_STATIONS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
 EDRS_STATIONS_CONFIG = os.environ.get("EDRS_STATIONS_CONFIG_YAML", DEFAULT_EDRS_STATIONS_CONFIG)
 
 

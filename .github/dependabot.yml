@@ -29,6 +29,7 @@ updates:
       - "/services/adgs"
       - "/services/prip"
       - "/services/cadip"
+      - "/services/edrs"
       - "/services/catalog"
       - "/services/common"
       - "/services/frontend"
