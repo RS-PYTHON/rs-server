@@ -103,7 +103,7 @@ jobs:
 #      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
 #      - id: build-wheel
@@ -120,7 +120,7 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - id: build-wheel
@@ -166,7 +166,7 @@ jobs:
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
