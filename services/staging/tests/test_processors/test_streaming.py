@@ -282,7 +282,7 @@ class TestPrepareStreaming:
         ):
             staging_instance.create_streaming_list(features, catalog_response)
 
-    def test_prepare_streaming_tasks_all_valid(self, mocker, set_config_file_env_var):
+    def test_prepare_streaming_tasks_all_valid(self, mocker):
         """Test prepare_streaming_tasks when all assets are valid."""
         catalog_collection = "test_collection"
         feature = mocker.Mock()
@@ -313,7 +313,7 @@ class TestPrepareStreaming:
         assert feature.assets["asset1"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset1"
         assert feature.assets["asset2"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset2"
 
-    def test_prepare_streaming_tasks_with_s3_asset_all_valid(self, mocker, set_config_file_env_var):
+    def test_prepare_streaming_tasks_with_s3_asset_all_valid(self, mocker):
         """Test prepare_streaming_tasks when all assets are valid and one asset needs to be staged from external s3."""
         # Patch credentials retrieval (for s3 asset)
         mock_yaml_content = mock_yaml_content = "external_data_sources:\n" + self.TEST_YAML_S3_CREDENTIALS
@@ -359,7 +359,7 @@ class TestPrepareStreaming:
         # Assert that the method returns expected assets info
         assert result == expected_assets_info
 
-    def test_prepare_streaming_tasks_one_invalid(self, mocker, set_config_file_env_var):
+    def test_prepare_streaming_tasks_one_invalid(self, mocker):
         """Test prepare_streaming_tasks when all assets are valid."""
         catalog_collection = "test_collection"
         feature = mocker.Mock()
@@ -375,7 +375,6 @@ class TestPrepareStreaming:
 
     def test_prepare_streaming_tasks_correctly_retrieves_config(
         self,
-        set_config_file_env_var,
         staging_input_for_config_tests_1: dict,
         staging_input_for_config_tests_2: dict,
     ):

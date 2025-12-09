@@ -46,7 +46,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
+python = ">=3.13,<4"
 rs-server-common = "*"
 xmltodict = "^1.0.2"
 

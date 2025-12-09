@@ -214,15 +214,16 @@ jobs:
     # All other jobs only use the env PYTHON_VERSION that is set above in this file.
     strategy:
       matrix:
-        python-version: [3.11.7, "${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15 ]
+        # python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15.0a2 ]
+        python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}" ]
         include:
           - experimental: false
-          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
-            experimental: true
-          - python-version: 3.14
-            experimental: true
-          - python-version: 3.15
-            experimental: true
+#          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
+#            experimental: true
+#          - python-version: 3.14
+#            experimental: true
+#          - python-version: 3.15.0a2
+#            experimental: true
     continue-on-error: ${{ matrix.experimental }}
 
     steps:

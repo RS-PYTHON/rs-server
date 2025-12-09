@@ -34,7 +34,6 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
-S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "s3/expiration_bucket.csv")
 
 TEMP_BUCKET = "temp-bucket"
 CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
