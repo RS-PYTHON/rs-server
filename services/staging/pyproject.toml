@@ -50,9 +50,9 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
+python = ">=3.13,<4"
 rs-server-common = "*"
-pygeoapi = "^0.21"
+pygeoapi = "^0.22"
 flask = "^3.1.1" # for pygeoapi
 geoalchemy2 = ">=0.18"
 SQLAlchemy = "^2.0.42"

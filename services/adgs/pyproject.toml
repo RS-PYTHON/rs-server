@@ -50,7 +50,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
+python = ">=3.13,<4"
 rs-server-common = "*"
 
 [tool.poetry.group.dev]
