@@ -50,7 +50,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     # Install dependencies
     if [[ " $@ " == *" --install "* ]]; then
         (set -x
-            cd "$proj_dir" && poetry -q install --with dev > /dev/null
+            cd "$proj_dir" && poetry install --with dev > /dev/null
             poetry -q run opentelemetry-bootstrap -a install > /dev/null || true
         )
     fi
