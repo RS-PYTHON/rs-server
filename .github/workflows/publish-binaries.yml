@@ -30,7 +30,7 @@ on:
         required: false
 
 env:
-  PYTHON_VERSION: 3.11.7
+  PYTHON_VERSION: 3.13.9
   DOCKER_REGISTRY: ghcr.io
 
 jobs:
@@ -188,7 +188,7 @@ jobs:
       package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - id: build-wheel
@@ -435,7 +435,7 @@ jobs:
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
@@ -643,10 +643,10 @@ jobs:
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
-          dockerfile: ./services/staging/.github/Dockerfile.dask-staging-local
+          dockerfile: ./services/staging/.github/Dockerfile.dask-staging
           build_context_path: ./build_context_path
-          image_basename: "${{ github.repository_owner }}/dask-gateway-server"
-          image_suffix: /staging/local
+          image_basename: "${{ github.repository_owner }}"
+          image_suffix: /dask/staging
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
