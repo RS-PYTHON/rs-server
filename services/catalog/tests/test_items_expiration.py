@@ -15,7 +15,6 @@
 """Tests to check if the correct retention time is set for various items uploaded in the catalog.
 The tests follow the specs of this issue: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-468
 The test items are defined in the file resources/expiration_delays_test_data.json.
-The test configuration used is in resources/s3/expiration_bucket.csv.
 The items are not inserted one by one but all at once in a fixture to keep things simple.
 """
 

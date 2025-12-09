@@ -48,7 +48,6 @@ from rs_server_common import settings as common_settings
 from .helpers import (
     CATALOG_BUCKET,
     RESOURCES_FOLDER,
-    S3_EXPIRATION_BUCKET_CSV_FILE,
     TEMP_BUCKET,
     Collection,
     Feature,
@@ -66,6 +65,13 @@ from .helpers import (
 load_dotenv(RESOURCES_FOLDER / "db/.env")
 
 from rs_server_catalog.app import app
+
+TEST_STORAGE_CONFIG_DATA = [
+    ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
+    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
+    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
+    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+]
 
 app.openapi()
 
@@ -94,14 +100,12 @@ def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missin
     return f"postgresql://postgres:password@{docker_ip}:{port}/{os.getenv('POSTGRES_DB')}"
 
 
-@pytest.mark.integration
 @pytest.fixture(scope="session", autouse=True, name="start_database")
 def start_database_fixture(docker_services, db_url):
     """Ensure pgstac database in available."""
     docker_services.wait_until_responsive(timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url))
 
 
-@pytest.mark.integration
 @pytest.fixture(scope="session", name="client")
 def client_fixture(start_database):  # pylint: disable=missing-function-docstring, unused-argument
     # A .env file is read automatically
@@ -110,7 +114,6 @@ def client_fixture(start_database):  # pylint: disable=missing-function-docstrin
         yield client
 
 
-@pytest.mark.integration
 @pytest.fixture(scope="session", name="client_with_empty_catalog")
 def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-function-docstring, unused-argument
     """Client with an empty catalog (no collections added)."""
@@ -382,7 +385,24 @@ def expiration_delays_test_data_fixture(client):
     delete_collections(client, owners_collections_list)
 
 
-@pytest.mark.integration
+@pytest.fixture(scope="session", autouse=True)
+def apply_global_osam_mock():
+    """
+    Mocks the osam endpoint call to fetch the S3 storage configuration used in
+    s3_storage_config module.
+    Apply the monkeypatch directly at import time, so no fixture dependency at all.
+    This runs once when the module is imported, before any test or fixture starts.
+    """
+    os.environ["RSPY_HOST_OSAM"] = "https://dummy-osam"
+    import rs_server_common.s3_storage_handler.s3_storage_config as config_mod  # pylint: disable=import-outside-toplevel
+
+    def fake_fetch(endpoint: str):  # pylint: disable=unused-argument
+        return TEST_STORAGE_CONFIG_DATA
+
+    # Replace the real function directly on the module object
+    config_mod.fetch_csv_from_endpoint = fake_fetch
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_database(
     client,
@@ -415,7 +435,6 @@ def setup_database(
         user id titi.
     """
 
-    os.environ["BUCKET_CONFIG_FILE_PATH"] = S3_EXPIRATION_BUCKET_CSV_FILE
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s1_l1)
