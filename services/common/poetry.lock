@@ -2548,7 +2548,7 @@ fes = ["pygml (>=0.2)"]
 type = "git"
 url = "https://github.com/RS-PYTHON/pygeofilter"
 reference = "rspy"
-resolved_reference = "e0960e211dae635e2e850b8261bd4868b2139b70"
+resolved_reference = "137f2baf3010a29e298dc4f4368226287261b783"
 
 [[package]]
 name = "pygeoif"
