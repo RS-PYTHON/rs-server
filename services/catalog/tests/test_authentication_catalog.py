@@ -53,6 +53,12 @@ from .helpers import (  # pylint: disable=no-name-in-module
     clear_aws_credentials,
 )
 
+TEST_STORAGE_CONFIG_DATA = [
+    ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
+    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
+    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
+    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+]
 ####################
 # Global variables #
 ####################
@@ -752,7 +758,6 @@ async def test_authorization_search(
     method: str,
 ):
     """Test the GET and POST /catalog/search endpoints"""
-
     # Requested collection owner and ids.
     owner = requested_collections[0].owner_id
     single_collection = ["S1_L1"]
