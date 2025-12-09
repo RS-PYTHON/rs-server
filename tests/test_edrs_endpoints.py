@@ -230,7 +230,7 @@ def test_edrs_items_invalid_filter_returns_422(
     resp = client.get("/edrs/collections/s1_pedc/items?filter=platform='sentinel-1a'")
     assert resp.status_code == 422
     body = resp.json()
-    assert body["code"] == "UnprocessableEntity"
+    assert body["code"] == "UnprocessableContent"
     assert body["description"] == "bad filter"
 
 
