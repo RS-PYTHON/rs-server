@@ -16,6 +16,7 @@
 # pylint: disable = wrong-import-order
 import os
 import os.path as osp
+import threading
 from importlib import reload
 from pathlib import Path
 from unittest.mock import patch
@@ -23,6 +24,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from osam.utils.keycloak_handler import KeycloakHandler
+from osam.utils.tools import S3StorageConfigurationSingleton
 from rs_server_common import settings as common_settings
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
@@ -111,8 +113,7 @@ def client_(mocker):
     os.environ["RSPY_LOCAL_MODE"] = "1"
     reload(common_settings)
     mocker.patch(
-        "rs_server_common.s3_storage_handler.s3_storage_config.S3StorageConfigurationSingleton."
-        "get_s3_bucket_configuration",
+        "osam.utils.tools.S3StorageConfigurationSingleton.get_s3_bucket_configuration",
         return_value={"mocked": "configmap_data"},
     )
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
@@ -124,3 +125,22 @@ def client_(mocker):
     # Test the FastAPI application, opens the database session
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture(autouse=True, scope="function")
+def reset_s3_singleton():
+    """Properly reset singleton state without breaking attribute access."""
+    # Only delete the instance — let __new__ recreate everything cleanly
+    if hasattr(S3StorageConfigurationSingleton, "instance"):
+        del S3StorageConfigurationSingleton.instance
+
+    # Re-initialize class attributes to default (in case they were deleted before)
+    for attr, value in [
+        ("file_lock", threading.Lock()),
+        ("bucket_configuration_csv", []),
+        ("config_file_path", ""),
+        ("last_config_file_modification_date", 0),
+    ]:
+        setattr(S3StorageConfigurationSingleton, attr, value)
+
+    yield

@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
-# pylint: disable = wrong-import-order
 import copy
 import json
 import logging
-import os
+
+# pylint: disable = wrong-import-order
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from functools import wraps
@@ -29,16 +29,15 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProces
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
 from osam.utils.tools import (
-    DEFAULT_CSV_PATH,
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
     get_allowed_buckets,
     get_keycloak_user_from_description,
+    load_configmap_data,
     match_roles,
     parse_role,
 )
-from rs_server_common.s3_storage_handler import s3_storage_config
 from rs_server_common.utils.logging import Logging
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
@@ -62,13 +61,13 @@ BLOCK_LIST_READ_TEMPLATE = {
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
-BLOCk_LIST_READ_DOWNLOAD_TEMPLATE = {
+BLOCK_LIST_READ_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
     "Action": ["s3:GetObject"],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
-BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
+BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
     "Action": [
         "s3:GetObject",
@@ -81,9 +80,7 @@ BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE = {
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
-configmap_data = s3_storage_config.S3StorageConfigurationSingleton().get_s3_bucket_configuration(
-    os.environ.get("BUCKET_CONFIG_FILE_PATH", DEFAULT_CSV_PATH),
-)
+
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
@@ -139,7 +136,11 @@ def get_keycloak_configmap_values():
             - user_allowed_buckets (dict): A mapping of usernames to lists of allowed buckets.
     """
     kc_users = get_keycloak_handler().get_keycloak_users()
-    user_allowed_buckets = {}
+    user_allowed_buckets: dict[str, list[str]] = {}
+    configmap_data = load_configmap_data()
+    if configmap_data is None:
+        return kc_users, user_allowed_buckets
+
     for user in kc_users:
         allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
         logger.debug(f"User {user['username']} allowed buckets: {allowed_buckets}")
@@ -155,16 +156,12 @@ def build_users_data_map():
     For each user retrieved from Keycloak, this function gathers:
       - Custom attributes from Keycloak
       - Assigned Keycloak roles
-      - Associated collections, EOPF types, and buckets from the configmap
 
     Returns:
         dict: A dictionary where each key is a username and the value is another
               dictionary containing:
                 - "keycloak_attribute": Custom user attribute from Keycloak
                 - "keycloak_roles": List of roles assigned to the user
-                - "collections": List of collections the user has access to
-                - "eopf:type": List of EOPF types linked to the user
-                - "buckets": List of buckets associated with the user
     """
     users = get_keycloak_handler().get_keycloak_users()
     return {
@@ -414,8 +411,8 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     # fields from the s3 access rights lists
     access_rights_list_keys = [
         (STRKEY_ACCESS_RIGHT_READ_LIST, BLOCK_LIST_READ_TEMPLATE),
-        (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCk_LIST_READ_DOWNLOAD_TEMPLATE),
-        (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCk_LIST_WRITE_DOWNLOAD_TEMPLATE),
+        (STRKEY_ACCESS_RIGHT_READ_DWN_LIST, BLOCK_LIST_READ_DOWNLOAD_TEMPLATE),
+        (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE),
     ]
     statements: list[dict[str, Any]] = []
     for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks

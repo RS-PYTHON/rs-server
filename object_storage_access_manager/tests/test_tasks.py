@@ -24,16 +24,12 @@ from osam.tasks import (
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
+    get_keycloak_configmap_values,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
     update_s3_rights_lists,
 )
-from osam.utils.tools import (
-    DESCRIPTION_TEMPLATE,
-    get_configmap_user_values,
-    match_roles,
-    parse_role,
-)
+from osam.utils.tools import DESCRIPTION_TEMPLATE
 from ovh.exceptions import BadParametersError
 
 from .conftest import TEST_KEYCLOAK_USERS_LIST
@@ -92,96 +88,6 @@ def test_build_users_data_map(mock_keycloak_handler):
     # Replace to initial state
     TEST_KEYCLOAK_USERS_LIST[0].setdefault("attributes", {})["obs-user"] = "obs1"  # type: ignore
     TEST_KEYCLOAK_USERS_LIST[1].setdefault("attributes", {})["obs-user"] = "obs2"  # type: ignore
-
-
-def test_get_configmap_user_values():
-    """Test values received from configmap based on user."""
-    # Check user_1 allowed buckets.
-    test_user_1_data = get_configmap_user_values(TEST_KEYCLOAK_USERS_LIST[0]["username"])
-    assert "rspython-ops-catalog-paul" in test_user_1_data[2]
-    # Check user_2 allowed buckets.
-    test_user_2_data = get_configmap_user_values(TEST_KEYCLOAK_USERS_LIST[1]["username"])
-    assert "rspython-ops-catalog" in test_user_2_data[2]
-    assert "rspython-ops-catalog-emilie-s1-aux-infinite" in test_user_2_data[2]
-
-
-@pytest.mark.parametrize(
-    "role, expected",
-    [
-        ("rs_catalog_user1:*_download", ("user1", "*", "download")),
-        ("rs_catalog_*:*_read", ("*", "*", "read")),
-        ("rs_catalog_DemoUser:*_read", ("DemoUser", "*", "read")),
-        ("rs_catalog_*:*_write", ("*", "*", "write")),
-        ("invalid_role", None),
-    ],
-)
-def test_parse_role(role, expected):
-    """Unittest of parse_role function, should split role into owner, collection, acces_type"""
-    assert parse_role(role) == expected
-
-
-@pytest.mark.parametrize(
-    "roles, expected",
-    [
-        # match_roles([("paul", "s1-l1")]) = {...}
-        (
-            [("paul", "s1-l1")],
-            {
-                "rspython-ops-catalog/paul/s1-l1/",
-                "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
-                "rspython-ops-catalog-paul/paul/s1-l1/",
-            },
-        ),
-        # match_roles([("copernicus", "s1-l1")])
-        (
-            [("copernicus", "s1-l1")],
-            {
-                "rspython-ops-catalog/copernicus/s1-l1/",
-                "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
-                "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
-            },
-        ),
-        # match_roles([("copernicus", "s1-aux")])
-        (
-            [("copernicus", "s1-aux")],
-            {
-                "rspython-ops-catalog/copernicus/s1-aux/",
-                "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
-                "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
-            },
-        ),
-        # match_roles([("emilie", "s1-aux")])
-        (
-            [("emilie", "s1-aux")],
-            {
-                "rspython-ops-catalog/emilie/s1-aux/",
-                "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
-            },
-        ),
-        # match_roles([("*", "s1-l1")])
-        (
-            [("*", "s1-l1")],
-            {
-                "rspython-ops-catalog/*/s1-l1/",
-                "rspython-ops-catalog-default-s1-l1/*/s1-l1/",
-                "rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
-                "rspython-ops-catalog-paul/*/s1-l1/",
-            },
-        ),
-        # match_roles([("emilie", "*")])
-        (
-            [("emilie", "*")],
-            {
-                "rspython-ops-catalog/emilie/*/",
-                "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                "rspython-ops-catalog-default-s1-l1/emilie/*/",
-            },
-        ),
-    ],
-)
-def test_match_roles(roles, expected):
-    """Tests of match_roles, based on input pairs and output roles."""
-    assert match_roles(roles) == expected
 
 
 @pytest.mark.parametrize(
@@ -602,7 +508,7 @@ class TestDeleteObsUser:
             "description": "some unrelated description",
             "id": "obs999",
         }
-        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, [])
 
         mock_get_keycloak_user.assert_not_called()
@@ -627,13 +533,13 @@ class TestDeleteObsUser:
             "description": "## linked to keycloak user paul from platform XYZ",
             "id": "obs999",
         }
-        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_ovh_handler.assert_not_called()
 
         with patch(
-            "osam.tasks.DESCRIPTION_TEMPLATE",
+            "osam.utils.tools.DESCRIPTION_TEMPLATE",
             "## linked to keycloak user %keycloak-user% from platform ANOTHER",
         ):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
@@ -662,7 +568,7 @@ class TestDeleteObsUser:
 
         mock_get_keycloak_user.return_value = "paul"
 
-        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
@@ -694,7 +600,7 @@ class TestDeleteObsUser:
         mock_ovh_handler_instance = MagicMock()
         mock_get_ovh_handler.return_value = mock_ovh_handler_instance
 
-        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
@@ -726,7 +632,7 @@ class TestDeleteObsUser:
         mock_ovh_handler_instance = MagicMock()
         mock_get_ovh_handler.return_value = mock_ovh_handler_instance
 
-        with patch("osam.tasks.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
@@ -854,3 +760,55 @@ def test_apply_user_access_policy(
 
     result = apply_user_access_policy(user, access_policy)
     assert result == expected_result
+
+
+@patch("osam.tasks.load_configmap_data", return_value=None)
+@patch("osam.tasks.get_keycloak_handler")
+def test_get_keycloak_configmap_values_configmap_none(mock_handler, mock_load):
+    """Test when configmap data is None: returns users and empty buckets dict."""
+    users_list = [{"username": "user1"}, {"username": "user2"}]
+    mock_handler.return_value.get_keycloak_users.return_value = users_list
+    users, buckets = get_keycloak_configmap_values()
+    assert users == users_list
+    assert not buckets
+
+
+@patch("osam.tasks.load_configmap_data", return_value=[["*", "coll", "type", "?", "bucket1"]])
+@patch("osam.tasks.get_keycloak_handler")
+def test_get_keycloak_configmap_values_no_users(mock_handler, mock_load):
+    """Test when no Keycloak users: returns empty list and empty buckets dict."""
+    mock_handler.return_value.get_keycloak_users.return_value = []
+    users, buckets = get_keycloak_configmap_values()
+    assert not users
+    assert not buckets
+
+
+@patch("osam.tasks.load_configmap_data")
+@patch("osam.tasks.get_keycloak_handler")
+def test_get_keycloak_configmap_values_happy_path(mock_handler, mock_load):
+    """Test happy path: computes allowed buckets correctly for each user."""
+    configmap = [
+        ["user1", "coll1", "type1", "?", "bucket1"],
+        ["*", "coll2", "type2", "?", "bucket2"],
+        ["user2", "coll3", "type3", "?", "bucket3"],
+    ]
+    mock_load.return_value = configmap
+    users_list = [{"username": "user1"}, {"username": "user2"}]
+    mock_handler.return_value.get_keycloak_users.return_value = users_list
+    users, buckets = get_keycloak_configmap_values()
+    assert users == users_list
+    assert buckets == {
+        "user1": ["bucket1", "bucket2"],
+        "user2": ["bucket2", "bucket3"],
+    }
+
+
+@patch("osam.tasks.load_configmap_data", return_value=[["otheruser", "coll", "type", "?", "bucket"]])
+@patch("osam.tasks.get_keycloak_handler")
+def test_get_keycloak_configmap_values_no_matching_buckets(mock_handler, mock_load):
+    """Test when no matching configmap rules for users: empty buckets lists."""
+    users_list = [{"username": "user1"}]
+    mock_handler.return_value.get_keycloak_users.return_value = users_list
+    users, buckets = get_keycloak_configmap_values()
+    assert users == users_list
+    assert buckets == {"user1": []}
