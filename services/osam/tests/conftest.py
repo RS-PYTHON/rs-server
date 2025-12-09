@@ -113,8 +113,7 @@ def client_(mocker):
     os.environ["RSPY_LOCAL_MODE"] = "1"
     reload(common_settings)
     mocker.patch(
-        "rs_server_common.s3_storage_handler.s3_storage_config.S3StorageConfigurationSingleton."
-        "get_s3_bucket_configuration",
+        "osam.utils.tools.S3StorageConfigurationSingleton.get_s3_bucket_configuration",
         return_value={"mocked": "configmap_data"},
     )
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
