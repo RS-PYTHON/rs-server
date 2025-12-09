@@ -4450,7 +4450,7 @@ fes = ["pygml (>=0.2)"]
 type = "git"
 url = "https://github.com/RS-PYTHON/pygeofilter"
 reference = "rspy"
-resolved_reference = "e0960e211dae635e2e850b8261bd4868b2139b70"
+resolved_reference = "137f2baf3010a29e298dc4f4368226287261b783"
 
 [[package]]
 name = "pygeoif"
@@ -4925,6 +4925,13 @@ optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
+    {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
+    {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
+    {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:efd7b85f94a6f21e4932043973a7ba2613b059c4a000551892ac9f1d11f5baf3"},
+    {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:22ba7cfcad58ef3ecddc7ed1db3409af68d023b7f940da23c6c2a1890976eda6"},
+    {file = "PyYAML-6.0.3-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:6344df0d5755a2c9a276d4473ae6b90647e216ab4757f8426893b5dd2ac3f369"},
+    {file = "PyYAML-6.0.3-cp38-cp38-win32.whl", hash = "sha256:3ff07ec89bae51176c0549bc4c63aa6202991da2d9a6129d7aef7f1407d3f295"},
+    {file = "PyYAML-6.0.3-cp38-cp38-win_amd64.whl", hash = "sha256:5cf4e27da7e3fbed4d6c3d8e797387aaad68102272f8f9752883bc32d61cb87b"},
     {file = "pyyaml-6.0.3-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:214ed4befebe12df36bcc8bc2b64b396ca31be9304b8f59e25c11cf94a4c033b"},
     {file = "pyyaml-6.0.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:02ea2dfa234451bbb8772601d7b8e426c2bfa197136796224e50e35a78777956"},
     {file = "pyyaml-6.0.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b30236e45cf30d2b8e7b3e85881719e98507abed1011bf463a8fa23e9c3e98a8"},
@@ -5429,7 +5436,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5446,7 +5453,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5463,7 +5470,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5481,7 +5488,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5547,7 +5554,7 @@ url = "services/edrs"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5569,7 +5576,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-prip"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5586,7 +5593,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "0.0.0"
+version = "1.0a2.post310.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6219,14 +6226,14 @@ url = ["furl (>=0.4.1)"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "6.1.1"
+version = "6.1.2"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_api-6.1.1-py3-none-any.whl", hash = "sha256:4ecb5759e0bfc057dd26da14f34e1666e7384525bdbe3e49d0bcf47f06b96000"},
-    {file = "stac_fastapi_api-6.1.1.tar.gz", hash = "sha256:98e8cda01e2632104fa205bd6a2df519129a4bc9f315bcb22e0d07f7da4d79c7"},
+    {file = "stac_fastapi_api-6.1.2-py3-none-any.whl", hash = "sha256:36c2aaa1d7adee4436f5233460a5887755e71279ddfc95591aeaf282fb88d4fe"},
+    {file = "stac_fastapi_api-6.1.2.tar.gz", hash = "sha256:48327f9954afbfb6d2cee69b3556903680144b4193a76664bd5f7ce1ceab8cbd"},
 ]
 
 [package.dependencies]
@@ -6235,14 +6242,14 @@ stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.1.1"
+version = "6.1.2"
 description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_extensions-6.1.1-py3-none-any.whl", hash = "sha256:0fa1ada718835889781b8180ee480fc2864b5fce81bf16742fcff6251f47d31e"},
-    {file = "stac_fastapi_extensions-6.1.1.tar.gz", hash = "sha256:0228711a2eb38be8a66386898bba89e0f84c03b493ade110a5399cbaa622dfca"},
+    {file = "stac_fastapi_extensions-6.1.2-py3-none-any.whl", hash = "sha256:7cf7827a85e84a133f6c2257c34dacc1e059731fb630f73cace1529d5bb14b12"},
+    {file = "stac_fastapi_extensions-6.1.2.tar.gz", hash = "sha256:a6e2d694881538711de977ab8d61c66d73066f2aac8dc5c190a5034dd2454705"},
 ]
 
 [package.dependencies]
@@ -6283,14 +6290,14 @@ validation = ["stac-pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.1.1"
+version = "6.1.2"
 description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_types-6.1.1-py3-none-any.whl", hash = "sha256:bf7a90132898d7175827b970c0436e6f4e7f3192aa792651fb475a515a01069c"},
-    {file = "stac_fastapi_types-6.1.1.tar.gz", hash = "sha256:b70e9e37cdecb65fc96c7c022c7e4dc948a1a98e652850330a79421329768df4"},
+    {file = "stac_fastapi_types-6.1.2-py3-none-any.whl", hash = "sha256:26f5caee2b80aea63549d3dd326e5f0f8611c53bb2e33b98b95594e44d83e6d6"},
+    {file = "stac_fastapi_types-6.1.2.tar.gz", hash = "sha256:453bf0ca57694a3fd85c8f150384d3e5120d6c6de04573376d02b1ab6498c06f"},
 ]
 
 [package.dependencies]
