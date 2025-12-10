@@ -35,7 +35,7 @@ from starlette import status
 from starlette.datastructures import State
 from starlette.routing import Route
 
-from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_EDRS
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -186,9 +186,13 @@ async def test_oauth2_security(mocker, client):
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
 @pytest.mark.parametrize(
     "fastapi_app",
-    [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP}],
+    [
+        {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
+        {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
+        {**CLUSTER_MODE, **ROUTER_PREFIX_EDRS},
+    ],
     indirect=["fastapi_app"],
-    ids=["auxip", "cadip"],
+    ids=["auxip", "cadip", "edrs"],
 )
 async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-many-locals
     fastapi_app: FastAPI,
@@ -225,6 +229,8 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
         "rs_cadip_landing_page",
+        "rs_edrs_pedc_read",
+        "rs_edrs_landing_page",
     ]
     apikey_username = "APIKEY_USERNAME"
     apikey_roles = ["apikey_role1", "apikey_role2", *roles]
@@ -269,7 +275,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
         route = cast(Route, base_route)
         if (
             route.path in openapi_urls
-            or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/"))
+            or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/", "/edrs/"))
             or not route.methods
         ):
             logger.debug(f"Skipping {route.path}")
@@ -336,6 +342,10 @@ UNKNOWN_CADIP_STATION = "unknown-cadip-station"
 
 ADGS_STATIONS = ["adgs", "adgs2"]
 CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip", UNKNOWN_CADIP_STATION]
+edrs_stations = ["pedc"]
+edrs_collection_by_station = {"pedc": "s1_pedc"}
+EDRS_ITEM_ID = "DCS_01_202501270945000000112233"
+EDRS_STATIONS = ["pedc"]
 
 DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
 NAME_PARAM = {"name": "TEST_FILE.raw"}
@@ -411,6 +421,39 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_auxip_{station}_read",
         ],
+        [{**CLUSTER_MODE, **ROUTER_PREFIX_EDRS}, "/edrs", "GET", edrs_stations, NAME_PARAM, "rs_edrs_landing_page"],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_EDRS},
+            "/edrs/collections",
+            "GET",
+            edrs_stations,
+            NAME_PARAM,
+            "rs_edrs_landing_page",
+        ],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_EDRS},
+            "/edrs/collections/{collection_id}",
+            "GET",
+            edrs_stations,
+            DATE_PARAM,
+            "rs_edrs_{station}_read",
+        ],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_EDRS},
+            "/edrs/collections/{collection_id}/items",
+            "GET",
+            edrs_stations,
+            DATE_PARAM,
+            "rs_edrs_{station}_read",
+        ],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_EDRS},
+            "/edrs/collections/{collection_id}/items/{item_id}",
+            "GET",
+            edrs_stations,
+            DATE_PARAM,
+            "rs_edrs_{station}_read",
+        ],
     ],
     indirect=["fastapi_app"],
     ids=[
@@ -424,6 +467,11 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "auxip_specific_collection",
         "auxip_items",
         "auxip_specific_item",
+        "/edrs",
+        "edrs_collections",
+        "edrs_specific_collection",
+        "edrs_items",
+        "edrs_specific_item",
     ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals
@@ -486,8 +534,13 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
 
     # for each cadip station or just "adgs"
     for station in stations:
-        # Replace the station in the endpoint and expected role
-        station_endpoint = endpoint.format(collection_id=station, station=station)
+        # Replace placeholders in endpoint. For EDRS, use real collection id mapping and a known item_id.
+        collection_id = edrs_collection_by_station.get(station, station) if endpoint.startswith("/edrs") else station
+        station_endpoint = endpoint.format(
+            collection_id=collection_id,
+            station=station,
+            item_id=EDRS_ITEM_ID,
+        )
         station_role = expected_role.format(station=station)
 
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
