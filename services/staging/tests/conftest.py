@@ -223,7 +223,7 @@ def feature(f_id: str) -> dict:
         "type": "Feature",
         "properties": {},
         "id": f_id,
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "assets": {"asset1": {"href": "https://fake-data"}},
         "stac_extensions": [],
     }

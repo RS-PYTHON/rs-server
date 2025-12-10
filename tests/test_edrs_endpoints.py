@@ -105,7 +105,7 @@ def test_edrs_single_item(client: TestClient, fastapi_app):  # pylint: disable=u
             "published": "2024-01-02T01:00:00Z",
         },
         "id": "DCS_01_202501270945000000112233",
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "assets": {
             "DCS_01_202501270945000000112233_dat_ch_1_DSDB_00001.raw": {
                 "href": (

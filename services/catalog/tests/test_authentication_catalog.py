@@ -79,7 +79,7 @@ COMMON_FIELDS = {
     },
     "license": "public-domain",
     "description": "Some description",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "stac_extensions": [AUTH_EXTENSION],
     **AUTH_SCHEME,
 }
