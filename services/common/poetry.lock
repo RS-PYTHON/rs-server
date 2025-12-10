@@ -3471,14 +3471,14 @@ validation = ["stac-pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.1.2"
+version = "6.1.3"
 description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_types-6.1.2-py3-none-any.whl", hash = "sha256:26f5caee2b80aea63549d3dd326e5f0f8611c53bb2e33b98b95594e44d83e6d6"},
-    {file = "stac_fastapi_types-6.1.2.tar.gz", hash = "sha256:453bf0ca57694a3fd85c8f150384d3e5120d6c6de04573376d02b1ab6498c06f"},
+    {file = "stac_fastapi_types-6.1.3-py3-none-any.whl", hash = "sha256:a5821757420768e5ae6f9e5c1f51a0708d315003ab7fd6a0a2f50e3980404237"},
+    {file = "stac_fastapi_types-6.1.3.tar.gz", hash = "sha256:9213dee790628d954ca5defdd765eb84b625fbe725daba32cea2dc63c17db64d"},
 ]
 
 [package.dependencies]
