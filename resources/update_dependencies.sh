@@ -24,7 +24,7 @@ fix_psycopg2_lock() {
 
 cd services || exit 10
 
-for s in common adgs cadip prip catalog staging frontend ; do
+for s in common adgs cadip edrs prip catalog staging frontend ; do
   cd "$s"
   poetry lock --regenerate
   fix_psycopg2_lock
