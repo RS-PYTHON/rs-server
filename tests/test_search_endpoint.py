@@ -2027,19 +2027,18 @@ def test_search_parameters(
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
             #  - sortBy (RSPY-131)
-
             if adgs:
-                uid = user_ids.split(",", maxsplit=1)[0]
+                uids = f"('{user_ids.split(',', 1)[0]}','{user_ids.split(',', 1)[1]}')"
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
-                    f"contains(Name, '{uid}') and "
+                    f"Name in {uids} and "
                     "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
                     "(PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
-                    f"contains(Name, '{uid}') and "
+                    f"Name in {uids} and "
                     "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
                     "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
