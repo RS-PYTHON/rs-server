@@ -83,7 +83,7 @@ all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [cluster mode] [docker images]
 # + run rs-server ci/cd
-# [ghcr.io/rs-python/rs-osam]
+# [ghcr.io/rs-python/operational-services-osam]
 all_files+=($(_realpath operational-services/object_storage_access_manager/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-dpr-service]
 all_files+=($(_realpath rs-dpr-service/.github/Dockerfile))
