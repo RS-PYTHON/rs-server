@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ fix_psycopg2_lock() {
 
 cd services || exit 10
 
-for s in common adgs cadip prip catalog staging frontend ; do
+for s in common adgs cadip edrs prip catalog staging frontend ; do
   cd "$s"
   poetry lock --regenerate
   fix_psycopg2_lock

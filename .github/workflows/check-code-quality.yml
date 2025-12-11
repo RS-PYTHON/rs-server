@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,9 +27,18 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: 3.11.7
+  PYTHON_VERSION: 3.13.9
 
 jobs:
+
+  # Ugly workaround for: https://github.com/actions/runner/issues/2372
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+    steps:
+       - run: echo "All set!"
+
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -65,18 +74,26 @@ jobs:
     runs-on: ubuntu-latest
     name: Check copyright license headers
     needs: changes
+    permissions:
+      contents: write
+      pull-requests: write
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
       - uses: actions/checkout@v6
-      - run: |
-          docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: check License Header
+        uses: apache/skywalking-eyes/header@main
+        with:
+          log: debug
+          mode: check
 
   check-linting:
     runs-on: ubuntu-latest
     name: Check linting (pylint, flake8)
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    # continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
@@ -111,7 +128,6 @@ jobs:
     name: Check typing (mypy)
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    # continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
@@ -124,7 +140,6 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    # continue-on-error: true
     permissions: write-all
     steps:
       - uses: actions/checkout@v6
@@ -202,9 +217,29 @@ jobs:
   run-all-pytests:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
+    needs: [setup]
+
+    # Only for this job: try to install and run different python versions.
+    # All other jobs only use the env PYTHON_VERSION that is set above in this file.
+    strategy:
+      matrix:
+        # python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15.0a2 ]
+        python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}" ]
+        include:
+          - experimental: false
+#          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
+#            experimental: true
+#          - python-version: 3.14
+#            experimental: true
+#          - python-version: 3.15.0a2
+#            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Run pytest
         run: ./resources/all_pytests.sh --install
         shell: bash
@@ -216,6 +251,7 @@ jobs:
 
       - name: Save reports
         uses: actions/upload-artifact@v5
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         with:
           name: run-all-pytests
           path: |
@@ -266,7 +302,7 @@ jobs:
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
 
       - name: Run SonarCloud Scanner
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
@@ -315,9 +351,6 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Mark the job as OK even if the sonarqube quality gate doesn't pass.
-        # We will resolve these issues later.
-        # continue-on-error: true
 
       - if: always()
         run: >

@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing"
 ]
@@ -51,8 +51,8 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-fastapi = ">=0.120.0,<0.122.0"
+python = ">=3.13,<4"
+fastapi = ">=0.123.0,<0.125.0"
 starlette = ">=0.49.1,<0.51"
 uvicorn = ">=0.35.0"
 requests = "^2.32.5"

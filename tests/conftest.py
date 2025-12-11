@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,6 +52,9 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import map_stac_platform
+from rs_server_edrs import edrs_client, edrs_connector
+from rs_server_edrs.api import edrs_endpoints
+from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
 from rs_server_prip import prip_retriever, prip_utils
 
 from tests.app import init_app
@@ -60,9 +63,11 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
 PRIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "prip_search.yaml"
+EDRS_SEARCH = RESOURCES_FOLDER / "endpoints" / "edrs_search_config.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
 os.environ["RSPY_PRIP_SEARCH_CONFIG"] = str(PRIP_SEARCH.absolute())
+os.environ["RSPY_EDRS_COLLECTIONS_CONFIG"] = str(EDRS_SEARCH)
 
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
@@ -142,6 +147,116 @@ def fastapi_app_(
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
+
+    if router_prefix == "/edrs":
+
+        async def fake_landing_page(self, request, **kwargs):  # pylint: disable=unused-argument
+            return {"type": "Catalog", "links": [{"rel": "self", "href": str(request.url)}]}
+
+        mocker.patch.object(MockPgstacEdrs, "landing_page", fake_landing_page, create=True)
+
+        class FakeConnector:
+            """Lightweight stand-in to avoid FTP calls during EDRS tests."""
+
+            def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+                self.connected = False
+
+            def connect(self):
+                """Mark connector as connected."""
+                self.connected = True
+
+            def close(self):
+                """Mark connector as disconnected."""
+                self.connected = False
+
+            def walk(self, path):
+                """Return fake directory listings for the expected EDRS structure."""
+                sessions = {
+                    "S1A": ["DCS_01_202501270945000000112233_dat"],
+                    "S1C": ["DCS_02_2025013112300000987654_dat"],
+                    "S2B": ["DCS_03_202504191237000000445566_dat"],
+                }
+
+                if path in sessions:
+                    return [{"path": f"/NOMINAL/{path}/{sess}", "type": "dir"} for sess in sessions[path]]
+
+                for sat, sess_list in sessions.items():
+                    for sess in sess_list:
+                        if path == f"{sat}/{sess}":
+                            return [
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_1", "type": "dir"},
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_2", "type": "dir"},
+                            ]
+                        if path == f"{sat}/{sess}/ch_1":
+                            return [
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_1/{sess}_ch_1_DSIB.xml", "type": "file"},
+                                {
+                                    "path": f"/NOMINAL/{sat}/{sess}/ch_1/{sess}_ch_1_DSDB_00001.raw",
+                                    "type": "file",
+                                    "size": 5,
+                                },
+                                {
+                                    "path": f"/NOMINAL/{sat}/{sess}/ch_1/{sess}_ch_1_DSDB_00002.raw",
+                                    "type": "file",
+                                    "size": 5,
+                                },
+                            ]
+                        if path == f"{sat}/{sess}/ch_2":
+                            return [
+                                {"path": f"/NOMINAL/{sat}/{sess}/ch_2/{sess}_ch_2_DSIB.xml", "type": "file"},
+                                {
+                                    "path": f"/NOMINAL/{sat}/{sess}/ch_2/{sess}_ch_2_DSDB_00001.raw",
+                                    "type": "file",
+                                    "size": 5,
+                                },
+                            ]
+                return []
+
+            def read_file(self, path):
+                """Return a minimal DSIB dict for XML paths; bytes otherwise."""
+                lower_path = str(path).lower()
+                if lower_path.endswith("_dsib.xml"):
+                    is_ch1 = "_ch_1_" in lower_path
+                    start = "2024-01-01T00:00:00Z" if is_ch1 else "2024-01-02T00:00:00Z"
+                    stop = "2024-01-01T01:00:00Z" if is_ch1 else "2024-01-02T01:00:00Z"
+                    return {
+                        "DCSU_Session_Information_Block": {
+                            "time_start": start,
+                            "time_stop": stop,
+                            "time_created": stop,
+                        },
+                    }
+                return b""
+
+        mocker.patch.object(edrs_client, "EDRSConnector", FakeConnector)
+        mocker.patch.object(edrs_connector, "EDRSConnector", FakeConnector)
+        mocker.patch.object(edrs_endpoints, "EDRSConnector", FakeConnector)
+        mocker.patch.object(
+            edrs_client,
+            "load_station_config",
+            lambda *args, **kwargs: {
+                "host": "fake",
+                "port": 21,
+                "login": "user",
+                "password": "pass",
+                "ca_cert": "",
+                "client_cert": "",
+                "client_key": "",
+            },
+        )
+        mocker.patch.object(
+            edrs_endpoints,
+            "load_station_config",
+            lambda *args, **kwargs: {
+                "host": "fake",
+                "port": 21,
+                "login": "user",
+                "password": "pass",
+                "ca_cert": "",
+                "client_cert": "",
+                "client_key": "",
+            },
+        )
 
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:

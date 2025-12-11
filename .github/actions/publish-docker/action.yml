@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -147,6 +147,7 @@ runs:
       env:
         TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
       with:
+        version: v0.68.1
         image-ref: ${{ env.docker_image }}
         format: sarif
         output: trivy-results-docker.sarif

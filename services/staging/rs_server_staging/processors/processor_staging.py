@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -869,8 +869,8 @@ class Staging(
 
         def set_dask_env(host_env: dict, extra_keys: None):
             """Pass environment variables to the dask workers."""
-
-            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"] + extra_keys:  # type: ignore
+            required_keys = ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION", "USE_SSL"]
+            for name in required_keys + extra_keys:  # type: ignore
                 os.environ[name] = host_env[name]
 
             # Some kind of workaround for boto3 to avoid checksum being added inside
@@ -879,7 +879,7 @@ class Staging(
             os.environ["AWS_REQUEST_CHECKSUM_CALCULATION"] = "when_required"
             os.environ["AWS_RESPONSE_CHECKSUM_VALIDATION"] = "when_required"
 
-        pattern = re.compile(r".*_(HOST|PORT|USER|PASS)$")
+        pattern = re.compile(r".*_(HOST|PORT|USER|PASS|CLIENT_CRT|CLIENT_KEY|CA_CRT)$")
         extra_keys = [key for key in os.environ if pattern.fullmatch(key)]
         client.run(set_dask_env, os.environ, extra_keys)
 

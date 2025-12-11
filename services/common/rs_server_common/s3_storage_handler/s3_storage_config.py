@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,100 +13,55 @@
 # limitations under the License.
 
 """Functions to get S3 storage settings (bucket name and expiration delay) from CSV configuration file."""
-
-import csv
 import os
-import threading
 
-FILEPATH_ENV_VAR = "BUCKET_CONFIG_FILE_PATH"
-DEFAULT_FILEPATH = "/app/conf/expiration_bucket.csv"
+import requests
 
 
 class S3StorageConfigurationError(Exception):
     """Exception raised when problems occur when retrieving settings from the S3 storage configuration file."""
 
 
-class S3StorageConfigurationSingleton:
-    """Singleton to keep the content of the config file in memory, to avoid excessive I/O operations on the file."""
+def fetch_csv_from_endpoint(endpoint: str) -> list[list[str]]:
+    """
+    Fetches a CSV file from rs-osam endpoint and returns it
+    as a list of rows (each row is a list of strings).
 
-    def __new__(cls, config_file_path: str = ""):
-        if not hasattr(cls, "instance"):
-            cls.instance = super().__new__(cls)
-            cls.file_lock = threading.Lock()
-            cls.bucket_configuration_csv: list[list] = []
-            cls.config_file_path: str = ""
-            cls.last_config_file_modification_date: float = 0
-            if config_file_path:
-                cls.load_csv_file_into_variable(config_file_path)
-        return cls.instance
+    Raises:
+        S3StorageConfigurationError: If the endpoint cannot be reached
+        or response cannot be parsed as CSV.
+    """
+    try:
+        response = requests.get(endpoint, timeout=10)
+        response.raise_for_status()
+        data = response.json()  # already list[list[str]]
+    except Exception as exc:
+        raise S3StorageConfigurationError(
+            f"Failed to fetch storage configuration from rs-osam endpoint '{endpoint}': {exc}",
+        ) from exc
 
-    @classmethod
-    def load_csv_file_into_variable(cls, config_file_path: str) -> None:
-        """
-        To load a CSV file into the singleton.
-        If the file given is the same one as the one already in the singleton,
-        and if this file hasn't changed since last execution, it will do nothing.
-        In other cases, it will load the content of the file in the singleton
-        and update the file name and modification date values.
+    if not isinstance(data, list):
+        raise S3StorageConfigurationError(
+            f"Invalid configuration format returned by rs-osam endpoint: expected list[list[str]], got {type(data)}",
+        )
 
-        Args:
-            config_file_path (str): Path to the config file.
-        """
-        if (
-            cls.config_file_path == config_file_path
-            and cls.last_config_file_modification_date
-            == cls.get_last_modification_date_of_config_file(config_file_path)
-        ):
-            return
+    for row in data:
+        if not isinstance(row, list) or not all(isinstance(x, str) for x in row) or len(row) != 5:
+            raise S3StorageConfigurationError(
+                "Invalid configuration format: expected list[list[str]] containing only strings",
+            )
 
-        data = []
-        with open(config_file_path, newline="", encoding="utf-8") as csvfile:
-            reader = csv.reader(csvfile, skipinitialspace=True)
-            for line in reader:
-                data.append(line)
-
-        cls.config_file_path = config_file_path
-        cls.last_config_file_modification_date = cls.get_last_modification_date_of_config_file(config_file_path)
-        cls.bucket_configuration_csv = data
-
-    @classmethod
-    def get_last_modification_date_of_config_file(cls, config_file_path: str) -> float:
-        """
-        Returns last modification time for given file.
-
-        Args:
-            config_file_path (str): Path to the config file.
-
-        Returns:
-            str: Last time the file was modificated.
-        """
-        with cls.file_lock:
-            last_modification_time = os.path.getmtime(config_file_path)
-        return last_modification_time
-
-    @classmethod
-    def get_s3_bucket_configuration(cls, config_file_path: str) -> list[list]:
-        """
-        Returns content of given CSV configuration file as a table.
-
-        Args:
-            config_file_path (str): Path to the CSV config file.
-
-        Returns:
-            list[list]: Content of the CSV file.
-        """
-        cls.load_csv_file_into_variable(config_file_path)
-        return cls.bucket_configuration_csv
+    return data
 
 
 def get_storage_settings_from_config(
     owner: str,
     collection: str,
     eopf_type: str,
-    config_file_path: str = "",
 ) -> tuple[int, str] | tuple[str, str] | None:
     """
-    Reads configuration file for the S3 storage to extract the correct settings for the parameters given.
+    Fetches the configuration file for the S3 storage from rs-osam
+    to extract the correct settings for the parameters given.
 
     Args:
         owner (str): Owner of the file to upload.
@@ -117,9 +72,7 @@ def get_storage_settings_from_config(
     Returns:
         tuple: Expiration delay and bucket name for these parameters.
     """
-    if not config_file_path:
-        config_file_path = os.getenv(FILEPATH_ENV_VAR, default=DEFAULT_FILEPATH)
-    config_table = S3StorageConfigurationSingleton().get_s3_bucket_configuration(config_file_path)
+    config_table = fetch_csv_from_endpoint(os.environ["RSPY_HOST_OSAM"] + "/storage/configuration")
     settings = get_settings_from_table(config_table, owner, collection, eopf_type)
     try:
         return (int(settings[0]), settings[1])
@@ -166,7 +119,7 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
     return settings1 or settings2 or settings3 or settings4
 
 
-def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str, config_file_path: str = "") -> int:
+def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str) -> int:
     """
     Tool function to directly get an expiration delay for a given configuration.
 
@@ -182,7 +135,7 @@ def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str
     Raises:
         S3StorageConfigurationError: If the settings retrieved are None or an incorrect format.
     """
-    settings = get_storage_settings_from_config(owner, collection, eopf_type, config_file_path)
+    settings = get_storage_settings_from_config(owner, collection, eopf_type)
     if settings is not None and isinstance(settings[0], int):
         return settings[0]
     raise S3StorageConfigurationError(
@@ -190,7 +143,7 @@ def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str
     )
 
 
-def get_bucket_name_from_config(owner: str, collection: str, eopf_type: str, config_file_path: str = "") -> str:
+def get_bucket_name_from_config(owner: str, collection: str, eopf_type: str) -> str:
     """
     Tool function to directly get a bucket name for a given configuration.
 
@@ -198,7 +151,6 @@ def get_bucket_name_from_config(owner: str, collection: str, eopf_type: str, con
         owner (str): Owner of the file to upload.
         collection (str): Collection of the file to upload.
         eopf_type (str): 'eopf:type' of the file to upload.
-        config_file_path (str, optional): Path to the config file, if None the environment variable will be used.
 
     Returns:
         str: Bucket name.
@@ -206,9 +158,9 @@ def get_bucket_name_from_config(owner: str, collection: str, eopf_type: str, con
     Raises:
         S3StorageConfigurationError: If the settings retrieved are None or an incorrect format.
     """
-    settings = get_storage_settings_from_config(owner, collection, eopf_type, config_file_path)
+    settings = get_storage_settings_from_config(owner, collection, eopf_type)
     if settings is not None and isinstance(settings[1], str):
         return settings[1]
     raise S3StorageConfigurationError(
-        f"Could not find expected settings for given configuration (settings retrieved: '{settings}')",
+        f"Could not find expected settings for the given configuration (settings retrieved: '{settings}')",
     )

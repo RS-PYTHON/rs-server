@@ -1,0 +1,9 @@
+{
+  "id": "SessionId",
+  "datetime": "MinCreated",
+  "start_datetime": "MinStart",
+  "end_datetime": "MaxStop",
+  "published": "MaxFinished",
+  "platform": "Platform",
+  "constellation": "Constellation"
+}

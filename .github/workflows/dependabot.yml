@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ jobs:
 
       - name: Regenerate lock files
         run: |
-          for dir in services/adgs services/prip services/cadip services/catalog services/frontend services/staging; do
+          for dir in services/adgs services/prip services/cadip services/edrs services/catalog services/frontend services/staging; do
             cd $dir
             poetry lock
             cd -

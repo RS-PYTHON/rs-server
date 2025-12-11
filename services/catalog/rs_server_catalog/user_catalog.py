@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -314,7 +314,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         """
         if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
             self.s3_handler = get_s3_handler()
-
         collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
         logger.debug(f"Update item for user: {user}")
@@ -738,7 +737,6 @@ field is not permitted also."
                 item = await self.get_item_from_collection(request)
 
                 content = self.update_stac_item_publication(content, request, item)
-
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_timestamps_for_creation(content)

@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import os
 from os import environ as env
 
 from httpx import AsyncClient
-from stac_fastapi.pgstac.config import Settings
 from starlette.requests import Request
 
 #########################
@@ -47,9 +46,8 @@ LOCAL_MODE: bool = env_bool("RSPY_LOCAL_MODE", default=False)
 # Cluster mode is the opposite of local mode
 CLUSTER_MODE: bool = not LOCAL_MODE
 
-# STAC browser URL(s), as seen from the user browser.
-# They are parsed by pydantic from the environment variable CORS_ORIGINS
-CORS_ORIGINS: list[str] = Settings().cors_origins
+# STAC browser URL(s), as seen from the user browser, separated by commas e.g. http://url1,http://url2
+CORS_ORIGINS: list[str] = [url.strip() for url in os.environ.get("CORS_ORIGINS", "").split(",") if url]
 
 
 def request_from_stacbrowser(request: Request) -> bool:
@@ -87,23 +85,23 @@ SERVICE_NAME: str | None = None
 # HTTP client #
 ###############
 
-__http_client: AsyncClient | None = None
+__HTTP_CLIENT: AsyncClient | None = None
 
 
 def http_client():
     """Get HTTP client"""
-    return __http_client
+    return __HTTP_CLIENT
 
 
 def set_http_client(value):
     """Set HTTP client"""
-    global __http_client  # pylint: disable=global-statement
-    __http_client = value
+    global __HTTP_CLIENT  # pylint: disable=global-statement
+    __HTTP_CLIENT = value
 
 
 async def del_http_client():
     """Close and delete HTTP client."""
-    global __http_client  # pylint: disable=global-statement
-    if __http_client:
-        await __http_client.aclose()
-    __http_client = None
+    global __HTTP_CLIENT  # pylint: disable=global-statement
+    if __HTTP_CLIENT:
+        await __HTTP_CLIENT.aclose()
+    __HTTP_CLIENT = None

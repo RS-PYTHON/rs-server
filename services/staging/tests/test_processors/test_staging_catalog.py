@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ class TestStagingCatalog:
 
         # mock all other called methods
         mock_create_streaming_list = mocker.patch.object(staging_instance, "create_streaming_list", return_value=None)
-        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution", return_value=None)
 
         # Mock the requests.get method
         mock_response = mocker.Mock()
@@ -78,8 +77,7 @@ class TestStagingCatalog:
             params=expected_filter_object,
             timeout=5,
         )
-        mock_create_streaming_list.called_once()
-        mock_log_job_execution.called_once()
+        mock_create_streaming_list.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_check_catalog_get_wrong_response(self, mocker, staging_instance: Staging, staging_inputs: dict):

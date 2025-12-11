@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@ name: poetry-install
 description: "'poetry install' this project and dependencies"
 
 inputs:
+  python-version:
+    description: "Python version"
+    required: false
   options:
     description: "'poetry install' options e.g. '--with dev'"
     required: false
@@ -34,12 +37,19 @@ runs:
   using: "composite"
   steps:
     - uses: ./.github/actions/install-python
+      with:
+        python-version: ${{ inputs.python-version }}
+
     - uses: snok/install-poetry@v1
       with:
         version: 2.2.1
 
     - run: |
         set -x
+
+        # Regenerate the poetry.lock file for non-standard python versions
+        [[ "${{ inputs.python-version }}" != "${{ env.PYTHON_VERSION }}" ]] && poetry lock --regenerate
+
         poetry install ${{ inputs.options }} # don't use quotes around options
         poetry -q run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
       working-directory: ${{ inputs.working-directory }}

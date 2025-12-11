@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,25 @@
 # limitations under the License.
 
 name: python
-description: Install python with hardcoded version
+description: Install python
+
+inputs:
+  python-version:
+    description: "Python version"
+    required: false
+
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-python@v5
+
+    # Install default python version
+    - if: ${{ inputs.python-version == '' }}
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+
+    # Install specified python version
+    - if: ${{ inputs.python-version != '' }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}

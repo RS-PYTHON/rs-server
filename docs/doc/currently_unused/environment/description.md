@@ -22,8 +22,7 @@ explains briefly the choices that have been made.
 </tr>
 <tr class="even">
 <td><p>language version</p></td>
-<td><p>python 3.11</p></td>
-<td><p>python 3.12 is too recent to be chosen</p></td>
+<td><p>python 3</p></td>
 </tr>
 <tr class="odd">
 <td><p>dependency management</p></td>

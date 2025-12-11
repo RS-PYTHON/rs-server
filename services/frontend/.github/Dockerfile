@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
+# Target Docker image name:
+# ghcr.io/rs-python/rs-server-frontend
+#
+
+ARG PYTHON_VERSION=3.13.9
 
 # Build stage for multi stage build.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
+FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
 
-COPY ./layer-cleanup.sh /usr/local/bin/
-RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
-# Install dependencies
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc && layer-cleanup.sh
+# Update system
+RUN restore-apt.sh && apt update && apt upgrade -y && layer-cleanup.sh
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
@@ -35,20 +41,9 @@ ADD ./*.whl /tmp/whl
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl && layer-cleanup.sh
 
-# Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
-
-COPY ./layer-cleanup.sh /usr/local/bin/
-RUN chmod 755 /usr/local/bin/layer-cleanup.sh
-
-# Update dependencies
-RUN apt update && apt upgrade -y && layer-cleanup.sh
-
-# Copy the python installation from the build stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-
 # Set env var to the aggregated openapi.json released in the .whl package
-ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.11/site-packages/resources/openapi.json
+RUN ln -sf /usr/local/lib/python3.* /usr/local/lib/python3
+ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3/site-packages/resources/openapi.json
 
 # Copy the script that will be run as this image entrypoint
 RUN mkdir -p /scripts
@@ -68,9 +63,9 @@ WORKDIR /home/$USER
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
-# Remove apt repository list and custom scripts
+# Remove custom scripts
 USER root
-RUN rm -f /etc/apt/sources.list /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 USER $USER
 
 ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh [DEBUG_MODE_RELOAD_FRONTEND]" ]
@@ -79,5 +74,4 @@ ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh [DEBUG_
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-server-frontend"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/frontend/.github/Dockerfile"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     # Install dependencies
     if [[ " $@ " == *" --install "* ]]; then
         (set -x
-            cd "$proj_dir" && poetry -q install --with dev > /dev/null
+            cd "$proj_dir" && poetry install --with dev > /dev/null
             poetry -q run opentelemetry-bootstrap -a install > /dev/null || true
         )
     fi

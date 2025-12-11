@@ -1,0 +1,37 @@
+# Copyright 2023-2025 Airbus, CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""FastAPI application bootstrap for the EDRS service."""
+
+import warnings
+from types import MethodType
+
+from rs_server_common.fastapi_app import init_app
+from rs_server_common.utils.error_handlers import register_stac_exception_handlers
+from rs_server_edrs import __version__
+from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
+from rs_server_edrs.fastapi.edrs_routers import edrs_routers
+
+warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
+
+app = init_app(__version__, edrs_routers, router_prefix="/edrs")
+
+# pgSTAC hooks (CoreCrudClient expects these)
+# app.state.pgstac_client = MockPgstacEdrs()
+app.state.get_connection = MockPgstacEdrs.get_connection
+app.state.readpool = MockPgstacEdrs.readpool()
+
+app.state.pgstac_client.get_items = MethodType(MockPgstacEdrs.get_items, app.state.pgstac_client)
+
+register_stac_exception_handlers(app)

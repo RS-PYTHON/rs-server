@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing"
 ]
@@ -50,9 +50,9 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.13,<4"
 rs-server-common = "*"
-pygeoapi = "^0.21"
+pygeoapi = ">=0.21"
 flask = "^3.1.1" # for pygeoapi
 geoalchemy2 = ">=0.18"
 SQLAlchemy = "^2.0.42"
@@ -66,7 +66,6 @@ psycopg2 = "^2.9.11"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-python = "^3.11"
 rs-server-common = {path = "../common", develop = true}
 # pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
