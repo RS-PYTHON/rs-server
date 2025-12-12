@@ -53,7 +53,6 @@ xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev.dependencies]
 rs-server-common = {path = "../common", develop = true}
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 
 [build-system]
 requires = ["poetry-core>=1.9.0"]

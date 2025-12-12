@@ -80,7 +80,6 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 pygeoapi = ">=0.21"
 # pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pytest = "^8.4.2"
 pytest-asyncio = "^1.2.0"
 pytest-cov = "^7.0.0"
