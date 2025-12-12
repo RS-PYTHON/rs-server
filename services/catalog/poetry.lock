@@ -180,14 +180,14 @@ files = [
 
 [[package]]
 name = "authlib"
-version = "1.6.5"
+version = "1.6.6"
 description = "The ultimate Python library in building OAuth and OpenID Connect servers and clients."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "authlib-1.6.5-py2.py3-none-any.whl", hash = "sha256:3e0e0507807f842b02175507bdee8957a1d5707fd4afb17c32fb43fee90b6e3a"},
-    {file = "authlib-1.6.5.tar.gz", hash = "sha256:6aaf9c79b7cc96c900f0b284061691c5d4e61221640a948fe690b556a6d6d10b"},
+    {file = "authlib-1.6.6-py2.py3-none-any.whl", hash = "sha256:7d9e9bc535c13974313a87f53e8430eb6ea3d1cf6ae4f6efcd793f2e949143fd"},
+    {file = "authlib-1.6.6.tar.gz", hash = "sha256:45770e8e056d0f283451d9996fbb59b70d45722b45d854d58f32878d0a40c38e"},
 ]
 
 [package.dependencies]
@@ -258,18 +258,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.42.6"
+version = "1.42.8"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.42.6-py3-none-any.whl", hash = "sha256:69ff5cf6431fe7870da009f23aceabb20d56b4c9852ba9a808eaf6cc30ae02a5"},
-    {file = "boto3-1.42.6.tar.gz", hash = "sha256:11dab889a24f378af6c93afd4aa06d7cace3866cbf02e78c7a77e9a7fb41967a"},
+    {file = "boto3-1.42.8-py3-none-any.whl", hash = "sha256:747acc83488fc80b0e7d1c4ff0c533039ff3ede21bdbd4e89544e25b010b070c"},
+    {file = "boto3-1.42.8.tar.gz", hash = "sha256:e967706af5887339407481562c389c612d5eae641eb854ddd59026d049df740e"},
 ]
 
 [package.dependencies]
-botocore = ">=1.42.6,<1.43.0"
+botocore = ">=1.42.8,<1.43.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.16.0,<0.17.0"
 
@@ -278,14 +278,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.42.6"
+version = "1.42.8"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.42.6-py3-none-any.whl", hash = "sha256:c4aebdc391f3542270ebea8b8f0060fde514f6441de207dce862ed759887607e"},
-    {file = "botocore-1.42.6.tar.gz", hash = "sha256:ab389c6874dfbdc4c18de9b4a02d300cb6c7f6f2d4622c73e5965aeef80e570d"},
+    {file = "botocore-1.42.8-py3-none-any.whl", hash = "sha256:4cb89c74dd9083d16e45868749b999265a91309b2499907c84adeffa0a8df89b"},
+    {file = "botocore-1.42.8.tar.gz", hash = "sha256:4921aa454f82fed0880214eab21126c98a35fe31ede952693356f9c85ce3574b"},
 ]
 
 [package.dependencies]
@@ -3808,14 +3808,14 @@ url = ["furl (>=0.4.1)"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "6.1.3"
+version = "6.1.4"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_api-6.1.3-py3-none-any.whl", hash = "sha256:55be37148924f90a695e18c22653f55076df1992fe243c53ec9c01d78c133934"},
-    {file = "stac_fastapi_api-6.1.3.tar.gz", hash = "sha256:9767899c98d49cc314613295241a4b8fce097b1bf198f7ca3376917d387571b0"},
+    {file = "stac_fastapi_api-6.1.4-py3-none-any.whl", hash = "sha256:534a755f9c14776b996380601f2cc276886f2f99607d05fd6b3ed17bf94ab367"},
+    {file = "stac_fastapi_api-6.1.4.tar.gz", hash = "sha256:fbd8e678214d4891e436c80ecc1f3a8d0e1e86dcf948a677c91c816eb13f5c55"},
 ]
 
 [package.dependencies]
@@ -3824,14 +3824,14 @@ stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.1.3"
+version = "6.1.4"
 description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_extensions-6.1.3-py3-none-any.whl", hash = "sha256:f4de0bd8c899fd35454e62ab822b41b2593413c97feba4df85872c7f53c6a435"},
-    {file = "stac_fastapi_extensions-6.1.3.tar.gz", hash = "sha256:75afda6cd2bf110808625dc9228cf04419d80fbe6c8a9f28ebe41283dc06e06d"},
+    {file = "stac_fastapi_extensions-6.1.4-py3-none-any.whl", hash = "sha256:a465b8f93b7a220bdba831377df277efafa8ffe303f14bf3f7d4322bf250b15c"},
+    {file = "stac_fastapi_extensions-6.1.4.tar.gz", hash = "sha256:367bb18b654b3a5899f7a0eac97c62b8dc3484c5c67df7c30aec936a1724f91f"},
 ]
 
 [package.dependencies]
@@ -3872,14 +3872,14 @@ validation = ["stac-pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.1.3"
+version = "6.1.4"
 description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_types-6.1.3-py3-none-any.whl", hash = "sha256:a5821757420768e5ae6f9e5c1f51a0708d315003ab7fd6a0a2f50e3980404237"},
-    {file = "stac_fastapi_types-6.1.3.tar.gz", hash = "sha256:9213dee790628d954ca5defdd765eb84b625fbe725daba32cea2dc63c17db64d"},
+    {file = "stac_fastapi_types-6.1.4-py3-none-any.whl", hash = "sha256:7cbe567b008ec4d1c692427b1167648c2a8f38197e4962ae9f430c0a5156e55f"},
+    {file = "stac_fastapi_types-6.1.4.tar.gz", hash = "sha256:d3e728c519d836394df68600c893e763c7a0a9cb76b0729c61690268baf06902"},
 ]
 
 [package.dependencies]
@@ -4042,14 +4042,14 @@ devenv = ["check-manifest", "pytest (>=4.3)", "pytest-cov", "pytest-mock (>=3.3)
 
 [[package]]
 name = "urllib3"
-version = "2.6.1"
+version = "2.6.2"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "urllib3-2.6.1-py3-none-any.whl", hash = "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"},
-    {file = "urllib3-2.6.1.tar.gz", hash = "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f"},
+    {file = "urllib3-2.6.2-py3-none-any.whl", hash = "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"},
+    {file = "urllib3-2.6.2.tar.gz", hash = "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797"},
 ]
 
 [package.extras]

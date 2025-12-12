@@ -28,6 +28,7 @@ for s in common adgs cadip edrs prip catalog staging frontend ; do
   cd "$s"
   poetry lock --regenerate
   fix_psycopg2_lock
+  sed -i 's/version = "0.3.1.post1"/version = "0.3.1.post2"/g' poetry.lock
   poetry show -o
   cd - >/dev/null
 done
@@ -35,4 +36,5 @@ done
 cd .. || exit 70
 poetry lock --regenerate || exit 80
 fix_psycopg2_lock
+sed -i 's/version = "0.3.1.post1"/version = "0.3.1.post2"/g' poetry.lock
 poetry show -o || exit 85
