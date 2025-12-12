@@ -14,7 +14,5 @@
 
 """Main package of commons of rs-server services."""
 
-import os
-
 # Set automatically by running `poetry dynamic-versioning`
 __version__ = "0.0.0"
