@@ -53,14 +53,14 @@ from rs_server_catalog.user_handler import (
 )
 from rs_server_catalog.utils import (
     delete_s3_files,
+    extract_owner_name_from_json_filter,
+    extract_owner_name_from_text_filter,
     get_s3_filename_from_asset,
     get_s3_handler,
     get_temp_bucket_name,
     get_token_for_pagination,
     headers_minus_content_length,
     verify_existing_item_from_catalog,
-    extract_owner_name_from_json_filter,
-    extract_owner_name_from_text_filter
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
@@ -591,7 +591,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         Returns:
             GeoJSONResponse: The updated response.
         """
-        owner_id=""
+        owner_id = ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
             if "filter" in query:

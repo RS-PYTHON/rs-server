@@ -197,12 +197,12 @@ def headers_minus_content_length(response: Response) -> dict[str, str]:
     return {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
 
 
-def extract_owner_name_from_json_filter(json_filter: Any) -> str|None:
+def extract_owner_name_from_json_filter(json_filter: Any) -> str | None:
     """
     Scans a CQL2 JSON filter and returns the associated owner name if it contains an "owner" property.
-    Owner name must be in this kind of subpart of the filter: 
+    Owner name must be in this kind of subpart of the filter:
         "args": [{"property": "owner"}, "toto"]}
-    
+
     Args:
         json_filter (Any): Filter to scan. Expected to be a dictionary (else returns None)
 
@@ -211,7 +211,7 @@ def extract_owner_name_from_json_filter(json_filter: Any) -> str|None:
     """
     if not isinstance(json_filter, dict):
         return None
-    
+
     if "args" in json_filter and isinstance(json_filter["args"], list):
         if (
             len(json_filter["args"]) == 2
@@ -219,7 +219,7 @@ def extract_owner_name_from_json_filter(json_filter: Any) -> str|None:
             and json_filter["args"][0].get("property") == "owner"
         ):
             return json_filter["args"][1]
-        
+
         for element in json_filter["args"]:
             owner_name = extract_owner_name_from_json_filter(element)
             if owner_name is not None:
@@ -228,12 +228,12 @@ def extract_owner_name_from_json_filter(json_filter: Any) -> str|None:
     return None
 
 
-def extract_owner_name_from_text_filter(text_filter: str) -> str|None:
+def extract_owner_name_from_text_filter(text_filter: str) -> str | None:
     """
     Scans a CQL2 text filter and returns the associated owner name if it contains an "owner" property.
-    Owner name must be a field in this kind of filter: 
+    Owner name must be a field in this kind of filter:
         "width=2500 AND owner='toto'"
-    
+
     Args:
         text_filter (str): Text filter to scan
 
@@ -248,4 +248,3 @@ def extract_owner_name_from_text_filter(text_filter: str) -> str|None:
     if match:
         return match.group(1)
     return None
-
