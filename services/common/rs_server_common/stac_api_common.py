@@ -934,7 +934,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             # Comma-separated lists
             elif key in COMMA_SEPARATED_LISTS_KEYS:
-                mode = "union" if key == "productType" else "intersection"
+                mode = "union" if key in ["productType", "Satellite"] else "intersection"
                 odata_merged[key], key_empty_selection = self.resolve_comma_separated_list_conflict(
                     odata_params[key],
                     odata_hardcoded[key],
