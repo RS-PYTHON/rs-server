@@ -1339,14 +1339,14 @@ usgs = ["usgs (>=0.3.6)"]
 
 [[package]]
 name = "fastapi"
-version = "0.124.3"
+version = "0.124.4"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "fastapi-0.124.3-py3-none-any.whl", hash = "sha256:09d57f9a7e37e13a693212cba34a6b76e3a1d6e1b9e7fc8e4c357988c4624e47"},
-    {file = "fastapi-0.124.3.tar.gz", hash = "sha256:365862c98ec2f6f2ddd7bd5c538eb1112208d3ef3ace5c3ced68f2b073b17ceb"},
+    {file = "fastapi-0.124.4-py3-none-any.whl", hash = "sha256:6d1e703698443ccb89e50abe4893f3c84d9d6689c0cf1ca4fad6d3c15cf69f15"},
+    {file = "fastapi-0.124.4.tar.gz", hash = "sha256:0e9422e8d6b797515f33f500309f6e1c98ee4e85563ba0f2debb282df6343763"},
 ]
 
 [package.dependencies]
@@ -4810,7 +4810,7 @@ python-keycloak = ">=5.7.0,<6.0"
 python-logging-loki = "^0.3.1"
 requests = "^2.32.5"
 sqlalchemy = "^2.0.43"
-stac-fastapi-pgstac = "==6.1.4"
+stac-fastapi-pgstac = ">=6.1.5"
 stac-fastapi-types = "^6.0.0"
 stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1,<0.51"
@@ -5062,14 +5062,14 @@ stac-fastapi-types = ">=6.1,<7.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "6.1.4"
+version = "6.1.5"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-6.1.4-py3-none-any.whl", hash = "sha256:a56a273eb1e4da84bb2284f4747a8a3cfb4a94a90e02a00025d66c0529a712c6"},
-    {file = "stac_fastapi_pgstac-6.1.4.tar.gz", hash = "sha256:ad61cbffb25c9e51aec777b444a2b314521f700eb14f57c9da3bb356b307abc7"},
+    {file = "stac_fastapi_pgstac-6.1.5-py3-none-any.whl", hash = "sha256:9f1cfb021c0b5bf2da4e9c60bdb0301d9684ad67daa036672b6dc11c0fd48c97"},
+    {file = "stac_fastapi_pgstac-6.1.5.tar.gz", hash = "sha256:b6e7654b243ec1831c12161738656734fb9bc9ebe141ea3171bbc0fbb7492df8"},
 ]
 
 [package.dependencies]
@@ -5082,7 +5082,8 @@ hydraters = ">=0.1.3"
 json-merge-patch = ">=0.3.0"
 jsonpatch = ">=1.33.0"
 orjson = "*"
-pydantic = "*"
+pydantic = ">=2.4,<3.0"
+pydantic-settings = ">=2.7,<3.0"
 stac-fastapi-api = ">=6.1,<7.0"
 stac-fastapi-extensions = ">=6.1,<7.0"
 stac-fastapi-types = ">=6.1,<7.0"

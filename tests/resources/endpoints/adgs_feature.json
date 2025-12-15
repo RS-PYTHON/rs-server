@@ -15,7 +15,7 @@
         "processing:facility": "FOS"
     },
     "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "assets": {
         "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF": {
             "href": "http://127.0.0.1:5001/Products(0a88d2a2-6e73-41a1-abce-2cdf29dfcf04)/$value",
