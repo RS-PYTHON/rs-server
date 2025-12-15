@@ -43,7 +43,7 @@ GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59
 
 [source,json]
 {
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
     "type": "Feature",
     "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
@@ -98,7 +98,7 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
     "type": "FeatureCollection",
     "features": [
         {
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
             ],
@@ -130,7 +130,7 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
             "assets": {}
         },
         {
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
             ],
@@ -162,7 +162,7 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
             "assets": {}
         },
         {
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
             ],
@@ -294,7 +294,7 @@ GET /adgs/aux/search?datetime=2018-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=10
 
 [source,json]
 {
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
     "type": "Feature",
     "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
@@ -418,7 +418,7 @@ POST /catalog/collections
     "id": "test_collection",
     "type": "Collection",
     "description": "Collection description",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "owner": "test_owner"
 }
 
@@ -443,7 +443,7 @@ GET /catalog/collections/{ownerId:collectionId}
       "type": "Collection",
       "owner": "test_owner",
       "description": "Collection description",
-      "stac_version": "1.0.0",
+      "stac_version": "1.1.0",
       "links": [
         {
           "rel": "items",
@@ -506,7 +506,7 @@ PUT /catalog/collections/{ownerId:collectionId}
     "id": "test_collection",
     "type": "Collection",
     "description": "Updated collection description",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "owner": "test_owner"
 }
 
@@ -586,7 +586,7 @@ POST /catalog/collections/{ownerId:collectionId}/items
   "stac_extensions": [
     "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
   ],
-  "stac_version": "1.0.0",
+  "stac_version": "1.1.0",
   "type": "Feature"
 }
 
@@ -686,7 +686,7 @@ GET /catalog/collections/{ownerId:collectionId}/items/{featureID}
     "proj:epsg": 3857,
     "orientation": "nadir"
   },
-  "stac_version": "1.0.0",
+  "stac_version": "1.1.0",
   "stac_extensions": [
     "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
   ]
