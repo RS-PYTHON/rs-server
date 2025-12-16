@@ -26,13 +26,15 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker images
+restore-apt.sh
 apt update
-apt install -y git vim emacs-nox nano
+apt install -y --no-install-recommends git vim-tiny mg
 
 # Add aliases to bash
 cat << EOF >> /home/user/.bashrc
 alias ll='ls -alFh'
 alias ls='ls --color=auto'
+alias vim='vim.tiny'
 EOF
 
 # Git clone the project branch with HTTP authentication so we don't need any
@@ -43,7 +45,7 @@ cd /home/user
 git clone -b "$BRANCH_NAME" https://github.com/RS-PYTHON/operational-services.git
 cd ./operational-services
 
-# The rspy modules used by the fastapi service are installed under /usr/local/lib/python3.11/site-packages
+# The rspy modules used by the fastapi service are installed under /usr/local/lib/python<version>/site-packages
 # We tell the service to use the git dirs instead. So we replace them by symlinks to git.
 py_site_packages=$(python -c "import site; print(site.getsitepackages()[0])")
 for git_pydir in $(pwd)/object_storage_access_manager/osam; do
@@ -57,4 +59,4 @@ done
 chown -R user:user /home/user/operational-services
 
 # Clean everything
-rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+layer-cleanup.sh

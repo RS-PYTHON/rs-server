@@ -257,6 +257,9 @@ def test_get_credentials_success(mocker, osam_client):
     expected_creds = {"access_key": "AKIA...", "secret_key": "SECRET"}
     mocker.patch("osam.main.get_user_s3_credentials", return_value=expected_creds)
 
+    # Mock cluster mode
+    mocker.patch("osam.main.common_settings.LOCAL_MODE", new=False, autospec=False)
+
     response = osam_client.get("/storage/account/credentials")
     assert response.status_code == 200
     assert response.json() == expected_creds

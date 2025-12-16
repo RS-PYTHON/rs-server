@@ -12,13 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
+#
+# Target Docker image name:
+# ghcr.io/rs-python/operational-services-osam
+#
+
+ARG PYTHON_VERSION=3.13.9
+
+# Don't use alpine, it's too different from the build stage.
+FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm AS builder
+
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
 # Install dependencies for compilation
-RUN apt update && apt upgrade -y && apt install -y git
+RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
 
 # Update pip version
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
+
+# Install rs-server-common dependency from the "develop" branch before the osam wheel.
+RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common" && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -26,46 +40,46 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
-# Install rs-server-common dependency from the "develop" branch before the osam wheel.
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common"
-
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    rs_osam-*.whl
+    rs_osam-*.whl && \
+    layer-cleanup.sh
 
 # Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
+FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
+
+COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
 # Reinstall git since this is a new image layer
-RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
+RUN restore-apt.sh && apt update && apt install -y git && layer-cleanup.sh
 
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
 COPY --from=builder /usr/local /usr/local
 
 # Install opentelemetry instrumentation packages for dependencies
-RUN opentelemetry-bootstrap -a install
-
-# Clean everything
-RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+RUN opentelemetry-bootstrap -a install && layer-cleanup.sh
 
 # Add a default user
-RUN useradd -m user
-USER user
-WORKDIR /home/user
+ARG USER=user
+RUN useradd -m $USER
+USER $USER
+WORKDIR /home/$USER
 
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
-# After this, make sure we're still non-root
-USER user
+# Remove custom scripts
+USER root
+RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
+USER $USER
 
 ENTRYPOINT [ \
     "python", "-m", "uvicorn", "osam.main:app", \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-osam"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/operational-services/blob/develop/object_storage_access_manager/.github/Dockerfile"

@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: 3.11.7
+  PYTHON_VERSION: 3.13.9
 
 jobs:
   changes:
@@ -38,7 +38,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       conf: ${{ steps.filter.outputs.conf }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -52,7 +52,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/install-python
       - run: >
           echo
@@ -67,7 +67,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: |
           docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
 
@@ -78,7 +78,7 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     # continue-on-error: true # run other jobs, resolve issues later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
         with:
           rm-plugin-dir: true
@@ -97,7 +97,7 @@ jobs:
           poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: check-linting
@@ -113,7 +113,7 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     # continue-on-error: true # run other jobs, resolve issues later
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
         with:
           rm-plugin-dir: true
@@ -127,7 +127,7 @@ jobs:
     # continue-on-error: true # run other jobs, resolve issues later
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
         with:
           rm-plugin-dir: true
@@ -170,7 +170,7 @@ jobs:
 
       - name: Save reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: check-security
           path: |
@@ -209,7 +209,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
 
       - name: Run pytest
@@ -222,7 +222,7 @@ jobs:
           filename: ./cov-report.xml
 
       - name: Save reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: run-all-pytests
           path: |
@@ -249,7 +249,7 @@ jobs:
       SONAR_HOST_URL: https://sonarcloud.io
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Fetch full Git history to resolve branch refs and SCM issues
       - name: Download linting reports

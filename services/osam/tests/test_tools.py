@@ -37,28 +37,37 @@ S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "expiration_bucke
 EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "empty_expiration_bucket.csv")
 
 
-def test_singleton():
-    """Test if singleton works properly"""
+def test_singleton_initial_state_and_single_file_load():
+    """Test singleton starts clean and loads one config file correctly."""
     singleton = S3StorageConfigurationSingleton()
-    singleton_instance_2 = S3StorageConfigurationSingleton()
-    assert singleton is singleton_instance_2
-    assert not singleton.config_file_path
+    singleton2 = S3StorageConfigurationSingleton()
+    assert singleton is singleton2
+
+    # Initial state
+    assert singleton.config_file_path == ""
     assert not singleton.bucket_configuration_csv
     assert singleton.last_config_file_modification_date == 0
 
+    # Load real test file
     singleton.get_s3_bucket_configuration(S3_EXPIRATION_BUCKET_CSV_FILE)
-    assert singleton.config_file_path == S3_EXPIRATION_BUCKET_CSV_FILE
-    assert singleton.bucket_configuration_csv
-    assert singleton.last_config_file_modification_date == singleton.get_last_modification_date_of_config_file(
-        S3_EXPIRATION_BUCKET_CSV_FILE,
-    )
 
-    singleton.get_s3_bucket_configuration(EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE)
-    assert singleton.config_file_path == EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
-    assert not singleton.bucket_configuration_csv
-    assert singleton.last_config_file_modification_date == singleton.get_last_modification_date_of_config_file(
-        EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE,
-    )
+    assert singleton.config_file_path == S3_EXPIRATION_BUCKET_CSV_FILE
+    assert len(singleton.bucket_configuration_csv) == 8
+    assert singleton.last_config_file_modification_date > 0
+
+
+def test_singleton_rejects_switching_config_file():
+    """Test that singleton prevents loading a second, different config file."""
+    first = S3_EXPIRATION_BUCKET_CSV_FILE
+    second = EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
+
+    S3StorageConfigurationSingleton.get_s3_bucket_configuration(first)
+
+    with pytest.raises(RuntimeError, match="can only manage one config file at a time"):
+        S3StorageConfigurationSingleton.get_s3_bucket_configuration(second)
+
+    # State unchanged
+    assert S3StorageConfigurationSingleton.config_file_path == first
 
 
 def test_singleton_new_with_config_file_path():

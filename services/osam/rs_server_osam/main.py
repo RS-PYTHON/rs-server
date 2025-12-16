@@ -239,22 +239,25 @@ async def user_rights(request: Request, user: str, auth=Depends(apikey_security)
 
 
 @router.get("/storage/account/credentials")
-async def get_credentials(request: Request):
+async def get_credentials(request: Request) -> dict:
     """
-    Retrieve temporary S3/OBS access credentials for the authenticated user.
+    Endpoint used to get user credentials from cloud provider.
+    In cluster mode, the request MUST contain oauth2 cookie in header
 
-    The endpoint returns short-lived S3 credentials associated with that user.
-    The request must include a valid OAuth2 cookie, which is used to identify
-    the Keycloak user. If the cookie is missing or invalid, the
-    request is rejected.
-
-    ### Returns
-    JSONResponse — The temporary S3/OBS access credentials for the user.
-
-    ### Raises
-    401 — If the OAuth2 cookie is missing or invalid.
+    Returns:
+        dict: A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region'
+        for the user's S3 storage.
     """
+    # In local mode, just return the common bucket credentials.
+    if common_settings.LOCAL_MODE:
+        return {
+            "access_key": os.environ["S3_ACCESSKEY"],
+            "secret_key": os.environ["S3_SECRETKEY"],
+            "endpoint": os.environ["S3_ENDPOINT"],
+            "region": os.environ["S3_REGION"],
+        }
 
+    # Cluster mode
     auth_info = await oauth2.get_user_info(request)
     logger.info(f"Getting ovh s3 credentials for keycloak user {auth_info.user_login}")
     return get_user_s3_credentials(auth_info.user_login)

@@ -16,6 +16,7 @@
 # pylint: disable = wrong-import-order
 import os
 import os.path as osp
+import threading
 from importlib import reload
 from pathlib import Path
 from unittest.mock import patch
@@ -112,8 +113,7 @@ def client_(mocker):
     os.environ["RSPY_LOCAL_MODE"] = "1"
     reload(common_settings)
     mocker.patch(
-        "rs_server_common.s3_storage_handler.s3_storage_config.S3StorageConfigurationSingleton."
-        "get_s3_bucket_configuration",
+        "osam.utils.tools.S3StorageConfigurationSingleton.get_s3_bucket_configuration",
         return_value={"mocked": "configmap_data"},
     )
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
@@ -129,16 +129,18 @@ def client_(mocker):
 
 @pytest.fixture(autouse=True, scope="function")
 def reset_s3_singleton():
-    """Reset singleton state between tests (important!)
-    The autouse=True makes this fixture be used automatically for each test function.
-    """
-    for attr in [
-        "instance",
-        "file_lock",
-        "bucket_configuration_csv",
-        "config_file_path",
-        "last_config_file_modification_date",
+    """Properly reset singleton state without breaking attribute access."""
+    # Only delete the instance — let __new__ recreate everything cleanly
+    if hasattr(S3StorageConfigurationSingleton, "instance"):
+        del S3StorageConfigurationSingleton.instance
+
+    # Re-initialize class attributes to default (in case they were deleted before)
+    for attr, value in [
+        ("file_lock", threading.Lock()),
+        ("bucket_configuration_csv", []),
+        ("config_file_path", ""),
+        ("last_config_file_modification_date", 0),
     ]:
-        if hasattr(S3StorageConfigurationSingleton, attr):
-            delattr(S3StorageConfigurationSingleton, attr)
+        setattr(S3StorageConfigurationSingleton, attr, value)
+
     yield

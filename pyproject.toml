@@ -34,7 +34,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing"
 ]
@@ -48,20 +48,18 @@ packages = [
 
 # All the dependencies for release are set in the sub-projects
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.13,<4"
 rs-osam = {path = "object_storage_access_manager", develop = true}
 rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
-pytest = "^8.3.5"
-pytest-cov = "^6.1.1"
-authlib = "^1.6.5"
+pytest = "^8.4.2"
+pytest-cov = "^7.0.0"
 
 [tool.poetry.group.dev]
 optional = true
 
 # All the dev dependencies are set here so they can be used by the CI.
 [tool.poetry.group.dev.dependencies]
-python = "^3.11"
 black = "^25.1.0"
 mypy = "^1.15.0"
 pre-commit = "^4.2.0"
@@ -69,7 +67,7 @@ types-requests = "^2.32.0.20250328"
 flake8 = "^7.1.2"
 bandit = "^1.8.3"
 safety = "^3.3.0"
-pylint = "^3.3.7"
+pylint = "^4.0.2"
 flake8-pyproject = "^1.2.3"
 
 [tool.poetry.requires-plugins]
