@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -445,7 +445,7 @@ class TestPrepareStreaming:
             type="Feature",
             properties={"storage:schemes": storage_schemes},
             id="123456",
-            stac_version="1.0.0",
+            stac_version="1.1.0",
             assets={test_asset_name: test_asset},
             stac_extensions=[],
         )
@@ -495,7 +495,7 @@ class TestPrepareStreaming:
             type="Feature",
             properties={},
             id="123456",
-            stac_version="1.0.0",
+            stac_version="1.1.0",
             assets={test_asset_name: self.TEST_ASSET_WITH_STORAGE_REFS},
             stac_extensions=[],
         )
@@ -508,7 +508,7 @@ class TestPrepareStreaming:
             type="Feature",
             properties={"storage:schemes": storage_schemes},
             id="123456",
-            stac_version="1.0.0",
+            stac_version="1.1.0",
             assets={test_asset_name: self.TEST_ASSET_WITH_STORAGE_REFS},
             stac_extensions=[],
         )

@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class TestCatalogPublishCollectionEndpoint:
             "id": "test_collection",
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "test_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
@@ -73,7 +73,7 @@ class TestCatalogPublishCollectionEndpoint:
             "id": "test_collection_without_user",
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
             "extent": {
@@ -114,7 +114,7 @@ class TestCatalogPublishCollectionEndpoint:
         minimal_incorrect_collection = {
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "test_incorrect_owner",
         }
         # Test that response is 400 BAD Request
@@ -135,7 +135,7 @@ class TestCatalogPublishCollectionEndpoint:
             "id": "duplicate_collection",
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "duplicate_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
@@ -171,7 +171,7 @@ class TestCatalogPublishCollectionEndpoint:
             "id": "second_test_collection",
             "type": "Collection",
             "description": "not_updated_test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "second_test_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
@@ -216,7 +216,7 @@ class TestCatalogPublishCollectionEndpoint:
                     "id": "collectionOne",
                     "type": "Collection",
                     "description": "test_description",
-                    "stac_version": "1.0.0",
+                    "stac_version": "1.1.0",
                     "owner": "duplicate_owner",
                     "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
                     "license": "public-domain",
@@ -229,7 +229,7 @@ class TestCatalogPublishCollectionEndpoint:
                     "id": "collectionTwo",
                     "type": "Collection",
                     "description": "test_description",
-                    "stac_version": "1.0.0",
+                    "stac_version": "1.1.0",
                     "owner": "duplicate_owner",
                     "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
                     "license": "public-domain",
@@ -265,7 +265,7 @@ class TestCatalogPublishCollectionEndpoint:
             "id": "test_collection_01",
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "test_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
@@ -298,7 +298,7 @@ class TestCatalogPublishCollectionEndpoint:
             "id": "test_collection_02",
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "test_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",

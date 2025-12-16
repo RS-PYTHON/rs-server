@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -275,7 +275,7 @@ async def get_root_catalog(request: Request):
     - `conformsTo`: A list of STAC and OGC API specifications that the catalog conforms to.
     - `links`: A link to the `/cadip/collections` endpoint where users can find available collections.
 
-    The `stac_version` is set to "1.0.0", and the `conformsTo` field lists the relevant STAC and OGC API
+    The `stac_version` is set to "1.1.0", and the `conformsTo` field lists the relevant STAC and OGC API
     specifications that the catalog adheres to. A link to the collections endpoint is added to the catalog's
     `links` field, allowing users to discover available collections in the CADIP service.
 

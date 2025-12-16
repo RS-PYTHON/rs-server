@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,7 +68,6 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 rs-server-common = {path = "../common", develop = true}
 # pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pre-commit = "^4.3.0"
 pylint = "^4.0.2"
 pytest = "^8.4.2"

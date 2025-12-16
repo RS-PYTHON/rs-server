@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,9 +39,6 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import botocore
 from fastapi import HTTPException
-from pygeofilter.ast import Attribute, Equal, Like, Node
-from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
-from pygeofilter.parsers.cql2_text import parse as parse_cql2_text
 from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
@@ -56,6 +53,8 @@ from rs_server_catalog.user_handler import (
 )
 from rs_server_catalog.utils import (
     delete_s3_files,
+    extract_owner_name_from_json_filter,
+    extract_owner_name_from_text_filter,
     get_s3_filename_from_asset,
     get_s3_handler,
     get_temp_bucket_name,
@@ -455,30 +454,6 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
         return response, HTTP_302_FOUND
 
-    def find_owner_id(self, cql2_ast: Node) -> str:
-        """Browse an abstract syntax tree (AST) to find the owner_id.
-        Then return it.
-
-        Args:
-            cql2_ast (_type_): The AST
-
-        Returns:
-            str: The owner_id
-        """
-        res = ""
-        if hasattr(cql2_ast, "lhs"):
-            if isinstance(cql2_ast.lhs, Attribute) and cql2_ast.lhs.name == "owner":
-                if isinstance(cql2_ast, Like):
-                    res = cql2_ast.pattern
-                elif isinstance(cql2_ast, Equal):
-                    res = cql2_ast.rhs
-            elif left := self.find_owner_id(cql2_ast.lhs):
-                res = left
-            elif hasattr(cql2_ast, "rhs"):
-                if right := self.find_owner_id(cql2_ast.rhs):
-                    res = right
-        return res
-
     async def collection_exists(self, request: Request, collection_id: str) -> bool:
         """Check if the collection exists.
 
@@ -515,9 +490,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
             # Management of priority for the assignation of the owner_id
             if not self.request_ids["owner_id"]:
-                filters = parse_cql2_json(content["filter"]) if "filter" in content else None
                 self.request_ids["owner_id"] = (
-                    (self.find_owner_id(filters) if filters else None)
+                    (extract_owner_name_from_json_filter(content["filter"]) if "filter" in content else None)
                     or content.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
@@ -558,7 +532,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             if not self.request_ids["owner_id"]:
                 self.request_ids["owner_id"] = (
                     (
-                        self.find_owner_id(parse_cql2_text(query_params_dict["filter"]))
+                        extract_owner_name_from_text_filter(query_params_dict["filter"])
                         if "filter" in query_params_dict
                         else ""
                     )
@@ -617,22 +591,18 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         Returns:
             GeoJSONResponse: The updated response.
         """
-        filters: Node | None = None
+        owner_id = ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
             if "filter" in query:
                 qs_filter = query["filter"][0]
-                filters = parse_cql2_text(qs_filter)
+                owner_id = extract_owner_name_from_text_filter(qs_filter)
         elif request.method == "POST":
             query = await request.json()
             if "filter" in query:
                 qs_filter_json = query["filter"]
-                filters = parse_cql2_json(qs_filter_json)
+                owner_id = extract_owner_name_from_json_filter(qs_filter_json)
 
-        try:
-            owner_id = self.find_owner_id(filters)
-        except AttributeError:
-            owner_id = ""
         if owner_id:
             self.request_ids["owner_id"] = owner_id
 

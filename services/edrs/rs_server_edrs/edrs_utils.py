@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -191,29 +191,6 @@ def collect_session_stats(
         "Constellation": constellation,
     }
     return session_odata, assets_products
-
-
-def build_assets_list(file_entries: list[dict], channel_name: str) -> list[tuple[str, dict]]:
-    """Build the asset tuple list for a channel traversal."""
-    channel_match = re.fullmatch(r"ch_(\d+)", channel_name)
-    channel_number = int(channel_match.group(1)) if channel_match else None
-
-    assets: list[tuple[str, dict]] = []
-    for entry in file_entries:
-        entry_path = entry.get("path", "")
-        if entry.get("type") == "file" and entry_path.lower().endswith(".raw"):
-            file_name = Path(entry_path).name
-            assets.append(
-                (
-                    file_name,
-                    {
-                        "path": entry_path,
-                        "channel": channel_number,
-                        "file:size": int(entry.get("size") or 0),
-                    },
-                ),
-            )
-    return assets
 
 
 def apply_asset_mapping_to_item(item: Item, asset_items: list[dict]) -> None:

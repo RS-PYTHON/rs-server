@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,11 +74,20 @@ jobs:
     runs-on: ubuntu-latest
     name: Check copyright license headers
     needs: changes
+    permissions:
+      contents: write
+      pull-requests: write
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
       - uses: actions/checkout@v6
-      - run: |
-          docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: check License Header
+        uses: apache/skywalking-eyes/header@main
+        with:
+          log: debug
+          mode: check
 
   check-linting:
     runs-on: ubuntu-latest
@@ -293,7 +302,7 @@ jobs:
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
 
       - name: Run SonarCloud Scanner
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/

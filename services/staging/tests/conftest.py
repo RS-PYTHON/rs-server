@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -223,7 +223,7 @@ def feature(f_id: str) -> dict:
         "type": "Feature",
         "properties": {},
         "id": f_id,
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "assets": {"asset1": {"href": "https://fake-data"}},
         "stac_extensions": [],
     }
@@ -235,7 +235,7 @@ def detailed_feature(f_id: str, owner: str, eopf_type: str = "") -> dict:
         type="Feature",
         properties={"owner": owner},
         id=f_id,
-        stac_version="1.0.0",
+        stac_version="1.1.0",
         assets={f"asset_{f_id}": {"href": f"https://fake-data/{f_id}"}},
         stac_extensions=[],
     )

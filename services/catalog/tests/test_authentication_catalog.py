@@ -1,6 +1,6 @@
 # pylint: disable=too-many-lines
 
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ COMMON_FIELDS = {
     },
     "license": "public-domain",
     "description": "Some description",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "stac_extensions": [AUTH_EXTENSION],
     **AUTH_SCHEME,
 }

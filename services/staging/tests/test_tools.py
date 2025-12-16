@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ def test_get_minimal_collection_body():
         "id": "abc",
         "type": "Collection",
         "description": "Collection abc automatically created by staging processor",
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "license": "public-domain",
         "extent": {
