@@ -644,14 +644,20 @@ class TestDeleteObsUser:
     "obs_user_present, access_key_present, raise_exception, expected_result",
     [
         # 1. Success: credentials returned
-        (True, True, False, {"access_key": "ak123", "secret_key": "sk123"}),
+        (
+            True,
+            True,
+            False,
+            {"access_key": "ak123", "secret_key": "sk123", "endpoint": "endpoint123", "region": "region123"},
+        ),
         # 2. OBS user found but no access key
-        (True, False, False, {"detail": "Error reading user obs_test from OVH."}),
+        (True, False, False, "Error reading user obs_test from OVH."),
         # 3. OBS user not found
-        (False, False, False, {"detail": "No s3 credentials associated with obs_test"}),
+        (False, False, False, "No s3 credentials associated with obs_test"),
         # 4. Exception raised during processing
-        (True, True, True, {"detail": "No s3 credentials associated with obs_test"}),
+        (True, True, True, "Simulated failure"),
     ],
+    ids=["ok", "ko1", "ko2", "ko3"],
 )
 @patch("osam.tasks.get_ovh_handler")
 @patch("osam.tasks.get_keycloak_handler")
@@ -662,8 +668,11 @@ def test_get_user_s3_credentials(
     access_key_present,
     raise_exception,
     expected_result,
+    monkeypatch,
 ):
     """Test cases for get_s3_credentials"""
+    monkeypatch.setenv("S3_ENDPOINT", "endpoint123")
+    monkeypatch.setenv("S3_REGION", "region123")
     user = "obs_test"
 
     # Setup mock Keycloak handler
@@ -680,12 +689,20 @@ def test_get_user_s3_credentials(
         if access_key_present:
             mock_ovh_instance.get_user_s3_secret_key.return_value = "sk123"
     elif raise_exception:
-        mock_ovh_instance.get_user_s3_access_key.side_effect = Exception("Simulated failure")
+        mock_ovh_instance.get_user_s3_access_key.side_effect = Exception(expected_result)
 
     mock_get_ovh_handler.return_value = mock_ovh_instance
 
-    result = get_user_s3_credentials(user)
-    assert result == expected_result
+    # Nominal case
+    if obs_user_present and access_key_present and (not raise_exception):
+        result = get_user_s3_credentials(user)
+        assert result == expected_result
+
+    # Error cases
+    else:
+        with pytest.raises(RuntimeError) as e_info:
+            get_user_s3_credentials(user)
+        assert expected_result == str(e_info.value.__cause__)
 
 
 @pytest.mark.parametrize(
