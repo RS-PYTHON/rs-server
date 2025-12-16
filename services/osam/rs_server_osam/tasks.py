@@ -16,6 +16,7 @@
 import copy
 import json
 import logging
+import os
 
 # pylint: disable = wrong-import-order
 from collections.abc import Sequence
@@ -280,7 +281,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             )
 
 
-def get_user_s3_credentials(user: str):
+def get_user_s3_credentials(user: str) -> dict:
     """
     Retrieves the S3 access and secret keys for a given user.
 
@@ -288,18 +289,30 @@ def get_user_s3_credentials(user: str):
         user (str): The username for whom to retrieve S3 credentials.
 
     Returns:
-        dict: A dictionary containing the 'access_key' and 'secret_key' for the user's S3 storage.
+        dict: A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region'
+        for the user's S3 storage.
     """
     try:
         obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
-        if obs_user:
-            if access_key := get_ovh_handler().get_user_s3_access_key(obs_user):
-                secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
-                return {"access_key": access_key, "secret_key": secret_key}
-            return {"detail": f"Error reading user {user} from OVH."}
+
+        if not obs_user:
+            raise RuntimeError(f"No s3 credentials associated with {user}")
+
+        if not (access_key := get_ovh_handler().get_user_s3_access_key(obs_user)):
+            raise RuntimeError(f"Error reading user {user} from OVH.")
+
+        secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
+        return {
+            "access_key": access_key,
+            "secret_key": secret_key,
+            # NOTE: maybe get the endpoint url and region from another request ?
+            # maybe: /cloud/project/{self.ovh_service_name}/storage/access")
+            "endpoint": os.environ["S3_ENDPOINT"],
+            "region": os.environ["S3_REGION"],
+        }
+
     except Exception as exc:  # pylint: disable = broad-exception-caught
-        logger.error(f"Error while getting s3 credentials for OVH user id {obs_user}. {exc}")
-    return {"detail": f"No s3 credentials associated with {user}"}
+        raise RuntimeError(f"Error while getting s3 credentials for OVH user id {obs_user}") from exc
 
 
 def apply_user_access_policy(user, current_rights):

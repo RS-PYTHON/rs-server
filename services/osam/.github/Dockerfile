@@ -14,7 +14,7 @@
 
 #
 # Target Docker image name:
-# ghcr.io/rs-python/rs-osam
+# ghcr.io/rs-python/operational-services-osam
 #
 
 ARG PYTHON_VERSION=3.13.9
