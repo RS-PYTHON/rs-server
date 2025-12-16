@@ -82,7 +82,7 @@ It provides a unified, secure interface and tooling to handle **authorization, a
 <a href="{RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
 
 ---
-""",
+""",  # noqa: E501
 )
 router = APIRouter(tags=["OSAM service"])
 
@@ -125,7 +125,7 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 
 @router.post("/storage/accounts/update")
-async def accounts_update(auth=Depends(apikey_security)):
+async def accounts_update(auth=Depends(apikey_security)):  # pylint: disable=unused-argument
     """
     Triggers the synchronization of Keycloak and OVH (OBS) account information.
 
@@ -244,9 +244,8 @@ async def get_credentials(request: Request) -> dict:
     Endpoint used to get user credentials from cloud provider.
     In cluster mode, the request MUST contain oauth2 cookie in header
 
-    Returns:
-        dict: A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region'
-        for the user's S3 storage.
+    ### Returns
+    dict — A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region' for the user's S3 storage.
     """
     # In local mode, just return the common bucket credentials.
     if common_settings.LOCAL_MODE:
