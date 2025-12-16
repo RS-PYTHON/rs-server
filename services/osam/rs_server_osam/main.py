@@ -53,12 +53,20 @@ DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 
 DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))
 RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 
+# For cluster deployment: override the swagger /docs URL from an environment variable.
+# Also set the openapi.json URL under the same path.
+try:
+    docs_url = os.environ["RSPY_DOCS_URL"].strip("/")
+    docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+except KeyError:
+    docs_params = {}
 
 # Initialize a FastAPI application
 app = FastAPI(
     title="OSAM-Service",
     root_path="",
     debug=True,
+    **docs_params,  # type: ignore
     swagger_ui_init_oauth={
         "clientId": "(this value is not used)",
         "appName": "API-Key Manager",
