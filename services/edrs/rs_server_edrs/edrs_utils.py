@@ -239,7 +239,7 @@ def build_edrs_item_collection(
             return False
         tail = Path(path_str).name
         parts = tail.split("_")
-        return len(parts) == 4 and parts[0] == "DCS" and parts[1].isdigit() and parts[2].isdigit() and parts[3] == "dat"
+        return len(parts) == 4 and parts[0] == "DCS" and parts[3] == "dat"
 
     for satellite_code in satellites:
         session_dirs = [
