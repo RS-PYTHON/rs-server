@@ -78,8 +78,8 @@ class FTPClient:
                 logger.error("Incomplete environment configuration for station: %s", station)
                 raise ValueError(f"Incomplete environment configuration for station: {station}")
 
-            self.ca_cert = os.getenv(f"{prefix}_CA_CERT")
-            self.client_cert = os.getenv(f"{prefix}_CLIENT_CERT")
+            self.ca_cert = os.getenv(f"{prefix}_CA_CRT")
+            self.client_cert = os.getenv(f"{prefix}_CLIENT_CRT")
             self.client_key = os.getenv(f"{prefix}_CLIENT_KEY")
             self.use_ssl = os.getenv("USE_SSL", "false").strip().lower() in ("1", "true", "yes")
 
