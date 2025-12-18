@@ -5487,7 +5487,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5504,7 +5504,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5521,7 +5521,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5532,6 +5532,7 @@ develop = true
 [package.dependencies]
 pypgstac = {version = "^0.9.8", extras = ["psycopg"]}
 rs-server-common = "*"
+xmltodict = "^1.0.2"
 
 [package.source]
 type = "directory"
@@ -5539,7 +5540,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5579,6 +5580,7 @@ stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1,<0.51"
 urllib3 = ">=2.6.1"
 uvicorn = ">=0.35.0"
+xmltodict = "^1.0.2"
 
 [package.source]
 type = "directory"
@@ -5586,7 +5588,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-edrs"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, EDRS service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5604,7 +5606,7 @@ url = "services/edrs"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5626,7 +5628,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5643,7 +5645,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5661,6 +5663,7 @@ psycopg2 = "^2.9.11"
 pygeoapi = ">=0.21"
 rs-server-common = "*"
 SQLAlchemy = "^2.0.42"
+xmltodict = "^1.0.2"
 
 [package.source]
 type = "directory"

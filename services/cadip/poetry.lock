@@ -3018,7 +3018,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a4.post163.dev0"
+version = "1.0a4.post183.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -3058,6 +3058,7 @@ stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1,<0.51"
 urllib3 = ">=2.6.1"
 uvicorn = ">=0.35.0"
+xmltodict = "^1.0.2"
 
 [package.source]
 type = "directory"
@@ -3558,6 +3559,21 @@ files = [
     {file = "wrapt-1.17.3-py3-none-any.whl", hash = "sha256:7171ae35d2c33d326ac19dd8facb1e82e5fd04ef8c6c0e394d7af55a55051c22"},
     {file = "wrapt-1.17.3.tar.gz", hash = "sha256:f66eb08feaa410fe4eebd17f2a2c8e2e46d3476e9f8c783daa8e09e0faa666d0"},
 ]
+
+[[package]]
+name = "xmltodict"
+version = "1.0.2"
+description = "Makes working with XML feel like you are working with JSON"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "dev"]
+files = [
+    {file = "xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d"},
+    {file = "xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649"},
+]
+
+[package.extras]
+test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "zipp"
