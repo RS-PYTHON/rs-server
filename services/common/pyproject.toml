@@ -83,12 +83,8 @@ stac-pydantic = "^3.4.0"
 geojson-pydantic = "2.1.0"
 stac-fastapi-types = "^6.0.0"
 requests = "^2.32.5"
-<<<<<<< HEAD
-urllib3 = ">=2.5.0"
 xmltodict = "^1.0.2"
-=======
 urllib3 = ">=2.6.1"
->>>>>>> origin/develop
 
 [tool.poetry.group.dev]
 optional = true
