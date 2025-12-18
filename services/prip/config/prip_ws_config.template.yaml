@@ -53,6 +53,9 @@ template:
       Name:
       - null
       - $.Name
+      Names:
+        - null
+        - "$.Name"
       ContentLength:
       - null
       - $.ContentLength
@@ -163,6 +166,7 @@ template:
           and:
           # ---- Name-based matches (contains/startswith/endswith) ----
           - contains(Name, '{Name}')
+          - Name in ({Names})
           # ---- Id match (existing) ----
           - contains(Id, '{prip:id}')
           # ---- Time on PublicationDate ----
