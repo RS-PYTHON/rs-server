@@ -26,9 +26,7 @@ import yaml
 from rs_server_common.ftp_handler.ftp_handler import FTPClient
 
 # Default path to stations configuration YAML
-DEFAULT_EDRS_STATIONS_CONFIG = ADGS_CONFIG = (
-    Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
-)
+DEFAULT_EDRS_STATIONS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "edrs_stations.yaml"
 EDRS_STATIONS_CONFIG = os.environ.get("EDRS_STATIONS_CONFIG_YAML", DEFAULT_EDRS_STATIONS_CONFIG)
 
 
