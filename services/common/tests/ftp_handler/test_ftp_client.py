@@ -56,9 +56,9 @@ def test_init_station_mode(monkeypatch):
     monkeypatch.setenv("TEST_PASS", "pass1")
     monkeypatch.setenv("TEST_PORT", "2121")
     monkeypatch.setenv("USE_SSL", "true")
-    monkeypatch.setenv("CA_CERT", "ca.pem")
-    monkeypatch.setenv("CLIENT_CERT", "client.pem")
-    monkeypatch.setenv("CLIENT_KEY", "client.key")
+    monkeypatch.setenv("TEST_CA_CERT", "ca.pem")
+    monkeypatch.setenv("TEST_CLIENT_CERT", "client.pem")
+    monkeypatch.setenv("TEST_CLIENT_KEY", "client.key")
 
     client = FTPClient(station="test")
 
