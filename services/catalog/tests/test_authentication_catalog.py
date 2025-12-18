@@ -1,6 +1,6 @@
 # pylint: disable=too-many-lines
 
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,6 +53,12 @@ from .helpers import (  # pylint: disable=no-name-in-module
     clear_aws_credentials,
 )
 
+TEST_STORAGE_CONFIG_DATA = [
+    ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
+    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
+    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
+    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+]
 ####################
 # Global variables #
 ####################
@@ -73,7 +79,7 @@ COMMON_FIELDS = {
     },
     "license": "public-domain",
     "description": "Some description",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "stac_extensions": [AUTH_EXTENSION],
     **AUTH_SCHEME,
 }
@@ -752,7 +758,6 @@ async def test_authorization_search(
     method: str,
 ):
     """Test the GET and POST /catalog/search endpoints"""
-
     # Requested collection owner and ids.
     owner = requested_collections[0].owner_id
     single_collection = ["S1_L1"]

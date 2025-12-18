@@ -49,7 +49,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
+python = ">=3.13,<4"
 rs-server-common = "*"
 xmltodict = "^1.0.2"
 
@@ -72,4 +72,8 @@ requires = [
     "poetry-core>=1.0.0",
     "poetry-dynamic-versioning>=1.0.0,<2.0.0"
 ]
+<<<<<<< HEAD
 build-backend = "poetry_dynamic_versioning.backend"
+=======
+build-backend = "poetry_dynamic_versioning.backend"
+>>>>>>> origin/develop

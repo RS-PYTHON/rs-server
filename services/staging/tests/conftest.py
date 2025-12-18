@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,6 +35,13 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
 
+TEST_STORAGE_CONFIG_DATA = [
+    ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
+    ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
+    ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
+    ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
+]
+
 # Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.
 # We'll restore the local mode by default a few lines below.
@@ -61,7 +68,6 @@ from rs_server_staging.processors.authentication import RefreshTokenData
 from rs_server_staging.processors.processor_staging import Staging
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
-S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "expiration_bucket.csv")
 TEST_DETAIL = "Test detail"
 
 
@@ -135,19 +141,6 @@ def set_db_env_var_fixture(monkeypatch):
     for key, val in envvars.items():
         monkeypatch.setenv(key, val)
     yield  # restore the environment
-
-
-@pytest.fixture(name="set_config_file_env_var")
-def set_config_file_env_var_fixture(monkeypatch):
-    """
-    Fixture to set environment variable for expiration_bucket.csv config file used
-    to retrieve bucket name when staging item.
-
-    Args:
-        monkeypatch: Pytest utility for temporarily modifying environment variables.
-    """
-    monkeypatch.setenv("BUCKET_CONFIG_FILE_PATH", S3_EXPIRATION_BUCKET_CSV_FILE)
-    yield
 
 
 @pytest.fixture(name="staging_client")
@@ -230,7 +223,7 @@ def feature(f_id: str) -> dict:
         "type": "Feature",
         "properties": {},
         "id": f_id,
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "assets": {"asset1": {"href": "https://fake-data"}},
         "stac_extensions": [],
     }
@@ -242,7 +235,7 @@ def detailed_feature(f_id: str, owner: str, eopf_type: str = "") -> dict:
         type="Feature",
         properties={"owner": owner},
         id=f_id,
-        stac_version="1.0.0",
+        stac_version="1.1.0",
         assets={f"asset_{f_id}": {"href": f"https://fake-data/{f_id}"}},
         stac_extensions=[],
     )
@@ -296,7 +289,7 @@ def staging_input_for_config_tests_2():
 
 
 @pytest.fixture(name="staging_instance")
-def staging(mocker, config, set_config_file_env_var):
+def staging(mocker, config):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_request = mocker.Mock()
@@ -489,3 +482,21 @@ def dask_client(mocker, cluster):
     client.nthreads = mocker.Mock(return_value={0: 1, 1: 1})  # Simulate 2 threads
     client.submit = mocker.Mock(return_value=mocker.Mock())  # Simulating a Dask future
     return client
+
+
+@pytest.fixture(scope="session", autouse=True)
+def apply_global_osam_mock():
+    """
+    Mocks the osam endpoint call to fetch the S3 storage configuration used in
+    s3_storage_config module.
+    Apply the monkeypatch directly at import time, so no fixture dependency at all.
+    This runs once when the module is imported, before any test or fixture starts.
+    """
+    os.environ["RSPY_HOST_OSAM"] = "https://dummy-osam"
+    import rs_server_common.s3_storage_handler.s3_storage_config as config_mod  # pylint: disable=import-outside-toplevel
+
+    def fake_fetch(endpoint: str):
+        return TEST_STORAGE_CONFIG_DATA
+
+    # Replace the real function directly on the module object
+    config_mod.fetch_csv_from_endpoint = fake_fetch

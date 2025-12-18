@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,14 +28,21 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 # We use a different python version in eopf + the dpr processors + rs-dpr-service
 PYTHON_VERSION=3.13.9
 PYTHON_VERSION_DPR=3.11.7
-
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
-
-PREFECT_TAG=3.6.4
+PREFECT_TAG=3.6.5
 PREFECT_AWS_TAG=0.7.1
-
 JUPYTER_HUB_VERSION=5.4.2
+
+# Old version numbers, before we apply this script.
+# We use the same variable names, suffixed by _OLD
+PYTHON_VERSION_OLD=3.13.9
+PYTHON_VERSION_DPR_OLD=3.11.7
+DASK_TAG_OLD=2024.5.2
+DASK_GATEWAY_TAG_OLD=2024.1.0
+PREFECT_TAG_OLD=3.6.5
+PREFECT_AWS_TAG_OLD=0.7.1
+JUPYTER_HUB_VERSION_OLD=5.4.2
 
 all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_AWS_TAG JUPYTER_HUB_VERSION) # var names
 
@@ -76,7 +83,7 @@ all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [cluster mode] [docker images]
 # + run rs-server ci/cd
-# [ghcr.io/rs-python/rs-osam]
+# [ghcr.io/rs-python/operational-services-osam]
 all_files+=($(_realpath operational-services/object_storage_access_manager/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-dpr-service]
 all_files+=($(_realpath rs-dpr-service/.github/Dockerfile))
@@ -136,6 +143,36 @@ for file in "${all_files[@]}"; do
     # Only for lines that don't contain a $ to avoid updating e.g. <my_var>=$<other_var>
     # NOTE: ${!var_name} = the var value
     sed -i "/\\$/! s/${var_name}\([=:][[:space:]]*\)[^[:space:]]\+/${var_name}\1${!var_name}/g" "$file"
+  done
+done
+
+# For the cluster deployment yaml files, we cannot use variables, so just replace the old
+# version numbers by the new ones.
+# It's risky because we may change values that have nothing to do with our variables.
+# So please check the changes before commiting and merging.
+all_cluster_files=()
+all_cluster_files+=($(_realpath rs-client-libraries/pyproject.toml))
+all_cluster_files+=($(_realpath rs-infra-core/apps/00-crds-dask-gateway/kustomization.yaml))
+all_cluster_files+=($(_realpath rs-infra-core/NOTICE.md))
+all_cluster_files+=($(_realpath rs-server/docs/doc/dev/installation.md))
+all_cluster_files+=($(_realpath rs-server-deployment/apps/01-dask-cluster-staging/deployment.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/dask-gateway/kustomization.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/dask-gateway/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-server/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-eopf/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-general/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-staging/values.yaml))
+
+# For each file and variable to update
+for file in "${all_cluster_files[@]}"; do
+  for var_name in "${all_variables[@]}"; do
+
+    # Old version number, before we apply this script.
+    var_name_old="${var_name}_OLD"
+
+    # Replace without regex. Use perl with \Q \E to disable regex.
+    # NOTE: ${!var_name} = the var value
+    perl -i -pe "s/\Q${!var_name_old}\E/${!var_name}/g" "$file"
   done
 done
 

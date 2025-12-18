@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
-S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "s3/expiration_bucket.csv")
 
 TEMP_BUCKET = "temp-bucket"
 CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
@@ -158,7 +157,7 @@ class Collection:
             },
             "license": "public-domain",
             "description": "Some description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
         }
         if self.user:
             properites["owner"] = self.user
@@ -317,7 +316,7 @@ class Feature:
                 "orientation": "nadir",
                 "owner_id": f"{self.owner_id}",
             },
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v2.0.0/schema.json",

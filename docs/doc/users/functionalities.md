@@ -46,7 +46,7 @@ search files comming from multiple acquisition sessions.
 #### Return
 
     {
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
         "type": "Feature",
         "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
@@ -114,7 +114,7 @@ A valid session search request must contain at least a value for either
         "type": "FeatureCollection",
         "features": [
             {
-                "stac_version": "1.0.0",
+                "stac_version": "1.1.0",
                 "stac_extensions": [
                     "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
                 ],
@@ -146,7 +146,7 @@ A valid session search request must contain at least a value for either
                 "assets": {}
             },
             {
-                "stac_version": "1.0.0",
+                "stac_version": "1.1.0",
                 "stac_extensions": [
                     "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
                 ],
@@ -178,7 +178,7 @@ A valid session search request must contain at least a value for either
                 "assets": {}
             },
             {
-                "stac_version": "1.0.0",
+                "stac_version": "1.1.0",
                 "stac_extensions": [
                     "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
                 ],
@@ -332,7 +332,7 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
 #### Response
 
     {
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
         "type": "Feature",
         "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",

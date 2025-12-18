@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
+python = ">=3.13,<4"
 rs-server-common = "*"
 pypgstac = {extras = ["psycopg"], version = "^0.9.8"}
 xmltodict = "^1.0.2"
@@ -60,7 +60,6 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 rs-server-common = {path = "../common", develop = true}
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 # Formatting
 black = ">=24.8,<26.0"
 # Testing

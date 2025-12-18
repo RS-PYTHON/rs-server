@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,11 +74,20 @@ jobs:
     runs-on: ubuntu-latest
     name: Check copyright license headers
     needs: changes
+    permissions:
+      contents: write
+      pull-requests: write
     if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
       - uses: actions/checkout@v6
-      - run: |
-          docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: check License Header
+        uses: apache/skywalking-eyes/header@main
+        with:
+          log: debug
+          mode: check
 
   check-linting:
     runs-on: ubuntu-latest
@@ -214,15 +223,16 @@ jobs:
     # All other jobs only use the env PYTHON_VERSION that is set above in this file.
     strategy:
       matrix:
-        python-version: [3.11.7, "${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15 ]
+        # python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15.0a2 ]
+        python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}" ]
         include:
           - experimental: false
-          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
-            experimental: true
-          - python-version: 3.14
-            experimental: true
-          - python-version: 3.15
-            experimental: true
+#          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
+#            experimental: true
+#          - python-version: 3.14
+#            experimental: true
+#          - python-version: 3.15.0a2
+#            experimental: true
     continue-on-error: ${{ matrix.experimental }}
 
     steps:
@@ -292,7 +302,7 @@ jobs:
           sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
 
       - name: Run SonarCloud Scanner
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/

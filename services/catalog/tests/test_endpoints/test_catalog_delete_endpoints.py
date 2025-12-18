@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class TestCatalogDeleteEndpoints:
             "id": "will_be_deleted_collection",
             "type": "Collection",
             "description": "will_be_deleted_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "will_be_deleted_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
@@ -77,7 +77,7 @@ class TestCatalogDeleteEndpoints:
             "id": "correctly_created_collection",
             "type": "Collection",
             "description": "will_be_deleted_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "owner_with_rights",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
