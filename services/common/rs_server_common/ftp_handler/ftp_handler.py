@@ -125,9 +125,8 @@ class FTPClient:
             # Connect and login
             self.ftp.connect(host=self.host, port=self.port, timeout=10)
             self.ftp.auth()
-            self.ftp.prot_p()
             self.ftp.login(user=self.user, passwd=self.password)
-
+            self.ftp.prot_p()
         else:
             self.ftp = FTP()  # nosec B321 # NOSONAR
             self.ftp.connect(host=self.host, port=self.port, timeout=10)
