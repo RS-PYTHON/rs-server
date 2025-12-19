@@ -258,18 +258,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.42.9"
+version = "1.42.13"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.42.9-py3-none-any.whl", hash = "sha256:d21d22af9aeb1bad8e9b670a221d6534c0120f7e7baf523dafaca83f1f5c3f90"},
-    {file = "boto3-1.42.9.tar.gz", hash = "sha256:cdd4cc3e5bb08ed8a0c5cc77eca78f98f0239521de0991f14e44b788b0c639b2"},
+    {file = "boto3-1.42.13-py3-none-any.whl", hash = "sha256:9d6aad3fa8b90567006bf7b32efa26489fc306fbe63946eaf57b72356a45761d"},
+    {file = "boto3-1.42.13.tar.gz", hash = "sha256:4c9a62dcb5c3f905630fe99fb4b81131da84c5c92eedcc81a89cbd924c1c524f"},
 ]
 
 [package.dependencies]
-botocore = ">=1.42.9,<1.43.0"
+botocore = ">=1.42.13,<1.43.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.16.0,<0.17.0"
 
@@ -278,14 +278,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.42.9"
+version = "1.42.13"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.42.9-py3-none-any.whl", hash = "sha256:f99ba2ca34e24c4ebec150376c815646970753c032eb84f230874b2975a185a8"},
-    {file = "botocore-1.42.9.tar.gz", hash = "sha256:74f69bfd116cc7c8215481284957eecdb48580e071dd50cb8c64356a866abd8c"},
+    {file = "botocore-1.42.13-py3-none-any.whl", hash = "sha256:b750b2de4a2478db9718a02395cb9da8698901ba02378d60037d6369ecb6bb88"},
+    {file = "botocore-1.42.13.tar.gz", hash = "sha256:7e4cf14bd5719b60600fb45d2bb3ae140feb3c182a863b93093aafce7f93cfee"},
 ]
 
 [package.dependencies]
@@ -1008,14 +1008,14 @@ standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[stand
 
 [[package]]
 name = "filelock"
-version = "3.20.0"
+version = "3.20.1"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "filelock-3.20.0-py3-none-any.whl", hash = "sha256:339b4732ffda5cd79b13f4e2711a31b0365ce445d95d243bb996273d072546a2"},
-    {file = "filelock-3.20.0.tar.gz", hash = "sha256:711e943b4ec6be42e1d4e6690b48dc175c822967466bb31c0c293f34334c13f4"},
+    {file = "filelock-3.20.1-py3-none-any.whl", hash = "sha256:15d9e9a67306188a44baa72f569d2bfd803076269365fdea0934385da4dc361a"},
+    {file = "filelock-3.20.1.tar.gz", hash = "sha256:b8360948b351b80f420878d8516519a2204b07aefcdcfd24912a5d33127f188c"},
 ]
 
 [[package]]
@@ -2909,14 +2909,14 @@ test = ["pytest"]
 
 [[package]]
 name = "pystac"
-version = "1.14.1"
+version = "1.14.2"
 description = "Python library for working with the SpatioTemporal Asset Catalog (STAC) specification"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "pystac-1.14.1-py3-none-any.whl", hash = "sha256:19d73306d8fb94fbd66b7945ee5510e3574c8d48462f86e1e91e3f257b79722b"},
-    {file = "pystac-1.14.1.tar.gz", hash = "sha256:4def289ab2168d67492ed0b5a3bd738d3dfa42390a50563776bfd1558af38d53"},
+    {file = "pystac-1.14.2-py3-none-any.whl", hash = "sha256:5d3fbdd0f9f06c45ca67082f91a68c092a925faad02225172686c5a5dc7cce91"},
+    {file = "pystac-1.14.2.tar.gz", hash = "sha256:dc68bd4d24f391306caf89d2547015d8b0d6907bb72f7a431cff2dc86b6bdf16"},
 ]
 
 [package.dependencies]
@@ -3313,7 +3313,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a4.post157.dev0"
+version = "1.0a4.post194.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -3353,6 +3353,7 @@ stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1,<0.51"
 urllib3 = ">=2.6.1"
 uvicorn = ">=0.35.0"
+xmltodict = "^1.0.2"
 
 [package.source]
 type = "directory"
@@ -3988,7 +3989,7 @@ version = "1.0.2"
 description = "Makes working with XML feel like you are working with JSON"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d"},
     {file = "xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649"},
@@ -4035,4 +4036,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "f523f67d3859ba7cf842cb24c39db709440fac402fc8a8a59ccfc872edbeeb90"
+content-hash = "5e66782c24381465731d4a12fedfd752a4aae5ea7af3daf5f409127a4af8862a"

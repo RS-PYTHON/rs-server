@@ -20,13 +20,11 @@ import io
 import logging
 import ntpath
 import os
-import ssl
 import time
 import traceback
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from ftplib import FTP, FTP_TLS  # nosec B402 # NOSONAR
 from typing import Any
 from urllib.parse import urlparse
 
@@ -34,6 +32,7 @@ import boto3
 import botocore
 import botocore.exceptions
 import requests
+from rs_server_common.ftp_handler.ftp_handler import FTPClient
 from rs_server_common.utils.logging import Logging
 
 # seconds
@@ -79,30 +78,6 @@ class GetKeysFromS3Config:
     local_prefix: str
     overwrite: bool = False
     max_retries: int = DWN_S3FILE_RETRIES
-
-
-@dataclass
-class FTPConfig:
-    """Configuration for FTP connection."""
-
-    def __init__(self, station: str):
-        """Initialize FTPConfig with environment variables."""
-        prefix = station.upper()
-        self.use_ssl = str(os.environ.get("USE_SSL", "True")).lower() in ("true", "1", "t")
-        self.host = os.environ.get(f"{prefix}_HOST")
-        self.port = int(os.environ.get(f"{prefix}_PORT", "21"))
-        self.user = os.environ.get(f"{prefix}_USER")
-        self.password = os.environ.get(f"{prefix}_PASS")
-        if self.use_ssl:
-            self.client_crt = os.environ.get(f"{prefix}_CLIENT_CRT")
-            self.client_key = os.environ.get(f"{prefix}_CLIENT_KEY")
-            self.ca_crt = os.environ.get(f"{prefix}_CA_CRT")
-
-        if not all([self.host, self.port, self.user, self.password]):
-            raise ValueError(f"Incomplete environment configuration for station: {station}")
-
-        if self.use_ssl and not all([self.client_crt, self.client_key, self.ca_crt]):
-            raise ValueError(f"Incomplete SSL configuration for station: {station}")
 
 
 @dataclass
@@ -1161,7 +1136,7 @@ retried for %s times. Aborting",
 
         return station, f"/{nominal}/{path}"
 
-    def s3_streaming_from_ftp(  # pylint: disable = too-many-statements
+    def s3_streaming_from_ftp(
         self,
         ftp_path: str,
         bucket: str,
@@ -1169,86 +1144,27 @@ retried for %s times. Aborting",
         chunk_size: int = 8 * 1024 * 1024,
     ):
         """
-        Stream a remote file from an FTP or FTPS (explicit TLS/FTPES) server and upload
-        it directly to Amazon S3 using a multipart upload. The method avoids storing
-        the file on disk and keeps memory usage low by buffering and uploading data in
-        fixed-size chunks.
-
-        When FTPS (explicit TLS) is enabled for the target station, a secure SSL/TLS
-        connection is established using:
-            - A custom CA certificate for validating the server
-            - Optional client certificate and key for mutual TLS authentication
-            - Enforced certificate verification and protected data channels (PROT P)
-
-        Workflow:
-            1. Parse the FTPS/FTP path and determine whether SSL is required.
-            2. Establish a connection (FTP or FTPES with SSLContext and certificate validation).
-            3. Open a multipart upload to S3.
-            4. Stream the remote file in binary mode using retrbinary(), chunking in memory.
-            5. Upload each chunk as an individual S3 multipart part.
-            6. On success, finalize the multipart upload; on failure, abort it.
+        Stream a remote file from an FTP server and upload it to Amazon S3 using
+        multipart upload, avoiding local disk usage and keeping memory consumption
+        low. The file is retrieved in binary mode, chunked in memory, and each chunk
+        is uploaded as an individual S3 multipart part until the entire transfer is
+        complete.
 
         Args:
-            ftp_path (str):
-                Path of the file to retrieve from the FTP or FTPS server.
-            bucket (str):
-                Target S3 bucket.
-            key (str):
-                Destination S3 object key.
-            chunk_size (int):
-                Size (in bytes) of the in-memory buffer for each S3 multipart part.
-                Defaults to 8 MiB.
+            ftp_path (str): Path of the file to read from the FTP server.
+            bucket (str): Target S3 bucket where the file will be stored.
+            key (str): S3 object key for the uploaded file.
+            chunk_size (int): In-memory buffer size used for multipart uploads.
 
         Raises:
-            RuntimeError:
-                If any FTP/FTPS connection issue occurs or if any S3 multipart
-                operation fails.
-            ValueError:
-                If the FTP path format is invalid.
+            RuntimeError: If any FTP or S3 upload operation fails.
         """
-        try:
-            ftp: FTP | FTP_TLS | None = None
-            station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
-            ftp_config = FTPConfig(station)
-            if ftp_config.use_ssl:
-                self.logger.debug("Connecting via FTPES (explicit TLS)...")
-
-                # Create SSL context for server authentication
-                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=ftp_config.ca_crt)  # NOSONAR
-
-                # Load client certificate if provided
-                if ftp_config.client_crt and ftp_config.client_key:
-                    context.load_cert_chain(certfile=ftp_config.client_crt, keyfile=ftp_config.client_key)
-
-                # Enforce certificate verification
-                context.verify_mode = ssl.CERT_REQUIRED
-
-                # Optionally, allow internal hostnames by specifying the server hostname explicitly
-                # If server hostname does not match certificate, this avoids blindly disabling check_hostname
-                # server_hostname = ftp_config.host  # or the CN from the certificate if different
-
-                context.check_hostname = False  # NOSONAR
-
-                ftp = FTP_TLS(context=context)
-                ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
-                ftp.auth()  # AUTH TLS
-                ftp.prot_p()  # Encrypt data channel
-                ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
-
-                # for ssl: init -> connect -> auth -> prot_p -> login
-            else:
-                ftp = FTP()  # nosec B321 # NOSONAR
-
-                ftp.connect(host=ftp_config.host, port=ftp_config.port, timeout=10)  # type: ignore
-                ftp.login(user=ftp_config.user, passwd=ftp_config.password)  # type: ignore
-                # for normal ftp, init -> connect -> login.
-        except ValueError as ve:
-            raise ve
-        except Exception as e:
-            raise RuntimeError(f"Unexpected {'FTPS' if ftp_config.use_ssl else 'FTP'} error: {e}") from e
-
-        self.logger.info("Connected to FTP/ES server %s:%s", ftp_config.host, ftp_config.port)
+        station, ftp_path = S3StorageHandler.parse_ftps_path(ftp_path)
+        client = FTPClient(station)
+        client.connect()
+        self.logger.info("Connected to FTP server %s:%s", client.host, client.port)
         self.logger.info("Starting streaming upload from station %s to s3://%s/%s", station, bucket, key)
+
         # Start multipart upload
         multipart = self.s3_client.create_multipart_upload(Bucket=bucket, Key=key)
         upload_id = multipart["UploadId"]
@@ -1281,7 +1197,7 @@ retried for %s times. Aborting",
 
         try:
             # Stream data from FTP
-            ftp.retrbinary(f"RETR {ftp_path}", callback=handle_chunk)
+            client.ftp.retrbinary(f"RETR {ftp_path}", callback=handle_chunk)
 
             # Upload any remaining data
             if buffer.tell() > 0:
@@ -1307,6 +1223,6 @@ retried for %s times. Aborting",
         except Exception as e:
             # Abort on failure
             self.s3_client.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
-            raise RuntimeError(f"FTP/ES→S3 upload failed: {e}") from e
+            raise RuntimeError(f"FTP→S3 upload failed: {e}") from e
         finally:
-            ftp.quit()
+            client.close()

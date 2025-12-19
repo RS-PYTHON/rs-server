@@ -61,6 +61,7 @@ dask-gateway = "2024.1.0"
 dask = {extras = ["distributed"], version = "2024.5.2"}
 openapi-core = "^0.19.5"
 psycopg2 = "^2.9.11"
+xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev]
 optional = true
