@@ -49,6 +49,7 @@ class Stations:  # pylint: disable=too-few-public-methods
         self.value: str = ""
         self.adgs: bool = False
         self.cadip: bool = False
+        self.edrs: bool = False
         self.lta: bool = False
         self.prip: bool = False
 
@@ -59,6 +60,9 @@ class Stations:  # pylint: disable=too-few-public-methods
             self.value = station
         elif any(station.startswith(s) for s in ("cadip", "ins", "mps", "mti", "nsg", "sgs")):
             self.cadip = True
+            self.value = station
+        elif any(station == s for s in ("pedc", "bedc")):
+            self.edrs = True
             self.value = station
         elif any(station == s for s in ("lta",)):
             self.lta = True
@@ -187,7 +191,10 @@ def get_header(template_paths: list[str] | None = None, final_paths: Iterable[Pa
 
     # Get the template files used to create the final files
     for path in final_paths:
-        template_paths += TEMPLATE_PATHS[path]  # the file should be present in this dict
+        if path in TEMPLATE_PATHS:
+            template_paths += TEMPLATE_PATHS[path]
+        else:
+            logger.warning(f"Missing template mapping for: '{path!s}'")
 
     sep = "\n#  - rs-server/"
     header_paths = sep + sep.join(sorted(template_paths) + [os.path.relpath(__file__, rs_server_dir)])
@@ -269,6 +276,15 @@ def create_from_template(template_paths: list[str]):  # pylint: disable=too-many
     # Save the template file paths that were used to create each final configuration file.
     TEMPLATE_PATHS[output_path] = template_paths
 
+    # Specific post-processing for files that must keep literal block style
+    def post_process(file_path: Path, content: dict):
+        """Apply file-specific tweaks after template rendering."""
+        if file_path.name == "edrs_stations.yaml" and isinstance(content, dict) and "stations" in content:
+            stations_yaml = yaml.dump(content["stations"], default_flow_style=False, sort_keys=False)
+            content["stations"] = LiteralStr(stations_yaml)
+
+    post_process(output_path, all_files)
+
     # Write back the templated file
     with open(output_path, "w", encoding="utf-8") as opened:
         opened.write(get_header(template_paths))
@@ -329,6 +345,8 @@ def copy_to_demo(input_path_relative: str):
                 return re.sub(REGEX_DOMAIN, "adgs-station", re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value))
             if station.cadip:
                 return re.sub(REGEX_DOMAIN, "cadip-station", re.sub(REGEX_URL, r"\g<1>cadip-station:5000", value))
+            if station.edrs:
+                return re.sub(REGEX_DOMAIN, "edrs-station", re.sub(REGEX_URL, r"\g<1>edrs-station:5000", value))
             if station.lta:
                 return re.sub(REGEX_DOMAIN, "lta-station", re.sub(REGEX_URL, r"\g<1>lta-station:5000", value))
             if station.prip:
@@ -408,7 +426,7 @@ def copy_to_helm_or_infra(
         try:
             copy_to_helm_or_infra_single_doc(params, output_configs[params.output_doc_index])
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(f"Failed to update single infra doc: {params}", e)
+            logger.error("Failed to update single infra doc: %s", params, exc_info=e)
 
     # Get the file header from the list of input configuration files
     input_paths = {rs_server_dir / param.input_path_relative for param in all_params}
@@ -563,32 +581,38 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
                 return output_value
 
             # Else try to update url in the input value
+            updated_value = input_value
             if station.adgs:
-                return re.sub(
+                updated_value = re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-station-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            if station.cadip:
-                return re.sub(
+            elif station.cadip:
+                updated_value = re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-station-cadip-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            if station.lta:
-                return re.sub(
+            elif station.edrs:
+                updated_value = re.sub(
+                    REGEX_URL,
+                    rf"\g<1>mockup-station-{station.value}.processing.svc.cluster.local:21",
+                    input_value,
+                )
+            elif station.lta:
+                updated_value = re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-lta-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            if station.prip:
-                return re.sub(
+            elif station.prip:
+                updated_value = re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-prip-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            # No modification
-            return input_value
+            return updated_value
 
         for key in output_config.keys():
             if key not in input_config.keys():
@@ -603,13 +627,17 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
             # Recursive calls on dicts
             output_value = output_config[key]
             if isinstance(output_value, dict):
+                if not isinstance(input_value, dict):
+                    output_config[key] = input_value
+                    continue
                 update_all_values(parent_keys + [key], input_value, output_value, station)
 
             # Update string value
             elif isinstance(output_value, str):
-                if not isinstance(input_value, str):
-                    raise RuntimeError(f"Invalid argument: {input_value}")
-                output_config[key] = update_single_value(input_value, output_value)
+                if isinstance(input_value, str):
+                    output_config[key] = update_single_value(input_value, output_value)
+                else:
+                    output_config[key] = input_value
 
             # Update number values
             elif isinstance(output_value, numbers.Number):
@@ -669,6 +697,8 @@ if __name__ == "__main__":
             "services/cadip/config/cadip_ws_config.template.yaml",
             "services/cadip/config/cadip_ws_config.template_session.yaml",
         ],
+        ["services/edrs/config/edrs_search_config.template.yaml"],
+        ["services/edrs/config/edrs_stations.template.yaml"],
         ["services/prip/config/prip_search_config.template.yaml"],
         ["services/prip/config/prip_ws_config_token_module.template.yaml"],
         ["services/prip/config/prip_ws_config.template.yaml"],
@@ -684,6 +714,8 @@ if __name__ == "__main__":
         "services/adgs/config/adgs_ws_config_token_module.yaml",
         "services/cadip/config/cadip_ws_config_token_module.yaml",
         "services/prip/config/prip_ws_config_token_module.yaml",
+        "services/edrs/config/edrs_search_config.yaml",
+        "services/edrs/config/edrs_stations.yaml",
     ):
         copy_to_demo(config_path_relative)
 
@@ -739,6 +771,24 @@ if __name__ == "__main__":
             ),
         ],
         rs_helm_dir / "charts/rs-server-adgs/templates/configmap.yaml",
+    )
+
+    copy_to_helm_or_infra(
+        [
+            HelmOrInfraParams(
+                "services/edrs/config/edrs_search_config.yaml",
+                [],
+                ["data", f"{DCB_OPEN} .Values.app.edrsSearchConfigFile {DCB_CLOSE}"],
+                0,
+            ),
+            HelmOrInfraParams(
+                "services/edrs/config/edrs_stations.yaml",
+                [],
+                ["data", f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}"],
+                1,
+            ),
+        ],
+        rs_helm_dir / "charts/rs-server-edrs/templates/configmap.yaml",
     )
 
     copy_to_helm_or_infra(
