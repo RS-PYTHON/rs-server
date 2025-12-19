@@ -53,13 +53,13 @@ include = [
 python = ">=3.13,<4"
 rs-server-common = "*"
 pypgstac = {extras = ["psycopg"], version = "^0.9.8"}
+xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
 rs-server-common = {path = "../common", develop = true}
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 # Formatting
 black = ">=24.8,<26.0"
 # Testing

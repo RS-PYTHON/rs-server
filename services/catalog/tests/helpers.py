@@ -157,7 +157,7 @@ class Collection:
             },
             "license": "public-domain",
             "description": "Some description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
         }
         if self.user:
             properites["owner"] = self.user
@@ -316,7 +316,7 @@ class Feature:
                 "orientation": "nadir",
                 "owner_id": f"{self.owner_id}",
             },
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v2.0.0/schema.json",

@@ -38,6 +38,7 @@ info:
     <a href="${STAC_BROWSER_URL_ADGS}" target="_blank">ADGS</a> /
     <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
     <a href="${STAC_BROWSER_URL_PRIP}" target="_blank">PRIP</a> /
+    <a href="${STAC_BROWSER_URL_EDRS}" target="_blank">EDRS</a> /
     <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
 
     ---
@@ -57,6 +58,11 @@ services:
     change_tags:
       "": PRIP stations
       Filter Extension: PRIP (Filter Extension)
+  edrs:
+    openapi_url: http://localhost:8006/edrs/api
+    change_tags:
+      "": EDRS stations
+      Filter Extension: EDRS (Filter Extension)
   catalog:
     openapi_url: http://localhost:8003/catalog/api
     change_tags:

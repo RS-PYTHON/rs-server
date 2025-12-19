@@ -50,7 +50,7 @@ descriptor to a database entry.
         "id": "test_collection",
         "type": "Collection",
         "description": "Collection description",
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "owner": "test_owner"
     }
 
@@ -72,7 +72,7 @@ user is used with the following priority:
           "type": "Collection",
           "owner": "test_owner",
           "description": "Collection description",
-          "stac_version": "1.0.0",
+          "stac_version": "1.1.0",
           "links": [
             {
               "rel": "items",
@@ -131,7 +131,7 @@ a default user is used with the following priority:
         "id": "test_collection",
         "type": "Collection",
         "description": "Updated collection description",
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "owner": "test_owner"
     }
 
@@ -212,7 +212,7 @@ user is used with the following priority:
       "stac_extensions": [
         "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
       ],
-      "stac_version": "1.0.0",
+      "stac_version": "1.1.0",
       "type": "Feature"
     }
 
@@ -308,7 +308,7 @@ user is used with the following priority:
         "proj:epsg": 3857,
         "orientation": "nadir"
       },
-      "stac_version": "1.0.0",
+      "stac_version": "1.1.0",
       "stac_extensions": [
         "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
       ]

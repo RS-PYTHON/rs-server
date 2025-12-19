@@ -49,7 +49,7 @@ def do_test_link_assets_to_session(start: bool, end: bool):
     """checks correct behaviour of link_assets_to_session for timerange properties"""
     item: Item = Item(
         type="Feature",
-        stac_version="1.0.0",
+        stac_version="1.1.0",
         id="S1A_20241202183845056817",
         properties=ItemProperties(
             datetime=datetime.fromisoformat("2024-12-02T18:38:45").replace(tzinfo=timezone.utc),

@@ -25,7 +25,7 @@
         "cadip:delivery_push_ok": true
     },
     "id": "S1A_20200105072204051312",
-    "stac_version": "1.0.0",
+    "stac_version": "1.1.0",
     "assets": {
         "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw": {
             "href": "http://127.0.0.1:5000/Files(e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d)/$value",

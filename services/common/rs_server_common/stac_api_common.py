@@ -73,7 +73,7 @@ def log_http_exception(*args, **kwargs) -> HTTPException:
     return utils2.log_http_exception(logger, *args, **kwargs)
 
 
-DEFAULT_STAC_VERSION = "1.0.0"
+DEFAULT_STAC_VERSION = "1.1.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
 

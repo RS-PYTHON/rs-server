@@ -58,7 +58,6 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 rs-server-common = {path = "../common", develop = true}
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pytest = "^8.4.2"
 pytest-asyncio = "^1.2.0"
 pytest-cov = "^7.0.0"

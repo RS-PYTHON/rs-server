@@ -253,7 +253,7 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
             "id": "fixture_collection",
             "type": "Collection",
             "description": "test_description",
-            "stac_version": "1.0.0",
+            "stac_version": "1.1.0",
             "owner": "fixture_owner",
             "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
             "license": "public-domain",
@@ -316,11 +316,11 @@ def a_correct_feature_fixture() -> dict:
             "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
             "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
             "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.1.0/schema.json",
             "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
             "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
         ],
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "type": "Feature",
     }
 
@@ -354,11 +354,11 @@ def a_incorrect_feature_fixture() -> dict:
             "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
             "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
             "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.1.0/schema.json",
             "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
             "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
         ],
-        "stac_version": "1.0.0",
+        "stac_version": "1.1.0",
         "type": "Feature",
     }
 

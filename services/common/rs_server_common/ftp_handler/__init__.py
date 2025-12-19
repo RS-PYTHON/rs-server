@@ -12,7 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Main package of commons of rs-server services."""
-
-# Set automatically by running `poetry dynamic-versioning`
-__version__ = "0.0.0"
+"""Package for FTP/FTPS client module."""
