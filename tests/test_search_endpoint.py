@@ -2014,13 +2014,13 @@ def test_search_parameters(
         elif method == "POST":
             collection_params["collections"] = [collection_id]
 
-        # Do a first call with the user query/filter, and a second call without
-        for user_query in (True, False):
+            # Do a first call with the user query/filter, and a second call without
+            for user_query in (True, False):
 
-            # Remove the user query, but keep the datetime and others...
-            if not user_query:
-                collection_params.pop("query", None)
-                collection_params.pop("filter", None)
+                # Remove the user query, but keep the datetime and others...
+                if not user_query:
+                    collection_params.pop("query", None)
+                    collection_params.pop("filter", None)
 
             # NOTE: the OData queries are logged in eodag_provider.py when calling self.client.search
             # if the reponse is not mocked.
@@ -2087,7 +2087,9 @@ def test_search_parameters(
             # The second collection has a query that does not intersect the user query.
             # So either it returns no results. Or, if the user query is missing, we use the collection query.
             elif collection_id == "col2":
-                if user_query:
+                if cadip and user_query:
+                    odata = odata_query
+                elif user_query:
                     odata = None
                 else:
                     odata = odata_query
@@ -2096,6 +2098,8 @@ def test_search_parameters(
                 product_type = collection["query"].get("productType")
                 constellation = collection["query"].get("platformShortName")
                 satellite = collection["query"].get("Satellite", "")
+                if cadip and user_query:
+                    satellite = f"{satellite},{user_satellite}" if satellite else user_satellite
                 limit = user_limit
 
             # The third collection has a query with multiple values, that intersects only one user value.
@@ -2107,7 +2111,9 @@ def test_search_parameters(
                 if user_query:
                     product_type = user_product_type
                     constellation = user_constellation
-                    satellite = user_satellite
+                    satellite = (
+                        f"{collection['query'].get('Satellite', '')},{user_satellite}" if cadip else user_satellite
+                    )
                 else:
                     product_type = collection["query"].get("productType")
                     constellation = collection["query"].get("platformShortName")

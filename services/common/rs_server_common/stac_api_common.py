@@ -1003,10 +1003,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if i == 0:
                     intersection = s
                 else:
-                    if mode == "union":
-                        intersection = intersection.union(s)
+                    # mypy: intersection starts None but is set on first loop
+                    if mode == "union":  # type: ignore[union-attr]
+                        intersection = intersection.union(s)  # type: ignore[union-attr]
                     else:
-                        intersection = intersection.intersection(s)
+                        intersection = intersection.intersection(s)  # type: ignore[union-attr]
             intersection = ",".join(intersection) if intersection else None
             logger.debug(f"comma-separated list conflict resolution result: {intersection}")
 
