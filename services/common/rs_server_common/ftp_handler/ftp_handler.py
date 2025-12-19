@@ -22,9 +22,10 @@ Includes detailed logging for debugging and traceability.
 import io
 import os
 import ssl
+import tempfile
 from ftplib import FTP, FTP_TLS  # nosec B402 # NOSONAR
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import xmltodict
 from rs_server_common.utils.logging import Logging
@@ -98,6 +99,10 @@ class FTPClient:
             self.client_cert = client_crt
             self.client_key = client_key
             self.use_ssl = use_ssl if use_ssl else os.getenv("USE_SSL", "false").strip().lower() in ("1", "true", "T")
+        # For some clusters, certificates may be provided as PEM content instead of file paths
+        self.ca_cert = FTPClient.ensure_cert_path(self.ca_cert)
+        self.client_cert = FTPClient.ensure_cert_path(self.client_cert)
+        self.client_key = FTPClient.ensure_cert_path(self.client_key)
 
         self.disable_mlsd = disable_mlsd
         self.ftp: FTP | None = None
@@ -223,3 +228,27 @@ class FTPClient:
                 logger.warning("FTP connection forcibly closed")
             finally:
                 self.ftp = None
+
+    @staticmethod
+    def ensure_cert_path(value: str | None) -> str | None:
+        """
+        Ensure that the given certificate/key value is a filesystem path.
+
+        If the value contains PEM content, it is written to a temporary file
+        and the file path is returned.
+
+        If the value is already a path, it is returned unchanged.
+        """
+        if not value:
+            return None
+
+        value = value.strip()
+
+        if value.startswith("-----BEGIN"):
+            tmp = tempfile.NamedTemporaryFile(delete=False)
+            tmp.write(value.encode())
+            tmp.flush()
+            tmp.close()
+            return tmp.name
+
+        return value
