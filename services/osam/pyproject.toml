@@ -41,7 +41,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
-rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
+rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
 jsonpatch = "^1.33"
 openapi-core = "^0.19.5"
 ovh = "^1.2.0"
@@ -50,7 +50,7 @@ ovh = "^1.2.0"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
+rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^4.0.2"
 pytest = "^8.4.2"
