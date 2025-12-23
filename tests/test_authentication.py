@@ -84,7 +84,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     # Check the apikey_security result
     await authenticate(dummy_request, VALID_APIKEY)
     assert dummy_request.state.auth_roles == initial_response["iam_roles"]
-    assert dummy_request.state.auth_config == initial_response["config"]
+    assert dummy_request.state.auth_attributes == initial_response["config"]
     assert dummy_request.state.user_login == initial_response["user_login"]
 
     # If the UAC manager response changes, we won't see it because the previous result was cached
@@ -104,14 +104,14 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     for _ in range(100):
         await authenticate(dummy_request, VALID_APIKEY)
         assert dummy_request.state.auth_roles == initial_response["iam_roles"]
-        assert dummy_request.state.auth_config == initial_response["config"]
+        assert dummy_request.state.auth_attributes == initial_response["config"]
         assert dummy_request.state.user_login == initial_response["user_login"]
 
     # We have to clear the cache to obtain the modified response
     ttl_cache.clear()
     await authenticate(dummy_request, VALID_APIKEY)
     assert dummy_request.state.auth_roles == modified_response["iam_roles"]
-    assert dummy_request.state.auth_config == modified_response["config"]
+    assert dummy_request.state.auth_attributes == modified_response["config"]
     assert dummy_request.state.user_login == modified_response["user_login"]
 
 
@@ -238,7 +238,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     oauth2_user_id = "OAUTH2_USER_ID"
     oauth2_username = "OAUTH2_USERNAME"
     oauth2_roles = ["oauth2_role1", "oauth2_role2", *roles]
-    oauth2_config: dict = {}  # not apikey configuration with oauth2 !
+    oauth2_attributes = {"oauth2": "attributes"}
 
     # Clear oauth2 cookies
     client.cookies.clear()
@@ -328,7 +328,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
                     assert spy_authenticate.spy_return == AuthInfo(
                         oauth2_username,
                         oauth2_roles,
-                        oauth2_config,
+                        oauth2_attributes,
                     )
 
             # Check that without authentication, the endpoint is protected and we receive a 401
@@ -623,13 +623,17 @@ async def test_stac_browser_authent(
 
     # With authentication but expired user, we should have an exception
     mocked_request.headers["authorization"] = "Bearer mocked_token"
-    mocked_kc_info = KCInfo(is_enabled=False, roles=[])
+    mocked_kc_info = KCInfo(is_enabled=False, roles=[], attributes={})
     mocker.patch.object(oauth2.KCUTIL, "get_user_info", return_value=mocked_kc_info)
     with pytest.raises(HTTPException):
         await authentication.authenticate(mocked_request)
 
     # Else, we should have the user info from keycloak
-    mocked_kc_info = KCInfo(is_enabled=True, roles=["mocked_role1", "mocked_role2"])
+    mocked_kc_info = KCInfo(is_enabled=True, roles=["mocked_role1", "mocked_role2"], attributes={})
     mocker.patch.object(oauth2.KCUTIL, "get_user_info", return_value=mocked_kc_info)
     auth_info = await authentication.authenticate(mocked_request)
-    assert auth_info == AuthInfo(user_login=mocked_user_login, iam_roles=mocked_kc_info.roles, apikey_config={})
+    assert auth_info == AuthInfo(
+        user_login=mocked_user_login,
+        iam_roles=mocked_kc_info.roles,
+        attributes=mocked_kc_info.attributes,
+    )
