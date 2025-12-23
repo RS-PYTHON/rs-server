@@ -65,6 +65,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals,
             "RS_PROCESSES_STAGING_EXECUTE",
             "RS_PROCESSES_STAGING_DISMISS",
         ],
+        {},
         mock_wrong_apikey=True,
         user_login=owner_id,
     )

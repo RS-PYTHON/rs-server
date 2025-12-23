@@ -15,6 +15,7 @@
 """Utility authentication functions used by the pytest unit tests."""
 
 import os
+from typing import Any
 
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi.testclient import TestClient
@@ -60,6 +61,7 @@ async def init_authentication_test(
     test_apikey: bool,
     test_oauth2: bool,
     iam_roles: list[str],
+    user_attributes: dict[str, Any],
     mock_wrong_apikey: bool = False,
     user_login="pyteam",
 ):
@@ -93,7 +95,7 @@ async def init_authentication_test(
                 "total_queries": 0,
                 "latest_sync_date": "2024-03-26T13:57:28.475058",
                 "iam_roles": iam_roles,
-                "config": {},
+                "config": user_attributes,
                 "allowed_referers": ["toto"],
             },
         )
@@ -111,7 +113,15 @@ async def init_authentication_test(
     # Note: we use the "login from console" because we need the client to follow redirections,
     # and they are disabled in these tests.
     if test_oauth2:
-        await mock_oauth2(mocker, client, "/auth/login_from_console", "oauth2_user_id", user_login, iam_roles)
+        await mock_oauth2(
+            mocker,
+            client,
+            "/auth/login_from_console",
+            "oauth2_user_id",
+            user_login,
+            iam_roles,
+            user_attributes,
+        )
 
     # Mock the OAuth2 server responses that are used for the STAC extensions (not for the authentication)
     mocker.patch.object(
