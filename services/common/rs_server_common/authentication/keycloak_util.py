@@ -81,7 +81,7 @@ class KCUtil:  # pylint: disable=too-few-public-methods
         """Get user information from the KeyCloak server."""
 
         # OAuth2 attributes to read, as a comma-separated str or json list representation
-        oauth2_attributes = str_to_list(os.getenv("RSPY_OAUTH2_ATTRIBUTES", []))
+        oauth2_attributes = str_to_list(os.getenv("RSPY_OAUTH2_ATTRIBUTES") or [])
 
         try:
             kadm = self.keycloak_admin
