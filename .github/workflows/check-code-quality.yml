@@ -114,7 +114,7 @@ jobs:
           poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: check-linting
@@ -179,7 +179,7 @@ jobs:
 
       - name: Save reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: check-security
           path: |
@@ -250,7 +250,7 @@ jobs:
           filename: ./cov-report.xml
 
       - name: Save reports
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         with:
           name: run-all-pytests
