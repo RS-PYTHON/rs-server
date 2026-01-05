@@ -319,6 +319,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
         test_apikey,
         test_oauth2,
         iam_roles,
+        {},
         user_login=user_login,
         **(init_test_params or {}),
     )
@@ -1015,6 +1016,7 @@ class TestAuthentication:
             test_apikey,
             test_oauth2,
             [],
+            {},
             mock_wrong_apikey=True,
             user_login=owner_id,
         )

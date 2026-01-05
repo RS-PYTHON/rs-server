@@ -127,7 +127,7 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
         return AuthInfo(
             user_login=contents["user_login"],
             iam_roles=contents["iam_roles"],
-            apikey_config=contents["config"],
+            attributes=contents["config"],
         )
 
     # Forward error
