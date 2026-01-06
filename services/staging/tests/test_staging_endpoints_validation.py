@@ -95,7 +95,7 @@ async def test_validate_response():
         "jobID": "job_1",
         "status": "running",
         "type": "process",
-        "progress": 0.0,
+        "progress": 0,
         "message": "Test detail",
         "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
