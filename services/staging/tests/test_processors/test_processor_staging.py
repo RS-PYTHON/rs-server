@@ -202,7 +202,7 @@ class TestStaging:
         # Call log_job_execution to test status update with custom attrs
         staging_instance.log_job_execution(
             JobStatus.running,
-            50.0,  # type: ignore
+            50,  # type: ignore
             "Job is halfway done.",
         )
 
@@ -211,7 +211,7 @@ class TestStaging:
             staging_instance.job_id,
             {
                 "status": JobStatus.running.value,
-                "progress": 50.0,
+                "progress": 50,
                 "message": "Job is halfway done.",
                 "updated": fake_now,
             },
