@@ -77,6 +77,23 @@ def set_timestamps_for_update(item: dict, original_published: str, original_expi
     return item
 
 
+def set_timestamps_to_collection(collection: dict) -> dict:
+    """
+    Sets values for the 'created' and 'updated' fields of a Collection.
+    If there is already a 'created' field, this one is skipped.
+
+    Args:
+        collection (dict): The collection to update
+
+    Returns:
+        dict: The updated collection
+    """
+    collection = set_updated_timestamp_to_now(collection, is_item=False)
+    if not "created" in collection:
+        collection["created"] = collection["updated"]
+    return collection
+
+
 def set_updated_timestamp_to_now(stac_object: dict, is_item: bool = True) -> dict:
     """Updates the 'updated' timestamp of the given object with the current time.
     If the object is an Item, the 'updated' field is located in the 'properties', otherwise
