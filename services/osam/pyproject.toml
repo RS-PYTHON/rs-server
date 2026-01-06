@@ -43,7 +43,7 @@ packages = [
 python = ">=3.13,<4"
 rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
 jsonpatch = "^1.33"
-openapi-core = "^0.19.5"
+openapi-core = ">=0.22.0"
 ovh = "^1.2.0"
 
 [tool.poetry.group.dev]
