@@ -17,12 +17,9 @@
 """Module to share common functionalities for validating / creating stac items"""
 import asyncio
 import copy
-from shapely.geometry.polygon import Polygon
-from shapely.geometry.multipolygon import MultiPolygon
 import json
 import os
 import re
-from stac_fastapi.pgstac.config import str_to_list
 import urllib.parse
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -62,8 +59,11 @@ from rs_server_common.utils.utils import (
 )
 from shapely import wkt
 from shapely.geometry import box
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry.polygon import Polygon
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
+from stac_fastapi.pgstac.config import str_to_list
 from stac_fastapi.types.search import str2bbox
 from stac_pydantic.shared import BBox
 
@@ -611,35 +611,34 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if self.prip:
             stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
 
-        # Read the bounding box
-        if bbox:
-            if isinstance(bbox, str):
-                coords = [float(x) for x in bbox.split(",")]
-            elif isinstance(bbox, list):
-                coords = list(map(float, bbox))
-            else:
-                raise log_http_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Invalid bounding box: {bbox}")
+            if bbox:
+                if isinstance(bbox, str):
+                    coords = [float(x) for x in bbox.split(",")]
+                elif isinstance(bbox, list):
+                    coords = list(map(float, bbox))
 
-            west, south, east, north = coords
-            stac_bbox = box(west, south, east, north)
+                west, south, east, north = coords  # pylint: disable=E0606
 
-            # If 'intersects' was previously set, we calculate the intersection of 
-            # this old polygon bounding box and the new bounding box
-            if old_wkt := stac_params.get("intersects"):
-                old_poly = wkt.loads(old_wkt)
-                west, south, east, north = old_poly.bounds
-                old_bbox = box(west, south, east, north)
+                # if 'intersects' wasn't previously set
+                if "intersects" not in stac_params or not stac_params["intersects"]:
+                    stac_params["intersects"] = (box(west, south, east, north)).wkt
+                else:
+                    # will set the value of the two intersecting polygons
+                    bbox_polygon = box(west, south, east, north)
 
-                if not stac_bbox.intersects(old_bbox):
-                    stac_params.pop("intersects", None)
-                    raise log_http_exception(
-                        status.HTTP_422_UNPROCESSABLE_CONTENT,
-                        "The provided 'bbox' and 'intersects' polygons do not overlap.",
-                    )
-                stac_bbox = stac_bbox.intersection(old_bbox)
-                
-            # Save the stac bounding box as wkt. Remove spaces after "," because some stations don't support them.
-            stac_params["intersects"] = stac_bbox.wkt.replace(", ", ",")
+                    # also convert the 'intersects' value
+                    poly = wkt.loads(stac_params["intersects"])
+                    west, south, east, north = poly.bounds
+                    filter_polygon = box(west, south, east, north)
+
+                    if bbox_polygon.intersects(filter_polygon):
+                        stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
+                    else:
+                        stac_params.pop("intersects", None)
+                        raise log_http_exception(
+                            status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            "The provided 'bbox' and 'intersects' polygons do not overlap.",
+                        )
 
         # Discard these search parameters
         params.pop("conf", None)
@@ -1058,9 +1057,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     # Save it in a multipolygon
                     wkt_geometry = MultiPolygon([geometry]).wkt
 
-                    # ... in a new dict (because for other stations, we still want to use a regular polygon)
+                    # ... in a new dict so we take no risks of modifying the value for other stations
                     odata_params = odata_params.copy()
-            
+
             # Remove spaces after "," because some stations don't support them.
             odata_params["intersects"] = wkt_geometry.replace(", ", ",")
 

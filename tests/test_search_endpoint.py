@@ -18,6 +18,7 @@
 import os
 import re
 from copy import deepcopy
+from importlib import reload
 from urllib.parse import quote, unquote
 
 import pytest
@@ -31,6 +32,7 @@ from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
+from rs_server_common import stac_api_common
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
@@ -2785,7 +2787,7 @@ def test_prip_bbox_converted_to_intersects(
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "bbox, filter_wkt, expected_intersection_wkt, should_intersect",
+    "bbox, filter_wkt, expected_intersection_wkt, should_intersect, force_multipolygon",
     [
         # bbox as list, overlapping
         (
@@ -2793,23 +2795,38 @@ def test_prip_bbox_converted_to_intersects(
             "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))",
             "POLYGON((104.0 0.5,105.0 0.5,105.0 1.0,104.0 1.0,104.0 0.5))",
             True,
+            False,
         ),
         # bbox as list, not overlapping
-        ([100.0, 0.0, 101.0, 1.0], "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))", None, False),
+        ([100.0, 0.0, 101.0, 1.0], "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))", None, False, False),
         # bbox as string, overlapping
         (
             "100.0,0.0,105.0,1.0",
             "POLYGON((104.0 0.5,106.0 0.5,106.0 1.5,104.0 1.5,104.0 0.5))",
             "POLYGON((104.0 0.5,105.0 0.5,105.0 1.0,104.0 1.0,104.0 0.5))",
             True,
+            True,
         ),
     ],
 )
 @responses.activate
-def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_intersection_wkt, should_intersect):
+def test_prip_bbox_intersection(
+    monkeypatch,
+    client: TestClient,
+    bbox,
+    filter_wkt,
+    expected_intersection_wkt,
+    should_intersect,
+    force_multipolygon,
+):
     """
     Test bbox and filter 'intersects' logic with bbox as list or string.
     """
+
+    # Force the use of multipolygon geometries in requests
+    if force_multipolygon:
+        monkeypatch.setenv("RSPY_FORCE_MULTIPOLYGON_FOR_STATIONS", "dummy1,S1A,dummy2")
+        reload(stac_api_common)  # reload global vars
 
     # Convert bbox to coords
     if isinstance(bbox, str):
@@ -2830,12 +2847,13 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
         assert should_intersect == bbox_poly.intersects(filter_poly)
 
         # Mock GET request for overlapping bbox
+        geometry = "((105 1,105 0.5,104 0.5,104 1,105 1))"
+        geometry = f"MULTIPOLYGON ({geometry})" if force_multipolygon else f"POLYGON {geometry}"
         responses.add(
             responses.GET,
             (
                 "http://127.0.0.1:5000/Products?"
-                "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON "
-                "((105 1, 105 0.5, 104 0.5, 104 1, 105 1))')"
+                f"$filter=OData.CSC.Intersects(area=geography'SRID=4326;{geometry}')"
                 " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
                 "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"

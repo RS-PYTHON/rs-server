@@ -19,7 +19,6 @@ It includes an API endpoint, utility functions, and initialization for accessing
 """
 
 
-import os
 import os.path as osp
 import traceback
 from collections.abc import Callable
@@ -28,7 +27,6 @@ from typing import Annotated, Literal
 
 import requests
 import stac_pydantic
-from eodag import EOProduct
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Request, status
@@ -67,7 +65,6 @@ from rs_server_prip.prip_utils import (
     stac_to_odata,
 )
 from stac_fastapi.api.models import GeoJSONResponse
-from stac_fastapi.pgstac.config import str_to_list
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=prip_tags)
@@ -372,7 +369,6 @@ def process_product_search(  # pylint: disable=too-many-locals
             prip_odata_to_stac_template(),
             prip_stac_mapper(),
             collection_provider,
-            customize_stac_feature,
         )
 
         # Attach PRIP assets/download links, contentType, rels, etc.
@@ -398,26 +394,3 @@ def process_product_search(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
         ) from exception
-
-
-def customize_stac_feature(stac_feature: dict, eodag_product: EOProduct, *_args, **_kwargs):
-    """
-    Customize a STAC feature dict to make it conforme to PRIP stations.
-
-    Args:
-        stac_feature (dict): STAC feature to customize
-        eodag_product (EOProduct): Associated eodag product
-        _args: Unused arguments
-        _kwargs: Unused keyword arguments
-    """
-    # We need customization only for these stations
-    customized = str_to_list(os.getenv("RSPY_CUSTOMIZE_PRIP_STATIONS")) or []
-    prip_station = eodag_product.provider
-    if prip_station not in customized:
-        return
-
-    # Remove spaces from the wkt geometry
-    stac_feature["geometry"] = stac_feature["geometry"].replace(" ", "")
-
-    # Always use multipolygon geometries
-    # todo
