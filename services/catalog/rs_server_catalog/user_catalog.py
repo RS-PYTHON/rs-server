@@ -807,7 +807,7 @@ field is not permitted also."
     def override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-        request._json = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+        request._json = content  # pylint: disable=protected-access
         logger.debug("new request body and json: %s", request._body)  # pylint: disable=protected-access
         return request
 
