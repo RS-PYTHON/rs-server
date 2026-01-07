@@ -526,7 +526,8 @@ async def test_authorization_get_collections(
         # For each collection returned, check that it has "created" and "updated" fields and remove them
         # (they have unpredictable values so can't be in the assert below)
         for index, collection in enumerate(returned_cols):
-            assert "created" and "updated" in collection
+            assert "created" in collection
+            assert "updated" in collection
             collection.pop("created")
             collection.pop("updated")
             returned_cols[index] = collection
@@ -568,7 +569,8 @@ async def test_authorization_get_one_collection(
             json_response = json.loads(response.content)
 
             # Test that "created" and "updated" fields are there and remove them because they have unpredictable values
-            assert "created" and "updated" in json_response
+            assert "created" in json_response
+            assert "updated" in json_response
             json_response.pop("created")
             json_response.pop("updated")
 
