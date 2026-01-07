@@ -1236,6 +1236,7 @@ def create_stac_collection(
     feature_template: dict,
     stac_mapper: dict,
     collection_provider: Callable[[dict], str | None] | None = None,
+    customize_stac_feature: Callable | None = None,
 ) -> ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
@@ -1246,6 +1247,7 @@ def create_stac_collection(
         stac_mapper (dict): The mapping dictionary for converting EOProduct data to STAC properties.
         collection_provider (Callable[[dict], str | None]): optional function that determines STAC collection
                                                             for a given OData entity
+        customize_stac_feature (Callable | None): optional function to customize the stac feature.
 
     Returns:
         dict: The STAC feature collection containing features for each EOProduct.
@@ -1255,6 +1257,8 @@ def create_stac_collection(
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper, collection_provider)
+        if customize_stac_feature:
+            customize_stac_feature(stac_feature=feature_tmp, eodag_product=product)
         try:
             item = Item(**feature_tmp)
             item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
