@@ -92,7 +92,7 @@ def set_timestamps_to_collection(collection: dict, original_created: str = "") -
         dict: The updated collection
     """
     collection = set_updated_timestamp_to_now(collection, is_item=False)
-    if not "created" in collection:
+    if "created" not in collection:
         collection["created"] = original_created or collection["updated"]
     return collection
 
