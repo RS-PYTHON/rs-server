@@ -739,6 +739,7 @@ field is not permitted also."
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
+                content = timestamps_extension.set_timestamps_to_collection(content)
                 logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
 
@@ -796,7 +797,8 @@ field is not permitted also."
     def override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-        logger.debug("new request body: %s", request._body)  # pylint: disable=protected-access
+        request._json = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+        logger.debug("new request body and json: %s", request._body)  # pylint: disable=protected-access
         return request
 
     def override_request_query_string(self, request: Request, query_params: dict) -> Request:
