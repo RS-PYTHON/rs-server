@@ -2525,7 +2525,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-60 0, -62 -10, -58 -10, -56 0, -60 0))') "
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name "
@@ -2761,7 +2761,7 @@ def test_prip_bbox_converted_to_intersects(
         responses.GET,
         (
             "http://127.0.0.1:5000/Products?"
-            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))')"
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((105 0,105 1,100 1,100 0,105 0))')"
             " and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/"
             "OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
@@ -2779,8 +2779,8 @@ def test_prip_bbox_converted_to_intersects(
     assert match, f"No POLYGON found in backend URL: {called_url}"
 
     actual_polygon = match.group(0)
-    # the bbox should be translated to (105 0, 105 1, 100 1, 100 0, 105 0) as per box(west, south, east, north)
-    expected_polygon = "POLYGON ((105 0, 105 1, 100 1, 100 0, 105 0))"
+    # the bbox should be translated to (105 0,105 1,100 1,100 0,105 0) as per box(west, south, east, north)
+    expected_polygon = "POLYGON ((105 0,105 1,100 1,100 0,105 0))"
 
     assert actual_polygon == expected_polygon
 
