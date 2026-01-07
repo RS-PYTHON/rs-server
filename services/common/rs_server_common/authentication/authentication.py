@@ -107,9 +107,7 @@ async def authenticate(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"User {user_login!r} is disabled from KeyCloak.",
                 )
-
-            # The configuration dict is only set with the API key
-            auth_info = AuthInfo(user_login=user_login, iam_roles=kc_info.roles, apikey_config={})
+            auth_info = AuthInfo(user_login=user_login, iam_roles=kc_info.roles, attributes=kc_info.attributes)
 
         else:
             # Else, return an "unauthorized" error to force the browser to authenticate
@@ -136,7 +134,7 @@ async def authenticate(
     # Save information in the request state and return it
     request.state.user_login = auth_info.user_login
     request.state.auth_roles = auth_info.iam_roles
-    request.state.auth_config = auth_info.apikey_config
+    request.state.auth_attributes = auth_info.attributes
     return authenticate_from_pytest(auth_info) if FROM_PYTEST else auth_info
 
 
