@@ -17,9 +17,12 @@
 """Module to share common functionalities for validating / creating stac items"""
 import asyncio
 import copy
+from shapely.geometry.polygon import Polygon
+from shapely.geometry.multipolygon import MultiPolygon
 import json
 import os
 import re
+from stac_fastapi.pgstac.config import str_to_list
 import urllib.parse
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -66,6 +69,9 @@ from stac_pydantic.shared import BBox
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
+
+# For these prip and lta stations, we need to force the use of multipolygon geometries in requests
+force_multipolygon = str_to_list(os.getenv("RSPY_FORCE_MULTIPOLYGON_FOR_STATIONS", "").lower())
 
 
 def log_http_exception(*args, **kwargs) -> HTTPException:
@@ -605,34 +611,35 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if self.prip:
             stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
 
-            if bbox:
-                if isinstance(bbox, str):
-                    coords = [float(x) for x in bbox.split(",")]
-                elif isinstance(bbox, list):
-                    coords = list(map(float, bbox))
+        # Read the bounding box
+        if bbox:
+            if isinstance(bbox, str):
+                coords = [float(x) for x in bbox.split(",")]
+            elif isinstance(bbox, list):
+                coords = list(map(float, bbox))
+            else:
+                raise log_http_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Invalid bounding box: {bbox}")
 
-                west, south, east, north = coords  # pylint: disable=E0606
+            west, south, east, north = coords
+            stac_bbox = box(west, south, east, north)
 
-                # if 'intersects' wasn't previously set
-                if "intersects" not in stac_params or not stac_params["intersects"]:
-                    stac_params["intersects"] = (box(west, south, east, north)).wkt
-                else:
-                    # will set the value of the two intersecting polygons
-                    bbox_polygon = box(west, south, east, north)
+            # If 'intersects' was previously set, we calculate the intersection of 
+            # this old polygon bounding box and the new bounding box
+            if old_wkt := stac_params.get("intersects"):
+                old_poly = wkt.loads(old_wkt)
+                west, south, east, north = old_poly.bounds
+                old_bbox = box(west, south, east, north)
 
-                    # also convert the 'intersects' value
-                    poly = wkt.loads(stac_params["intersects"])
-                    west, south, east, north = poly.bounds
-                    filter_polygon = box(west, south, east, north)
-
-                    if bbox_polygon.intersects(filter_polygon):
-                        stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
-                    else:
-                        stac_params.pop("intersects", None)
-                        raise log_http_exception(
-                            status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            "The provided 'bbox' and 'intersects' polygons do not overlap.",
-                        )
+                if not stac_bbox.intersects(old_bbox):
+                    stac_params.pop("intersects", None)
+                    raise log_http_exception(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        "The provided 'bbox' and 'intersects' polygons do not overlap.",
+                    )
+                stac_bbox = stac_bbox.intersection(old_bbox)
+                
+            # Save the stac bounding box as wkt. Remove spaces after "," because some stations don't support them.
+            stac_params["intersects"] = stac_bbox.wkt.replace(", ", ",")
 
         # Discard these search parameters
         params.pop("conf", None)
@@ -1038,6 +1045,25 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             search_limit = self.limit * self.page
             search_page = 1
 
+        # Format the intersection geometry
+        if wkt_geometry := odata_params.get("intersects"):
+
+            # For these stations, we need to force the use of multipolygon geometries in requests
+            if station.lower() in force_multipolygon:
+
+                # If we have a single polygon
+                geometry = wkt.loads(wkt_geometry)
+                if isinstance(geometry, Polygon):
+
+                    # Save it in a multipolygon
+                    wkt_geometry = MultiPolygon([geometry]).wkt
+
+                    # ... in a new dict (because for other stations, we still want to use a regular polygon)
+                    odata_params = odata_params.copy()
+            
+            # Remove spaces after "," because some stations don't support them.
+            odata_params["intersects"] = wkt_geometry.replace(", ", ",")
+
         # Do the search for this station
         logger.debug(f"Searching to {station} station with OData parameters {odata_params}")
         features = self.process_search(station, odata_params, collection_provider, search_limit, search_page).features
@@ -1236,7 +1262,6 @@ def create_stac_collection(
     feature_template: dict,
     stac_mapper: dict,
     collection_provider: Callable[[dict], str | None] | None = None,
-    customize_stac_feature: Callable | None = None,
 ) -> ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
@@ -1247,7 +1272,6 @@ def create_stac_collection(
         stac_mapper (dict): The mapping dictionary for converting EOProduct data to STAC properties.
         collection_provider (Callable[[dict], str | None]): optional function that determines STAC collection
                                                             for a given OData entity
-        customize_stac_feature (Callable | None): optional function to customize the stac feature.
 
     Returns:
         dict: The STAC feature collection containing features for each EOProduct.
@@ -1257,8 +1281,6 @@ def create_stac_collection(
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper, collection_provider)
-        if customize_stac_feature:
-            customize_stac_feature(stac_feature=feature_tmp, eodag_product=product)
         try:
             item = Item(**feature_tmp)
             item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
