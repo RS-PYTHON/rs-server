@@ -739,7 +739,17 @@ field is not permitted also."
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
-                content = timestamps_extension.set_timestamps_to_collection(content)
+
+                # See if there is already a collection with this ID. If yes, retrieve its "created" value.
+                try:
+                    existing_collection = await self.client.get_collection(content["id"], request)
+                    date_of_creation = existing_collection.get("created", "")
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.debug("Collection %s doesn't exist and will be created: %s", content["id"], e)
+                    date_of_creation = ""
+
+                # Update timestamps ("updated", and "created" if it's a new collection)
+                content = timestamps_extension.set_timestamps_to_collection(content, original_created=date_of_creation)
                 logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
 
