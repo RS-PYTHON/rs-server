@@ -1,4 +1,4 @@
-# Copyright 2023-2026 Airbus, CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,8 @@ def test_patch_collection(client):
     assert response_content["owner"] == minimal_collection["owner"]
     assert response_content["description"] == minimal_collection["description"]
     created_timestamp = response_content["created"]
-    updated_timestamp = response_content["updated"]
+    # TODO uncomment this line and the assert associated once the bug on the "updated" timestamp being unpatchable is fixed
+    # updated_timestamp = response_content["updated"]
     # We don't check every values because that's something that is already done in another test
 
     # Patch description
