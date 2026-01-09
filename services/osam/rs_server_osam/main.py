@@ -34,7 +34,6 @@ from osam.tasks import (
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
-from rs_server_common.authentication.apikey import apikey_security
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
@@ -58,6 +57,7 @@ RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 # Also set the openapi.json URL under the same path.
 try:
     docs_url = os.environ["RSPY_DOCS_URL"].strip("/")
+    oauth2.SWAGGER_HOMEPAGE = docs_url
     docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
 except KeyError:
     docs_params = {}
