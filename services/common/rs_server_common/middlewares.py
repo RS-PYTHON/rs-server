@@ -397,27 +397,14 @@ def insert_middleware_after(
 
 def apply_middlewares(app: FastAPI):
     """
-    Applies necessary middlewares and authentication routes to the FastAPI application.
-
-    This function ensures that:
-    1. `SessionMiddleware` is inserted after `HandleExceptionsMiddleware` to enable cookie storage.
-    2. OAuth2 authentication routes are added to the FastAPI application.
+    Applies middlewares and authentication routes to the FastAPI application.
 
     Args:
         app (FastAPI): The FastAPI application instance.
 
-    Raises:
-        RuntimeError: If the function is called after the application has already started.
-
     Returns:
-        FastAPI: The modified FastAPI application instance with the required middleware and authentication routes.
+        FastAPI: The modified FastAPI application instance with the required middlewares and authentication routes.
     """
-
-    # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
-    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
-    insert_middleware_after(app, HandleExceptionsMiddleware, SessionMiddleware, secret_key=cookie_secret)
-
     # Get the oauth2 router
     oauth2_router = oauth2.get_router(app)
 
