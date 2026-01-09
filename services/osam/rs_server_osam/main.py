@@ -35,6 +35,7 @@ from osam.tasks import (
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import apikey_security
+from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -133,7 +134,7 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 
 @router.post("/storage/accounts/update")
-async def accounts_update(auth=Depends(apikey_security)):  # pylint: disable=unused-argument
+async def accounts_update():
     """
     Triggers the synchronization of Keycloak and OVH (OBS) account information.
 
@@ -182,11 +183,7 @@ def get_user_rights(user):
 
 
 @router.get("/storage/account/{user}/update")
-async def apply_user_obs_access_policy(
-    request: Request,
-    user: str,
-    auth=Depends(apikey_security),
-):  # pylint: disable=unused-argument
+async def apply_user_obs_access_policy(user: str):
     """
     Applies the S3 access policy for a given user.
 
@@ -203,7 +200,7 @@ async def apply_user_obs_access_policy(
     JSONResponse — A JSON response confirming that the access policy has been applied.
 
     ### Raises
-    404 — If the user does not exist in Keycloak.
+    404 — If the user does not exist in Keycloak.<br>
     400 — If the policy could not be applied by the Object Storage provider.
     """
 
@@ -219,7 +216,7 @@ async def apply_user_obs_access_policy(
 
 
 @router.get("/storage/account/{user}/rights")
-async def user_rights(request: Request, user: str, auth=Depends(apikey_security)):  # pylint: disable=unused-argument
+async def user_rights(user: str):
     """
     Retrieves the S3 access rights policy for a given user.
 
@@ -270,7 +267,7 @@ async def get_credentials(request: Request) -> dict:
     return get_user_s3_credentials(auth_info.user_login)
 
 
-@app.get("/storage/configuration", summary="Get storage configuration", tags=["OSAM service"])
+@router.get("/storage/configuration", summary="Get storage configuration")
 def get_storage_configuration() -> list[list[str]]:
     """
     Retrieve the current storage configuration from the configuration file.
@@ -284,7 +281,7 @@ def get_storage_configuration() -> list[list[str]]:
     list[list[str]] — The parsed configuration file as a JSON array.
 
     ### Raises
-    404 — If the configuration file does not exist.
+    404 — If the configuration file does not exist.<br>
     500 — If an unexpected error occurs while reading the file
     """
 
@@ -328,7 +325,8 @@ def main_osam_task(timeout: int = 60):
                 logger.info("Shutting down background thread and exit")
                 break
 
-            if triggered:  # If triggered, prepare for the next one
+            # If triggered manually (i.e. by calling .set() and not by the timeout), prepare for the next one
+            if triggered:
                 logger.debug("Releasing users_sync_trigger")
                 app.extra["users_sync_trigger"].clear()
 
@@ -346,17 +344,39 @@ def main_osam_task(timeout: int = 60):
     logger.info("Exiting from the getting keycloack attributes thread !")
 
 
+# Add technical endpoints specific to the main application
+technical_router = APIRouter(tags=["Technical"])
+
+
 # Health check route
-@router.get("/_mgmt/ping", include_in_schema=False)
+@technical_router.get("/_mgmt/ping", include_in_schema=False)
 async def ping():
     """Liveliness probe."""
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-app.include_router(router)
-app.add_middleware(HandleExceptionsMiddleware)
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get("RSPY_COOKIE_SECRET", ""))
+dependencies = []
 if common_settings.CLUSTER_MODE:
-    app = apply_middlewares(app)
+
+    # Apply middlewares and authentication routes to the FastAPI application
+    apply_middlewares(app)
+
+    # Add the api key / oauth2 security: the user must provide
+    # an api key (generated from the apikey manager) or authenticate to the
+    # oauth2 service (keycloak) to access the endpoints
+    dependencies.append(Depends(authenticate))
+
+# Add all the input routers (and not the oauth2 nor technical routers) to a single bigger router
+# to which we add the authentication dependency.
+need_auth_router = APIRouter(dependencies=dependencies)
+need_auth_router.include_router(router)
+
+# Add routers to the FastAPI app
+app.include_router(need_auth_router)
+app.include_router(technical_router)
+
+# Catch all exceptions and return a JSONResponse
+app.add_middleware(HandleExceptionsMiddleware)
+
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")
