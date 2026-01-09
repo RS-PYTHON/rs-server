@@ -44,10 +44,7 @@ def test_patch_collection(client):
     }
     response = client.post("/catalog/collections", json=minimal_collection)
     # Check that collection status code is 201 or 409 (if it already exists)
-    assert (
-        response.status_code == fastapi.status.HTTP_201_CREATED
-        or response.status_code == fastapi.status.HTTP_409_CONFLICT
-    )
+    assert response.status_code in (fastapi.status.HTTP_201_CREATED, fastapi.status.HTTP_409_CONFLICT)
 
     # Test that /catalog/collection GET endpoint returns the correct collection id
     response = client.get("/catalog/collections/test_owner:test_collection")
@@ -58,7 +55,8 @@ def test_patch_collection(client):
     assert response_content["owner"] == minimal_collection["owner"]
     assert response_content["description"] == minimal_collection["description"]
     created_timestamp = response_content["created"]
-    # TODO uncomment this line and the assert associated once the bug on the "updated" timestamp being unpatchable is fixed
+    # TODO uncomment this line and the assert associated once the bug on the "updated"
+    # timestamp being unpatchable is fixed
     # updated_timestamp = response_content["updated"]
     # We don't check every values because that's something that is already done in another test
 
@@ -79,7 +77,7 @@ def test_patch_collection(client):
     # assert response_content["updated"] > updated_timestamp # Check that "updated" date changed and is newer
 
 
-def test_patch_feature(client, a_minimal_collection, a_correct_feature):
+def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pylint: disable=unused-argument
     """
     Test endpoint PATCH /catalog/collections/owner:collection_id/items/item_id.
 
