@@ -30,7 +30,7 @@ def test_patch_collection(client):
     - Test that the same collection has the same values except for the description
     """
     minimal_collection = {
-        "id": "test_collection",
+        "id": "test_collection_for_patch",
         "type": "Collection",
         "description": "test_description",
         "stac_version": "1.1.0",
@@ -47,7 +47,7 @@ def test_patch_collection(client):
     assert response.status_code in (fastapi.status.HTTP_201_CREATED, fastapi.status.HTTP_409_CONFLICT)
 
     # Test that /catalog/collection GET endpoint returns the correct collection id
-    response = client.get("/catalog/collections/test_owner:test_collection")
+    response = client.get("/catalog/collections/test_owner:test_collection_for_patch")
     assert response.status_code == fastapi.status.HTTP_200_OK
     response_content = json.loads(response.content)
     # Check that values are correctly written in catalogDB
@@ -62,11 +62,11 @@ def test_patch_collection(client):
 
     # Patch description
     patch_values = {"description": "new_test_description"}
-    patch_response = client.patch("/catalog/collections/test_owner:test_collection", json=patch_values)
+    patch_response = client.patch("/catalog/collections/test_owner:test_collection_for_patch", json=patch_values)
     assert patch_response.status_code == fastapi.status.HTTP_200_OK
 
     # Test that /catalog/collection GET endpoint returns the correct collection id with updated description
-    response = client.get("/catalog/collections/test_owner:test_collection")
+    response = client.get("/catalog/collections/test_owner:test_collection_for_patch")
     assert response.status_code == fastapi.status.HTTP_200_OK
     response_content = json.loads(response.content)
     # Check that values are correctly written in catalogDB
