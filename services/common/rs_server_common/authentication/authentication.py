@@ -178,7 +178,7 @@ def auth_validation(
         raise log_http_exception(
             logger,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authorization information is missing",
+            detail="Authorization information is missing",
         ) from exc
 
     logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
