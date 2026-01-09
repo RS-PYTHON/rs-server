@@ -32,16 +32,17 @@ from osam.tasks import (
     load_configmap_data,
     update_s3_rights_lists,
 )
-from rs_server_common import settings as common_settings
+from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
-from starlette.middleware.sessions import SessionMiddleware  # test if still needed
-from starlette.requests import Request  # pylint: disable=C0411
+from rs_server_common.utils.utils2 import log_http_exception
+from starlette import status
+from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.status import (  # pylint: disable=C0411
+from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -133,8 +134,46 @@ async def app_lifespan(fastapi_app: FastAPI):
     logger.info("Application gracefully stopped...")
 
 
+def auth_validation(request: Request):
+    """
+    Authorization validation: check that the user has the right role for a specific action.
+
+    Args:
+        request: HTTP request
+
+    Raises:
+        HTTPException if the user does not have the right role.
+    """
+
+    # In local mode, there is no authorization to check
+    if settings.LOCAL_MODE:
+        return
+
+    requested_role = "rs_osam_update"  # in lower case
+    logger.debug(f"Requested role: {requested_role!r}")
+
+    try:
+        auth_roles = [role.lower() for role in request.state.auth_roles]
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authorization information is missing",
+        ) from exc
+
+    logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
+
+    if requested_role not in auth_roles:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Missing authorization role {requested_role!r} for user {user_login!r}",
+        )
+
+
 @router.post("/storage/accounts/update")
-async def accounts_update():
+async def accounts_update(request: Request):
     """
     Triggers the synchronization of Keycloak and OVH (OBS) account information.
 
@@ -144,8 +183,10 @@ async def accounts_update():
 
     ### Returns:
     JSONResponse — Always a success message saying that the sync algorythm of the accounts started.
-
     """
+    # Check that the user has the right role for this endpoint
+    auth_validation(request)
+
     # Trigger the background task. This was also requested by the operations team: the endpoint should return
     # immediately to the user without waiting for the algorithm to complete.
     app.extra["users_sync_trigger"].set()
@@ -182,8 +223,8 @@ def get_user_rights(user):
     return update_s3_rights_lists(s3_rights)
 
 
-@router.get("/storage/account/{user}/update")
-async def apply_user_obs_access_policy(user: str):
+@router.post("/storage/account/{user}/update")
+async def apply_user_obs_access_policy(request: Request, user: str):
     """
     Applies the S3 access policy for a given user.
 
@@ -203,6 +244,8 @@ async def apply_user_obs_access_policy(user: str):
     404 — If the user does not exist in Keycloak.<br>
     400 — If the policy could not be applied by the Object Storage provider.
     """
+    # Check that the user has the right role for this endpoint
+    auth_validation(request)
 
     logger.debug("Endpoint for applying the user access policy")
     current_rights = get_user_rights(user)
@@ -216,7 +259,7 @@ async def apply_user_obs_access_policy(user: str):
 
 
 @router.get("/storage/account/{user}/rights")
-async def user_rights(user: str):
+async def user_rights(request: Request, user: str):
     """
     Retrieves the S3 access rights policy for a given user.
 
@@ -235,6 +278,8 @@ async def user_rights(user: str):
     ### Raises
     404 — If the user does not exist in Keycloak.
     """
+    # Check that the user has the right role for this endpoint
+    auth_validation(request)
 
     logger.debug("Endpoint for getting the user rights")
     output = get_user_rights(user)
@@ -253,7 +298,7 @@ async def get_credentials(request: Request) -> dict:
     dict — A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region' for the user's S3 storage.
     """
     # In local mode, just return the common bucket credentials.
-    if common_settings.LOCAL_MODE:
+    if settings.LOCAL_MODE:
         return {
             "access_key": os.environ["S3_ACCESSKEY"],
             "secret_key": os.environ["S3_SECRETKEY"],
@@ -356,7 +401,7 @@ async def ping():
 
 
 dependencies = []
-if common_settings.CLUSTER_MODE:
+if settings.CLUSTER_MODE:
 
     # Apply middlewares and authentication routes to the FastAPI application
     apply_middlewares(app)
