@@ -144,7 +144,7 @@ def auth_validation(
     staging_process: bool = False,
 ):
     """
-    Authentication validation: check that the user has the right role for a specific action.
+    Authorization validation: check that the user has the right role for a specific action.
 
     Args:
         station_type: either auxip, cadip, ...
@@ -152,9 +152,12 @@ def auth_validation(
         request: HTTP request
         station: specific adgs station (adgs or adgs2) or cadip station (ins, mps, ...) or edrs, prip or lta station
         staging_process: specific case for the staging
+
+    Raises:
+        HTTPException if the user does not have the right role.
     """
 
-    # In local mode, there is no authentication to check
+    # In local mode, there is no authorization to check
     if settings.LOCAL_MODE:
         return
 
@@ -166,21 +169,23 @@ def auth_validation(
         requested_role = f"rs_{station_type}_{station}_{access_type}".lower()
 
     requested_role = requested_role.lower()
-    logger.debug(f"Requested role: {requested_role}")
+    logger.debug(f"Requested role: {requested_role!r}")
 
     try:
         auth_roles = [role.lower() for role in request.state.auth_roles]
         user_login = request.state.user_login
     except AttributeError as exc:
         raise log_http_exception(
+            logger,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authentication information is missing",
+            detail=f"Authorization information is missing",
         ) from exc
 
-    logger.debug(f"Auth roles for {user_login!r}: {auth_roles}")
+    logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
 
     if requested_role not in auth_roles:
         raise log_http_exception(
+            logger,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Missing {requested_role} authorization role",
+            detail=f"Missing authorization role {requested_role!r} for user {user_login!r}",
         )
