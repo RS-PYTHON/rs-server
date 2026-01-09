@@ -14,7 +14,6 @@
 
 """Common functions for fastapi middlewares"""
 import json
-import os
 import traceback
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypedDict
@@ -31,7 +30,6 @@ from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 
 REL_TITLES = {
     "collection": "Collection",
@@ -389,9 +387,8 @@ def insert_middleware_after(
     Returns:
         FastAPI: The modified FastAPI application instance with the required middleware.
     """
-    # Existing middlewares
-    middleware_names = [middleware.cls for middleware in app.user_middleware]
-    middleware_index = middleware_names.index(previous_mw_class)
+    existing_middlewares = [middleware.cls for middleware in app.user_middleware]
+    middleware_index = existing_middlewares.index(previous_mw_class)
     return insert_middleware_at(app, middleware_index + 1, Middleware(middleware_class, *args, **kwargs))
 
 

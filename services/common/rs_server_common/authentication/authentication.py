@@ -27,7 +27,7 @@ from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_common.utils.utils2 import AuthInfo, log_http_exception
 
 logger = Logging.default(__name__)
 
@@ -170,12 +170,17 @@ def auth_validation(
 
     try:
         auth_roles = [role.lower() for role in request.state.auth_roles]
-    except AttributeError:
-        auth_roles = []
-    logger.debug(f"Auth roles: {auth_roles}")
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise log_http_exception(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authentication information is missing",
+        ) from exc
+
+    logger.debug(f"Auth roles for {user_login!r}: {auth_roles}")
 
     if requested_role not in auth_roles:
-        raise HTTPException(
+        raise log_http_exception(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Missing {requested_role} authorization role",
         )
