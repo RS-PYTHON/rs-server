@@ -17,10 +17,12 @@
 
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 from keycloak.exceptions import KeycloakGetError
 from rs_server_common.utils.logging import Logging
+from stac_fastapi.pgstac.config import str_to_list
 from starlette.status import HTTP_404_NOT_FOUND
 
 logger = Logging.default(__name__)
@@ -38,6 +40,7 @@ class KCInfo:
 
     is_enabled: bool
     roles: list[str]
+    attributes: dict[str, Any]
 
 
 class KCUtil:  # pylint: disable=too-few-public-methods
@@ -77,11 +80,16 @@ class KCUtil:  # pylint: disable=too-few-public-methods
     def get_user_info(self, user_id: str) -> KCInfo:
         """Get user information from the KeyCloak server."""
 
+        # OAuth2 attributes to read, as a comma-separated str or json list representation
+        oauth2_attributes = str_to_list(os.getenv("RSPY_OAUTH2_ATTRIBUTES") or [])
+
         try:
             kadm = self.keycloak_admin
             user = kadm.get_user(user_id)
             iam_roles = [role["name"] for role in kadm.get_composite_realm_roles_of_user(user_id)]
-            return KCInfo(user["enabled"], iam_roles)
+            user_attributes = {attr: user.get("attributes", {}).get(attr) for attr in oauth2_attributes}
+
+            return KCInfo(user["enabled"], iam_roles, user_attributes)
 
         except KeycloakGetError as error:
 
@@ -93,7 +101,7 @@ class KCUtil:  # pylint: disable=too-few-public-methods
                 and "User not found" in error.response_body.decode("utf-8")
             ):
                 logger.warning(f"User '{user_id}' not found in keycloak.")
-                return KCInfo(False, [])
+                return KCInfo(False, [], {})
 
             # Raise other exceptions
             raise

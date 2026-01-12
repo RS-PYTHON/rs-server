@@ -59,8 +59,9 @@ SQLAlchemy = "^2.0.42"
 dask-gateway = "2024.1.0"
 # same dask version as in the cluster i.e. same as eopf
 dask = {extras = ["distributed"], version = "2024.5.2"}
-openapi-core = "^0.19.5"
+openapi-core = ">=0.22.0"
 psycopg2 = "^2.9.11"
+xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev]
 optional = true

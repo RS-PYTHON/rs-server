@@ -53,6 +53,7 @@ include = [
 python = ">=3.13,<4"
 rs-server-common = "*"
 pypgstac = {extras = ["psycopg"], version = "^0.9.8"}
+xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev]
 optional = true

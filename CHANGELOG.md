@@ -24,6 +24,35 @@ Changed
 
 None
 
+[1.0a5] - Sprint 31 - 2025-12-17
+================================
+
+## Added
+
+- RSPY-467: Update to STAC 1.1.0
+- RSPY-625: Update to JupyterHub 5.4.x and JupyterLab 4.5.x
+- RSPY-648: Python 3.13 upgrade
+- RSPY-789: OSAM : provide documentation for OSAM function.
+- RSPY-808: Implement STAC view of EDRS sessions
+- RSPY-814: Implement staging of EDRS sessions
+- RSPY-815: Deploy stac-browser for EDRS
+- RSPY-817: S1-L0 : deliver integration test results with recent DPR version ( >= 1.3.1 )
+- RSPY-852: Manage dpr-processing call with more than one input_product
+- RSPY-854: Set output product path in payload.yaml
+- RSPY-857: OSAM: Add endpoint to serve the bucket configuration configmap
+- RSPY-864: Re-introduce mandatory EDRS certificate authentication
+- RSPY-865: Harcode L0 processor configuration files inside Docker image
+- RSPY-866: Change CQL2 filtering lte/gte operators for CADIP
+- RSPY-869: Define env-vars & env-vars-<login> content
+- RSPY-872: Remove pygeofilter from rs-server-catalog
+- RSPY-874: Sprint 31 corrections of issues
+
+## Fixed
+
+- RSPY-173: [Documentation] Catalog Python API doc is no well rendered [5 pts]
+- RSPY-705: No results in AUXIP search (0 pt)
+- RSPY-853: PRIP filter by attribute results in 503 error (2 pts)
+
 [1.0a4] - Sprint 30 - 2025-11-19
 ================================
 

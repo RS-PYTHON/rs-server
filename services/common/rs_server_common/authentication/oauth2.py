@@ -247,6 +247,7 @@ def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
         return {
             "user_login": auth_info.user_login,
             "iam_roles": sorted(auth_info.iam_roles),
+            "attributes": dict(sorted(auth_info.attributes.items())),
         }
 
     @router.get("/logout", include_in_schema=False)
@@ -330,8 +331,7 @@ async def get_user_info(request: Request) -> AuthInfo:
 
     # If the user is still enabled in KeyCloak
     if user_info.is_enabled:
-        # The configuration dict is only set with the API key, not with the OAuth2 authentication.
-        return AuthInfo(user_login=user_login, iam_roles=user_info.roles, apikey_config={})
+        return AuthInfo(user_login=user_login, iam_roles=user_info.roles, attributes=user_info.attributes)
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

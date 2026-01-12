@@ -14,6 +14,8 @@
 
 """Utility functions used by the pytest unit tests."""
 
+from typing import Any
+
 import httpx
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi.testclient import TestClient
@@ -29,6 +31,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
     user_id: str,
     username: str,
     iam_roles: list[str],
+    user_attributes: dict[str, Any],
     enabled: bool = True,
     assert_success: bool = True,
 ) -> httpx.Response:
@@ -75,7 +78,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
     )
 
     # Then the service will ask for user information in KeyCloak
-    mocker.patch.object(KeycloakAdmin, "get_user", return_value={"enabled": enabled})
+    mocker.patch.object(KeycloakAdmin, "get_user", return_value={"enabled": enabled, "attributes": user_attributes})
     mocker.patch.object(
         KeycloakAdmin,
         "get_composite_realm_roles_of_user",
