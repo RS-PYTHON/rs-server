@@ -46,7 +46,7 @@ def mock_endpoint_functions(
     osam_client,  # run this fixture after osam_client
 ):
     """Mock all functions called by the endpoints"""
-    mocker.patch("osam.main.get_user_rights", return_value={"user": {}})
+    mocker.patch("osam.main.__get_user_rights", return_value={"user": {}})
     mocker.patch("osam.main.apply_user_access_policy", return_value=[True, "msg"])
     mocker.patch("osam.main.get_user_s3_credentials", return_value={})
     mocker.patch("osam.main.load_configmap_data", return_value=[])

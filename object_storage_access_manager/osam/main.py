@@ -194,6 +194,9 @@ async def update_all_accounts(request: Request):
 
     2. When a Keycloak account is deleted, the linked S3 account is also deleted.
 
+    NOTE: this endpoint creates and deletes accounts but **does not** synchronize the users rights. This is done
+    by the endpoint `/storage/account/{user}/update`.
+
     ### Returns:
     JSONResponse — Always a success message saying that the sync algorythm of the accounts started.
     """
@@ -215,7 +218,7 @@ async def update_all_accounts(request: Request):
     )
 
 
-def get_user_rights(user):
+def __get_user_rights(user):
     """
     Retrieves and constructs the S3 access rights policy for a specified user.
 
@@ -261,7 +264,7 @@ async def update_user_account(request: Request, user: str):
     auth_validation(request)
 
     logger.debug("Endpoint for applying the user access policy")
-    current_rights = get_user_rights(user)
+    current_rights = __get_user_rights(user)
     if not current_rights:
         raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     status_code = HTTP_200_OK
@@ -292,7 +295,7 @@ async def get_user_rights(request: Request, user: str):
     auth_validation(request)
 
     logger.debug("Endpoint for getting the user rights")
-    output = get_user_rights(user)
+    output = __get_user_rights(user)
     if not output:
         raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
