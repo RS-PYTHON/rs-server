@@ -278,12 +278,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             # For a PUT request, all new assets are transferred (as described above).
             # Any asset that already exists in the catalog from a previous POST request
             # but is not included in the current request will be deleted.
-            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
+            # In the case of a PATCH request, no asset is deleted.
             if item and request.method == "PUT":
                 for asset in item["assets"]:
                     self.s3_files_to_be_deleted.append(item["assets"][asset]["href"])
-            if item and request.method == "PATCH":
-                print("todo")
         except KeyError as kerr:
             self.s3_files_to_be_deleted.clear()
             raise log_http_exception(
