@@ -627,6 +627,29 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
         return GeoJSONResponse(content, response.status_code, headers_minus_content_length(response))
 
+    def _check_user_authorization(self):
+        """
+        Checks that current user/owner is allowed to do operations on catalog objects.
+
+        Raises:
+            HTTPException: When the user doesn't have the expected authorizations
+        """
+        # Retrieve owner ID and check authorizations
+        if not self.request_ids["owner_id"]:
+            self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to put/post/patch returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and not get_authorisation(
+                self.request_ids["collection_ids"],
+                self.request_ids["auth_roles"],
+                "write",
+                self.request_ids["owner_id"],
+                self.request_ids["user_login"],
+            )
+        ):
+            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+
     async def manage_patch_request(self, request: Request):
         """
         Pre-processing of a PATCH request to the Catalog.
@@ -642,21 +665,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             original_content = await request.json()
             content = copy.deepcopy(original_content)
 
-            # Retrieve owner ID and check authorizations
-            if not self.request_ids["owner_id"]:
-                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
-            if (  # If we are in cluster mode and the user_login is not authorized
-                # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                common_settings.CLUSTER_MODE
-                and not get_authorisation(
-                    self.request_ids["collection_ids"],
-                    self.request_ids["auth_roles"],
-                    "write",
-                    self.request_ids["owner_id"],
-                    self.request_ids["user_login"],
-                )
-            ):
-                raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            self._check_user_authorization()
 
             # Update "updated" timestamp (different field if it is an item or a collection)
             if "/items/" in request.scope["path"]:
@@ -688,21 +697,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         try:
             original_content = await request.json()
             content = copy.deepcopy(original_content)
-            if not self.request_ids["owner_id"]:
-                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
-            # If item is not geolocated, add a default one to comply pgstac format.
-            if (  # If we are in cluster mode and the user_login is not authorized
-                # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                common_settings.CLUSTER_MODE
-                and not get_authorisation(
-                    self.request_ids["collection_ids"],
-                    self.request_ids["auth_roles"],
-                    "write",
-                    self.request_ids["owner_id"],
-                    self.request_ids["user_login"],
-                )
-            ):
-                raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+
+            self._check_user_authorization()
 
             if len(self.request_ids["collection_ids"]) > 1:
                 raise log_http_exception(
