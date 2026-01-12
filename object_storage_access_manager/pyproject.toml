@@ -62,6 +62,7 @@ pytest-cov = "^7.0.0"
 pytest-docker = "^3.2.3"
 pytest-error-for-skips = "^2.0.2"
 pytest-mock = "^3.15.1"
+pytest-httpx = ">=0.35,<0.36"
 responses = "^0.25.3"
 
 [tool.poetry.requires-plugins]

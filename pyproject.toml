@@ -53,6 +53,7 @@ rs-osam = {path = "object_storage_access_manager", develop = true}
 rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 pytest = "^8.4.2"
 pytest-cov = "^7.0.0"
+pytest-httpx = ">=0.35,<0.36"
 
 [tool.poetry.group.dev]
 optional = true

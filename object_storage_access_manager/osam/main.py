@@ -22,7 +22,9 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
@@ -103,6 +105,7 @@ logger.setLevel(logging.DEBUG)
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
+
     logger.info("Starting up the application...")
     fastapi_app.extra["shutdown_event"] = threading.Event()
     # the trigger for running the logic in the background task
@@ -115,6 +118,10 @@ async def app_lifespan(fastapi_app: FastAPI):
     )
     # trigger the first run -> this was disabled by a request from ops
     # app.extra["users_sync_trigger"].set()
+
+    # Init objects for dependency injection
+    settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
+
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -131,6 +138,10 @@ async def app_lifespan(fastapi_app: FastAPI):
             await refresh_task  # Ensure the task exits
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception(f"Exception during shutdown of background thread: {e}")
+
+    # Close objects for dependency injection
+    await settings.del_http_client()
+
     logger.info("Application gracefully stopped...")
 
 
@@ -307,9 +318,16 @@ async def get_credentials(request: Request) -> dict:
         }
 
     # Cluster mode
-    auth_info = await oauth2.get_user_info(request)
-    logger.info(f"Getting ovh s3 credentials for keycloak user {auth_info.user_login}")
-    return get_user_s3_credentials(auth_info.user_login)
+    try:
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authorization information is missing",
+        ) from exc
+    logger.info(f"Getting ovh s3 credentials for keycloak user {user_login}")
+    return get_user_s3_credentials(user_login)
 
 
 @router.get("/storage/configuration", summary="Get storage configuration")

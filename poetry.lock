@@ -3426,6 +3426,25 @@ pytest = ">=7"
 testing = ["process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
+name = "pytest-httpx"
+version = "0.35.0"
+description = "Send responses to httpx."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pytest_httpx-0.35.0-py3-none-any.whl", hash = "sha256:ee11a00ffcea94a5cbff47af2114d34c5b231c326902458deed73f9c459fd744"},
+    {file = "pytest_httpx-0.35.0.tar.gz", hash = "sha256:d619ad5d2e67734abfbb224c3d9025d64795d4b8711116b1a13f72a251ae511f"},
+]
+
+[package.dependencies]
+httpx = "==0.28.*"
+pytest = "==8.*"
+
+[package.extras]
+testing = ["pytest-asyncio (==0.24.*)", "pytest-cov (==6.*)"]
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -3960,7 +3979,7 @@ files = [
 
 [[package]]
 name = "rs-osam"
-version = "1.0a5.post8.dev0"
+version = "1.0a5.post9.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -4775,4 +4794,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "536909f954cfa1079d24d393c5ec2dc0aa283676af36cbf2ff99260c26997b1f"
+content-hash = "63811877aeab7fa15141da68e279058cfbd634cef4cc32ec157f1f9e32a1a561"
