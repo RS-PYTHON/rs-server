@@ -20,7 +20,7 @@ info:
     0, 1, 2 Sentinel Data processors (Q3 2024/2025).
 
     ---
-    #### Authentication
+    #### OAuth 2.0 authentication
 
     <a href="/auth/login" target="_self">Login</a> /
     <a href="/auth/logout" target="_blank">Logout</a>
