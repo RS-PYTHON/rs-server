@@ -269,7 +269,7 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
       - name: Download dist dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           merge-multiple: true
           path: ./dist
@@ -298,13 +298,13 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-adgs-whl.outputs.package_name }}
           path: ./build_context_path
@@ -345,13 +345,13 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-prip-whl.outputs.package_name }}
           path: ./build_context_path
@@ -392,13 +392,13 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-cadip-whl.outputs.package_name }}
           path: ./build_context_path
@@ -439,13 +439,13 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-edrs-whl.outputs.package_name }}
           path: ./build_context_path
@@ -485,13 +485,13 @@ jobs:
       - uses: actions/checkout@v6
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-catalog-whl.outputs.package_name }}
           path: ./build_context_path
@@ -532,7 +532,7 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-frontend-whl.outputs.package_name }}
           path: ./build_context_path
@@ -578,13 +578,13 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
@@ -625,13 +625,13 @@ jobs:
 
       # Download .whl files into a local dir
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./build_context_path
 
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path

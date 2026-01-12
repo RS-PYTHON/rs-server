@@ -157,7 +157,7 @@ class Staging(
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
         self.message: str = "Processing Unit was created"
-        self.progress: float = 0.0
+        self.progress: int = 0
         self.db_process_manager = db_process_manager
         self.status = JobStatus.accepted
         self.create_job_execution()
@@ -315,7 +315,7 @@ class Staging(
             "identifier": self.job_id,
             "processID": "staging",
             "status": self.status.value,
-            "progress": self.progress,
+            "progress": int(self.progress),
             "message": self.message,
         }
         self.db_process_manager.add_job(job_metadata)
@@ -347,7 +347,7 @@ class Staging(
 
         update_data = {
             "status": self.status.value,
-            "progress": self.progress,
+            "progress": int(self.progress),
             "message": self.message,
             "updated": datetime.now(),  # Update updated each time a change is made
         }
