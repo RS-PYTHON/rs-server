@@ -666,10 +666,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             self._check_user_authorization()
 
             # Update "updated" timestamp (different field if it is an item or a collection)
-            if "/items/" in request.scope["path"]:
-                content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=True)
-            else:
-                content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=False)
+            is_item = "/items/" in request.scope["path"]
+            content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=is_item)
 
             request = self.override_request_body(request, content)
             return request
