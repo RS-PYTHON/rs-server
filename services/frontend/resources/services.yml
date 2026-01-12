@@ -30,7 +30,8 @@ info:
 
     <a href="https://home.rs-python.eu/" target="_blank">Website</a> /
     <a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
-    <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
+    <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a> /
+    <a href="/osam/docs" target="_blank">OSAM</a>
 
     ---
     #### STAC Browser
