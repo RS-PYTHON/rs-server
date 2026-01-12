@@ -40,7 +40,7 @@ def test_get_user_rights_user_exists(mocker):
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
 
     from osam.main import (  # pylint: disable = import-outside-toplevel
-        get_user_rights,
+        __get_user_rights,
     )
 
     user = "testuser"
@@ -63,7 +63,7 @@ def test_get_user_rights_user_exists(mocker):
         return_value={"final": "policy"},
     )
 
-    assert get_user_rights(user) == {"final": "policy"}
+    assert __get_user_rights(user) == {"final": "policy"}
     mock_build.assert_called_once_with(mock_user_data)
     mock_update.assert_called_once_with({"rights": "mock-rights"})
 
@@ -76,14 +76,14 @@ def test_get_user_rights_user_not_found(mocker):
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
 
     from osam.main import (  # pylint: disable = import-outside-toplevel
-        get_user_rights,
+        __get_user_rights,
     )
 
     mocker.patch(
         "osam.main.app.extra",
         {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
     )
-    assert not get_user_rights("unknown_user")
+    assert not __get_user_rights("unknown_user")
 
 
 @pytest.mark.unit
@@ -100,7 +100,7 @@ def test_user_rights_user_exists(mocker, osam_client):
     )
 
     mock_update = mocker.patch(
-        "osam.main.get_user_rights",
+        "osam.main.__get_user_rights",
         return_value={"final": "policy"},
     )
 
@@ -191,7 +191,7 @@ def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
     )
 
     mocker.patch(
-        "osam.main.get_user_rights",
+        "osam.main.__get_user_rights",
         return_value={"final": "policy"},
     )
 
