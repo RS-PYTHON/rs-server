@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -281,7 +281,17 @@ def create_from_template(template_paths: list[str]):  # pylint: disable=too-many
         """Apply file-specific tweaks after template rendering."""
         if file_path.name == "edrs_stations.yaml" and isinstance(content, dict) and "stations" in content:
             stations_yaml = yaml.dump(content["stations"], default_flow_style=False, sort_keys=False)
-            content["stations"] = LiteralStr(stations_yaml)
+            lines = stations_yaml.splitlines()
+            formatted_lines = []
+            first_station = True
+            for line in lines:
+                is_station_key = line and (line.lstrip() == line) and line.endswith(":")
+                if is_station_key:
+                    if not first_station:
+                        formatted_lines.append("")
+                    first_station = False
+                formatted_lines.append(line)
+            content["stations"] = LiteralStr("\n".join(formatted_lines) + "\n")
 
     post_process(output_path, all_files)
 
@@ -378,6 +388,12 @@ def copy_to_demo(input_path_relative: str):
                         value[i] = update_single_value(subvalue)
 
     update_all_values("", file)
+
+    if isinstance(file, dict) and isinstance(file.get("stations"), str) and "\n" in file["stations"]:
+        stations_value = file["stations"]
+        if not stations_value.endswith("\n"):
+            stations_value += "\n"
+        file["stations"] = LiteralStr(stations_value)
 
     # Write the modified output file
     with open(config_path, "w", encoding="utf-8") as opened:
@@ -501,6 +517,8 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
             for key, value in data.items():
                 if isinstance(value, dict):
                     data[key] = LiteralStr(yaml.dump(value, default_flow_style=False, sort_keys=False, width=witdh))
+                elif isinstance(value, str) and "\n" in value:
+                    data[key] = LiteralStr(value if value.endswith("\n") else value + "\n")
 
     # Write the configuration file as a multidoc file (with docs separated by '---')
     yaml_contents = yaml.dump_all(output_configs, default_flow_style=False, sort_keys=False, width=witdh)
