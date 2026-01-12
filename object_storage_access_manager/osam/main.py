@@ -77,11 +77,11 @@ app = FastAPI(
         "usePkceWithAuthorizationCodeGrant": True,
     },
     description=f"""
-This service is designed to manage access to object storage resources.
+The Object Storage Access Manager (OSAM) service is designed to manage access to object storage resources.
 It provides a unified, secure interface and tooling to handle **authorization, access controls** and **storage access policies** for object buckets, enabling safe, consistent and centralized object-storage usage across services.
 
 ---
-#### Authentication
+#### OAuth 2.0 authentication
 
 <a href="/auth/login" target="_self">Login</a> /
 <a href="/auth/logout" target="_blank">Logout</a>
@@ -89,8 +89,7 @@ It provides a unified, secure interface and tooling to handle **authorization, a
 ---
 #### Links
 
-<a href="https://home.rs-python.eu/" target="_blank">Website</a> /
-<a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
+<a href="/docs" target="_blank">RS-Server</a> /
 <a href="{RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
 
 ---
@@ -184,17 +183,25 @@ def auth_validation(request: Request):
 
 
 @router.post("/storage/accounts/update")
-async def accounts_update(request: Request):
+async def update_all_accounts(request: Request):
     """
-    Triggers the synchronization of Keycloak and OVH (OBS) account information.
+    This endpoint is called by an RS operator. It synchronises RS users registered in Keycloak and in the Object
+    Storage (OBS), so it can apply OBS access rights to the corresponding RS user accounts.
 
-    This endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
-    logic between Keycloak and the Object Storage Access Manager (OSAM). It doesn't wait for a completion signal
-    from the background task and returns a success response.
+    Use case:
+
+    1. When a new Keycloak account is created, an S3 access account with no rights is created and linked to it.
+
+    2. When a Keycloak account is deleted, the linked S3 account is also deleted.
 
     ### Returns:
     JSONResponse — Always a success message saying that the sync algorythm of the accounts started.
     """
+
+    # NOTE: this endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
+    # logic between Keycloak and the Object Storage Access Manager (OSAM). It doesn't wait for a completion signal
+    # from the background task and returns a success response.
+
     # Check that the user has the right role for this endpoint
     auth_validation(request)
 
@@ -235,15 +242,10 @@ def get_user_rights(user):
 
 
 @router.post("/storage/account/{user}/update")
-async def apply_user_obs_access_policy(request: Request, user: str):
+async def update_user_account(request: Request, user: str):
     """
-    Applies the S3 access policy for a given user.
-
-    This endpoint retrieves the user's effective S3 access rights from their
-    Keycloak roles and applies the corresponding policy to their Object
-    Storage account using the OVH API. The operation ensures that the user's
-    OBS permissions match their Keycloak permissions. If the user does not
-    exist or if the policy update fails, an error response is returned.
+    This endpoint is called by an RS operator. It applies the rights from one user's Keycloak account
+    to their associated OBS account, so they are authorised to download products directly from S3.
 
     ### Args
     user (str) — The Keycloak username for which the policy should be applied.
@@ -270,15 +272,12 @@ async def apply_user_obs_access_policy(request: Request, user: str):
 
 
 @router.get("/storage/account/{user}/rights")
-async def user_rights(request: Request, user: str):
+async def get_user_rights(request: Request, user: str):
     """
-    Retrieves the S3 access rights policy for a given user.
+    This endpoint is called by an RS operator. It reads and returns the rights from one user's Keycloak account.
 
-    This endpoint checks the user's access rights based on the roles
-    assigned to them in Keycloak. The resulting policy describes the buckets,
-    paths, and permission levels (such as read, write and download) that
-    the user is entitled to access. If the user does not exist, a 404 error is
-    returned.
+    The resulting policy is in the OBS JSON format. It describes the buckets, paths, and permission levels (such as
+    read, write and download) that the user is entitled to access.
 
     ### Args
     user (str) — Username of the account for which to retrieve access rights.
@@ -300,10 +299,10 @@ async def user_rights(request: Request, user: str):
 
 
 @router.get("/storage/account/credentials")
-async def get_credentials(request: Request) -> dict:
+async def get_your_credentials(request: Request) -> dict:
     """
-    Endpoint used to get user credentials from cloud provider.
-    In cluster mode, the request MUST contain oauth2 cookie in header
+    This endpoint is called by an anthenticated user. It returns your S3 credentials,
+    so you can connect to the bucket where your products have been generated.
 
     ### Returns
     dict — A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region' for the user's S3 storage.
@@ -330,10 +329,10 @@ async def get_credentials(request: Request) -> dict:
     return get_user_s3_credentials(user_login)
 
 
-@router.get("/storage/configuration", summary="Get storage configuration")
+@router.get("/storage/configuration")
 def get_storage_configuration() -> list[list[str]]:
     """
-    Retrieve the current storage configuration from the configuration file.
+    Return the current storage configuration from the configuration file.
 
     This endpoint reads the CSV-based configuration stored in Object Storage
     and returns it as a JSON array of arrays. Each inner array represents a
