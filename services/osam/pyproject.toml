@@ -41,7 +41,8 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
-rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
+# rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
+rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "feat-rspy788/osam-api-key", subdirectory = "services/common" } # specific branch, for testing
 jsonpatch = "^1.33"
 openapi-core = ">=0.22.0"
 ovh = "^1.2.0"
@@ -52,7 +53,6 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 # rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
 # rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "feat-rspyXXX/my-branch", subdirectory = "services/common" } # specific branch, for testing
-rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "feat-rspy788/osam-api-key", subdirectory = "services/common" } # specific branch, for testing
 # rs-server-common = {path = "../../rs-server/services/common", develop = true} # local rs-server-common, for testing
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^4.0.2"
