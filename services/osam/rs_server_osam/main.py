@@ -60,7 +60,6 @@ RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 # Also set the openapi.json URL under the same path.
 try:
     docs_url = os.environ["RSPY_DOCS_URL"].strip("/")
-    oauth2.SWAGGER_HOMEPAGE = docs_url
     docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
 except KeyError:
     docs_params = {}
@@ -183,22 +182,24 @@ def auth_validation(request: Request):
 
 
 @router.post("/storage/accounts/update")
-async def update_all_accounts(request: Request):
+async def create_and_delete_obs_accounts(request: Request):
     """
-    This endpoint is called by an RS operator. It synchronises RS users registered in Keycloak and in the Object
-    Storage (OBS), so it can apply OBS access rights to the corresponding RS user accounts.
+    This endpoint is called by an RS operator with the *rs_osam_update* role.
+    It synchronises the creation and deletion of S3 Object Storage (OBS) accounts for all RS users,
+    associated to their Keycloak account.
 
-    Use case:
+    How it works:
 
-    1. When a new Keycloak account is created, an S3 access account with no rights is created and linked to it.
+    1. When a new Keycloak user account is created, an associated OBS access account **with no rights** is created
+    and linked to it.
 
-    2. When a Keycloak account is deleted, the linked S3 account is also deleted.
+    2. When a Keycloak user account is deleted, the associated OBS access account is also deleted.
 
-    NOTE: this endpoint creates and deletes accounts but **does not** synchronize the users rights. This is done
-    by the endpoint `/storage/account/{user}/update`.
+    NOTE: to synchronize OBS user rights from Keycloak you then need to call the endpoint
+    */storage/account/{user}/update*.
 
     ### Returns:
-    JSONResponse — Always a success message saying that the sync algorythm of the accounts started.
+    JSONResponse — Always a success message saying that the synchronization algorithm of the accounts started.
     """
 
     # NOTE: this endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
@@ -245,13 +246,22 @@ def __get_user_rights(user):
 
 
 @router.post("/storage/account/{user}/update")
-async def update_user_account(request: Request, user: str):
+async def update_obs_user_rights(request: Request, user: str):
     """
-    This endpoint is called by an RS operator. It applies the rights from one user's Keycloak account
-    to their associated OBS account, so they are authorised to download products directly from S3.
+    This endpoint is called by an RS operator with the *rs_osam_update* role. It updates the S3 Object Storage (OBS)
+    rights of any user, calculated from their associated Keycloak account.
+
+    How it works:
+
+    1. Reads the user's roles from their Keycloak account.
+
+    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    (such as read, write and download) that the user has access to.
+
+    3. Applies the access policy to the user's OBS account.
 
     ### Args
-    user (str) — The Keycloak username for which the policy should be applied.
+    user (str) — The Keycloak username for which the access policy should be applied.
 
     ### Returns
     JSONResponse — A JSON response confirming that the access policy has been applied.
@@ -275,18 +285,25 @@ async def update_user_account(request: Request, user: str):
 
 
 @router.get("/storage/account/{user}/rights")
-async def get_user_rights(request: Request, user: str):
+async def get_obs_user_rights(request: Request, user: str):
     """
-    This endpoint is called by an RS operator. It reads and returns the rights from one user's Keycloak account.
+    This endpoint is called by an RS operator with the *rs_osam_update* role. It returns the S3 Object Storage (OBS)
+    rights of any user, calculated from their associated Keycloak account.
 
-    The resulting policy is in the OBS JSON format. It describes the buckets, paths, and permission levels (such as
-    read, write and download) that the user is entitled to access.
+    How it works:
+
+    1. Reads the user's roles from their Keycloak account.
+
+    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    (such as read, write and download) that the user has access to.
+
+    3. Returns the access policy in the OBS JSON format, without applying them to the OBS user account.
 
     ### Args
-    user (str) — Username of the account for which to retrieve access rights.
+    user (str) — The Keycloak username for which the access policy should be returned.
 
     ### Returns
-    JSONResponse — The computed S3/OBS access policy for the user.
+    JSONResponse — The computed OBS access policy for the user.
 
     ### Raises
     404 — If the user does not exist in Keycloak.
@@ -302,10 +319,10 @@ async def get_user_rights(request: Request, user: str):
 
 
 @router.get("/storage/account/credentials")
-async def get_your_credentials(request: Request) -> dict:
+async def get_your_s3_credentials(request: Request) -> dict:
     """
-    This endpoint is called by an anthenticated user. It returns your S3 credentials,
-    so you can connect to the bucket where your products have been generated.
+    This endpoint is called by any anthenticated user.
+    It returns your personnal S3 credentials, so you can connect to the bucket where your products have been generated.
 
     ### Returns
     dict — A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region' for the user's S3 storage.
@@ -335,7 +352,8 @@ async def get_your_credentials(request: Request) -> dict:
 @router.get("/storage/configuration")
 def get_storage_configuration() -> list[list[str]]:
     """
-    Return the current storage configuration from the configuration file.
+    This endpoint is called by any anthenticated user.
+    It returns the current storage configuration from the configuration file.
 
     This endpoint reads the CSV-based configuration stored in Object Storage
     and returns it as a JSON array of arrays. Each inner array represents a
