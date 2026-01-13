@@ -27,7 +27,6 @@ from rs_server_catalog.data_management.data_management import (
 )
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.stac_manager import StacManager
-from rs_server_catalog.landing_page import add_prefix_link_landing_page
 from rs_server_catalog.user_handler import (
     CATALOG_COLLECTIONS,
     CATALOG_PREFIX,
@@ -36,6 +35,7 @@ from rs_server_catalog.user_handler import (
     add_user_prefix,
 )
 from rs_server_catalog.utils import (
+    add_prefix_link_landing_page,
     delete_s3_files,
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,

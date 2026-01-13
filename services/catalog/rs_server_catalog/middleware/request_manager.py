@@ -21,7 +21,10 @@ from typing import Any, cast
 from urllib.parse import urlencode
 
 from fastapi import HTTPException
-from rs_server_catalog.authentication_catalog import get_authorisation
+from rs_server_catalog.authentication_catalog import (
+    check_user_authorization,
+    get_authorisation,
+)
 from rs_server_catalog.data_management import timestamps_extension
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.user_handler import (
@@ -71,29 +74,6 @@ class CatalogRequestManager:
         self.request_ids = request_ids
         self.s3_manager = S3Manager()
         self.s3_files_to_be_deleted = []
-
-    def _check_user_authorization(self):
-        """
-        Checks that current user/owner is allowed to do operations on catalog objects.
-
-        Raises:
-            HTTPException: When the user doesn't have the expected authorizations
-        """
-        # Retrieve owner ID and check authorizations
-        if not self.request_ids["owner_id"]:
-            self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
-        if (  # If we are in cluster mode and the user_login is not authorized
-            # to put/post/patch returns a HTTP_401_UNAUTHORIZED status.
-            common_settings.CLUSTER_MODE
-            and not get_authorisation(
-                self.request_ids["collection_ids"],
-                self.request_ids["auth_roles"],
-                "write",
-                self.request_ids["owner_id"],
-                self.request_ids["user_login"],
-            )
-        ):
-            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
@@ -251,7 +231,7 @@ class CatalogRequestManager:
             original_content = await request.json()
             content = copy.deepcopy(original_content)
 
-            self._check_user_authorization()
+            check_user_authorization(self.request_ids)
 
             if len(self.request_ids["collection_ids"]) > 1:
                 raise log_http_exception(
@@ -539,7 +519,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             original_content = await request.json()
             content = copy.deepcopy(original_content)
 
-            self._check_user_authorization()
+            check_user_authorization(self.request_ids)
 
             # Update "updated" timestamp (different field if it is an item or a collection)
             if "/items/" in request.scope["path"]:

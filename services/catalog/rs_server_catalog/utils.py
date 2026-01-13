@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 from fastapi import HTTPException
+from rs_server_catalog.user_handler import CATALOG_PREFIX
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from starlette.responses import Response
@@ -248,3 +249,19 @@ def extract_owner_name_from_text_filter(text_filter: str) -> str | None:
     if match:
         return match.group(1)
     return None
+
+
+def add_prefix_link_landing_page(content: dict, url: str) -> dict:
+    """
+    Add the CATALOG_PREFIX to the landing page if it is not present.
+
+    Args:
+        content (dict): the landing page
+        url (str): the url
+    """
+    for link in content["links"]:
+        if "href" in link and CATALOG_PREFIX not in link["href"]:
+            href = link["href"]
+            url_size = len(url)
+            link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
+    return content

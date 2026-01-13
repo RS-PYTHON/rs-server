@@ -16,7 +16,13 @@
 
 import re
 
+from rs_server_catalog.user_handler import get_user
 from rs_server_common import settings
+from rs_server_common.utils import utils2
+from rs_server_common.utils.logging import Logging
+from starlette.status import HTTP_401_UNAUTHORIZED
+
+logger = Logging.default(__name__)
 
 
 def get_authorisation(
@@ -96,3 +102,27 @@ def get_authorisation(
 
     # Return True if the user is authorized for all collections
     return True
+
+
+def check_user_authorization(request_ids: dict) -> None:
+    """
+    Checks that current user/owner is allowed to do operations on catalog objects.
+
+    Raises:
+        HTTPException: When the user doesn't have the expected authorizations
+    """
+    # Retrieve owner ID and check authorizations
+    if not request_ids["owner_id"]:
+        request_ids["owner_id"] = get_user(None, request_ids["user_login"])
+    if (  # If we are in cluster mode and the user_login is not authorized
+        # to put/post/patch returns a HTTP_401_UNAUTHORIZED status.
+        settings.CLUSTER_MODE
+        and not get_authorisation(
+            request_ids["collection_ids"],
+            request_ids["auth_roles"],
+            "write",
+            request_ids["owner_id"],
+            request_ids["user_login"],
+        )
+    ):
+        raise utils2.log_http_exception(logger, status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
