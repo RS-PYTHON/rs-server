@@ -64,6 +64,8 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]
         assert response_content["stac_version"] == minimal_collection["stac_version"]
+        assert "created" in response_content
+        assert "updated" in response_content
 
     def test_create_new_minimal_collection_without_setting_user(self, client):
         """
@@ -104,6 +106,8 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]
         assert response_content["stac_version"] == minimal_collection["stac_version"]
+        assert "created" in response_content
+        assert "updated" in response_content
 
     def test_failure_to_create_collection(self, client):
         """
@@ -187,6 +191,7 @@ class TestCatalogPublishCollectionEndpoint:
         get_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
         response_content = json.loads(get_collection_response.content)
         assert response_content["description"] == "not_updated_test_description"
+        initial_updated_value = response_content["updated"]
 
         # Update the collection description and PUT
         minimal_collection["description"] = "the_updated_test_description"
@@ -200,6 +205,7 @@ class TestCatalogPublishCollectionEndpoint:
         get_check_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
         response_content = json.loads(get_check_collection_response.content)
         assert response_content["description"] == "the_updated_test_description"
+        assert response_content["updated"] > initial_updated_value
 
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
