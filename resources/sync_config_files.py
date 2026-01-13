@@ -212,7 +212,7 @@ def get_header(template_paths: list[str] | None = None, final_paths: Iterable[Pa
     )
 
 
-def create_from_template(template_paths: list[str]):  # pylint: disable=too-many-locals,too-many-branches
+def create_from_template(template_paths: list[str]):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """
     Create a configuration file from one or several template paths.
 
@@ -293,13 +293,13 @@ def create_from_template(template_paths: list[str]):  # pylint: disable=too-many
             lines = stations_yaml.splitlines()
             formatted_lines = []
             first_station = True
-            for line in lines:
-                is_station_key = line and (line.lstrip() == line) and line.endswith(":")
+            for station_line in lines:
+                is_station_key = station_line and (station_line.lstrip() == station_line) and station_line.endswith(":")
                 if is_station_key:
                     if not first_station:
                         formatted_lines.append("")
                     first_station = False
-                formatted_lines.append(line)
+                formatted_lines.append(station_line)
             content["stations"] = LiteralStr("\n".join(formatted_lines) + "\n")
 
     post_process(output_path, all_files)
