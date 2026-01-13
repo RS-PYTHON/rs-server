@@ -172,6 +172,7 @@ class Staging(
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(  # pylint: disable=too-many-return-statements,arguments-differ,invalid-overridden-method
         self,
+        request: Request,
         data: dict,
     ) -> tuple[str, dict]:
         """
@@ -243,10 +244,8 @@ class Staging(
         )
         catalog_collection: str = data["collection"]
         # In localmode use getpass.getuser() to get PC username
-        # In clustermode, extract username from oauth2 cookie.
-        self.staging_user = (
-            getpass.getuser() if common_settings.LOCAL_MODE else (await oauth2.get_user_info(self.request)).user_login
-        )
+        # In clustermode, extract username from apikey or oauth2 cookie.
+        self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else request.state.user_login
         # Check for the proper input
         # Check if item collection is provided
         if not item_collection or not hasattr(item_collection, "features"):
