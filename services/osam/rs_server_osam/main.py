@@ -185,7 +185,7 @@ def auth_validation(request: Request):
 async def create_and_delete_obs_accounts(request: Request):
     """
     This endpoint is called by an RS operator with the *rs_osam_update* role.
-    It synchronises the creation and deletion of S3 Object Storage (OBS) accounts for all RS users,
+    It triggers the synchronization of the creation and deletion of S3 Object Storage (OBS) accounts for all RS users,
     associated to their Keycloak account.
 
     How it works:
@@ -260,6 +260,8 @@ async def update_obs_user_rights(request: Request, user: str):
 
     3. Applies the access policy to the user's OBS account.
 
+    The operation ensures that the user's OBS permissions match their Keycloak permissions.
+
     ### Args
     user (str) — The Keycloak username for which the access policy should be applied.
 
@@ -284,7 +286,7 @@ async def update_obs_user_rights(request: Request, user: str):
     return JSONResponse(status_code=status_code, content=msg)
 
 
-@router.get("/storage/account/{user}/rights")
+@router.get("/storage/account/{user}/rights", include_in_schema=False)
 async def get_obs_user_rights(request: Request, user: str):
     """
     This endpoint is called by an RS operator with the *rs_osam_update* role. It returns the S3 Object Storage (OBS)
@@ -353,9 +355,10 @@ async def get_your_s3_credentials(request: Request) -> dict:
 def get_storage_configuration() -> list[list[str]]:
     """
     This endpoint is called by any anthenticated user.
-    It returns the current storage configuration from the configuration file.
 
-    This endpoint reads the CSV-based configuration stored in Object Storage
+    It returns the bucket configuration configmap. This is used by different services in different namespaces.
+
+    This endpoint reads the CSV-based configuration file stored in Object Storage
     and returns it as a JSON array of arrays. Each inner array represents a
     row of the configuration file. If the configuration file is missing or
     cannot be read, an error response is returned.
