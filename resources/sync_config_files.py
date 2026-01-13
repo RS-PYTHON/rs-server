@@ -106,6 +106,14 @@ def recursive_update(old, new):
     return old
 
 
+def strip_edrs_placeholders(value: str) -> str:
+    """Remove quotes around EDRS placeholders in literal strings."""
+    for placeholder in ("URL", "PORT", "USER", "PASS"):
+        for quote in ("'", '"'):
+            value = value.replace(f"{quote}{{{placeholder}}}{quote}", f"{{{placeholder}}}")
+    return value
+
+
 class LiteralStr(str):
     """
     To print literal yaml strings with |
@@ -281,6 +289,7 @@ def create_from_template(template_paths: list[str]):  # pylint: disable=too-many
         """Apply file-specific tweaks after template rendering."""
         if file_path.name == "edrs_stations.yaml" and isinstance(content, dict) and "stations" in content:
             stations_yaml = yaml.dump(content["stations"], default_flow_style=False, sort_keys=False)
+            stations_yaml = strip_edrs_placeholders(stations_yaml)
             lines = stations_yaml.splitlines()
             formatted_lines = []
             first_station = True
@@ -389,8 +398,13 @@ def copy_to_demo(input_path_relative: str):
 
     update_all_values("", file)
 
-    if isinstance(file, dict) and isinstance(file.get("stations"), str) and "\n" in file["stations"]:
-        stations_value = file["stations"]
+    if (
+        input_path.name == "edrs_stations.yaml"
+        and isinstance(file, dict)
+        and isinstance(file.get("stations"), str)
+        and "\n" in file["stations"]
+    ):
+        stations_value = strip_edrs_placeholders(file["stations"])
         if not stations_value.endswith("\n"):
             stations_value += "\n"
         file["stations"] = LiteralStr(stations_value)
