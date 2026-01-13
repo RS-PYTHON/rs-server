@@ -21,8 +21,8 @@ from typing import Any, cast
 from urllib.parse import urlencode
 
 from fastapi import HTTPException
-from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
+from rs_server_catalog.data_management import timestamps_extension
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.user_handler import (
     CATALOG_COLLECTIONS,

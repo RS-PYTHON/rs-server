@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
-from rs_server_catalog.timestamps_extension import ISO_8601_FORMAT
+from rs_server_catalog.data_management.timestamps_extension import ISO_8601_FORMAT
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
