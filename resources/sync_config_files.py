@@ -212,7 +212,9 @@ def get_header(template_paths: list[str] | None = None, final_paths: Iterable[Pa
     )
 
 
-def create_from_template(template_paths: list[str]):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def create_from_template(
+    template_paths: list[str],
+):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """
     Create a configuration file from one or several template paths.
 
