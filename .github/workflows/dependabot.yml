@@ -19,6 +19,9 @@ on:
     paths:
       - 'services/common/**'
 
+permissions:
+  contents: write
+
 env:
   PYTHON_VERSION: 3.13.9
 
