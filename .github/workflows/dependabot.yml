@@ -19,6 +19,9 @@ on:
     paths:
       - 'services/common/**'
 
+env:
+  PYTHON_VERSION: 3.13.9
+
 jobs:
   update-dependent-locks:
     runs-on: ubuntu-latest
