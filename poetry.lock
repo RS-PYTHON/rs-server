@@ -1693,14 +1693,14 @@ files = [
 
 [[package]]
 name = "fsspec"
-version = "2025.12.0"
+version = "2026.1.0"
 description = "File-system specification"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "fsspec-2025.12.0-py3-none-any.whl", hash = "sha256:8bf1fe301b7d8acfa6e8571e3b1c3d158f909666642431cc78a1b7b4dbc5ec5b"},
-    {file = "fsspec-2025.12.0.tar.gz", hash = "sha256:c505de011584597b1060ff778bb664c1bc022e87921b0e4f10cc9c44f9635973"},
+    {file = "fsspec-2026.1.0-py3-none-any.whl", hash = "sha256:cb76aa913c2285a3b49bdd5fc55b1d7c708d7208126b60f2eb8194fe1b4cbdcc"},
+    {file = "fsspec-2026.1.0.tar.gz", hash = "sha256:e987cb0496a0d81bba3a9d1cee62922fb395e7d4c3b575e57f547953334fe07b"},
 ]
 
 [package.extras]
@@ -1711,7 +1711,7 @@ dask = ["dask", "distributed"]
 dev = ["pre-commit", "ruff (>=0.5)"]
 doc = ["numpydoc", "sphinx", "sphinx-design", "sphinx-rtd-theme", "yarl"]
 dropbox = ["dropbox", "dropboxdrivefs", "requests"]
-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "dask", "distributed", "dropbox", "dropboxdrivefs", "fusepy", "gcsfs", "libarchive-c", "ocifs", "panel", "paramiko", "pyarrow (>=1)", "pygit2", "requests", "s3fs", "smbprotocol", "tqdm"]
+full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "dask", "distributed", "dropbox", "dropboxdrivefs", "fusepy", "gcsfs (>2024.2.0)", "libarchive-c", "ocifs", "panel", "paramiko", "pyarrow (>=1)", "pygit2", "requests", "s3fs (>2024.2.0)", "smbprotocol", "tqdm"]
 fuse = ["fusepy"]
 gcs = ["gcsfs"]
 git = ["pygit2"]
@@ -1728,7 +1728,7 @@ smb = ["smbprotocol"]
 ssh = ["paramiko"]
 test = ["aiohttp (!=4.0.0a0,!=4.0.0a1)", "numpy", "pytest", "pytest-asyncio (!=0.22.0)", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytest-recording", "pytest-rerunfailures", "requests"]
 test-downstream = ["aiobotocore (>=2.5.4,<3.0.0)", "dask[dataframe,test]", "moto[server] (>4,<5)", "pytest-timeout", "xarray"]
-test-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "cloudpickle", "dask", "distributed", "dropbox", "dropboxdrivefs", "fastparquet", "fusepy", "gcsfs", "jinja2", "kerchunk", "libarchive-c", "lz4", "notebook", "numpy", "ocifs", "pandas", "panel", "paramiko", "pyarrow", "pyarrow (>=1)", "pyftpdlib", "pygit2", "pytest", "pytest-asyncio (!=0.22.0)", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytest-recording", "pytest-rerunfailures", "python-snappy", "requests", "smbprotocol", "tqdm", "urllib3", "zarr", "zstandard ; python_version < \"3.14\""]
+test-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "backports-zstd ; python_version < \"3.14\"", "cloudpickle", "dask", "distributed", "dropbox", "dropboxdrivefs", "fastparquet", "fusepy", "gcsfs", "jinja2", "kerchunk", "libarchive-c", "lz4", "notebook", "numpy", "ocifs", "pandas", "panel", "paramiko", "pyarrow", "pyarrow (>=1)", "pyftpdlib", "pygit2", "pytest", "pytest-asyncio (!=0.22.0)", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytest-recording", "pytest-rerunfailures", "python-snappy", "requests", "smbprotocol", "tqdm", "urllib3", "zarr"]
 tqdm = ["tqdm"]
 
 [[package]]
@@ -3764,14 +3764,14 @@ files = [
 
 [[package]]
 name = "pathspec"
-version = "1.0.2"
+version = "1.0.3"
 description = "Utility library for gitignore style pattern matching of file paths."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pathspec-1.0.2-py3-none-any.whl", hash = "sha256:62f8558917908d237d399b9b338ef455a814801a4688bc41074b25feefd93472"},
-    {file = "pathspec-1.0.2.tar.gz", hash = "sha256:fa32b1eb775ed9ba8d599b22c5f906dc098113989da2c00bf8b210078ca7fb92"},
+    {file = "pathspec-1.0.3-py3-none-any.whl", hash = "sha256:e80767021c1cc524aa3fb14bedda9c34406591343cc42797b386ce7b9354fb6c"},
+    {file = "pathspec-1.0.3.tar.gz", hash = "sha256:bac5cf97ae2c2876e2d25ebb15078eb04d76e4b98921ee31c6f85ade8b59444d"},
 ]
 
 [package.extras]
@@ -4666,14 +4666,14 @@ test = ["pytest"]
 
 [[package]]
 name = "pystac"
-version = "1.14.2"
+version = "1.14.3"
 description = "Python library for working with the SpatioTemporal Asset Catalog (STAC) specification"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "pystac-1.14.2-py3-none-any.whl", hash = "sha256:5d3fbdd0f9f06c45ca67082f91a68c092a925faad02225172686c5a5dc7cce91"},
-    {file = "pystac-1.14.2.tar.gz", hash = "sha256:dc68bd4d24f391306caf89d2547015d8b0d6907bb72f7a431cff2dc86b6bdf16"},
+    {file = "pystac-1.14.3-py3-none-any.whl", hash = "sha256:2f60005f521d541fb801428307098f223c14697b3faf4d2f0209afb6a43f39e5"},
+    {file = "pystac-1.14.3.tar.gz", hash = "sha256:24f92d6f301371859aa0abc1bbe7b1523a603e1184a6d139ecb323967c2c9bb3"},
 ]
 
 [package.dependencies]
@@ -4682,7 +4682,7 @@ python-dateutil = ">=2.7.0"
 [package.extras]
 jinja2 = ["jinja2 (<4.0)"]
 orjson = ["orjson (>=3.5)"]
-urllib3 = ["urllib3 (>=1.26)"]
+urllib3 = ["urllib3 (>=2.6.3)"]
 validation = ["jsonschema (>=4.18,<5.0)"]
 
 [[package]]
@@ -4920,6 +4920,13 @@ optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
+    {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
+    {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
+    {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:efd7b85f94a6f21e4932043973a7ba2613b059c4a000551892ac9f1d11f5baf3"},
+    {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:22ba7cfcad58ef3ecddc7ed1db3409af68d023b7f940da23c6c2a1890976eda6"},
+    {file = "PyYAML-6.0.3-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:6344df0d5755a2c9a276d4473ae6b90647e216ab4757f8426893b5dd2ac3f369"},
+    {file = "PyYAML-6.0.3-cp38-cp38-win32.whl", hash = "sha256:3ff07ec89bae51176c0549bc4c63aa6202991da2d9a6129d7aef7f1407d3f295"},
+    {file = "PyYAML-6.0.3-cp38-cp38-win_amd64.whl", hash = "sha256:5cf4e27da7e3fbed4d6c3d8e797387aaad68102272f8f9752883bc32d61cb87b"},
     {file = "pyyaml-6.0.3-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:214ed4befebe12df36bcc8bc2b64b396ca31be9304b8f59e25c11cf94a4c033b"},
     {file = "pyyaml-6.0.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:02ea2dfa234451bbb8772601d7b8e426c2bfa197136796224e50e35a78777956"},
     {file = "pyyaml-6.0.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b30236e45cf30d2b8e7b3e85881719e98507abed1011bf463a8fa23e9c3e98a8"},
@@ -5444,7 +5451,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5461,7 +5468,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5478,7 +5485,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5497,7 +5504,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5545,7 +5552,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-edrs"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, EDRS service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5563,7 +5570,7 @@ url = "services/edrs"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5585,7 +5592,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-prip"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5602,7 +5609,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "0.0.0"
+version = "1.0a5.post27.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
