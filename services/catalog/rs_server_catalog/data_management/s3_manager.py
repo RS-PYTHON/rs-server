@@ -20,6 +20,7 @@ import botocore
 from fastapi import HTTPException
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
+    ALTERNATE_STRING,
     get_temp_bucket_name,
     verify_existing_item_from_catalog,
 )
@@ -40,7 +41,6 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
-ALTERNATE_STRING = "alternate"
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 
 logger = Logging.default(__name__)
@@ -60,8 +60,12 @@ class S3Manager:
         # If we are in local mode, operations on S3 bucket will be skipped
         self.is_catalog_local_mode = int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)) == 1
 
-    def _get_s3_handler(self):
-        """Used to create the s3_handler to be used with s3 buckets."""
+    def _get_s3_handler(self) -> S3StorageHandler:
+        """Used to create the s3_handler to be used with s3 buckets.
+
+        Returns:
+            S3StorageHandler: S3 handler
+        """
         try:
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
@@ -161,9 +165,13 @@ class S3Manager:
         """Handle the transfer and deletion of files in S3 buckets.
 
         Args:
+            bucket_name (str): Name of the S3 bucket to transfer files to
             files_s3_key (list[str]): List of S3 keys for the files to be transfered.
             item (dict): The catalog item from which all the remaining assets should be deleted.
             request (Request): The request object, used to determine the request method.
+
+        Returns:
+            list: List of files to be deleted after a successful transfer
 
         Raises:
             HTTPException: If there are errors during the S3 transfer or deletion process.
@@ -228,10 +236,12 @@ class S3Manager:
         Args:
             content (dict): The content to update.
             request (Request): The HTTP request object.
+            request_ids (dict): IDs associated to the given request
             item (dict): The item from the catalog (if exists) to update.
 
         Returns:
             dict: The updated content.
+            list: List of files to delete from the S3 bucket
 
         Raises:
             HTTPException: If there are errors in processing the request, such as missing collection name,
@@ -340,7 +350,14 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         return content, s3_files_to_be_deleted
 
     def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
-        """Used to clear specific files from temporary bucket or from catalog bucket."""
+        """Used to clear specific files from temporary bucket or from catalog bucket.
+
+        Args:
+            s3_files_to_be_deleted (list[str]): list of files to delete from the S3 bucket
+
+        Returns:
+            bool: True is deletion was successful, False otherwise
+        """
         if not s3_files_to_be_deleted:
             logger.info("No files to be deleted from bucket")
             return True
@@ -357,7 +374,16 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         return True
 
     def generate_presigned_url(self, content: dict, path: str) -> tuple[str, int]:
-        """This function is used to generate a time-limited download url"""
+        """This function is used to generate a time-limited download url
+
+        Args:
+            content (dict): STAC description of the item to generate an URL for
+            path (str): Current path to this object
+
+        Returns:
+            str: Presigned URL
+            int: HTTP return code
+        """
         # Assume that pgstac already selected the correct asset id
         # just check type, generate and return url
         path_splitted = path.split("/")

@@ -33,6 +33,8 @@ from rs_server_catalog.data_management.user_handler import (
     owner_id_and_collection_id,
 )
 from rs_server_catalog.utils import (
+    DEFAULT_BBOX,
+    DEFAULT_GEOM,
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
     get_token_for_pagination,
@@ -50,12 +52,6 @@ from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
 )
-
-DEFAULT_GEOM = {
-    "type": "Polygon",
-    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-}
-DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 
 logger = Logging.default(__name__)
 
@@ -182,7 +178,16 @@ class CatalogRequestManager:
                 f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
             )
 
-    async def manage_requests(self, request):
+    async def manage_requests(self, request: Request) -> Request:
+        """Main function to dispatch the request pre-processing depending on which endpoint is called.
+        Will pre-process the request using the function associated to the path called and return it.
+
+        Args:
+            request (Request): request received by the Catalog.
+
+        Returns:
+            Request: Request processed to be sent to stac-fastapi
+        """
         if request.method in ("POST", "PUT") and "/search" not in request.scope["path"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'

@@ -29,7 +29,6 @@ The middleware:
 * modifies the response to update the links.
 """
 
-import os
 from http import HTTPStatus
 from typing import Any, cast
 
@@ -50,15 +49,6 @@ from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
-PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
-DEFAULT_GEOM = {
-    "type": "Polygon",
-    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-}
-DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
-QUERYABLES = "/queryables"
-ALTERNATE_STRING = "alternate"
-# pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
 

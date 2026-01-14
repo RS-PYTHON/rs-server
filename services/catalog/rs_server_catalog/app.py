@@ -25,8 +25,8 @@ from fastapi import Depends, FastAPI, Request, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
-from rs_server_catalog.data_management.user_handler import CATALOG_PREFIX
 from rs_server_catalog.middleware.catalog_middleware import CatalogMiddleware
+from rs_server_catalog.utils import CATALOG_PREFIX
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.middlewares import (

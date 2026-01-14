@@ -11,33 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Module grouping functions dedicated to the manipulation of STAC data"""
 
 import os
 from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from rs_server_catalog.data_management.user_handler import add_user_prefix
-from rs_server_catalog.utils import is_s3_path
+from rs_server_catalog.utils import ALTERNATE_STRING, is_s3_path
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_400_BAD_REQUEST
 
-ALTERNATE_STRING = "alternate"
-PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
-
 logger = Logging.default(__name__)
 
 
 class StacManager:
-
-    def __init__(self):
-        pass
+    """Class grouping functions dedicated to the manipulation of STAC data"""
 
     @staticmethod
-    async def add_authentication_extension(content: dict):
-        """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication"""
+    async def add_authentication_extension(content: dict) -> None:
+        """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication
+
+        Args:
+            content (dict): STAC description of the object to which add the authentication extension
+        """
 
         # Only on cluster mode
         if not common_settings.CLUSTER_MODE:
@@ -106,7 +105,7 @@ class StacManager:
                 await StacManager.add_authentication_extension(nested_content)
 
     @staticmethod
-    def update_stac_catalog_metadata(metadata: dict):
+    def update_stac_catalog_metadata(metadata: dict) -> None:
         """Update the metadata fields from a catalog
 
         Args:

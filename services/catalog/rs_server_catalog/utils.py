@@ -14,18 +14,27 @@
 # pylint: disable=too-many-return-statements
 """This library contains functions used in handling the user catalog."""
 
+import os
 import re
 from typing import Any
 
 from fastapi import HTTPException
-from rs_server_catalog.data_management.user_handler import CATALOG_PREFIX
 from rs_server_common.utils.logging import Logging
 from starlette.responses import Response
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 logger = Logging.default(__name__)
 
+# Constants used a bit everywhere in the Catalog
 ALTERNATE_STRING = "alternate"
+ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+CATALOG_PREFIX = os.environ.get("PREFIX_PATH", "/catalog")
+DEFAULT_GEOM = {
+    "type": "Polygon",
+    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+}
+DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
+
 # Regular expression pattern to match 's3://path/to/file'
 S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
 # Compile the pattern

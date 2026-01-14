@@ -20,11 +20,11 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
+from rs_server_catalog.utils import CATALOG_PREFIX
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 
-CATALOG_PREFIX = os.environ.get("PREFIX_PATH", "/catalog")
 CATALOG_COLLECTIONS = CATALOG_PREFIX + "/collections"
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     CATALOG_COLLECTIONS + r"(((?P<owner_collection_id>/.+?(?=/|$)))?"

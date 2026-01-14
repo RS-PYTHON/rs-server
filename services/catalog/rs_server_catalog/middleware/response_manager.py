@@ -28,12 +28,14 @@ from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
-    CATALOG_PREFIX,
     adapt_links,
     adapt_object_links,
     add_user_prefix,
 )
 from rs_server_catalog.utils import (
+    CATALOG_PREFIX,
+    DEFAULT_BBOX,
+    DEFAULT_GEOM,
     add_prefix_link_landing_page,
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
@@ -61,11 +63,6 @@ from starlette.status import (
 )
 
 QUERYABLES = "/queryables"
-DEFAULT_GEOM = {
-    "type": "Polygon",
-    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-}
-DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 
 logger = Logging.default(__name__)
 
@@ -90,7 +87,15 @@ class CatalogResponseManager:
         request: Request,
         streaming_response: StreamingResponse,
     ) -> Response:
-        """Manage responses after dispatch"""
+        """Manage responses sent by stac-fastpi after dispatch and before sending it to the user.
+
+        Args:
+            request (Request): Original request sent to stac-fastapi
+            streaming_response (StreamingResponse): Response returned by stac-fastapi
+
+        Returns:
+            Response: HTTP Response
+        """
 
         # Don't forward responses that fail.
         # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
