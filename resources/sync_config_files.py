@@ -121,6 +121,10 @@ class LiteralStr(str):
     """
 
 
+class QuotedStr(str):
+    """To print quoted yaml strings with single quotes."""
+
+
 def change_yaml_style(style, representer):
     """Goes with LiteralStr above"""
 
@@ -138,6 +142,8 @@ def change_yaml_style(style, representer):
 
 represent_literal_str = change_yaml_style("|", SafeRepresenter.represent_str)
 yaml.add_representer(LiteralStr, represent_literal_str)
+represent_quoted_str = change_yaml_style("'", SafeRepresenter.represent_str)
+yaml.add_representer(QuotedStr, represent_quoted_str)
 
 
 # Replace local urls like http(s)://(127.0.0.1|localhost):5xxx
@@ -466,6 +472,13 @@ def copy_to_helm_or_infra(
 
     # Write the modified output file into a string
     yaml_contents = write_helm_or_infra(output_configs, yaml_as_string)
+    if output_path == rs_helm_dir / "charts/rs-server-station-secrets/values.yaml":
+        yaml_contents = re.sub(
+            r"(^\s+-----END (?:CERTIFICATE|RSA PRIVATE KEY)-----\n)(?!\n)",
+            r"\1\n",
+            yaml_contents,
+            flags=re.MULTILINE,
+        )
     with open(output_path, "w", encoding="utf-8") as opened:
         opened.write(header)
         opened.write(yaml_contents)
@@ -784,6 +797,20 @@ if __name__ == "__main__":
         for station in list(output_config.keys()):
             if station.endswith("_session"):
                 output_config.pop(station)
+        for station_name in ("pedc", "bedc"):
+            station = output_config.get(station_name)
+            if not isinstance(station, dict):
+                continue
+            authentication = station.get("authentication")
+            if not isinstance(authentication, dict):
+                continue
+            for key in ("username", "password"):
+                if key in authentication:
+                    authentication[key] = QuotedStr(str(authentication[key]))
+            for key in ("ca_crt", "client_crt", "client_key"):
+                if key in authentication and authentication[key] is not None:
+                    cert_value = str(authentication[key]).rstrip("\n")
+                    authentication[key] = LiteralStr(cert_value)
 
     station_params = HelmOrInfraParams(
         "services/common/config/rs-server.yaml",
