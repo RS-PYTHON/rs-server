@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -479,6 +479,7 @@ def copy_to_helm_or_infra(
             yaml_contents,
             flags=re.MULTILINE,
         )
+        yaml_contents = re.sub(r"\n(?:[ \t]*\n)+\Z", "\n", yaml_contents)
     with open(output_path, "w", encoding="utf-8") as opened:
         opened.write(header)
         opened.write(yaml_contents)
