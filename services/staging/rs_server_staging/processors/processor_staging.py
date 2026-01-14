@@ -41,7 +41,6 @@ from pygeoapi.process.manager.postgresql import (
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
@@ -243,10 +242,8 @@ class Staging(
         )
         catalog_collection: str = data["collection"]
         # In localmode use getpass.getuser() to get PC username
-        # In clustermode, extract username from oauth2 cookie.
-        self.staging_user = (
-            getpass.getuser() if common_settings.LOCAL_MODE else (await oauth2.get_user_info(self.request)).user_login
-        )
+        # In clustermode, extract username from apikey or oauth2 cookie.
+        self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
         # Check for the proper input
         # Check if item collection is provided
         if not item_collection or not hasattr(item_collection, "features"):
