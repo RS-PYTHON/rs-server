@@ -35,9 +35,9 @@ from typing import Any, cast
 
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
+from rs_server_catalog.data_management.user_handler import get_user, reroute_url
 from rs_server_catalog.middleware.request_manager import CatalogRequestManager
 from rs_server_catalog.middleware.response_manager import CatalogResponseManager
-from rs_server_catalog.user_handler import get_user, reroute_url
 from rs_server_common import settings as common_settings
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging

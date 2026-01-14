@@ -18,8 +18,7 @@ import re
 from typing import Any
 
 from fastapi import HTTPException
-from rs_server_catalog.authentication_catalog import get_authorisation
-from rs_server_catalog.user_handler import CATALOG_PREFIX
+from rs_server_catalog.data_management.user_handler import CATALOG_PREFIX
 from rs_server_common.utils.logging import Logging
 from starlette.responses import Response
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
@@ -62,49 +61,6 @@ def verify_existing_item_from_catalog(method: str, item: dict, content_id_str: s
             f"does not exist in the {user_collection_str} collection for an update (PUT / PATCH request received)",
             status_code=HTTP_400_BAD_REQUEST,
         )
-
-
-def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
-    """
-    Retrieve the S3 key from the asset content.
-
-    During the staging process, the content of the asset should be:
-        "filename": {
-            "href": "s3://temp_catalog/path/to/filename",
-        }
-
-    Once the asset is inserted in the catalog, the content typically looks like this:
-        "filename": {
-            "alternate": {
-                "https": {
-                    "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
-                }
-            },
-            "href": "s3://rs-dev-cluster-catalog/path/to/filename",
-        }
-
-    Args:
-        asset (dict): The content of the asset.
-
-    Returns:
-        tuple[str, bool]: A tuple containing the full S3 path of the object and a boolean indicating
-                          whether the S3 key was retrieved from the 'alternate' field.
-
-    Raises:
-        HTTPException: If the S3 key could not be loaded or is invalid.
-    """
-    # Attempt to retrieve the S3 key from the 'alternate.s3.href' or 'href' fields
-    s3_filename = asset.get("href", "")
-    alternate_field = bool(asset.get("alternate", None))
-
-    # Validate that the S3 key was successfully retrieved and has the correct format
-    if not is_s3_path(s3_filename):
-        raise HTTPException(
-            detail=f"Failed to load the S3 key from the asset content {asset}",
-            status_code=HTTP_400_BAD_REQUEST,
-        )
-
-    return s3_filename, alternate_field
 
 
 def is_s3_path(s3_key):
@@ -160,6 +116,22 @@ def headers_minus_content_length(response: Response) -> dict[str, str]:
     return {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
 
 
+def add_prefix_link_landing_page(content: dict, url: str) -> dict:
+    """
+    Add the CATALOG_PREFIX to the landing page if it is not present.
+
+    Args:
+        content (dict): the landing page
+        url (str): the url
+    """
+    for link in content["links"]:
+        if "href" in link and CATALOG_PREFIX not in link["href"]:
+            href = link["href"]
+            url_size = len(url)
+            link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
+    return content
+
+
 def extract_owner_name_from_json_filter(json_filter: Any) -> str | None:
     """
     Scans a CQL2 JSON filter and returns the associated owner name if it contains an "owner" property.
@@ -211,48 +183,3 @@ def extract_owner_name_from_text_filter(text_filter: str) -> str | None:
     if match:
         return match.group(1)
     return None
-
-
-def add_prefix_link_landing_page(content: dict, url: str) -> dict:
-    """
-    Add the CATALOG_PREFIX to the landing page if it is not present.
-
-    Args:
-        content (dict): the landing page
-        url (str): the url
-    """
-    for link in content["links"]:
-        if "href" in link and CATALOG_PREFIX not in link["href"]:
-            href = link["href"]
-            url_size = len(url)
-            link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
-    return content
-
-
-def manage_all_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:
-    """Return the list of all collections accessible by the user calling it.
-
-    Args:
-        collections (dict): List of all collections.
-        auth_roles (list): List of roles of the api-key.
-        user_login (str): The api-key owner.
-
-    Returns:
-        dict: The list of all collections accessible by the user.
-    """
-    # Test user authorization on each collection
-    accessible_collections = [
-        requested_col
-        for requested_col in collections
-        if get_authorisation(
-            [requested_col["id"]],
-            auth_roles,
-            "read",
-            requested_col["owner"],
-            user_login,
-            owner_prefix=True,
-        )
-    ]
-
-    # Return results, sorted by <owner>_<collection_id>
-    return sorted(accessible_collections, key=lambda col: col["id"])

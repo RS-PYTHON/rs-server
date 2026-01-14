@@ -18,8 +18,8 @@ import os
 
 import botocore
 from fastapi import HTTPException
+from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
-    get_s3_filename_from_asset,
     get_temp_bucket_name,
     verify_existing_item_from_catalog,
 )
@@ -58,7 +58,7 @@ class S3Manager:
         self.s3_handler: S3StorageHandler = self._get_s3_handler()
         # Retrieve handler only if we are not in local mode
         # If we are in local mode, operations on S3 bucket will be skipped
-        self.is_catalog_local_mode = bool(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0))
+        self.is_catalog_local_mode = int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)) == 1
 
     def _get_s3_handler(self):
         """Used to create the s3_handler to be used with s3 buckets."""
@@ -254,7 +254,7 @@ class S3Manager:
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
-            s3_filename, alternate_field = get_s3_filename_from_asset(content["assets"][asset])
+            s3_filename, alternate_field = StacManager.get_s3_filename_from_asset(content["assets"][asset])
             if alternate_field:
                 if not item:
                     # the asset should be already in the catalog from a previous POST/PUT request

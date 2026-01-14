@@ -254,7 +254,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == "Cannot create or update more than one collection !"
 
-    @patch("rs_server_catalog.user_handler.remove_owner_from_collection_name_in_collection")
+    @patch("rs_server_catalog.data_management.user_handler.remove_owner_from_collection_name_in_collection")
     def test_failure_to_create_collection_generic_exception(
         self,
         mock_remove_owner_from_collection_name_in_collection,
@@ -287,7 +287,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == f"Bad request: {mock_exc}"
 
-    @patch("rs_server_catalog.user_handler.remove_owner_from_collection_name_in_collection")
+    @patch("rs_server_catalog.data_management.user_handler.remove_owner_from_collection_name_in_collection")
     def test_failure_to_create_collection_runtime_error(
         self,
         mock_remove_owner_from_collection_name_in_collection,

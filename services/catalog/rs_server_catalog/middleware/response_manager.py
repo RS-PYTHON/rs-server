@@ -20,10 +20,13 @@ from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from fastapi import HTTPException
-from rs_server_catalog.authentication_catalog import get_authorisation
+from rs_server_catalog.authentication_catalog import (
+    get_all_accessible_collections,
+    get_authorisation,
+)
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.stac_manager import StacManager
-from rs_server_catalog.user_handler import (
+from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
     CATALOG_PREFIX,
     adapt_links,
@@ -35,7 +38,6 @@ from rs_server_catalog.utils import (
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
     headers_minus_content_length,
-    manage_all_collections,
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.utils import utils2
@@ -307,7 +309,11 @@ class CatalogResponseManager:
             # patch the catalog landing page with "rel": "child" link for each collection
             # limit must be explicitely set, otherwise the default pgstac limit of 10 is used
             collections_resp = await self.client.all_collections(request=request, limit=1000)
-            collections = manage_all_collections(collections_resp.get("collections", []), auth_roles, user_login)
+            collections = get_all_accessible_collections(
+                collections_resp.get("collections", []),
+                auth_roles,
+                user_login,
+            )
             base_url = (
                 next((link["href"] for link in content["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
             )
@@ -328,7 +334,7 @@ class CatalogResponseManager:
                 )
 
         elif request.scope["path"] == CATALOG_COLLECTIONS:  # /catalog/collections
-            content["collections"] = manage_all_collections(
+            content["collections"] = get_all_accessible_collections(
                 content["collections"],
                 auth_roles,
                 user_login,

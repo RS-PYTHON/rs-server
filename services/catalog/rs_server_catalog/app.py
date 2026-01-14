@@ -25,11 +25,10 @@ from fastapi import Depends, FastAPI, Request, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
+from rs_server_catalog.data_management.user_handler import CATALOG_PREFIX
 from rs_server_catalog.middleware.catalog_middleware import CatalogMiddleware
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication.apikey import (
-    APIKEY_AUTH_HEADER,
-)
+from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
@@ -45,8 +44,6 @@ from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.app import app as sfpg_app
 from stac_fastapi.pgstac.app import with_transactions
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
-
-from .user_handler import CATALOG_PREFIX
 
 logger = Logging.default(__name__)
 

@@ -27,7 +27,7 @@ from rs_server_catalog.authentication_catalog import (
 )
 from rs_server_catalog.data_management import timestamps_extension
 from rs_server_catalog.data_management.s3_manager import S3Manager
-from rs_server_catalog.user_handler import (
+from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
     get_user,
     owner_id_and_collection_id,
@@ -522,10 +522,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             check_user_authorization(self.request_ids)
 
             # Update "updated" timestamp (different field if it is an item or a collection)
-            if "/items/" in request.scope["path"]:
-                content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=True)
-            else:
-                content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=False)
+            is_item = "/items/" in request.scope["path"]
+            content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=is_item)
 
             request = self._override_request_body(request, content)
             return request

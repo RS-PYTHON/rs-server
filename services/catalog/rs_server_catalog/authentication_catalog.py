@@ -16,7 +16,7 @@
 
 import re
 
-from rs_server_catalog.user_handler import get_user
+from rs_server_catalog.data_management.user_handler import get_user
 from rs_server_common import settings
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
@@ -126,3 +126,32 @@ def check_user_authorization(request_ids: dict) -> None:
         )
     ):
         raise utils2.log_http_exception(logger, status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+
+
+def get_all_accessible_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:
+    """Return the list of all collections accessible by the user calling it.
+
+    Args:
+        collections (dict): List of all collections.
+        auth_roles (list): List of roles of the api-key.
+        user_login (str): The api-key owner.
+
+    Returns:
+        dict: The list of all collections accessible by the user.
+    """
+    # Test user authorization on each collection
+    accessible_collections = [
+        requested_col
+        for requested_col in collections
+        if get_authorisation(
+            [requested_col["id"]],
+            auth_roles,
+            "read",
+            requested_col["owner"],
+            user_login,
+            owner_prefix=True,
+        )
+    ]
+
+    # Return results, sorted by <owner>_<collection_id>
+    return sorted(accessible_collections, key=lambda col: col["id"])

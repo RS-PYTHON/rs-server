@@ -16,10 +16,13 @@
 import os
 from urllib.parse import urlparse
 
-from rs_server_catalog.user_handler import add_user_prefix
+from fastapi import HTTPException
+from rs_server_catalog.data_management.user_handler import add_user_prefix
+from rs_server_catalog.utils import is_s3_path
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.utils.logging import Logging
+from starlette.status import HTTP_400_BAD_REQUEST
 
 ALTERNATE_STRING = "alternate"
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
@@ -135,3 +138,46 @@ class StacManager:
                 new_path = add_user_prefix(link_parser.path, owner_id, collection["id"])
                 link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
+
+    @staticmethod
+    def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
+        """
+        Retrieve the S3 key from the asset content.
+
+        During the staging process, the content of the asset should be:
+            "filename": {
+                "href": "s3://temp_catalog/path/to/filename",
+            }
+
+        Once the asset is inserted in the catalog, the content typically looks like this:
+            "filename": {
+                "alternate": {
+                    "https": {
+                        "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
+                    }
+                },
+                "href": "s3://rs-dev-cluster-catalog/path/to/filename",
+            }
+
+        Args:
+            asset (dict): The content of the asset.
+
+        Returns:
+            tuple[str, bool]: A tuple containing the full S3 path of the object and a boolean indicating
+                            whether the S3 key was retrieved from the 'alternate' field.
+
+        Raises:
+            HTTPException: If the S3 key could not be loaded or is invalid.
+        """
+        # Attempt to retrieve the S3 key from the 'alternate.s3.href' or 'href' fields
+        s3_filename = asset.get("href", "")
+        alternate_field = bool(asset.get("alternate", None))
+
+        # Validate that the S3 key was successfully retrieved and has the correct format
+        if not is_s3_path(s3_filename):
+            raise HTTPException(
+                detail=f"Failed to load the S3 key from the asset content {asset}",
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+
+        return s3_filename, alternate_field
