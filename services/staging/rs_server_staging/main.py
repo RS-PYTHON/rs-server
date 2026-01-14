@@ -459,7 +459,7 @@ async def execute_process(
             app.extra["dask_cluster"],
             app.extra["station_token_list"],
             app.extra["station_token_list_lock"],
-        ).execute(request, valid_body["inputs"])
+        ).execute(valid_body["inputs"])
 
         # Get identifier of the current job
         status_dict = {
