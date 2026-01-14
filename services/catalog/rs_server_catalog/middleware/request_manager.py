@@ -69,7 +69,7 @@ class CatalogRequestManager:
         self.client = client
         self.request_ids = request_ids
         self.s3_manager = S3Manager()
-        self.s3_files_to_be_deleted = []
+        self.s3_files_to_be_deleted: list = []
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
@@ -121,7 +121,7 @@ class CatalogRequestManager:
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
 
-    async def _build_filelist_to_be_deleted(self, request):
+    async def build_filelist_to_be_deleted(self, request):
         """Build the list of the s3 files that will be deleted if the request is successfull"""
         for ci in self.request_ids["collection_ids"]:
             collection_id = f"{self.request_ids['owner_id']}_{ci}"
@@ -178,7 +178,7 @@ class CatalogRequestManager:
                 f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
             )
 
-    async def manage_requests(self, request: Request) -> Request:
+    async def manage_requests(self, request: Request) -> Request | Response:
         """Main function to dispatch the request pre-processing depending on which endpoint is called.
         Will pre-process the request using the function associated to the path called and return it.
 
@@ -186,7 +186,8 @@ class CatalogRequestManager:
             request (Request): request received by the Catalog.
 
         Returns:
-            Request: Request processed to be sent to stac-fastapi
+            Request|Response: Request processed to be sent to stac-fastapi OR a response if the operation
+                is not authorized
         """
         if request.method in ("POST", "PUT") and "/search" not in request.scope["path"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
@@ -395,7 +396,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
 
-        await self._build_filelist_to_be_deleted(request)
+        await self.build_filelist_to_be_deleted(request)
         return True
 
     async def manage_search_request(  # pylint: disable=too-many-statements,too-many-branches

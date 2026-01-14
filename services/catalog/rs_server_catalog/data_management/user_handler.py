@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-return-statements
 """This library contains all functions needed for the fastAPI middleware."""
 
 import getpass
@@ -180,7 +179,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         request.scope["path"] = path
 
 
-def add_user_prefix(  # pylint: disable=too-many-return-statements
+def add_user_prefix(
     path: str,
     user: str | None,
     collection_id: str | None,

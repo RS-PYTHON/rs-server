@@ -80,7 +80,7 @@ class CatalogResponseManager:
         self.client = client
         self.request_ids = request_ids
         self.s3_manager = S3Manager()
-        self.s3_files_to_be_deleted = s3_files_to_be_deleted
+        self.s3_files_to_be_deleted = s3_files_to_be_deleted or []
 
     async def manage_responses(
         self,

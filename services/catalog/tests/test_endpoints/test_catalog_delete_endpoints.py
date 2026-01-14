@@ -150,7 +150,7 @@ class TestCatalogDeleteEndpoints:
         request_manager = CatalogRequestManager(mock_client, request_ids)
 
         # Call the function
-        await request_manager._build_filelist_to_be_deleted(mock_request)
+        await request_manager.build_filelist_to_be_deleted(mock_request)
 
         # Assert
         assert request_manager.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
@@ -187,7 +187,7 @@ class TestCatalogDeleteEndpoints:
         request_manager = CatalogRequestManager(mock_client, request_ids)
 
         # Act
-        await request_manager._build_filelist_to_be_deleted(mock_request)
+        await request_manager.build_filelist_to_be_deleted(mock_request)
 
         # Assert
         assert request_manager.s3_files_to_be_deleted == ["s3://bucket/file1"]
@@ -218,7 +218,7 @@ class TestCatalogDeleteEndpoints:
         request_manager = CatalogRequestManager(mock_client, request_ids)
 
         # Act
-        await request_manager._build_filelist_to_be_deleted(mock_request)
+        await request_manager.build_filelist_to_be_deleted(mock_request)
 
         # Assert
         assert not request_manager.s3_files_to_be_deleted

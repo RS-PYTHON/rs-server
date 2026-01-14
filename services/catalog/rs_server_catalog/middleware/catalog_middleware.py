@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0302
-
 """A BaseHTTPMiddleware to handle the user multi catalog.
 
 The stac-fastapi software doesn't handle multi catalog.
@@ -74,7 +72,7 @@ class CatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-m
             )
 
 
-class UserCatalog:
+class UserCatalog:  # pylint: disable=too-few-public-methods
     """The user catalog middleware handler."""
 
     def __init__(self, client: CoreCrudClient):
@@ -164,6 +162,10 @@ class UserCatalog:
 
         request_manager = CatalogRequestManager(self.client, self.request_ids)
         request = await request_manager.manage_requests(request)
+        # If the request manager returns a response, it usually means the user is not authorized
+        # to do the operation received, so we directly return the response
+        if isinstance(request, Response):
+            return request
 
         response = await call_next(request)
 
