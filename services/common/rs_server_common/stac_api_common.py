@@ -59,13 +59,19 @@ from rs_server_common.utils.utils import (
 )
 from shapely import wkt
 from shapely.geometry import box
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry.polygon import Polygon
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
+from stac_fastapi.pgstac.config import str_to_list
 from stac_fastapi.types.search import str2bbox
 from stac_pydantic.shared import BBox
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
+
+# For these prip and lta stations, we need to force the use of multipolygon geometries in requests
+force_multipolygon = str_to_list(os.getenv("RSPY_FORCE_MULTIPOLYGON_FOR_STATIONS", "").lower())
 
 
 def log_http_exception(*args, **kwargs) -> HTTPException:
@@ -1046,6 +1052,25 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if "/search" in self.request.url.path:
             search_limit = self.limit * self.page
             search_page = 1
+
+        # Format the intersection geometry
+        if wkt_geometry := odata_params.get("intersects"):
+
+            # For these stations, we need to force the use of multipolygon geometries in requests
+            if station.lower() in force_multipolygon:
+
+                # If we have a single polygon
+                geometry = wkt.loads(wkt_geometry)
+                if isinstance(geometry, Polygon):
+
+                    # Save it in a multipolygon
+                    wkt_geometry = MultiPolygon([geometry]).wkt
+
+                    # ... in a new dict so we take no risks of modifying the value for other stations
+                    odata_params = odata_params.copy()
+
+            # Remove spaces after "," because some stations don't support them.
+            odata_params["intersects"] = wkt_geometry.replace(", ", ",")
 
         # Do the search for this station
         logger.debug(f"Searching to {station} station with OData parameters {odata_params}")
