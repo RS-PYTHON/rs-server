@@ -14,19 +14,19 @@
 # pylint: disable=too-many-return-statements
 """This library contains functions used in handling the user catalog."""
 
-import os
 import re
 from typing import Any
 
 from fastapi import HTTPException
+from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.user_handler import CATALOG_PREFIX
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from starlette.responses import Response
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 logger = Logging.default(__name__)
 
+ALTERNATE_STRING = "alternate"
 # Regular expression pattern to match 's3://path/to/file'
 S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
 # Compile the pattern
@@ -107,25 +107,6 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
     return s3_filename, alternate_field
 
 
-def delete_s3_files(s3_files_to_be_deleted):
-    """Used to clear specific files from temporary bucket or from catalog bucket."""
-    if not s3_files_to_be_deleted:
-        logger.info("No files to be deleted from bucket")
-        return True
-    s3_handler = get_s3_handler()
-    if not s3_handler:
-        logger.error("Failed to create the s3 handler when trying to delete the s3 files")
-        return False
-
-    try:
-        s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
-    except RuntimeError as rte:
-        logger.exception(
-            f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
-        )
-    return True
-
-
 def is_s3_path(s3_key):
     """Function to check if a string matches the S3 pattern"""
     if not isinstance(s3_key, str):
@@ -163,25 +144,6 @@ def get_temp_bucket_name(files_s3_key: list[str]) -> str | None:
         raise RuntimeError(f"A single temporary S3 bucket should be used in the assets: {bucket_names!r}")
 
     return bucket_names.pop()
-
-
-def get_s3_handler():
-    """Used to create the s3_handler to be used with s3 buckets."""
-    try:
-        s3_handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
-        )
-    except KeyError:
-        print("Failed to find s3 credentials when trying to create the s3 handler")
-        return None
-    except RuntimeError:
-        print("Failed to create the s3 handler")
-        return None
-
-    return s3_handler
 
 
 def get_token_for_pagination(items_dic: dict[Any, Any]):
@@ -265,3 +227,32 @@ def add_prefix_link_landing_page(content: dict, url: str) -> dict:
             url_size = len(url)
             link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
     return content
+
+
+def manage_all_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:
+    """Return the list of all collections accessible by the user calling it.
+
+    Args:
+        collections (dict): List of all collections.
+        auth_roles (list): List of roles of the api-key.
+        user_login (str): The api-key owner.
+
+    Returns:
+        dict: The list of all collections accessible by the user.
+    """
+    # Test user authorization on each collection
+    accessible_collections = [
+        requested_col
+        for requested_col in collections
+        if get_authorisation(
+            [requested_col["id"]],
+            auth_roles,
+            "read",
+            requested_col["owner"],
+            user_login,
+            owner_prefix=True,
+        )
+    ]
+
+    # Return results, sorted by <owner>_<collection_id>
+    return sorted(accessible_collections, key=lambda col: col["id"])

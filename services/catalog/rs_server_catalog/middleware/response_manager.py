@@ -21,10 +21,6 @@ from urllib.parse import parse_qs, urljoin, urlparse
 
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import get_authorisation
-from rs_server_catalog.data_management.data_management import (
-    generate_presigned_url,
-    manage_all_collections,
-)
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.user_handler import (
@@ -36,10 +32,10 @@ from rs_server_catalog.user_handler import (
 )
 from rs_server_catalog.utils import (
     add_prefix_link_landing_page,
-    delete_s3_files,
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
     headers_minus_content_length,
+    manage_all_collections,
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.utils import utils2
@@ -241,7 +237,7 @@ class CatalogResponseManager:
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
-            content, code = generate_presigned_url(content, request.url.path)
+            content, code = self.s3_manager.generate_presigned_url(content, request.url.path)
             if code == HTTP_302_FOUND:
                 return RedirectResponse(url=content, status_code=code)
             return JSONResponse(content, code, headers_minus_content_length(response))
@@ -410,7 +406,7 @@ class CatalogResponseManager:
                     response_content["geometry"] = None
                 if response_content.get("bbox") == DEFAULT_BBOX:
                     response_content["bbox"] = None
-            delete_s3_files(self.s3_files_to_be_deleted)
+            self.s3_manager.delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
             raise log_http_exception(
@@ -437,6 +433,6 @@ class CatalogResponseManager:
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well
-        delete_s3_files(self.s3_files_to_be_deleted)
+        self.s3_manager.delete_s3_files(self.s3_files_to_be_deleted)
         self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Module handling all operations on S3 bucket."""
+
 import os
 
+import botocore
 from fastapi import HTTPException
 from rs_server_catalog.utils import (
     get_s3_filename_from_asset,
-    get_s3_handler,
     get_temp_bucket_name,
     verify_existing_item_from_catalog,
 )
@@ -31,9 +33,15 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import (
+    HTTP_302_FOUND,
+    HTTP_400_BAD_REQUEST,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 ALTERNATE_STRING = "alternate"
+PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 
 logger = Logging.default(__name__)
 
@@ -44,13 +52,31 @@ def log_http_exception(*args, **kwargs) -> type[HTTPException]:
 
 
 class S3Manager:
+    """Tool class to handle all operations on S3 bucket."""
 
     def __init__(self):
-        self.s3_handler: S3StorageHandler = None
+        self.s3_handler: S3StorageHandler = self._get_s3_handler()
         # Retrieve handler only if we are not in local mode
         # If we are in local mode, operations on S3 bucket will be skipped
-        if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):
-            self.s3_handler = get_s3_handler()
+        self.is_catalog_local_mode = bool(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0))
+
+    def _get_s3_handler(self):
+        """Used to create the s3_handler to be used with s3 buckets."""
+        try:
+            s3_handler = S3StorageHandler(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            )
+        except KeyError:
+            print("Failed to find s3 credentials when trying to create the s3 handler")
+            return None
+        except RuntimeError:
+            print("Failed to create the s3 handler")
+            return None
+
+        return s3_handler
 
     def clear_catalog_bucket(self, content: dict) -> None:
         """Used to clear specific files from catalog bucket.
@@ -59,7 +85,7 @@ class S3Manager:
             content (dict): Files to delete
             s3_handler (S3StorageHandler): S3 handler to use. If None given, will do nothing
         """
-        if not self.s3_handler:
+        if self.is_catalog_local_mode:
             return
         for asset in content.get("assets", {}):
             # Retrieve bucket name from config using what's in content
@@ -72,7 +98,7 @@ class S3Manager:
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
                 self.s3_handler.delete_file_from_s3(bucket_name, file_key)
 
-    def check_s3_key(self, item: dict, asset_name: str, s3_key):
+    def check_s3_key(self, item: dict, asset_name: str, s3_key: str) -> tuple[bool, int]:
         """Check if the given S3 key exists and matches the expected path.
 
         Args:
@@ -88,7 +114,7 @@ class S3Manager:
             HTTPException: If the s3_handler is not available, if S3 paths cannot be retrieved,
                         if the S3 paths do not match, or if there is an error checking the key.
         """
-        if not item or not self.s3_handler:
+        if not item or self.is_catalog_local_mode:
             return False, -1
         # update an item
         existing_asset = item["assets"].get(asset_name)
@@ -142,7 +168,7 @@ class S3Manager:
         Raises:
             HTTPException: If there are errors during the S3 transfer or deletion process.
         """
-        if not self.s3_handler or not files_s3_key:
+        if self.is_catalog_local_mode or not files_s3_key:
             logger.debug(f"s3_bucket_handling: nothing to do: {self.s3_handler} | {files_s3_key}")
             return []
 
@@ -270,7 +296,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
 
                     # copy the key only if it isn't already in the final catalog bucket
                     # (don't do anything if in local mode)
-                    if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):
+                    if not self.is_catalog_local_mode:
                         s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(
                             bucket_name,
                             "/".join(old_bucket_arr[3:]),
@@ -312,3 +338,59 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
         return content, s3_files_to_be_deleted
+
+    def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
+        """Used to clear specific files from temporary bucket or from catalog bucket."""
+        if not s3_files_to_be_deleted:
+            logger.info("No files to be deleted from bucket")
+            return True
+        if not self.s3_handler:
+            logger.error("Failed to create the s3 handler when trying to delete the s3 files")
+            return False
+
+        try:
+            self.s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
+        except RuntimeError as rte:
+            logger.exception(
+                f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
+            )
+        return True
+
+    def generate_presigned_url(self, content: dict, path: str) -> tuple[str, int]:
+        """This function is used to generate a time-limited download url"""
+        # Assume that pgstac already selected the correct asset id
+        # just check type, generate and return url
+        path_splitted = path.split("/")
+        asset_id = path_splitted[-1]
+        item_id = path_splitted[-3]
+        # Retrieve bucket name from config using what's in content
+        item_owner = content["properties"].get("owner", "*")
+        item_collection = content.get("collection", "*").removeprefix(f"{item_owner}_")
+        item_eopf_type = content["properties"].get("eopf:type", "*")
+        bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
+        try:
+            s3_path = (
+                content["assets"][asset_id]["href"]
+                .replace(
+                    f"s3://{bucket_name}",
+                    "",
+                )
+                .lstrip("/")
+            )
+        except KeyError:
+            return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
+        try:
+            if not self.s3_handler:
+                raise utils2.log_http_exception(
+                    logger=logger,
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to find s3 credentials",
+                )
+            response = self.s3_handler.s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket_name, "Key": s3_path},
+                ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
+            )
+        except botocore.exceptions.ClientError:
+            return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
+        return response, HTTP_302_FOUND
