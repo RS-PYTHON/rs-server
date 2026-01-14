@@ -61,6 +61,10 @@ RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 try:
     docs_url = os.environ["RSPY_DOCS_URL"].strip("/")
     docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+    oauth2.SWAGGER_HOMEPAGE = "/" + docs_url.strip("/")
+
+    # The docs should be under /osam/docs. We want the auth endpoints to be under /osam/auth
+    oauth2.AUTH_PREFIX = oauth2.SWAGGER_HOMEPAGE.replace("/docs", "/auth")
 except KeyError:
     docs_params = {}
 
@@ -82,8 +86,8 @@ It provides a unified, secure interface and tooling to handle **authorization, a
 ---
 #### OAuth 2.0 authentication
 
-<a href="/auth/login" target="_self">Login</a> /
-<a href="/auth/logout" target="_blank">Logout</a>
+<a href="{oauth2.AUTH_PREFIX}/login" target="_self">Login</a> /
+<a href="{oauth2.AUTH_PREFIX}/logout" target="_blank">Logout</a>
 
 ---
 #### Links
@@ -278,7 +282,10 @@ async def update_obs_user_rights(request: Request, user: str):
     logger.debug("Endpoint for applying the user access policy")
     current_rights = __get_user_rights(user)
     if not current_rights:
-        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+        raise HTTPException(
+            HTTP_404_NOT_FOUND,
+            f"User '{user}' does not exist in keycloak. Try to call '/storage/accounts/update' first.",
+        )
     status_code = HTTP_200_OK
     result, msg = apply_user_access_policy(user, json.dumps(current_rights))
     if not result:
@@ -316,7 +323,10 @@ async def get_obs_user_rights(request: Request, user: str):
     logger.debug("Endpoint for getting the user rights")
     output = __get_user_rights(user)
     if not output:
-        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+        raise HTTPException(
+            HTTP_404_NOT_FOUND,
+            f"User '{user}' does not exist in keycloak. Try to call '/storage/accounts/update' first.",
+        )
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 
