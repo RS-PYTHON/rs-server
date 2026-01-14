@@ -12,36 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# THIS FILE WAS AUTOMATICALLY CREATED FROM:
-#  - rs-server/services/edrs/config/edrs_stations.template.yaml
-#  - rs-server/resources/sync_config_files.py
-# DON'T MODIFY IT DIRECTLY !
+template:
+  service:
+    name: edrs
+    url: "{URL}"
+    port: "{PORT}"
+  domain: mockup-station-pedc.processing.svc.cluster.local
+  authentication:
+    auth_type: ftpes
+    username: "{USER}"
+    password: "{PASS}"
+    ca_crt: /certs/ca.crt
+    client_crt: /certs/client.crt
+    client_key: /certs/client.key
 
-stations: |
-  pedc:
-    service:
-      name: edrs
-      url: {URL}
-      port: {PORT}
-    domain: mockup-station-pedc.processing.svc.cluster.local
-    authentication:
-      auth_type: ftpes
-      username: {USER}
-      password: {PASS}
-      ca_crt: /certs/ca.crt
-      client_crt: /certs/client.crt
-      client_key: /certs/client.key
-
+stations:
+  pedc: {}
   bedc:
-    service:
-      name: edrs
-      url: {URL}
-      port: {PORT}
-    domain: mockup-station-pedc.processing.svc.cluster.local
     authentication:
-      auth_type: ftpes
-      username: {USER}
-      password: {PASS}
       ca_crt: /path/to/ca.crt
       client_crt: /path/to/client.crt
       client_key: /path/to/client.key
