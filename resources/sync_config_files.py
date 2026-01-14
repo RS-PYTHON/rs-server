@@ -1,4 +1,4 @@
-# Copyright 2023-2026 Airbus, CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -544,22 +544,29 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
 
     # Unparse yaml contents into literal strings (indented with |)
     if yaml_as_string:
+
+        def format_config_value(config_key: str, config_value: Any) -> Any:
+            """Format configmap values that embed yaml."""
+            if isinstance(config_value, dict):
+                if config_key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}" and "stations" in config_value:
+                    config_value["stations"] = LiteralStr("\n")
+                stations_value = config_value.get("stations")
+                if isinstance(stations_value, str) and "\n" in stations_value:
+                    stations_value = strip_edrs_placeholders(stations_value)
+                    if not stations_value.endswith("\n"):
+                        stations_value += "\n"
+                    config_value["stations"] = LiteralStr(stations_value)
+                return LiteralStr(yaml.dump(config_value, default_flow_style=False, sort_keys=False, width=witdh))
+            if isinstance(config_value, str) and "\n" in config_value:
+                if config_key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}":
+                    config_value = re.sub(r"stations: \|\n\s*\n", "stations: |\n", config_value, count=1)
+                return LiteralStr(config_value if config_value.endswith("\n") else config_value + "\n")
+            return config_value
+
         for output_config in output_configs:
             data = output_config.get("data", {})
             for key, value in data.items():
-                if isinstance(value, dict):
-                    if key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}" and "stations" in value:
-                        value["stations"] = LiteralStr("\n")
-                    if isinstance(value.get("stations"), str) and "\n" in value["stations"]:
-                        stations_value = strip_edrs_placeholders(value["stations"])
-                        if not stations_value.endswith("\n"):
-                            stations_value += "\n"
-                        value["stations"] = LiteralStr(stations_value)
-                    data[key] = LiteralStr(yaml.dump(value, default_flow_style=False, sort_keys=False, width=witdh))
-                elif isinstance(value, str) and "\n" in value:
-                    if key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}":
-                        value = re.sub(r"stations: \|\n\s*\n", "stations: |\n", value, count=1)
-                    data[key] = LiteralStr(value if value.endswith("\n") else value + "\n")
+                data[key] = format_config_value(key, value)
 
     # Write the configuration file as a multidoc file (with docs separated by '---')
     yaml_contents = yaml.dump_all(output_configs, default_flow_style=False, sort_keys=False, width=witdh)
