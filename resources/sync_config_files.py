@@ -503,6 +503,8 @@ def read_helm_or_infra(yaml_contents: str, yaml_as_string: bool) -> list[dict]:
         for output_config in output_configs:
             data = output_config.get("data", {})
             for key, value in data.items():
+                if key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}":
+                    continue
                 if isinstance(value, str):
                     data[key] = yaml.safe_load(value)
 
@@ -532,8 +534,17 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
             data = output_config.get("data", {})
             for key, value in data.items():
                 if isinstance(value, dict):
+                    if key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}" and "stations" in value:
+                        value["stations"] = LiteralStr("\n")
+                    if isinstance(value.get("stations"), str) and "\n" in value["stations"]:
+                        stations_value = strip_edrs_placeholders(value["stations"])
+                        if not stations_value.endswith("\n"):
+                            stations_value += "\n"
+                        value["stations"] = LiteralStr(stations_value)
                     data[key] = LiteralStr(yaml.dump(value, default_flow_style=False, sort_keys=False, width=witdh))
                 elif isinstance(value, str) and "\n" in value:
+                    if key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}":
+                        value = re.sub(r"stations: \|\n\s*\n", "stations: |\n", value, count=1)
                     data[key] = LiteralStr(value if value.endswith("\n") else value + "\n")
 
     # Write the configuration file as a multidoc file (with docs separated by '---')
@@ -547,6 +558,16 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
     suffix = r":(\s*null)?"  # yaml parsing added ': null' after the tag
     yaml_contents = re.sub(re.compile(REGEX_RANGE_START + suffix), r"\g<1>", yaml_contents)
     yaml_contents = re.sub(re.compile(REGEX_RANGE_END + suffix), r"\g<1>", yaml_contents)
+
+    # Normalize edrsStations literal block to avoid "|2+" formatting
+    yaml_contents = re.sub(
+        re.compile(
+            r"(^\s*\{\{\s*\.Values\.app\.edrsStations\s*\}\}: \|\n\s+stations: )\|\d\+",
+            re.MULTILINE,
+        ),
+        r"\1|",
+        yaml_contents,
+    )
 
     return yaml_contents
 
@@ -814,12 +835,6 @@ if __name__ == "__main__":
                 [],
                 ["data", f"{DCB_OPEN} .Values.app.edrsSearchConfigFile {DCB_CLOSE}"],
                 0,
-            ),
-            HelmOrInfraParams(
-                "services/edrs/config/edrs_stations.yaml",
-                [],
-                ["data", f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}"],
-                1,
             ),
         ],
         rs_helm_dir / "charts/rs-server-edrs/templates/configmap.yaml",
