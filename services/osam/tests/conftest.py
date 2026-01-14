@@ -39,7 +39,6 @@ from fastapi.testclient import TestClient
 from osam import main
 from osam.utils.keycloak_handler import KeycloakHandler
 from osam.utils.tools import S3StorageConfigurationSingleton
-from rs_server_common.authentication import oauth2
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
