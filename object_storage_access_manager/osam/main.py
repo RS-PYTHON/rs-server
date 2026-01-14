@@ -172,7 +172,7 @@ def auth_validation(request: Request):
         raise log_http_exception(
             logger,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authorization information is missing",
+            detail="Authorization information is missing",
         ) from exc
 
     logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
@@ -355,7 +355,7 @@ async def get_your_s3_credentials(request: Request) -> dict:
         raise log_http_exception(
             logger,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authorization information is missing",
+            detail="Authorization information is missing",
         ) from exc
     logger.info(f"Getting ovh s3 credentials for keycloak user {user_login}")
     return get_user_s3_credentials(user_login)

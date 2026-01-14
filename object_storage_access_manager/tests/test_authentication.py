@@ -43,7 +43,7 @@ logger = Logging.default(__name__)
 @pytest.fixture(autouse=True)
 def mock_endpoint_functions(
     mocker,
-    osam_client,  # run this fixture after osam_client
+    osam_client,  # run this fixture after osam_client # pylint: disable=unused-argument
 ):
     """Mock all functions called by the endpoints"""
     mocker.patch("osam.main.__get_user_rights", return_value={"user": {}})
@@ -56,7 +56,7 @@ def mock_endpoint_functions(
 @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
 @pytest.mark.parametrize("osam_client", [CLUSTER_MODE], indirect=["osam_client"], ids=["cluster_mode"])
-async def test_endpoints_security(
+async def test_endpoints_security(  # pylint: disable=too-many-locals
     osam_client,
     mocker,
     monkeypatch,
@@ -78,7 +78,7 @@ async def test_endpoints_security(
     spy_authenticate = mocker.spy(authentication, "authenticate_from_pytest")
 
     # Dummy endpoint arguments
-    endpoint_params = {}
+    endpoint_params: dict = {}
 
     # The user, authenticated with oauth2, can also use an apikey created by another user.
     # In this case, the apikey authentication has higher priority and should be used.
