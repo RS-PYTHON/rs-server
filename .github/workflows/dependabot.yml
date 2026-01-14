@@ -19,6 +19,12 @@ on:
     paths:
       - 'services/common/**'
 
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: 3.13.9
+
 jobs:
   update-dependent-locks:
     runs-on: ubuntu-latest
@@ -45,4 +51,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git add .
           git commit -m "chore: update dependent poetry.lock files" || echo "No changes to commit"
-          git push
+          git push origin HEAD:${{ github.head_ref }}

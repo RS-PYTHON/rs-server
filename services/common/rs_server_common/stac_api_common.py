@@ -934,9 +934,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             # Comma-separated lists
             elif key in COMMA_SEPARATED_LISTS_KEYS:
+                mode = "union" if key in ["productType", "Satellite"] else "intersection"
                 odata_merged[key], key_empty_selection = self.resolve_comma_separated_list_conflict(
                     odata_params[key],
                     odata_hardcoded[key],
+                    mode=mode,
                 )
             else:
                 logger.warning(f"No conflict resolution performed for key {key}")
@@ -969,7 +971,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}", start >= stop
 
-    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any) -> tuple[Any, bool]:
+    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any, mode: str) -> tuple[Any, bool]:
         """
         Resolves a conflict between two comma-separated lists by computing their intersection.
 
@@ -998,7 +1000,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             for i, value in enumerate((value1, value2)):
                 iterable = value if isinstance(value, list) else value.split(",")
                 s = {v.strip() for v in iterable}
-                intersection = intersection.intersection(s) if i else s  # type: ignore
+                if i == 0:
+                    intersection = s
+                else:
+                    # mypy: intersection starts None but is set on first loop
+                    if mode == "union":  # type: ignore[union-attr]
+                        intersection = intersection.union(s)  # type: ignore[union-attr]
+                    else:
+                        intersection = intersection.intersection(s)  # type: ignore[union-attr]
             intersection = ",".join(intersection) if intersection else None
             logger.debug(f"comma-separated list conflict resolution result: {intersection}")
 

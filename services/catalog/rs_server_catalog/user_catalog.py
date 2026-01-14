@@ -278,7 +278,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             # For a PUT request, all new assets are transferred (as described above).
             # Any asset that already exists in the catalog from a previous POST request
             # but is not included in the current request will be deleted.
-            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
+            # In the case of a PATCH request, no asset is deleted.
             if item and request.method == "PUT":
                 for asset in item["assets"]:
                     self.s3_files_to_be_deleted.append(item["assets"][asset]["href"])
@@ -625,6 +625,59 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
         return GeoJSONResponse(content, response.status_code, headers_minus_content_length(response))
 
+    def _check_user_authorization(self):
+        """
+        Checks that current user/owner is allowed to do operations on catalog objects.
+
+        Raises:
+            HTTPException: When the user doesn't have the expected authorizations
+        """
+        # Retrieve owner ID and check authorizations
+        if not self.request_ids["owner_id"]:
+            self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to put/post/patch returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and not get_authorisation(
+                self.request_ids["collection_ids"],
+                self.request_ids["auth_roles"],
+                "write",
+                self.request_ids["owner_id"],
+                self.request_ids["user_login"],
+            )
+        ):
+            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+
+    async def manage_patch_request(self, request: Request):
+        """
+        Pre-processing of a PATCH request to the Catalog.
+        Does authorization checks and updates the "updated" field of the item to patch.
+
+        Args:
+            request (Request): The request from the Client
+
+        Returns:
+            Request: Updated request
+        """
+        try:
+            original_content = await request.json()
+            content = copy.deepcopy(original_content)
+
+            self._check_user_authorization()
+
+            # Update "updated" timestamp (different field if it is an item or a collection)
+            is_item = "/items/" in request.scope["path"]
+            content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=is_item)
+
+            request = self.override_request_body(request, content)
+            return request
+
+        except KeyError as kerr_msg:
+            raise log_http_exception(
+                detail=f"Missing key in request body! {kerr_msg}",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from kerr_msg
+
     async def manage_put_post_request(  # pylint: disable=too-many-statements,too-many-return-statements,too-many-branches  # noqa: E501
         self,
         request: Request,
@@ -640,21 +693,8 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         try:
             original_content = await request.json()
             content = copy.deepcopy(original_content)
-            if not self.request_ids["owner_id"]:
-                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
-            # If item is not geolocated, add a default one to comply pgstac format.
-            if (  # If we are in cluster mode and the user_login is not authorized
-                # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                common_settings.CLUSTER_MODE
-                and not get_authorisation(
-                    self.request_ids["collection_ids"],
-                    self.request_ids["auth_roles"],
-                    "write",
-                    self.request_ids["owner_id"],
-                    self.request_ids["user_login"],
-                )
-            ):
-                raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+
+            self._check_user_authorization()
 
             if len(self.request_ids["collection_ids"]) > 1:
                 raise log_http_exception(
@@ -691,6 +731,17 @@ field is not permitted also."
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
+
+                # See if there is already a collection with this ID. If yes, retrieve its "created" value.
+                try:
+                    existing_collection = await self.client.get_collection(content["id"], request)
+                    date_of_creation = existing_collection.get("created", "")
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.debug("Collection %s doesn't exist and will be created: %s", content["id"], e)
+                    date_of_creation = ""
+
+                # Update timestamps ("updated", and "created" if it's a new collection)
+                content = timestamps_extension.set_timestamps_to_collection(content, original_created=date_of_creation)
                 logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
 
@@ -748,7 +799,8 @@ field is not permitted also."
     def override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-        logger.debug("new request body: %s", request._body)  # pylint: disable=protected-access
+        request._json = content  # pylint: disable=protected-access
+        logger.debug("new request body and json: %s", request._body)  # pylint: disable=protected-access
         return request
 
     def override_request_query_string(self, request: Request, query_params: dict) -> Request:
@@ -1271,6 +1323,12 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             # override default pgstac limit of 10 items if not explicitely set
             if "limit" not in request.query_params:
                 request = self.override_request_query_string(request, {**request.query_params, "limit": 1000})
+
+        elif request.method == "PATCH":
+            request_or_response = await self.manage_patch_request(request)
+            if hasattr(request_or_response, "status_code"):  # Unauthorized
+                return cast(Response, request_or_response)
+            request = request_or_response
 
         response = await call_next(request)
         return await self.manage_responses(request, cast(StreamingResponse, response))

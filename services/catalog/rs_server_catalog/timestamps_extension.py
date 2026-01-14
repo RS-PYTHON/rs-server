@@ -33,7 +33,7 @@ def set_timestamps_for_creation(item: dict) -> dict:
     Returns:
         dict: The updated item.
     """
-    item = set_updated_timestamp_to_now(item)
+    item = set_updated_timestamp_to_now(item, is_item=True)
     item["properties"]["published"] = item["properties"]["updated"]
     return item
 
@@ -48,7 +48,7 @@ def set_timestamps_for_insertion(item: dict) -> dict:
     Returns:
         dict: The updated item.
     """
-    item = set_updated_timestamp_to_now(item)
+    item = set_updated_timestamp_to_now(item, is_item=True)
     item_owner = item["properties"].get("owner", "*")
     item_collection = item.get("collection", "*").removeprefix(f"{item_owner}_")
     item_eopf_type = item["properties"].get("eopf:type", "*")
@@ -71,21 +71,46 @@ def set_timestamps_for_update(item: dict, original_published: str, original_expi
     Returns:
         dict: The updated item.
     """
-    item = set_updated_timestamp_to_now(item)
+    item = set_updated_timestamp_to_now(item, is_item=True)
     item["properties"].setdefault("expires", original_expires)
     item["properties"].setdefault("published", original_published)
     return item
 
 
-def set_updated_timestamp_to_now(item: dict) -> dict:
-    """Updates the 'updated' timestamp of the given item with the current time.
+def set_timestamps_to_collection(collection: dict, original_created: str = "") -> dict:
+    """
+    Sets values for the 'created' and 'updated' fields of a Collection.
+    If there is already a 'created' field, this one is skipped.
+    If there is no 'created' field but an 'original_created' is given, the 'original_created'
+    value is taken, otherwise the value given is the one of the 'updated' field.
 
     Args:
-        item (dict): The item to be updated.
+        collection (dict): The collection to update
+        original_created (str): Existing "created" value, if any (optional)
 
     Returns:
-        dict: The updated item.
+        dict: The updated collection
     """
-    current_time = datetime.datetime.now()
-    item["properties"]["updated"] = current_time.strftime(ISO_8601_FORMAT)
-    return item
+    collection = set_updated_timestamp_to_now(collection, is_item=False)
+    if "created" not in collection:
+        collection["created"] = original_created or collection["updated"]
+    return collection
+
+
+def set_updated_timestamp_to_now(stac_object: dict, is_item: bool = True) -> dict:
+    """Updates the 'updated' timestamp of the given object with the current time.
+    If the object is an Item, the 'updated' field is located in the 'properties', otherwise
+    it is at the root of the dictionary.
+
+    Args:
+        stac_object (dict): The object to be updated.
+
+    Returns:
+        dict: The updated object.
+    """
+    current_time = datetime.datetime.now().strftime(ISO_8601_FORMAT)
+    if is_item:
+        stac_object["properties"]["updated"] = current_time
+    else:
+        stac_object["updated"] = current_time
+    return stac_object

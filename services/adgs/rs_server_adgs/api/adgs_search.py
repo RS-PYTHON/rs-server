@@ -117,7 +117,7 @@ class MockPgstacAdgs(MockPgstac):
         """Search adgs products for the given station and OData parameters."""
         # Update odata names that shadow eodag builtins (productype)
 
-        odata_params["Name"] = names[0] if isinstance(names := odata_params.get("Name"), list) else names
+        odata_params["Name"] = names if isinstance(names := odata_params.get("Name"), list) else [names]
         if product_type := odata_params.pop("productType", None):
             odata_params["attr_ptype"] = split_multiple_values(product_type)
 

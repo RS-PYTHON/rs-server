@@ -56,7 +56,7 @@ def test_item_tc002_has_correct_exp_date(client, expiration_delays_test_data):
 
 
 def test_item_tc003_has_correct_exp_date(client, expiration_delays_test_data):
-    """Test case 2 - EOPF type: XXX - Expected lifespan: 40 days"""
+    """Test case 3 - EOPF type: XXX - Expected lifespan: 40 days"""
     test_owner = "copernicus"
     test_collection = "s1-aux"
     test_item = "TC-003"
@@ -71,7 +71,7 @@ def test_item_tc003_has_correct_exp_date(client, expiration_delays_test_data):
 
 
 def test_item_tc004_has_correct_exp_date(client, expiration_delays_test_data):
-    """Test case 2 - EOPF type: orbsct - Expected lifespan: 30 days"""
+    """Test case 4 - EOPF type: orbsct - Expected lifespan: 30 days"""
     test_owner = "copernicus"
     test_collection = "s1-aux"
     test_item = "TC-004"
