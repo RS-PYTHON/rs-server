@@ -37,7 +37,6 @@ class TestStaging:
     async def test_execute_with_running_loop(
         self,
         mocker,
-        request,
         staging_instance: Staging,
         staging_inputs: dict,
         asyncio_loop,
@@ -51,7 +50,7 @@ class TestStaging:
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
         # Call the async execute method
-        result = await staging_instance.execute(request, staging_inputs)
+        result = await staging_instance.execute(staging_inputs)
 
         # Assertions
         assert spy_log_job.call_count == 1
@@ -66,7 +65,6 @@ class TestStaging:
     async def test_execute_fails_in_checking_catalog(
         self,
         mocker,
-        request,
         staging_instance: Staging,
         staging_inputs: dict,
         asyncio_loop,
@@ -79,7 +77,7 @@ class TestStaging:
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
         # Call the async execute method
-        result = await staging_instance.execute(request, staging_inputs)
+        result = await staging_instance.execute(staging_inputs)
 
         # Assertions
         assert spy_log_job.call_count == 1
@@ -100,7 +98,6 @@ class TestStaging:
     async def test_execute_with_running_loop_without_item_collection(
         self,
         mocker,
-        request,
         staging_instance: Staging,
         asyncio_loop,
     ):
@@ -112,7 +109,7 @@ class TestStaging:
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
         # Call the async execute method
-        result = await staging_instance.execute(request, data={"collection": "test_collection"})
+        result = await staging_instance.execute(data={"collection": "test_collection"})
 
         # Assertions
         spy_log_job.assert_called_once_with(
