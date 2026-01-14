@@ -56,6 +56,9 @@ template:
       Name:
         - null
         - "$.Name"
+      Names:
+        - null
+        - "$.Name"
       ContentLength:
         - null
         - "$.ContentLength"
@@ -126,6 +129,7 @@ template:
           and:
             - "contains(Name, '{Name}')"
             - "contains(Id, '{auxip:id}')"
+            - "Name in ({Names})"
             - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
             - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
             - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
