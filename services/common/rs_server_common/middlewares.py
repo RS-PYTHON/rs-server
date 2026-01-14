@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
+from rs_server_common.authentication.oauth2 import LoginAndRedirect
 from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware, _MiddlewareFactory
@@ -409,7 +409,7 @@ def apply_middlewares(app: FastAPI):
     app.include_router(
         oauth2_router,
         tags=["Authentication"],
-        prefix=AUTH_PREFIX,
+        prefix=oauth2.AUTH_PREFIX,
         include_in_schema=True,
     )
     return app

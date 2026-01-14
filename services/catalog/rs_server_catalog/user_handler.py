@@ -20,7 +20,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX
+from rs_server_common.authentication import oauth2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 
@@ -107,7 +107,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         pass
 
     # Catch authentication endpoints (path should be left as it is in this case)
-    elif path.startswith(f"{AUTH_PREFIX}/"):
+    elif path.startswith(f"{oauth2.AUTH_PREFIX}/"):
         pass
 
     # The endpoint PUT "/catalog/collections" does not exists.
