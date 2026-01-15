@@ -72,7 +72,7 @@ def get_storage_settings_from_config(
     Returns:
         tuple: Expiration delay and bucket name for these parameters.
     """
-    config_table = fetch_csv_from_endpoint(os.environ["RSPY_HOST_OSAM"] + "/storage/configuration")
+    config_table = fetch_csv_from_endpoint(os.environ["RSPY_HOST_OSAM"] + "/internal/configuration")
     settings = get_settings_from_table(config_table, owner, collection, eopf_type)
     try:
         return (int(settings[0]), settings[1])
