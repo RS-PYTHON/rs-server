@@ -42,6 +42,9 @@ s1a:
       Name:
       - null
       - $.Name
+      Names:
+      - null
+      - $.Name
       ContentLength:
       - null
       - $.ContentLength
@@ -153,6 +156,7 @@ s1a:
         operations:
           and:
           - contains(Name, '{Name}')
+          - Name in ({Names})
           - contains(Id, '{prip:id}')
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
@@ -285,6 +289,9 @@ s2b:
       Name:
       - null
       - $.Name
+      Names:
+      - null
+      - $.Name
       ContentLength:
       - null
       - $.ContentLength
@@ -396,6 +403,7 @@ s2b:
         operations:
           and:
           - contains(Name, '{Name}')
+          - Name in ({Names})
           - contains(Id, '{prip:id}')
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})

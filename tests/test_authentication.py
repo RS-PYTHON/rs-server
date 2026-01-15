@@ -278,8 +278,6 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
-
     # If we test the oauth2 authentication, we login the user.
     # His authentication information is saved in the client session cookies.
     if test_oauth2:
@@ -292,6 +290,8 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             oauth2_roles,
             oauth2_attributes,
         )
+
+    openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
 
     # For each adgs or cadip api endpoint
     for base_route in fastapi_app.router.routes:
@@ -307,12 +307,10 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
         # For each method (get, post, ...)
         for method in route.methods:
             # For new cadip/auxip endpoint, mention a valid-defined collection, either as an argument or in endpoint.
-            print(route.path)
             endpoint = route.path.replace(
                 "{collection_id}",
                 f"{endpoint_params['collection']}",
             ).format(session_id="session_id", station="cadip", item_id="any")
-            print(endpoint)
             logger.debug(f"Test the {endpoint!r} [{method}] authentication")
 
             # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.

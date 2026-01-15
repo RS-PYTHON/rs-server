@@ -40,7 +40,7 @@ logger = Logging.default(__name__)
 # HTTP header field for the api key
 APIKEY_HEADER = "x-api-key"
 
-APIKEY_SCHEME_NAME = "You can also authenticate with an API key"
+APIKEY_SCHEME_NAME = "API key authentication"
 
 # Just print the plain RSPY_UAC_HOMEPAGE environment variable name.
 # When the rs-server-frontend container will start, it will replace it with its associated value.

@@ -183,18 +183,26 @@ def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
 
     # Existing middlewares. See: starlette/middleware/__init__.py::Middleware.__repr__
-    middleware_names = [getattr(middleware.cls, "__name__", "") for middleware in app.user_middleware]
+    existing_middlewares = [getattr(middleware.cls, "__name__", "") for middleware in app.user_middleware]
 
     # If not already there, add the SessionMiddleware, used to save session cookies.
-    # Add it at the end (after the CORS middleware, that must be first)
-    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    if "SessionMiddleware" not in middleware_names:
+    if "SessionMiddleware" not in existing_middlewares:
+
         if app.middleware_stack:
             raise RuntimeError("Cannot add middleware after an application has started")
-        app.user_middleware.append(Middleware(SessionMiddleware, secret_key=cookie_secret))
+
+        # Save it before the AuthenticationMiddleware, if it exists
+        try:
+            middleware_index = existing_middlewares.index("AuthenticationMiddleware")
+        # Else save it at the end
+        except ValueError:
+            middleware_index = len(existing_middlewares)
+
+        middleware = Middleware(SessionMiddleware, secret_key=cookie_secret)
+        logger.debug("Adding %s", middleware)
+        app.user_middleware.insert(middleware_index, middleware)
 
     # Configure the oauth2 authentication
-
     domain_url = f"{oidc_endpoint}/realms/{oidc_realm}"
     config_data = {
         "KEYCLOAK_CLIENT_ID": oidc_client_id,
