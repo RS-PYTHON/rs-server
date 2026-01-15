@@ -381,11 +381,13 @@ async def get_your_s3_credentials(request: Request) -> dict:
     return get_user_s3_credentials(user_login)
 
 
-# No authentication and hide it from the swagger
-@technical_router.get("/storage/configuration", include_in_schema=False)
+# No authentication for this endpoint, and hide it from the swagger.
+# Also, it is not exposed to the public internet (because Ingress won't expose /internal)
+@technical_router.get("/internal/configuration", include_in_schema=False)
 def get_storage_configuration() -> list[list[str]]:
     """
-    This endpoint returns the bucket configuration configmap. This is used by different services in different namespaces.
+    This endpoint returns the bucket configuration configmap.
+    This is used by different services in different namespaces.
 
     This endpoint reads the CSV-based configuration file stored in Object Storage
     and returns it as a JSON array of arrays. Each inner array represents a
