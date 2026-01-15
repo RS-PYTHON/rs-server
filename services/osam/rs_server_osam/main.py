@@ -22,7 +22,9 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
@@ -32,16 +34,17 @@ from osam.tasks import (
     load_configmap_data,
     update_s3_rights_lists,
 )
-from rs_server_common import settings as common_settings
+from rs_server_common import settings
 from rs_server_common.authentication import oauth2
-from rs_server_common.authentication.apikey import apikey_security
+from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
-from starlette.middleware.sessions import SessionMiddleware  # test if still needed
-from starlette.requests import Request  # pylint: disable=C0411
+from rs_server_common.utils.utils2 import log_http_exception
+from starlette import status
+from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.status import (  # pylint: disable=C0411
+from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
@@ -58,6 +61,10 @@ RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 try:
     docs_url = os.environ["RSPY_DOCS_URL"].strip("/")
     docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+    oauth2.SWAGGER_HOMEPAGE = "/" + docs_url.strip("/")
+
+    # The docs should be under /osam/docs. We want the auth endpoints to be under /osam/auth
+    oauth2.AUTH_PREFIX = oauth2.SWAGGER_HOMEPAGE.replace("/docs", "/auth")
 except KeyError:
     docs_params = {}
 
@@ -73,20 +80,19 @@ app = FastAPI(
         "usePkceWithAuthorizationCodeGrant": True,
     },
     description=f"""
-This service is designed to manage access to object storage resources.
+The Object Storage Access Manager (OSAM) service is designed to manage access to object storage resources.
 It provides a unified, secure interface and tooling to handle **authorization, access controls** and **storage access policies** for object buckets, enabling safe, consistent and centralized object-storage usage across services.
 
 ---
-#### Authentication
+#### OAuth 2.0 authentication
 
-<a href="/auth/login" target="_self">Login</a> /
-<a href="/auth/logout" target="_blank">Logout</a>
+<a href="{oauth2.AUTH_PREFIX}/login" target="_self">Login</a> /
+<a href="{oauth2.AUTH_PREFIX}/logout" target="_blank">Logout</a>
 
 ---
 #### Links
 
-<a href="https://home.rs-python.eu/" target="_blank">Website</a> /
-<a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
+<a href="/docs" target="_blank">RS-Server</a> /
 <a href="{RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
 
 ---
@@ -101,6 +107,7 @@ logger.setLevel(logging.DEBUG)
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
+
     logger.info("Starting up the application...")
     fastapi_app.extra["shutdown_event"] = threading.Event()
     # the trigger for running the logic in the background task
@@ -113,6 +120,10 @@ async def app_lifespan(fastapi_app: FastAPI):
     )
     # trigger the first run -> this was disabled by a request from ops
     # app.extra["users_sync_trigger"].set()
+
+    # Init objects for dependency injection
+    settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
+
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -129,22 +140,79 @@ async def app_lifespan(fastapi_app: FastAPI):
             await refresh_task  # Ensure the task exits
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception(f"Exception during shutdown of background thread: {e}")
+
+    # Close objects for dependency injection
+    await settings.del_http_client()
+
     logger.info("Application gracefully stopped...")
 
 
-@router.post("/storage/accounts/update")
-async def accounts_update(auth=Depends(apikey_security)):  # pylint: disable=unused-argument
+def auth_validation(request: Request):
     """
-    Triggers the synchronization of Keycloak and OVH (OBS) account information.
+    Authorization validation: check that the user has the right role for a specific action.
 
-    This endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
-    logic between Keycloak and the Object Storage Access Manager (OSAM). It doesn't wait for a completion signal
-    from the background task and returns a success response.
+    Args:
+        request: HTTP request
+
+    Raises:
+        HTTPException if the user does not have the right role.
+    """
+
+    # In local mode, there is no authorization to check
+    if settings.LOCAL_MODE:
+        return
+
+    requested_role = "rs_osam_update"  # in lower case
+    logger.debug(f"Requested role: {requested_role!r}")
+
+    try:
+        auth_roles = [role.lower() for role in request.state.auth_roles]
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authorization information is missing",
+        ) from exc
+
+    logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
+
+    if requested_role not in auth_roles:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Missing authorization role {requested_role!r} for user {user_login!r}",
+        )
+
+
+@router.post("/storage/accounts/update")
+async def create_and_delete_obs_accounts(request: Request):
+    """
+    This endpoint is called by an RS operator with the *rs_osam_update* role.
+    It triggers the synchronization of the creation and deletion of S3 Object Storage (OBS) accounts for all RS users,
+    associated to their Keycloak account.
+
+    How it works:
+
+    1. When a new Keycloak user account is created, an associated OBS access account **with no rights** is created
+    and linked to it.
+
+    2. When a Keycloak user account is deleted, the associated OBS access account is also deleted.
+
+    NOTE: to synchronize OBS user rights from Keycloak you then need to call the endpoint
+    */storage/account/{user}/update*.
 
     ### Returns:
-    JSONResponse — Always a success message saying that the sync algorythm of the accounts started.
-
+    JSONResponse — Always a success message saying that the synchronization algorithm of the accounts started.
     """
+
+    # NOTE: this endpoint sets a flag to initiate a background task (`main_osam_task`) that performs the account linking
+    # logic between Keycloak and the Object Storage Access Manager (OSAM). It doesn't wait for a completion signal
+    # from the background task and returns a success response.
+
+    # Check that the user has the right role for this endpoint
+    auth_validation(request)
+
     # Trigger the background task. This was also requested by the operations team: the endpoint should return
     # immediately to the user without waiting for the algorithm to complete.
     app.extra["users_sync_trigger"].set()
@@ -155,7 +223,7 @@ async def accounts_update(auth=Depends(apikey_security)):  # pylint: disable=unu
     )
 
 
-def get_user_rights(user):
+def __get_user_rights(user):
     """
     Retrieves and constructs the S3 access rights policy for a specified user.
 
@@ -181,36 +249,43 @@ def get_user_rights(user):
     return update_s3_rights_lists(s3_rights)
 
 
-@router.get("/storage/account/{user}/update")
-async def apply_user_obs_access_policy(
-    request: Request,
-    user: str,
-    auth=Depends(apikey_security),
-):  # pylint: disable=unused-argument
+@router.post("/storage/account/{user}/update")
+async def update_obs_user_rights(request: Request, user: str):
     """
-    Applies the S3 access policy for a given user.
+    This endpoint is called by an RS operator with the *rs_osam_update* role. It updates the S3 Object Storage (OBS)
+    rights of any user, calculated from their associated Keycloak account.
 
-    This endpoint retrieves the user's effective S3 access rights from their
-    Keycloak roles and applies the corresponding policy to their Object
-    Storage account using the OVH API. The operation ensures that the user's
-    OBS permissions match their Keycloak permissions. If the user does not
-    exist or if the policy update fails, an error response is returned.
+    How it works:
+
+    1. Reads the user's roles from their Keycloak account.
+
+    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    (such as read, write and download) that the user has access to.
+
+    3. Applies the access policy to the user's OBS account.
+
+    The operation ensures that the user's OBS permissions match their Keycloak permissions.
 
     ### Args
-    user (str) — The Keycloak username for which the policy should be applied.
+    user (str) — The Keycloak username for which the access policy should be applied.
 
     ### Returns
     JSONResponse — A JSON response confirming that the access policy has been applied.
 
     ### Raises
-    404 — If the user does not exist in Keycloak.
+    404 — If the user does not exist in Keycloak.<br>
     400 — If the policy could not be applied by the Object Storage provider.
     """
+    # Check that the user has the right role for this endpoint
+    auth_validation(request)
 
     logger.debug("Endpoint for applying the user access policy")
-    current_rights = get_user_rights(user)
+    current_rights = __get_user_rights(user)
     if not current_rights:
-        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+        raise HTTPException(
+            HTTP_404_NOT_FOUND,
+            f"User '{user}' does not exist in keycloak. Try to call '/storage/accounts/update' first.",
+        )
     status_code = HTTP_200_OK
     result, msg = apply_user_access_policy(user, json.dumps(current_rights))
     if not result:
@@ -218,45 +293,54 @@ async def apply_user_obs_access_policy(
     return JSONResponse(status_code=status_code, content=msg)
 
 
-@router.get("/storage/account/{user}/rights")
-async def user_rights(request: Request, user: str, auth=Depends(apikey_security)):  # pylint: disable=unused-argument
+@router.get("/storage/account/{user}/rights", include_in_schema=False)
+async def get_obs_user_rights(request: Request, user: str):
     """
-    Retrieves the S3 access rights policy for a given user.
+    This endpoint is called by an RS operator with the *rs_osam_update* role. It returns the S3 Object Storage (OBS)
+    rights of any user, calculated from their associated Keycloak account.
 
-    This endpoint checks the user's access rights based on the roles
-    assigned to them in Keycloak. The resulting policy describes the buckets,
-    paths, and permission levels (such as read, write and download) that
-    the user is entitled to access. If the user does not exist, a 404 error is
-    returned.
+    How it works:
+
+    1. Reads the user's roles from their Keycloak account.
+
+    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    (such as read, write and download) that the user has access to.
+
+    3. Returns the access policy in the OBS JSON format, without applying them to the OBS user account.
 
     ### Args
-    user (str) — Username of the account for which to retrieve access rights.
+    user (str) — The Keycloak username for which the access policy should be returned.
 
     ### Returns
-    JSONResponse — The computed S3/OBS access policy for the user.
+    JSONResponse — The computed OBS access policy for the user.
 
     ### Raises
     404 — If the user does not exist in Keycloak.
     """
+    # Check that the user has the right role for this endpoint
+    auth_validation(request)
 
     logger.debug("Endpoint for getting the user rights")
-    output = get_user_rights(user)
+    output = __get_user_rights(user)
     if not output:
-        raise HTTPException(HTTP_404_NOT_FOUND, f"User '{user}' does not exist in keycloak")
+        raise HTTPException(
+            HTTP_404_NOT_FOUND,
+            f"User '{user}' does not exist in keycloak. Try to call '/storage/accounts/update' first.",
+        )
     return JSONResponse(status_code=HTTP_200_OK, content=json.loads(json.dumps(output)))
 
 
 @router.get("/storage/account/credentials")
-async def get_credentials(request: Request) -> dict:
+async def get_your_s3_credentials(request: Request) -> dict:
     """
-    Endpoint used to get user credentials from cloud provider.
-    In cluster mode, the request MUST contain oauth2 cookie in header
+    This endpoint is called by any anthenticated user.
+    It returns your personnal S3 credentials, so you can connect to the bucket where your products have been generated.
 
     ### Returns
     dict — A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region' for the user's S3 storage.
     """
     # In local mode, just return the common bucket credentials.
-    if common_settings.LOCAL_MODE:
+    if settings.LOCAL_MODE:
         return {
             "access_key": os.environ["S3_ACCESSKEY"],
             "secret_key": os.environ["S3_SECRETKEY"],
@@ -265,17 +349,26 @@ async def get_credentials(request: Request) -> dict:
         }
 
     # Cluster mode
-    auth_info = await oauth2.get_user_info(request)
-    logger.info(f"Getting ovh s3 credentials for keycloak user {auth_info.user_login}")
-    return get_user_s3_credentials(auth_info.user_login)
+    try:
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authorization information is missing",
+        ) from exc
+    logger.info(f"Getting ovh s3 credentials for keycloak user {user_login}")
+    return get_user_s3_credentials(user_login)
 
 
-@app.get("/storage/configuration", summary="Get storage configuration", tags=["OSAM service"])
+@router.get("/storage/configuration")
 def get_storage_configuration() -> list[list[str]]:
     """
-    Retrieve the current storage configuration from the configuration file.
+    This endpoint is called by any anthenticated user.
 
-    This endpoint reads the CSV-based configuration stored in Object Storage
+    It returns the bucket configuration configmap. This is used by different services in different namespaces.
+
+    This endpoint reads the CSV-based configuration file stored in Object Storage
     and returns it as a JSON array of arrays. Each inner array represents a
     row of the configuration file. If the configuration file is missing or
     cannot be read, an error response is returned.
@@ -284,7 +377,7 @@ def get_storage_configuration() -> list[list[str]]:
     list[list[str]] — The parsed configuration file as a JSON array.
 
     ### Raises
-    404 — If the configuration file does not exist.
+    404 — If the configuration file does not exist.<br>
     500 — If an unexpected error occurs while reading the file
     """
 
@@ -328,7 +421,8 @@ def main_osam_task(timeout: int = 60):
                 logger.info("Shutting down background thread and exit")
                 break
 
-            if triggered:  # If triggered, prepare for the next one
+            # If triggered manually (i.e. by calling .set() and not by the timeout), prepare for the next one
+            if triggered:
                 logger.debug("Releasing users_sync_trigger")
                 app.extra["users_sync_trigger"].clear()
 
@@ -346,17 +440,39 @@ def main_osam_task(timeout: int = 60):
     logger.info("Exiting from the getting keycloack attributes thread !")
 
 
+# Add technical endpoints specific to the main application
+technical_router = APIRouter(tags=["Technical"])
+
+
 # Health check route
-@router.get("/_mgmt/ping", include_in_schema=False)
+@technical_router.get("/_mgmt/ping", include_in_schema=False)
 async def ping():
     """Liveliness probe."""
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-app.include_router(router)
+dependencies = []
+if settings.CLUSTER_MODE:
+
+    # Apply middlewares and authentication routes to the FastAPI application
+    apply_middlewares(app)
+
+    # Add the api key / oauth2 security: the user must provide
+    # an api key (generated from the apikey manager) or authenticate to the
+    # oauth2 service (keycloak) to access the endpoints
+    dependencies.append(Depends(authenticate))
+
+# Add all the input routers (and not the oauth2 nor technical routers) to a single bigger router
+# to which we add the authentication dependency.
+need_auth_router = APIRouter(dependencies=dependencies)
+need_auth_router.include_router(router)
+
+# Add routers to the FastAPI app
+app.include_router(need_auth_router)
+app.include_router(technical_router)
+
+# Catch all exceptions and return a JSONResponse
 app.add_middleware(HandleExceptionsMiddleware)
-app.add_middleware(SessionMiddleware, secret_key=os.environ.get("RSPY_COOKIE_SECRET", ""))
-if common_settings.CLUSTER_MODE:
-    app = apply_middlewares(app)
+
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")

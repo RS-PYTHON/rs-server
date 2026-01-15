@@ -15,7 +15,6 @@
 import os
 import threading
 from importlib import reload
-from unittest.mock import AsyncMock
 
 import pytest
 from rs_server_common import settings as common_settings
@@ -41,7 +40,7 @@ def test_get_user_rights_user_exists(mocker):
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
 
     from osam.main import (  # pylint: disable = import-outside-toplevel
-        get_user_rights,
+        __get_user_rights,
     )
 
     user = "testuser"
@@ -64,7 +63,7 @@ def test_get_user_rights_user_exists(mocker):
         return_value={"final": "policy"},
     )
 
-    assert get_user_rights(user) == {"final": "policy"}
+    assert __get_user_rights(user) == {"final": "policy"}
     mock_build.assert_called_once_with(mock_user_data)
     mock_update.assert_called_once_with({"rights": "mock-rights"})
 
@@ -77,14 +76,14 @@ def test_get_user_rights_user_not_found(mocker):
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
 
     from osam.main import (  # pylint: disable = import-outside-toplevel
-        get_user_rights,
+        __get_user_rights,
     )
 
     mocker.patch(
         "osam.main.app.extra",
         {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
     )
-    assert not get_user_rights("unknown_user")
+    assert not __get_user_rights("unknown_user")
 
 
 @pytest.mark.unit
@@ -101,7 +100,7 @@ def test_user_rights_user_exists(mocker, osam_client):
     )
 
     mock_update = mocker.patch(
-        "osam.main.get_user_rights",
+        "osam.main.__get_user_rights",
         return_value={"final": "policy"},
     )
 
@@ -192,7 +191,7 @@ def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
     )
 
     mocker.patch(
-        "osam.main.get_user_rights",
+        "osam.main.__get_user_rights",
         return_value={"final": "policy"},
     )
 
@@ -201,7 +200,7 @@ def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
         return_value=(True, {"detail": "Policy applied"}),
     )
 
-    resp = osam_client.get("/storage/account/testuser/update")
+    resp = osam_client.post("/storage/account/testuser/update")
 
     assert resp.status_code == HTTP_200_OK
     assert resp.json() == {"detail": "Policy applied"}
@@ -215,7 +214,7 @@ def test_apply_user_obs_access_policy_user_not_found(mocker, osam_client):
         {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
     )
 
-    resp = osam_client.get("/storage/account/unknown_user/update")
+    resp = osam_client.post("/storage/account/unknown_user/update")
 
     assert resp.status_code == HTTP_404_NOT_FOUND
     assert "does not exist" in resp.text
@@ -236,53 +235,6 @@ def test_apply_user_obs_access_policy_user_not_found(mocker, osam_client):
 #     assert must_be_authenticated("/api/v1/resource")
 #     assert must_be_authenticated("/")
 #     assert must_be_authenticated("/_mgmt/pong")
-
-
-def test_get_credentials_success(mocker, osam_client):
-    """
-    Test the /storage/account/credentials endpoint returns user credentials successfully.
-
-    This test mocks:
-      - `oauth2.get_user_info` async call to return a user object with `user_login`.
-      - `get_user_s3_credentials` to return mocked credentials.
-
-    It verifies the endpoint responds with HTTP 200 and returns the expected credentials JSON.
-    """
-    # Mock async oauth2.get_user_info to return an object with user_login attribute
-    mock_user_info = AsyncMock()
-    mock_user_info.user_login = "testuser"
-    mocker.patch("osam.main.oauth2.get_user_info", return_value=mock_user_info)
-
-    # Mock get_user_s3_credentials to return some dummy credentials
-    expected_creds = {"access_key": "AKIA...", "secret_key": "SECRET"}
-    mocker.patch("osam.main.get_user_s3_credentials", return_value=expected_creds)
-
-    # Mock cluster mode
-    mocker.patch("osam.main.common_settings.LOCAL_MODE", new=False, autospec=False)
-
-    response = osam_client.get("/storage/account/credentials")
-    assert response.status_code == 200
-    assert response.json() == expected_creds
-
-
-def test_get_credentials_unauthenticated(mocker, osam_client):
-    """
-    Test the /storage/account/credentials endpoint handles unauthenticated access properly.
-
-    This test mocks `oauth2.get_user_info` to raise an Exception simulating unauthorized access.
-
-    It verifies the endpoint returns a non-200 HTTP status (e.g. 401, 403, 500) and error message.
-    """
-
-    # Mock async oauth2.get_user_info to raise an exception (unauthenticated)
-    async def raise_unauthorized(*args, **kwargs):
-        raise Exception("Unauthorized")  # pylint: disable = broad-exception-raised
-
-    mocker.patch("osam.main.oauth2.get_user_info", side_effect=raise_unauthorized)
-
-    response = osam_client.get("/storage/account/credentials")
-    assert response.status_code != 200
-    assert "Unauthorized" in response.text or response.status_code in (401, 403, 500)
 
 
 def test_accounts_update_triggers_sync(mocker, osam_client):
