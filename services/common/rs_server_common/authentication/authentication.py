@@ -17,8 +17,7 @@ Authentication functions implementation.
 """
 
 import os
-from contextlib import contextmanager
-from typing import Annotated
+from typing import Annotated, Literal
 
 import jwt
 from asyncache import cached
@@ -27,9 +26,8 @@ from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_common.utils.utils2 import AuthInfo, log_http_exception
 
 logger = Logging.default(__name__)
 
@@ -138,62 +136,56 @@ async def authenticate(
     return authenticate_from_pytest(auth_info) if FROM_PYTEST else auth_info
 
 
-def auth_validator(station, access_type):
-    """Decorator to validate API key access or oauth2 authentication (keycloak) for a specific station and access type.
-
-    This decorator checks if the authorization contains the necessary role to access
-    the specified station with the specified access type.
+def auth_validation(
+    station_type: Literal["auxip", "cadip", "edrs", "prip", "lta"],
+    access_type: Literal["landing_page", "read", "execute", "staging_download", "dismiss"],
+    request: Request,
+    station: str = "",
+    staging_process: bool = False,
+):
+    """
+    Authorization validation: check that the user has the right role for a specific action.
 
     Args:
-        station (str): The name of the station, either "adgs" or "cadip".
-        access_type (str): The type of access, such as "download" or "read".
+        station_type: either auxip, cadip, ...
+        access_type: either landing_page, read, ...
+        request: HTTP request
+        station: specific adgs station (adgs or adgs2) or cadip station (ins, mps, ...) or edrs, prip or lta station
+        staging_process: specific case for the staging
 
     Raises:
-        HTTPException: If the authorization does not include the required role
-            to access the specified station with the specified access type.
-
-    Returns:
-        function (Callable): The decorator function.
+        HTTPException if the user does not have the right role.
     """
 
-    def decorator(func):
-        @contextmanager
-        def wrapping_logic(*args, **kwargs):
-            auth_validation(station, access_type, *args, **kwargs)
-            yield
-
-        # Decorator for both sync and async functions
-        return utils2.decorate_sync_async(wrapping_logic, func)
-
-    return decorator
-
-
-def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disable=unused-argument
-    """Function called by auth_validator"""
-
-    # In local mode, there is no authentication to check
+    # In local mode, there is no authorization to check
     if settings.LOCAL_MODE:
         return
 
-    if not kwargs.get("staging_process", False):
-        # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
-        # No validation needed for landing pages.
-        if access_type != "landing_page":
-            full_station = f'{station_type}_{kwargs["station"]}'
-        else:
-            full_station = station_type
-        requested_role = f"rs_{full_station}_{access_type}".upper()
+    if staging_process:
+        requested_role = f"rs_processes_{access_type}_{station_type}"
+    elif access_type == "landing_page":
+        requested_role = f"rs_{station_type}_landing_page"
     else:
-        requested_role = f"rs_processes_{access_type}_{station_type}".upper()
+        requested_role = f"rs_{station_type}_{station}_{access_type}".lower()
 
-    logger.debug(f"Requested role: {requested_role}")
+    requested_role = requested_role.lower()
+    logger.debug(f"Requested role: {requested_role!r}")
+
     try:
-        auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
-    except KeyError:
-        auth_roles = []
-    logger.debug(f"Auth roles: {auth_roles}")
+        auth_roles = [role.lower() for role in request.state.auth_roles]
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise log_http_exception(
+            logger,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authorization information is missing",
+        ) from exc
+
+    logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
+
     if requested_role not in auth_roles:
-        raise HTTPException(
+        raise log_http_exception(
+            logger,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Missing {requested_role} authorization role",
+            detail=f"Missing authorization role {requested_role!r} for user {user_login!r}",
         )
