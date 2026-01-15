@@ -116,6 +116,10 @@ It provides a unified, secure interface and tooling to handle **authorization, a
 )
 router = APIRouter(tags=["OSAM service"])
 
+# Add technical endpoints specific to the main application.
+# These endpoints do not need authentication.
+technical_router = APIRouter(tags=["Technical"])
+
 logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -377,12 +381,11 @@ async def get_your_s3_credentials(request: Request) -> dict:
     return get_user_s3_credentials(user_login)
 
 
-@router.get("/storage/configuration")
+# No authentication and hide it from the swagger
+@technical_router.get("/storage/configuration", include_in_schema=False)
 def get_storage_configuration() -> list[list[str]]:
     """
-    This endpoint is called by any anthenticated user.
-
-    It returns the bucket configuration configmap. This is used by different services in different namespaces.
+    This endpoint returns the bucket configuration configmap. This is used by different services in different namespaces.
 
     This endpoint reads the CSV-based configuration file stored in Object Storage
     and returns it as a JSON array of arrays. Each inner array represents a
@@ -454,10 +457,6 @@ def main_osam_task(timeout: int = 60):
             logger.exception(f"Handle cancellation: {e}")
             # let's continue
     logger.info("Exiting from the getting keycloack attributes thread !")
-
-
-# Add technical endpoints specific to the main application
-technical_router = APIRouter(tags=["Technical"])
 
 
 # Health check route
