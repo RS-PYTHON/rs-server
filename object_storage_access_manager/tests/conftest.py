@@ -13,19 +13,32 @@
 # limitations under the License.
 
 """Fixtures and tests configuration for OSAM unit tests."""
-# pylint: disable = wrong-import-order
+
 import os
 import os.path as osp
-import threading
 from importlib import reload
+
+from rs_server_common.authentication.keycloak_util import KCUtil
+
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# flake8: noqa
+# pylint: disable=wrong-import-order,wrong-import-position
+os.environ["RSPY_LOCAL_MODE"] = "1"
+from rs_server_common import settings
+
+reload(settings)
+
+
+import threading
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from osam import main
 from osam.utils.keycloak_handler import KeycloakHandler
 from osam.utils.tools import S3StorageConfigurationSingleton
-from rs_server_common import settings as common_settings
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
@@ -106,24 +119,47 @@ def mock_ovh_handler_():
         yield mock_ovh_api_handler
 
 
-@pytest.fixture(name="osam_client")
-def client_(mocker):
+@pytest.fixture(name="osam_client", scope="function")
+def client_(request, mocker, monkeypatch):
     """init fastapi client app."""
-    # Patch all auto-executed code when app is imported, and reload app on local mode
-    os.environ["RSPY_LOCAL_MODE"] = "1"
-    reload(common_settings)
-    mocker.patch(
-        "osam.utils.tools.S3StorageConfigurationSingleton.get_s3_bucket_configuration",
-        return_value={"mocked": "configmap_data"},
-    )
-    mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
+
+    # Mock cluster/local mode to enable or disable authentication.
+    try:
+        cluster_mode = not request.param["RSPY_LOCAL_MODE"]
+
+    # By default, force local mode.
+    # We use the cluster mode only for the authentication tests.
+    except (AttributeError, KeyError):
+        cluster_mode = False
+
+    # Patch the env vars and global vars
+    monkeypatch.setenv("RSPY_LOCAL_MODE", "0" if cluster_mode else "1")
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
+
+    # Mock the oauth2 environment variables for the cluster mode
+    if cluster_mode:
+        monkeypatch.setenv("OIDC_ENDPOINT", "http://OIDC_ENDPOINT")
+        monkeypatch.setenv("OIDC_REALM", "OIDC_REALM")
+        monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
+        monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
+        monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
+
+    # Patch global vars
+    mocker.patch("rs_server_common.authentication.oauth2.KCUTIL", new=KCUtil() if cluster_mode else None)
+
+    # If the main app was previously imported in cluster mode, it has an "authenticate" function dependency.
+    # In this case, and if the current unit test is in local mode, then we reload the main app.
+    # Same thing if we switch from local mode to cluster mode.
+    old_cluster_mode = "authenticate" in [dep.dependency.__name__ for dep in main.dependencies]
+    if old_cluster_mode != cluster_mode:
+        reload(main)
 
     # Patch main_osam_task to a no-op so it does NOT start infinite loop thread during tests
-    mocker.patch("osam.main.main_osam_task", lambda *args, **kwargs: None)
-    from osam.main import app  # pylint: disable = import-outside-toplevel
+    mocker.patch("osam.main.main_osam_task", AsyncMock())
 
     # Test the FastAPI application, opens the database session
-    with TestClient(app) as client:
+    with TestClient(main.app) as client:
         yield client
 
 
