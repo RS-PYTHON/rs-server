@@ -76,7 +76,12 @@ class CatalogResponseManager:
     """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
     Each type of Response is managed in one of the functions."""
 
-    def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any], s3_files_to_be_deleted: list[str] = None):
+    def __init__(
+        self,
+        client: CoreCrudClient,
+        request_ids: dict[Any, Any],
+        s3_files_to_be_deleted: list[str] | None = None,
+    ):
         self.client = client
         self.request_ids = request_ids
         self.s3_manager = S3Manager()
@@ -228,6 +233,7 @@ class CatalogResponseManager:
             user_login = request.state.user_login
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+            # pylint: disable=duplicate-code
             common_settings.CLUSTER_MODE
             and self.request_ids["collection_ids"]
             and self.request_ids["owner_id"]
