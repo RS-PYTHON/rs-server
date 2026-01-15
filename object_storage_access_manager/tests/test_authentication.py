@@ -19,8 +19,8 @@ from typing import cast
 import pytest
 from osam import main
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import authentication
-from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
+from rs_server_common.authentication import apikey, authentication
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
@@ -100,7 +100,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-locals
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
         # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
+        apikey.ttl_cache.clear()  # clear the cached response
         httpx_mock.add_response(
             url=RSPY_UAC_CHECK_URL,
             match_headers={APIKEY_HEADER: VALID_APIKEY},
@@ -231,7 +231,7 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
 
         # Mock the UAC response. Clear the cached response everytime.
         if test_apikey:
-            ttl_cache.clear()
+            apikey.ttl_cache.clear()
             httpx_mock.add_response(
                 url=RSPY_UAC_CHECK_URL,
                 match_headers={APIKEY_HEADER: VALID_APIKEY},

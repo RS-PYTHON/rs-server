@@ -13,11 +13,27 @@
 # limitations under the License.
 
 """osam main module."""
-# pylint: disable = wrong-import-order
+
+# Before any other imports, we need to override the uac (=apikey manager) homepage, that by default is set by
+# a bash environment variable name, that is interpreted by the rs-server-fronted at startup.
+# Here we don't use the frontend so we need to replace it by its python value, read from its env var.
+# pylint: disable = wrong-import-order, wrong-import-position, ungrouped-imports
+# flake8: noqa: E402
+import os
+from importlib import reload
+
+from rs_server_common.authentication import apikey
+
+os.environ["APIKEY_DESCRIPTION"] = apikey.APIKEY_DESCRIPTION.replace(
+    "${RSPY_UAC_HOMEPAGE}",
+    os.getenv("RSPY_UAC_HOMEPAGE", ""),
+)
+reload(apikey)
+
+# Other imports
 import asyncio  # for handling asynchronous tasks
 import json
 import logging
-import os
 import threading
 from contextlib import asynccontextmanager
 from typing import Any
