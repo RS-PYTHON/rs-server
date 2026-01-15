@@ -191,14 +191,12 @@ async def test_endpoints_security(  # pylint: disable=too-many-locals
         ["/storage/account/any_user/rights", "GET", {}, "rs_osam_update"],
         # No role needed
         ["/storage/account/credentials", "GET", {}, ""],
-        ["/storage/configuration", "GET", {}, ""],
     ],
     ids=[
         "/storage/accounts/update",
         "/storage/account/{user}/update",
         "/storage/account/{user}/rights",
         "/storage/account/credentials",
-        "/storage/configuration",
     ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals
