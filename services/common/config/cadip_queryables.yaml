@@ -54,11 +54,6 @@ published:
   title: published
   format: datetime
   description: PublicationDate
-cadip:id:
-  type: string
-  title: cadip:id
-  format: string
-  description: id
 cadip:num_channels:
   type: string
   title: cadip:num_channels

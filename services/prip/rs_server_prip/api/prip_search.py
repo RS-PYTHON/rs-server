@@ -369,6 +369,7 @@ def process_product_search(  # pylint: disable=too-many-locals
             prip_odata_to_stac_template(),
             prip_stac_mapper(),
             collection_provider,
+            external_ids_scheme="prip",
         )
 
         # Attach PRIP assets/download links, contentType, rels, etc.

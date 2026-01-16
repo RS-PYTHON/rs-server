@@ -72,7 +72,20 @@ def stac_to_odata(stac_params: dict) -> dict:
 def serialize_adgs_asset(feature_collection, products):
     """Used to update adgs asset with proper href and format {asset_name: asset_body}."""
     for feature in feature_collection.features:
-        auxip_id = feature.properties.dict()["auxip:id"]
+        external_ids = feature.properties.dict().get("externalIds") or []
+        auxip_id = next(
+            (
+                entry.get("value")
+                for entry in external_ids
+                if isinstance(entry, dict) and entry.get("scheme") == "auxip"
+            ),
+            None,
+        )
+        if not auxip_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Missing externalIds for feature {feature.id}",
+            )
         # Find matching product by id and update feature href
         try:
             matched_product = next((p for p in products if p.properties["id"] == auxip_id), None)

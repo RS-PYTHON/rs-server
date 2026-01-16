@@ -819,7 +819,6 @@ cadip_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
@@ -989,7 +988,6 @@ ins_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
@@ -1159,7 +1157,6 @@ mps_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
@@ -1329,7 +1326,6 @@ mti_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
@@ -1499,7 +1495,6 @@ nsg_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId
@@ -1669,7 +1664,6 @@ sgs_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_id: StationId
         cadip:station_unit_id: StationUnitId

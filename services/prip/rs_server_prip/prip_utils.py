@@ -88,7 +88,18 @@ def serialize_prip_asset(feature_collection: stac_pydantic.ItemCollection, produ
     - Ensure roles ["data","metadata"] as per STAC-PRIP-ITEM-REQ-0090.
     """
     for feature in feature_collection.features:
-        prip_id = feature.properties.dict().get("prip:id") or feature.id
+        external_ids = feature.properties.dict().get("externalIds") or []
+        prip_id = (
+            next(
+                (
+                    entry.get("value")
+                    for entry in external_ids
+                    if isinstance(entry, dict) and entry.get("scheme") == "prip"
+                ),
+                None,
+            )
+            or feature.id
+        )
         # Find matching product by id
         matched = next((p for p in products if p.properties.get("id") == prip_id), None)  # type: ignore[attr-defined]
         if not matched:

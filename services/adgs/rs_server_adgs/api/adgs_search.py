@@ -374,6 +374,7 @@ def process_product_search(  # pylint: disable=too-many-locals
             auxip_odata_to_stac_template(),
             auxip_stac_mapper(),
             collection_provider,
+            external_ids_scheme="auxip",
         )
         return prepare_collection(serialize_adgs_asset(collection, products))
     # pylint: disable=duplicate-code
