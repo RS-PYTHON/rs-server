@@ -106,7 +106,7 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
     return s3_filename, alternate_field
 
 
-def delete_s3_files(s3_files_to_be_deleted):
+async def delete_s3_files(s3_files_to_be_deleted):
     """Used to clear specific files from temporary bucket or from catalog bucket."""
     if not s3_files_to_be_deleted:
         logger.info("No files to be deleted from bucket")
@@ -117,7 +117,7 @@ def delete_s3_files(s3_files_to_be_deleted):
         return False
 
     try:
-        s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
+        await s3_handler.adelete_file_from_s3(s3_files_to_be_deleted)
     except RuntimeError as rte:
         logger.exception(
             f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",

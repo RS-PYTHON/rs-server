@@ -1104,7 +1104,7 @@ field is not permitted also."
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well
-        delete_s3_files(self.s3_files_to_be_deleted)
+        await delete_s3_files(self.s3_files_to_be_deleted)
         self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))
 

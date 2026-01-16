@@ -378,6 +378,10 @@ class S3StorageHandler:
         """Async version of delete_files_from_s3. Call sync function in a separate thread."""
         return await asyncio.to_thread(self.delete_keys_from_s3, *args, **kwargs)
 
+    async def adelete_file_from_s3(self, *args, **kwargs):
+        """Async version of delete_files_from_s3. Call sync function in a separate thread."""
+        return await asyncio.to_thread(self.delete_keys_from_s3, *args, **kwargs)
+
     # helper functions
 
     @staticmethod
