@@ -974,11 +974,8 @@ field is not permitted also."
                 self.request_ids["owner_id"],
                 user_login,
             )
-            # I don't know why but the STAC browser doesn't send authentication for the queryables endpoint.
-            # So allow this endpoint without authentication in this specific case.
-            and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
         ):
-            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         elif (
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id

@@ -50,7 +50,8 @@ def get_authorisation(
     if user_login == requested_owner_id:
         return True
 
-    # Parse authorization roles to retrieve the role owner_id, collection_id and action
+    # Parse authorization roles to retrieve the role owner_id, collection_id and action.
+    # Role format is: rs_catalog_<owner_id>:<collection_id>_<read|write|download>
     auth_role_pattern = (
         r"rs_catalog_(?P<owner_id>.*(?=:)):"  # Group owner_id
         r"(?P<collection_id>.+)_"  # Group collection_id

@@ -16,6 +16,7 @@
 import json
 import traceback
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -107,24 +108,40 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
     async def dispatch(self, request: Request, call_next: Callable):
         try:
             return await call_next(request)
-        except StarletteHTTPException as http_exception:
-            # Log stack trace and return HTTP exception details
-            logger.error(traceback.format_exc())
-            return JSONResponse(status_code=http_exception.status_code, content=str(http_exception.detail))
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            # Log stack trace and return generic error response
-            logger.error(traceback.format_exc())
-            return (
-                JSONResponse(
-                    content=ErrorResponse(code=exception.__class__.__name__, description=str(exception)),
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-                if self.is_bad_request(request, exception)
-                else JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(exception))
-            )
+        except Exception as exc:  # pylint: disable=broad-exception-caught
 
-    def is_bad_request(self, request: Request, e: Exception) -> bool:
-        """Determines if the request that raised this exception shall be considered as a bad request"""
+            # Log current stack trace
+            logger.error(traceback.format_exc())
+
+            # Calculate HTTP response status code (int) and ErrorResponse code (str) and description (str)
+            if isinstance(exc, StarletteHTTPException):
+                status_code = exc.status_code
+                description = str(exc.detail)
+                # Convert e.g. HTTP_500_INTERNAL_SERVER_ERROR into 'InternalServerError'
+                phrase = HTTPStatus(exc.status_code).phrase
+                str_code = "".join(word.title() for word in phrase.split())
+
+            else:
+                # Use generic 400 or 500 code
+                status_code = (
+                    status.HTTP_400_BAD_REQUEST
+                    if self.is_bad_request(request, exc)
+                    else status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                description = str(exc)
+                str_code = exc.__class__.__name__
+
+            return JSONResponse(status_code=status_code, content=ErrorResponse(code=str_code, description=description))
+
+    @staticmethod
+    def is_bad_request(request: Request, e: Exception) -> bool:
+        """
+        Determines if the request that raised this exception shall be considered as a bad request
+        and return a 400 error code.
+
+        This function can be overriden by the caller if needed with:
+        HandleExceptionsMiddleware.is_bad_request = my_callable
+        """
         return "bbox" in request.query_params and (
             str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
         )

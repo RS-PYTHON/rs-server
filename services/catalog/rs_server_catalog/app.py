@@ -16,14 +16,12 @@
 import asyncio
 import sys
 from contextlib import asynccontextmanager
-from http import HTTPStatus
 from os import environ as env
 from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, HTTPException, Request, Security
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Request, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog.data_lifecycle import DataLifecycle
@@ -97,16 +95,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        try:
-            response = await UserCatalog(api.client).dispatch(request, call_next)
-            return response
-        except (HTTPException, StarletteHTTPException) as exc:
-            phrase = HTTPStatus(exc.status_code).phrase
-            code = "".join(word.title() for word in phrase.split())
-            return JSONResponse(
-                status_code=exc.status_code,
-                content=ErrorResponse(code=code, description=str(exc.detail)),
-            )
+        return await UserCatalog(api.client).dispatch(request, call_next)
 
 
 app: FastAPI = sfpg_app
