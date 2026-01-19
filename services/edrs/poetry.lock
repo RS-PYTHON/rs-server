@@ -2486,7 +2486,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a5.post103.dev0"
+version = "0.0.0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -2502,7 +2502,7 @@ botocore = ">=1.40.2"
 cachetools = ">=5.5.2"
 eodag = "==v3.10.1"
 fastapi = ">=0.123.0"
-filelock = ">=3.16.1"
+filelock = ">=3.20.3"
 geojson-pydantic = "2.1.0"
 httpx = "^0.28.1"
 itsdangerous = "^2.2.0"
