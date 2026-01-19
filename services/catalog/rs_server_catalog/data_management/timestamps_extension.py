@@ -16,11 +16,10 @@
 
 import datetime
 
+from rs_server_catalog.utils import ISO_8601_FORMAT
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_expiration_delay_from_config,
 )
-
-ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 def set_timestamps_for_creation(item: dict) -> dict:

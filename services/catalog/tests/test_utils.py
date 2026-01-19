@@ -18,10 +18,9 @@ import os
 
 import pytest
 from fastapi import HTTPException
+from rs_server_catalog.data_management.s3_manager import S3Manager
+from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
-    delete_s3_files,
-    get_s3_filename_from_asset,
-    get_s3_handler,
     get_temp_bucket_name,
     is_s3_path,
     verify_existing_item_from_catalog,
@@ -113,21 +112,21 @@ class TestGetS3FilenameFromAsset:
             "href": "s3://test_catalog_bucket/path/to/filename",
             "alternate": {"https": {"href": "https://rs-server/test_catalog/path/to/filename"}},
         }
-        s3_filename, alternate_field = get_s3_filename_from_asset(asset)
+        s3_filename, alternate_field = StacManager.get_s3_filename_from_asset(asset)
         assert s3_filename == "s3://test_catalog_bucket/path/to/filename"
         assert alternate_field is True
 
     def test_retrieve_s3_key_from_href_field(self):
         """Test retrieving the S3 key from the 'href' field when 'alternate' is missing."""
         asset = {"href": "s3://temp_catalog/path/to/filename"}
-        s3_filename, alternate_field = get_s3_filename_from_asset(asset)
+        s3_filename, alternate_field = StacManager.get_s3_filename_from_asset(asset)
         assert s3_filename == "s3://temp_catalog/path/to/filename"
         assert alternate_field is False
 
     def test_missing_s3_key_raises_exception(self):
         """Test that missing 'href' and 'alternate' fields raise an HTTP 400 error."""
         with pytest.raises(HTTPException) as excinfo:
-            get_s3_filename_from_asset({})
+            StacManager.get_s3_filename_from_asset({})
         assert excinfo.value.status_code == 400
         assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
 
@@ -135,7 +134,7 @@ class TestGetS3FilenameFromAsset:
         """Test that an invalid S3 key format in 'href' raises an HTTP 400 error."""
         asset = {"href": "invalid_s3_path"}
         with pytest.raises(HTTPException) as excinfo:
-            get_s3_filename_from_asset(asset)
+            StacManager.get_s3_filename_from_asset(asset)
         assert excinfo.value.status_code == 400
         assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
 
@@ -143,7 +142,7 @@ class TestGetS3FilenameFromAsset:
         """Test that an empty 'href' field raises an HTTP 400 error."""
         asset = {"href": ""}
         with pytest.raises(HTTPException) as excinfo:
-            get_s3_filename_from_asset(asset)
+            StacManager.get_s3_filename_from_asset(asset)
         assert excinfo.value.status_code == 400
         assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
 
@@ -153,31 +152,31 @@ class TestDeleteS3Files:
 
     def test_delete_s3_files_empty_list(self, mocker):
         """Test the behavior when the list of S3 files to be deleted is empty."""
-        mock_logger = mocker.patch("rs_server_catalog.utils.logger")
-        result = delete_s3_files([])
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        result = S3Manager().delete_s3_files([])
 
         assert result is True
         mock_logger.info.assert_called_once_with("No files to be deleted from bucket")
 
     def test_delete_s3_files_no_s3_handler(self, mocker):
         """Test the behavior when the S3 handler cannot be created."""
-        mock_logger = mocker.patch("rs_server_catalog.utils.logger")
-        mocker.patch("rs_server_catalog.utils.get_s3_handler", return_value=None)
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler", return_value=None)
 
-        result = delete_s3_files(["s3://bucket_name/path/to/file"])
+        result = S3Manager().delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is False
         mock_logger.error.assert_called_once_with("Failed to create the s3 handler when trying to delete the s3 files")
 
     def test_delete_s3_files_valid_paths(self, mocker):
         """Test the behavior with valid S3 paths for deletion."""
-        mock_logger = mocker.patch("rs_server_catalog.utils.logger")
-        mock_get_s3_handler = mocker.patch("rs_server_catalog.utils.get_s3_handler")
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
         mock_get_s3_handler.return_value = mock_s3_handler
 
-        result = delete_s3_files(["s3://bucket_name/path/to/file"])
+        result = S3Manager().delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is True
         mock_s3_handler.delete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
@@ -185,14 +184,14 @@ class TestDeleteS3Files:
 
     def test_delete_s3_files_deletion_runtime_error(self, mocker):
         """Test the behavior when a RuntimeError occurs during deletion."""
-        mock_logger = mocker.patch("rs_server_catalog.utils.logger")
-        mock_get_s3_handler = mocker.patch("rs_server_catalog.utils.get_s3_handler")
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.delete_keys_from_s3.side_effect = RuntimeError("Deletion failed")
         mock_get_s3_handler.return_value = mock_s3_handler
         ftbd = "s3://bucket_name/path/to/file"
-        result = delete_s3_files([ftbd])
+        result = S3Manager().delete_s3_files([ftbd])
 
         assert result is True  # Function should continue even if deletion fails
         mock_logger.exception.assert_called_once_with(
@@ -283,8 +282,8 @@ class TestGetS3Handler:
             },
         )
 
-        mock_s3_handler = mocker.patch("rs_server_catalog.utils.S3StorageHandler")
-        s3_handler = get_s3_handler()
+        mock_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3StorageHandler")
+        s3_handler = S3Manager().s3_handler
 
         # Assertions
         assert s3_handler is not None
@@ -300,7 +299,7 @@ class TestGetS3Handler:
         # Clear environment variables
         mocker.patch.dict(os.environ, {}, clear=True)
         # Call the function and capture output
-        s3_handler = get_s3_handler()
+        s3_handler = S3Manager().s3_handler
         captured = capsys.readouterr()
 
         # Assertions
@@ -321,10 +320,13 @@ class TestGetS3Handler:
         )
 
         # Mock S3StorageHandler to raise RuntimeError
-        mock_s3_handler = mocker.patch("rs_server_catalog.utils.S3StorageHandler", side_effect=RuntimeError)
+        mock_s3_handler = mocker.patch(
+            "rs_server_catalog.data_management.s3_manager.S3StorageHandler",
+            side_effect=RuntimeError,
+        )
 
         # Call the function and capture output
-        s3_handler = get_s3_handler()
+        s3_handler = S3Manager().s3_handler
         captured = capsys.readouterr()
 
         # Assertions
