@@ -61,7 +61,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 rs-server-common = {path = "../common", develop = true}
 # Formatting
-black = ">=24.8,<26.0"
+black = ">=24.8,<27.0"
 # Testing
 pytest = "^8.4.2"
 pytest-asyncio = "^1.2.0"
