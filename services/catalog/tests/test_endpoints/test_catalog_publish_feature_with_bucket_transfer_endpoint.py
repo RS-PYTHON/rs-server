@@ -554,8 +554,8 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
             assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
             # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
             mocker.patch(
-                "rs_server_catalog.user_catalog.UserCatalog.update_stac_item_publication",
-                return_value={},
+                "rs_server_catalog.data_management.s3_manager.S3Manager.update_stac_item_publication",
+                return_value=({}, []),
             )
             added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
             # Check if status code is BAD REQUEST

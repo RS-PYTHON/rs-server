@@ -12,9 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# exclude_dirs:
-#   - "tests/*.py"
-#skips: ['B314', 'B405', 'B320', 'B410']
-
-assert_used:
-  skips: ['*_test.py', '*test_*.py']
+"""Module for manipulating different kinds of data within the catalog."""

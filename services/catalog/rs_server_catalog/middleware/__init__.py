@@ -12,22 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Contains all functions for the landing page."""
-
-
-from rs_server_catalog.user_handler import CATALOG_PREFIX
-
-
-def add_prefix_link_landing_page(content: dict, url: str):
-    """add the CATALOG_PREFIX if it is not present
-
-    Args:
-        content (dict): the landing page
-        url (str): the url
-    """
-    for link in content["links"]:
-        if "href" in link and CATALOG_PREFIX not in link["href"]:
-            href = link["href"]
-            url_size = len(url)
-            link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
-    return content
+"""Module containing Catalog middleware, for pre-processing of requests
+received and post-processing of responses sent"""

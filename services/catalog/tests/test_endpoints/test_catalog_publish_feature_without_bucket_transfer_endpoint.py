@@ -177,8 +177,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         item with no published and no expires in properties
         """
-        with patch("rs_server_catalog.timestamps_extension.set_timestamps_for_creation") as mock_creation, patch(
-            "rs_server_catalog.timestamps_extension.set_timestamps_for_insertion",
+        with patch(
+            "rs_server_catalog.data_management.timestamps_extension.set_timestamps_for_creation",
+        ) as mock_creation, patch(
+            "rs_server_catalog.data_management.timestamps_extension.set_timestamps_for_insertion",
         ) as mock_insertion:
 
             # Define the mock behavior to set 'published' = None and 'expired' = None
