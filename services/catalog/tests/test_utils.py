@@ -14,17 +14,22 @@
 
 """Unit tests for utils module."""
 
+import logging
 import os
 
 import pytest
 from fastapi import HTTPException
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.stac_manager import StacManager
+from rs_server_catalog.middleware.catalog_middleware import UserCatalog
 from rs_server_catalog.utils import (
     get_temp_bucket_name,
     is_s3_path,
     verify_existing_item_from_catalog,
 )
+from rs_server_common import middlewares
+from rs_server_common.middlewares import HandleExceptionsMiddleware
+from starlette import status
 
 
 class TestVerifyExistingItemFromCatalog:
@@ -333,3 +338,42 @@ class TestGetS3Handler:
         assert s3_handler is None
         assert "Failed to create the s3 handler" in captured.out
         mock_s3_handler.assert_called_once()
+
+
+def test_handle_exceptions_middleware(client, mocker):
+
+    traceback_log = "Exception Group Traceback (most recent call last)"
+
+    spied = mocker.spy(middlewares.logger, "error")
+
+    def raise_http(*_, **__):
+        raise HTTPException(status.HTTP_418_IM_A_TEAPOT, "http error message")
+
+    mocker.patch.object(UserCatalog, "dispatch", raise_http)
+    spied.reset_mock()
+    response = client.get("")
+
+    assert response.status_code == status.HTTP_418_IM_A_TEAPOT
+    assert response.json() == {"code": "I'MATeapot", "description": "http error message"}
+
+    spied.assert_called_once()
+    logged = spied.call_args[0][0]
+    assert traceback_log in logged and "http error message" in logged
+    bp = 0
+
+    def raise_value_error(*_, **__):
+        raise ValueError("value error message")
+
+    mocker.patch.object(UserCatalog, "dispatch", raise_value_error)
+    response = client.get("")
+
+    old_func = HandleExceptionsMiddleware.is_bad_request
+
+    HandleExceptionsMiddleware.is_bad_request = lambda *_, **__: True
+    response = client.get("")
+    bp = 0
+
+    HandleExceptionsMiddleware.is_bad_request = old_func
+    response = client.get("")
+
+    bp = 0

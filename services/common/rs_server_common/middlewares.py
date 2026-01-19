@@ -125,7 +125,7 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 # Use generic 400 or 500 code
                 status_code = (
                     status.HTTP_400_BAD_REQUEST
-                    if self.is_bad_request(request, exc)
+                    if HandleExceptionsMiddleware.is_bad_request(request, exc)
                     else status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
                 description = str(exc)
