@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-return-statements
 """This library contains all functions needed for the fastAPI middleware."""
 
 import getpass
@@ -20,11 +19,11 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX
+from rs_server_catalog.utils import CATALOG_PREFIX
+from rs_server_common.authentication import oauth2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 
-CATALOG_PREFIX = os.environ.get("PREFIX_PATH", "/catalog")
 CATALOG_COLLECTIONS = CATALOG_PREFIX + "/collections"
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     CATALOG_COLLECTIONS + r"(((?P<owner_collection_id>/.+?(?=/|$)))?"
@@ -107,7 +106,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         pass
 
     # Catch authentication endpoints (path should be left as it is in this case)
-    elif path.startswith(f"{AUTH_PREFIX}/"):
+    elif path.startswith(f"{oauth2.AUTH_PREFIX}/"):
         pass
 
     # The endpoint PUT "/catalog/collections" does not exists.
@@ -180,7 +179,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         request.scope["path"] = path
 
 
-def add_user_prefix(  # pylint: disable=too-many-return-statements
+def add_user_prefix(
     path: str,
     user: str | None,
     collection_id: str | None,

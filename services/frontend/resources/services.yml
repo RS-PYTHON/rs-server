@@ -20,7 +20,7 @@ info:
     0, 1, 2 Sentinel Data processors (Q3 2024/2025).
 
     ---
-    #### Authentication
+    #### OAuth 2.0 authentication
 
     <a href="/auth/login" target="_self">Login</a> /
     <a href="/auth/logout" target="_blank">Logout</a>
@@ -30,7 +30,8 @@ info:
 
     <a href="https://home.rs-python.eu/" target="_blank">Website</a> /
     <a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
-    <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
+    <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a> /
+    <a href="/osam/docs" target="_blank">OSAM</a>
 
     ---
     #### STAC Browser

@@ -17,7 +17,7 @@
 import getpass
 
 import pytest
-from rs_server_catalog.user_handler import (
+from rs_server_catalog.data_management.user_handler import (
     add_user_prefix,
     get_user,
     remove_owner_from_collection_name_in_collection,

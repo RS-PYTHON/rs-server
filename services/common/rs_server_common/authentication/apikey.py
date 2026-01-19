@@ -18,6 +18,7 @@ API key authentication functions implementation.
 Note: calls https://github.com/csgroup-oss/apikey-manager
 """
 
+import os
 import sys
 import traceback
 from os import environ as env
@@ -40,16 +41,19 @@ logger = Logging.default(__name__)
 # HTTP header field for the api key
 APIKEY_HEADER = "x-api-key"
 
-APIKEY_SCHEME_NAME = "You can also authenticate with an API key"
+APIKEY_SCHEME_NAME = "API key authentication"
 
 # Just print the plain RSPY_UAC_HOMEPAGE environment variable name.
 # When the rs-server-frontend container will start, it will replace it with its associated value.
-APIKEY_DESCRIPTION = """
+DEFAULT_APIKEY_DESCRIPTION = """
 <h3><a href="${RSPY_UAC_HOMEPAGE}" target="_blank">Create it from here</a></h3>
 
 <h3><a href="https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/users/oauth2_apikey_manager" target="_blank">
 See the documentation</a></h3>
 """
+
+# Some services that don't use the rs-server-frontend will need to override this value
+APIKEY_DESCRIPTION = os.getenv("APIKEY_DESCRIPTION", DEFAULT_APIKEY_DESCRIPTION)
 
 # API key authentication using a header
 APIKEY_AUTH_HEADER = APIKeyHeader(

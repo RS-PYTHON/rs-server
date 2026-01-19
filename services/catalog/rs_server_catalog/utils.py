@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-return-statements
 """This library contains functions used in handling the user catalog."""
 
 import os
@@ -19,12 +18,21 @@ import re
 from typing import Any
 
 from fastapi import HTTPException
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from starlette.responses import Response
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 logger = Logging.default(__name__)
+
+# Constants used a bit everywhere in the Catalog
+ALTERNATE_STRING = "alternate"
+ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+CATALOG_PREFIX = os.environ.get("PREFIX_PATH", "/catalog")
+DEFAULT_GEOM = {
+    "type": "Polygon",
+    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+}
+DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 
 # Regular expression pattern to match 's3://path/to/file'
 S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
@@ -61,68 +69,6 @@ def verify_existing_item_from_catalog(method: str, item: dict, content_id_str: s
             f"does not exist in the {user_collection_str} collection for an update (PUT / PATCH request received)",
             status_code=HTTP_400_BAD_REQUEST,
         )
-
-
-def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
-    """
-    Retrieve the S3 key from the asset content.
-
-    During the staging process, the content of the asset should be:
-        "filename": {
-            "href": "s3://temp_catalog/path/to/filename",
-        }
-
-    Once the asset is inserted in the catalog, the content typically looks like this:
-        "filename": {
-            "alternate": {
-                "https": {
-                    "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",
-                }
-            },
-            "href": "s3://rs-dev-cluster-catalog/path/to/filename",
-        }
-
-    Args:
-        asset (dict): The content of the asset.
-
-    Returns:
-        tuple[str, bool]: A tuple containing the full S3 path of the object and a boolean indicating
-                          whether the S3 key was retrieved from the 'alternate' field.
-
-    Raises:
-        HTTPException: If the S3 key could not be loaded or is invalid.
-    """
-    # Attempt to retrieve the S3 key from the 'alternate.s3.href' or 'href' fields
-    s3_filename = asset.get("href", "")
-    alternate_field = bool(asset.get("alternate", None))
-
-    # Validate that the S3 key was successfully retrieved and has the correct format
-    if not is_s3_path(s3_filename):
-        raise HTTPException(
-            detail=f"Failed to load the S3 key from the asset content {asset}",
-            status_code=HTTP_400_BAD_REQUEST,
-        )
-
-    return s3_filename, alternate_field
-
-
-def delete_s3_files(s3_files_to_be_deleted):
-    """Used to clear specific files from temporary bucket or from catalog bucket."""
-    if not s3_files_to_be_deleted:
-        logger.info("No files to be deleted from bucket")
-        return True
-    s3_handler = get_s3_handler()
-    if not s3_handler:
-        logger.error("Failed to create the s3 handler when trying to delete the s3 files")
-        return False
-
-    try:
-        s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
-    except RuntimeError as rte:
-        logger.exception(
-            f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
-        )
-    return True
 
 
 def is_s3_path(s3_key):
@@ -164,25 +110,6 @@ def get_temp_bucket_name(files_s3_key: list[str]) -> str | None:
     return bucket_names.pop()
 
 
-def get_s3_handler():
-    """Used to create the s3_handler to be used with s3 buckets."""
-    try:
-        s3_handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
-        )
-    except KeyError:
-        print("Failed to find s3 credentials when trying to create the s3 handler")
-        return None
-    except RuntimeError:
-        print("Failed to create the s3 handler")
-        return None
-
-    return s3_handler
-
-
 def get_token_for_pagination(items_dic: dict[Any, Any]):
     """Used to get the token to be used when calling functions from the stac-fastapi-pgstac object."""
     token = None
@@ -195,6 +122,22 @@ def get_token_for_pagination(items_dic: dict[Any, Any]):
 def headers_minus_content_length(response: Response) -> dict[str, str]:
     """Returns response headers without Content-Length"""
     return {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+
+
+def add_prefix_link_landing_page(content: dict, url: str) -> dict:
+    """
+    Add the CATALOG_PREFIX to the landing page if it is not present.
+
+    Args:
+        content (dict): the landing page
+        url (str): the url
+    """
+    for link in content["links"]:
+        if "href" in link and CATALOG_PREFIX not in link["href"]:
+            href = link["href"]
+            url_size = len(url)
+            link["href"] = href[:url_size] + CATALOG_PREFIX + href[url_size:]
+    return content
 
 
 def extract_owner_name_from_json_filter(json_filter: Any) -> str | None:

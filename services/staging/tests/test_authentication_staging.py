@@ -112,7 +112,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals,
     collection = "test_collection"
     station_id = "station_id"
     role = f"RS_PROCESSES_STAGING_DOWNLOAD_{station_id}"
-    error_auth = f"Loading station token service failed: 401: Missing {role.upper()} authorization role"
+    error_auth = f"Loading station token service failed: 401: Missing authorization role {role.lower()!r} for user"
     mocker.patch.object(staging_instance, "assets_info", new=[AssetInfo("some_asset", "fake_s3_file", "fake_bucket")])
     mock_load = mocker.Mock()
     mock_load.station_id = station_id
@@ -129,13 +129,13 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals,
     # Without the right role, we should have an unauthorized error
     mock_request.state.auth_roles = []
     await staging_instance.process_rspy_features(collection)
-    assert spy_log_job.call_args[0][2] == error_auth
+    assert spy_log_job.call_args[0][2].startswith(error_auth)
     # With the righ role, it should fail for whatever other reason
     # (because we didn't mock the right values, but it's OK it is not what we are testing here)
     spy_log_job.reset_mock()
     mock_request.state.auth_roles = [role]
     await staging_instance.process_rspy_features(collection)
-    assert spy_log_job.call_args[0][2] != error_auth
+    assert not spy_log_job.call_args[0][2].startswith(error_auth)
 
     # EDRS access test
     station_id = "EDRS_STATION"

@@ -62,29 +62,29 @@ eodag = "==v3.10.1"
 pydantic = ">=2.9.2,<2.13.0" # see https://github.com/pyupio/safety/issues/673
 markdown = "^3.8.2"
 python-dotenv = "^1.0.0"
-filelock = ">=3.16.1"
+filelock = ">=3.20.3"
 uvicorn = ">=0.35.0"
 httpx = "^0.28.1"
 cachetools = ">=5.5.2" # idem as stac-fastapi-pgstac
 asyncache = "^0.3.1"
-opentelemetry-distro = "^0.59b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.59b0"
-opentelemetry-test-utils = "^0.59b0"
-opentelemetry-exporter-otlp = "^1.38.0"
+opentelemetry-distro = "^0.60b1" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-instrumentation-aws-lambda = "^0.60b1"
+opentelemetry-test-utils = "^0.60b1"
+opentelemetry-exporter-otlp = "^1.39.1"
 protobuf = ">=6.31.1"
 python-logging-loki = "^0.3.1"
 authlib = "^1.6.1"
 python-keycloak = ">=5.7.0,<6.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = ">=6.1.5"
+stac-fastapi-pgstac = ">=6.2.0"
 pydantic-settings = ">2.2.1,<3.0.0,!=2.9.0" # see https://github.com/PrefectHQ/prefect/issues/17852
 stac-pydantic = "^3.4.0"
 geojson-pydantic = "2.1.0"
-stac-fastapi-types = "^6.0.0"
+stac-fastapi-types = "^6.2.0"
 requests = "^2.32.5"
 xmltodict = "^1.0.2"
-urllib3 = ">=2.6.1"
+urllib3 = ">=2.6.3"
 
 [tool.poetry.group.dev]
 optional = true

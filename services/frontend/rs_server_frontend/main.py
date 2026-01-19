@@ -60,6 +60,7 @@ class Frontend:
         try:
             self.openapi_spec: dict = self.load_openapi_spec()
             self.app: FastAPI = FastAPI(
+                title="RS-Server",
                 version=__version__,
                 **docs_params,  # type: ignore
                 # Same hardcoded values than in the apikey manager

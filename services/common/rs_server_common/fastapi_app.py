@@ -25,13 +25,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
-from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     PaginationLinksMiddleware,
     StacLinksTitleMiddleware,
+    apply_middlewares,
 )
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.settings import docs_params
@@ -194,16 +193,8 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     dependencies = []
     if settings.CLUSTER_MODE:
 
-        # Get the oauth2 router
-        oauth2_router = oauth2.get_router(app)
-
-        # Add it to the FastAPI application
-        app.include_router(
-            oauth2_router,
-            tags=["Authentication"],
-            prefix=AUTH_PREFIX,
-            include_in_schema=True,
-        )
+        # Apply middlewares and authentication routes to the FastAPI application
+        apply_middlewares(app)
 
         # Add the api key / oauth2 security: the user must provide
         # an api key (generated from the apikey manager) or authenticate to the
@@ -229,7 +220,9 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     # Middleware for implementing first and last buttons in STAC Browser
     app.add_middleware(PaginationLinksMiddleware)
 
+    # Middleware used to update links with title
     app.add_middleware(StacLinksTitleMiddleware, title="My STAC Title")
+
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:
         app.add_middleware(
