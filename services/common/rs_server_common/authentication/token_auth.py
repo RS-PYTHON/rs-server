@@ -41,11 +41,6 @@ from starlette.status import (
 logger = Logging.default(__name__)
 
 
-def log_http_exception(*args, **kwargs) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    return utils2.log_http_exception(logger, *args, **kwargs)
-
-
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
 
 # Mandatory attributed that should be present in the token dictionary
@@ -158,7 +153,7 @@ def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationCo
 
     for attr in MANDATORY_TOKEN_ATTRS:
         if attr not in token_dict:
-            raise log_http_exception(
+            raise HTTPException(
                 HTTP_500_INTERNAL_SERVER_ERROR,
                 f"Mandatory attribute {attr} is not defined in the token variable "
                 f"of the station {config.station_id}!",
@@ -166,7 +161,7 @@ def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationCo
                 TokenDataNotFound,
             )
         if not token_dict[attr]:
-            raise log_http_exception(
+            raise HTTPException(
                 HTTP_500_INTERNAL_SERVER_ERROR,
                 f"Token variable attribute {attr} of the station {config.station_id} is None !",
                 None,
@@ -188,7 +183,7 @@ def validate_token_format(token: str) -> None:
     # Check if the token matches the expected format using a regular expression
     if not re.match(r"^[A-Za-z0-9\-_\.]+$", token):
         # Raise an HTTP exception if the token format is invalid
-        raise log_http_exception(
+        raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail="Invalid token format received from the station.",
         )
@@ -206,14 +201,14 @@ def __request_token(external_auth_config: StationExternalAuthenticationConfig, d
             headers=prepare_headers(external_auth_config),
         )
     except requests.exceptions.RequestException as e:
-        raise log_http_exception(
+        raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Request to token endpoint failed: {str(e)}",
         ) from e
 
     # Check response status
     if response.status_code != HTTP_200_OK:
-        raise log_http_exception(
+        raise HTTPException(
             status_code=response.status_code,
             detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
             f"Response from the station: {response.text or ''}",
@@ -247,7 +242,7 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
                        if the token request fails, or if the token format is invalid.
     """
     if not external_auth_config:
-        raise log_http_exception(
+        raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Failed to retrieve the configuration for the station token.",
         )

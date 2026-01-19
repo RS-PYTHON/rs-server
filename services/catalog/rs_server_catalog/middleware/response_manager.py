@@ -67,11 +67,6 @@ QUERYABLES = "/queryables"
 logger = Logging.default(__name__)
 
 
-def log_http_exception(*args, **kwargs) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    return utils2.log_http_exception(logger, *args, **kwargs)
-
-
 class CatalogResponseManager:
     """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
     Each type of Response is managed in one of the functions."""
@@ -245,7 +240,7 @@ class CatalogResponseManager:
                 user_login,
             )
         ):
-            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
@@ -369,7 +364,7 @@ class CatalogResponseManager:
             # So allow this endpoint without authentication in this specific case.
             and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
         ):
-            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         elif (
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
@@ -426,12 +421,12 @@ class CatalogResponseManager:
             self.s3_manager.delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
-            raise log_http_exception(
+            raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=f"Failed to clean temporary bucket: {exc}",
             ) from exc
         except Exception as exc:  # pylint: disable=broad-except
-            raise log_http_exception(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
 

@@ -16,6 +16,7 @@
 
 import re
 
+from fastapi import HTTPException
 from rs_server_catalog.data_management.user_handler import get_user
 from rs_server_common import settings
 from rs_server_common.utils import utils2
@@ -126,7 +127,7 @@ def check_user_authorization(request_ids: dict) -> None:
             request_ids["user_login"],
         )
     ):
-        raise utils2.log_http_exception(logger, status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
 
 
 def get_all_accessible_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:

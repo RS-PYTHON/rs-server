@@ -43,40 +43,6 @@ class AuthInfo:
     attributes: dict[str, Any]
 
 
-def log_http_exception(
-    logger,
-    status_code: Annotated[
-        int,
-        Doc(
-            """
-                HTTP status code to send to the client.
-                """,
-        ),
-    ],
-    detail: Annotated[
-        Any,
-        Doc(
-            """
-                Any data to be sent to the client in the `detail` key of the JSON
-                response.
-                """,
-        ),
-    ] = None,
-    headers: Annotated[
-        dict[str, str] | None,
-        Doc(
-            """
-                Any headers to send to the client in the response.
-                """,
-        ),
-    ] = None,
-    exception_type: type[HTTPException] = HTTPException,
-) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    logger.error(detail)
-    return exception_type(status_code, detail, headers)  # type: ignore
-
-
 def read_response_error(response):
     """Read and return an HTTP response error detail."""
 

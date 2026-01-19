@@ -75,7 +75,6 @@ from rs_server_common.utils.utils import (
     validate_sort_input,
     validate_str_list,
 )
-from rs_server_common.utils.utils2 import log_http_exception
 from stac_fastapi.api.models import GeoJSONResponse
 from stac_pydantic import ItemCollection
 
@@ -561,7 +560,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
 
         # If anything goes wrong, just log the error. The token will be fetched two times but it's OK.
         except Exception as e:  # pylint: disable=broad-exception-caught
-            log_http_exception(logger, status.HTTP_500_INTERNAL_SERVER_ERROR, e)
+            logger.error(e)
 
         products = validate_products(products)
         collection = create_stac_collection(
