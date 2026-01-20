@@ -117,7 +117,7 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 # Read contents
                 body = [chunk async for chunk in response.body_iterator]
                 dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
-                logger.error(f"{response.status_code} - {json.loads(dec_content)}")
+                logger.error(f"{response.status_code}: {json.loads(dec_content)}")
 
                 # Reset the StreamingResponse so it can be used again
                 response.body_iterator = iterate_in_threadpool(iter(body))
