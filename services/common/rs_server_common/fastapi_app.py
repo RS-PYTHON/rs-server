@@ -65,6 +65,9 @@ async def health() -> HealthSchema:
     \f
     Otherwise this code won't be run anyway and the caller will have other sorts of errors.
     """
+    from fastapi import HTTPException
+
+    raise HTTPException(status_code=500, detail="toto")
     return HealthSchema(healthy=True)
 
 
@@ -211,9 +214,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.include_router(need_auth_router)
     app.include_router(technical_router)
 
-    # Catch all exceptions and return a JSONResponse
-    app.add_middleware(HandleExceptionsMiddleware)
-
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)
 
@@ -222,6 +222,9 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # Middleware used to update links with title
     app.add_middleware(StacLinksTitleMiddleware, title="My STAC Title")
+
+    # Catch all exceptions and return a JSONResponse
+    app.add_middleware(HandleExceptionsMiddleware)
 
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:

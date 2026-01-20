@@ -578,7 +578,7 @@ async def test_execute_staging(
     staging_client.app.extra["process_manager"] = mock_db_table
     response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert "'type' is a required property" in response.json()
+    assert "'type' is a required property" in response.json()["description"]
 
 
 @pytest.mark.asyncio

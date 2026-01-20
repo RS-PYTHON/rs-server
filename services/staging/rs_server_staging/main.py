@@ -138,17 +138,6 @@ if common_settings.CLUSTER_MODE:
 # CORS enabled origins
 app.add_middleware(CORSMiddleware)
 
-
-# Exception handlers
-@app.exception_handler(StarletteHTTPException)
-async def custom_http_exception_handler(
-    request: Request,
-    exc: StarletteHTTPException,
-):  # pylint: disable= unused-argument
-    """HTTP handler"""
-    return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
-
-
 os.environ["PYGEOAPI_OPENAPI"] = ""  # not used
 
 

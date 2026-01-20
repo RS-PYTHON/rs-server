@@ -14,7 +14,6 @@
 
 """Unit tests for utils module."""
 
-import logging
 import os
 from collections.abc import Callable
 
@@ -353,17 +352,13 @@ def test_handle_exceptions_middleware(client, mocker):
         Test cases.
 
         Args:
-            mocked_service: how we mock the main function from the tested service
+            mocked_service: how to mock the main function from the tested service
             should_raise: will this mocked function raise an exception ?
             expected_status: expected http response status code
             expected_content: expected http response content
         """
-
         # Mock the main function from the tested service
         mocker.patch.object(UserCatalog, "dispatch", mocked_service)
-
-        # Reset the spy
-        spy_log_error.reset_mock()
 
         # Call the service with any endpoint
         response = client.get("")
@@ -389,6 +384,9 @@ def test_handle_exceptions_middleware(client, mocker):
             assert str(expected_status) in logged_content
             assert expected_content in logged_content
 
+        # Reset the spy
+        spy_log_error.reset_mock()
+
     async def return_error(*_, **__):
         """Test case when the service returns a JSONResponse"""
         return JSONResponse(status_code=status.HTTP_418_IM_A_TEAPOT, content="json response error message")
@@ -411,7 +409,7 @@ def test_handle_exceptions_middleware(client, mocker):
         expected_content={"code": "I'MATeapot", "description": "http error message"},
     )
 
-    def raise_value_error(*_, **__):
+    async def raise_value_error(*_, **__):
         """Test case when the service raises any Exception different than HTTPException"""
         raise ValueError("value error message")
 
