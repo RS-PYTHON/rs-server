@@ -22,6 +22,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import brotli
 from fastapi import FastAPI, Request, Response, status
+from fastapi.concurrency import iterate_in_threadpool
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
@@ -107,11 +108,27 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
 
     async def dispatch(self, request: Request, call_next: Callable):
         try:
-            return await call_next(request)
+            # Call next middleware
+            response = await call_next(request)
+
+            # In case of errors, log the response contents
+            if 400 <= response.status_code < 600:
+
+                # Read contents
+                body = [chunk async for chunk in response.body_iterator]
+                dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
+                logger.error(f"{response.status_code} - {json.loads(dec_content)}")
+
+                # Reset the StreamingResponse so it can be used again
+                response.body_iterator = iterate_in_threadpool(iter(body))
+
+            # Return the response from the next middleware
+            return response
+
         except Exception as exc:  # pylint: disable=broad-exception-caught
 
             # Log current stack trace
-            logger.error(traceback.format_exc())
+            logger.exception(exc)
 
             # Calculate HTTP response status code (int) and ErrorResponse code (str) and description (str)
             if isinstance(exc, StarletteHTTPException):
