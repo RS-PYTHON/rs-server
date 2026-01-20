@@ -31,6 +31,7 @@ from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
+from rs_server_common import stac_api_common
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
@@ -2864,6 +2865,7 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
 
 
 def _external_ids_feature_template() -> dict:
+    """Return a minimal STAC item template for externalIds tests."""
     return {
         "stac_version": "1.1.0",
         "type": "Feature",
@@ -2877,10 +2879,11 @@ def _external_ids_feature_template() -> dict:
 
 @pytest.mark.unit
 def test_create_stac_collection_external_ids_from_properties():
-    # externalIds sourced from product.properties["id"]
-    from rs_server_common import stac_api_common
+    """externalIds sourced from product.properties['id']."""
 
     class ProductWithProperties:
+        """Simple holder for product properties."""
+
         def __init__(self, props: dict):
             self.properties = props
 
@@ -2899,8 +2902,7 @@ def test_create_stac_collection_external_ids_from_properties():
 
 @pytest.mark.unit
 def test_create_stac_collection_external_ids_from_product_data(monkeypatch):
-    # externalIds fallback to extract_eo_product output
-    from rs_server_common import stac_api_common
+    """externalIds fallback to extract_eo_product output."""
 
     monkeypatch.setattr(
         stac_api_common,
@@ -2921,10 +2923,11 @@ def test_create_stac_collection_external_ids_from_product_data(monkeypatch):
 
 @pytest.mark.unit
 def test_create_stac_collection_validation_error_skips_item():
-    # invalid STAC item is skipped when validation fails
-    from rs_server_common import stac_api_common
+    """Invalid STAC item is skipped when validation fails."""
 
     class ProductWithProperties:
+        """Simple holder for product properties."""
+
         def __init__(self, props: dict):
             self.properties = props
 
