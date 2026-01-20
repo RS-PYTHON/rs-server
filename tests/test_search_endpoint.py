@@ -2861,3 +2861,79 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
         endpoint = f"/prip/collections/S1A_L0_IW_RAW/items?bbox={bbox_str}&filter=intersects={filter_wkt}"
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def _external_ids_feature_template() -> dict:
+    return {
+        "stac_version": "1.1.0",
+        "type": "Feature",
+        "id": "PLACEHOLDER",
+        "geometry": None,
+        "properties": {"datetime": "2020-01-01T00:00:00Z"},
+        "links": [],
+        "assets": {"file": {"href": "PLACEHOLDER"}},
+    }
+
+
+@pytest.mark.unit
+def test_create_stac_collection_external_ids_from_properties():
+    # externalIds sourced from product.properties["id"]
+    from rs_server_common import stac_api_common
+
+    class ProductWithProperties:
+        def __init__(self, props: dict):
+            self.properties = props
+
+    product = ProductWithProperties({"id": "cadip-123"})
+    collection = stac_api_common.create_stac_collection(
+        [product],
+        _external_ids_feature_template(),
+        {"id": "id"},
+        external_ids_scheme="cadip",
+    )
+
+    assert len(collection.features) == 1
+    external_ids = collection.features[0].properties.dict().get("externalIds")
+    assert external_ids == [{"scheme": "cadip", "value": "cadip-123"}]
+
+
+@pytest.mark.unit
+def test_create_stac_collection_external_ids_from_product_data(monkeypatch):
+    # externalIds fallback to extract_eo_product output
+    from rs_server_common import stac_api_common
+
+    monkeypatch.setattr(
+        stac_api_common,
+        "extract_eo_product",
+        lambda product, mapper: {"id": "auxip-456"},
+    )
+    collection = stac_api_common.create_stac_collection(
+        [object()],
+        _external_ids_feature_template(),
+        {"id": "id"},
+        external_ids_scheme="auxip",
+    )
+
+    assert len(collection.features) == 1
+    external_ids = collection.features[0].properties.dict().get("externalIds")
+    assert external_ids == [{"scheme": "auxip", "value": "auxip-456"}]
+
+
+@pytest.mark.unit
+def test_create_stac_collection_validation_error_skips_item():
+    # invalid STAC item is skipped when validation fails
+    from rs_server_common import stac_api_common
+
+    class ProductWithProperties:
+        def __init__(self, props: dict):
+            self.properties = props
+
+    product = ProductWithProperties({"id": "cadip-789"})
+    collection = stac_api_common.create_stac_collection(
+        [product],
+        _external_ids_feature_template(),
+        {"id": "id", "datetime": "missing"},
+        external_ids_scheme="cadip",
+    )
+
+    assert collection.features == []
