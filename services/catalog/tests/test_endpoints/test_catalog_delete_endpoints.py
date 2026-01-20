@@ -22,7 +22,7 @@ from unittest.mock import AsyncMock
 
 import fastapi
 import pytest
-from rs_server_catalog.user_catalog import UserCatalog
+from rs_server_catalog.middleware.request_manager import CatalogRequestManager
 from stac_fastapi.types.errors import NotFoundError
 
 
@@ -145,15 +145,15 @@ class TestCatalogDeleteEndpoints:
             ],
         }
 
-        # Instantiate UserCatalog and set request_ids for the test
-        catalog = UserCatalog(mock_client)
-        catalog.request_ids = {"owner_id": "user", "collection_ids": ["collection_id"]}
+        # Instantiate CatalogRequestManager with correct request_ids
+        request_ids = {"owner_id": "user", "collection_ids": ["collection_id"]}
+        request_manager = CatalogRequestManager(mock_client, request_ids)
 
         # Call the function
-        await catalog.build_filelist_to_be_deleted(mock_request)
+        await request_manager.build_filelist_to_be_deleted(mock_request)
 
         # Assert
-        assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
+        assert request_manager.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
         mock_client.item_collection.assert_called_once_with(
             request=mock_request,
             collection_id="user_collection_id",
@@ -182,15 +182,15 @@ class TestCatalogDeleteEndpoints:
             },
         }
 
-        # Instantiate UserCatalog and set request_ids for the test
-        catalog = UserCatalog(mock_client)
-        catalog.request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "item_id"}
+        # Instantiate CatalogRequestManager with correct request_ids
+        request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "item_id"}
+        request_manager = CatalogRequestManager(mock_client, request_ids)
 
         # Act
-        await catalog.build_filelist_to_be_deleted(mock_request)
+        await request_manager.build_filelist_to_be_deleted(mock_request)
 
         # Assert
-        assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1"]
+        assert request_manager.s3_files_to_be_deleted == ["s3://bucket/file1"]
         mock_client.get_item.assert_called_once_with(
             item_id="item_id",
             collection_id="user_collection_id",
@@ -213,15 +213,15 @@ class TestCatalogDeleteEndpoints:
         # Mock the NotFoundError raised by client.get_item
         mock_client.get_item.side_effect = NotFoundError("Item not found")
 
-        # Instantiate UserCatalog and set request_ids for the test
-        catalog = UserCatalog(mock_client)
-        catalog.request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "nonexistent_item"}
+        # Instantiate CatalogRequestManager with correct request_ids
+        request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "nonexistent_item"}
+        request_manager = CatalogRequestManager(mock_client, request_ids)
 
         # Act
-        await catalog.build_filelist_to_be_deleted(mock_request)
+        await request_manager.build_filelist_to_be_deleted(mock_request)
 
         # Assert
-        assert not catalog.s3_files_to_be_deleted
+        assert not request_manager.s3_files_to_be_deleted
         mock_client.get_item.assert_called_once_with(
             item_id="nonexistent_item",
             collection_id="user_collection_id",

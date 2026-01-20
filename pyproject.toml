@@ -87,7 +87,7 @@ pytest-docker = "^3.2.3"
 pytest-error-for-skips = "^2.0.2"
 pytest-httpx = ">=0.35,<0.36"
 pytest-mock = "^3.15.1"
-black = "^25.1.0"
+black = "^26.1.0"
 mypy = "^1.17.1"
 pre-commit = "^4.5.0"
 types-requests = "^2.32.4.20250809"
@@ -167,5 +167,5 @@ notes = ["XXX"]  # No errors on TODO and FIXME
 
 min-similarity-lines = 10  # Minimum lines number of a similarity
 
-[tool.bandit.assert_used]
-skips = ['*/test_*.py', '*/conftest.py']
+[tool.bandit]
+exclude_dirs = ["tests"]

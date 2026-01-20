@@ -16,22 +16,19 @@
 import asyncio
 import sys
 from contextlib import asynccontextmanager
-from http import HTTPStatus
 from os import environ as env
 from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, HTTPException, Request, Security
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Request, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
-from rs_server_catalog.data_lifecycle import DataLifecycle
-from rs_server_catalog.user_catalog import UserCatalog
+from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
+from rs_server_catalog.middleware.catalog_middleware import CatalogMiddleware
+from rs_server_catalog.utils import CATALOG_PREFIX
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication.apikey import (
-    APIKEY_AUTH_HEADER,
-)
+from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
@@ -42,17 +39,11 @@ from rs_server_common.middlewares import (
 from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.api.errors import ErrorResponse
 from stac_fastapi.api.middleware import CORSMiddleware
 from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.app import app as sfpg_app
 from stac_fastapi.pgstac.app import with_transactions
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
-
-from .user_handler import CATALOG_PREFIX
 
 logger = Logging.default(__name__)
 
@@ -92,28 +83,11 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     return parameters
 
 
-class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """The user catalog middleware."""
-
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Redirect the user catalog specific endpoint and adapt the response content."""
-        try:
-            response = await UserCatalog(api.client).dispatch(request, call_next)
-            return response
-        except (HTTPException, StarletteHTTPException) as exc:
-            phrase = HTTPStatus(exc.status_code).phrase
-            code = "".join(word.title() for word in phrase.split())
-            return JSONResponse(
-                status_code=exc.status_code,
-                content=ErrorResponse(code=code, description=str(exc.detail)),
-            )
-
-
 app: FastAPI = sfpg_app
 insert_middleware_after(
     app,
     BrotliMiddleware,
-    UserCatalogMiddleware,
+    CatalogMiddleware,
 )
 insert_middleware_after(app, CORSMiddleware, HandleExceptionsMiddleware)
 insert_middleware_after(
