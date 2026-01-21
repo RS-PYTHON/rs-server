@@ -23,7 +23,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import brotli
 from fastapi import FastAPI, Request, Response, status
 from fastapi.concurrency import iterate_in_threadpool
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
@@ -108,47 +108,51 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
 
     async def dispatch(self, request: Request, call_next: Callable):
         try:
-            # Call next middleware
+            # Call next middleware, get and return response, handle errors
             response = await call_next(request)
-
-            # In case of errors, log the response contents
-            if 400 <= response.status_code < 600:
-
-                # Read contents
-                body = [chunk async for chunk in response.body_iterator]
-                dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
-                logger.error(f"{response.status_code}: {json.loads(dec_content)}")
-
-                # Reset the StreamingResponse so it can be used again
-                response.body_iterator = iterate_in_threadpool(iter(body))
-
-            # Return the response from the next middleware
+            await self.handle_errors(response)
             return response
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            return await self.handle_exceptions(exc)
 
-            # Log current stack trace
-            logger.exception(exc)
+    async def handle_errors(self, response: StreamingResponse) -> None:
+        """In case of errors, log the response contents"""
+        if 400 <= response.status_code < 600:
 
-            # Calculate HTTP response status code (int) and ErrorResponse code (str) and description (str)
-            if isinstance(exc, StarletteHTTPException):
-                status_code = exc.status_code
-                description = str(exc.detail)
-                # Convert e.g. HTTP_500_INTERNAL_SERVER_ERROR into 'InternalServerError'
-                phrase = HTTPStatus(exc.status_code).phrase
-                str_code = "".join(word.title() for word in phrase.split())
+            # Read contents
+            body = [chunk async for chunk in response.body_iterator]
+            dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
+            logger.error(f"{response.status_code}: {json.loads(dec_content)}")
 
-            else:
-                # Use generic 400 or 500 code
-                status_code = (
-                    status.HTTP_400_BAD_REQUEST
-                    if HandleExceptionsMiddleware.is_bad_request(request, exc)
-                    else status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-                description = str(exc)
-                str_code = exc.__class__.__name__
+            # Reset the StreamingResponse so it can be used again
+            response.body_iterator = iterate_in_threadpool(iter(body))
 
-            return JSONResponse(status_code=status_code, content=ErrorResponse(code=str_code, description=description))
+    async def handle_exceptions(self, request: Request, exc: Exception) -> JSONResponse:
+        """In case of exceptions, log the response contents"""
+
+        # Log current stack trace
+        logger.exception(exc)
+
+        # Calculate HTTP response status code (int) and ErrorResponse code (str) and description (str)
+        if isinstance(exc, StarletteHTTPException):
+            status_code = exc.status_code
+            description = str(exc.detail)
+            # Convert e.g. HTTP_500_INTERNAL_SERVER_ERROR into 'InternalServerError'
+            phrase = HTTPStatus(exc.status_code).phrase
+            str_code = "".join(word.title() for word in phrase.split())
+
+        else:
+            # Use generic 400 or 500 code
+            status_code = (
+                status.HTTP_400_BAD_REQUEST
+                if HandleExceptionsMiddleware.is_bad_request(request, exc)
+                else status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            description = str(exc)
+            str_code = exc.__class__.__name__
+
+        return JSONResponse(status_code=status_code, content=ErrorResponse(code=str_code, description=description))
 
     @staticmethod
     def is_bad_request(request: Request, e: Exception) -> bool:

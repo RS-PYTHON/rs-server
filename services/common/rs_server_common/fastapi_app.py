@@ -20,7 +20,7 @@ from types import MethodType
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
@@ -52,6 +52,7 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.datastructures import State
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
@@ -65,9 +66,6 @@ async def health() -> HealthSchema:
     \f
     Otherwise this code won't be run anyway and the caller will have other sorts of errors.
     """
-    from fastapi import HTTPException
-
-    raise HTTPException(status_code=500, detail="toto")
     return HealthSchema(healthy=True)
 
 
@@ -225,6 +223,12 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # Catch all exceptions and return a JSONResponse
     app.add_middleware(HandleExceptionsMiddleware)
+
+    @app.exception_handler(HTTPException)
+    @app.exception_handler(StarletteHTTPException)
+    async def dont_handle_http_exceptions(_request: Request, _exc: HTTPException):
+        """Re-raise exceptions, they'll be handled by HandleExceptionsMiddleware"""
+        raise
 
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:

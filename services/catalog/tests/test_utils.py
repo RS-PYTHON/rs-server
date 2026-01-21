@@ -375,8 +375,9 @@ def test_handle_exceptions_middleware(client, mocker):
             # If an exception was raised, then the log was called with the stack trace (exc_info=True arg)
             assert spy_log_error.call_args[1]["exc_info"] == True
 
-            # We should have logged either HTTPException(status_code=<expected_status>, detail=<expected_content>)
-            # Or <ErrorType>(<expected_content>)
+            # The logged stack trace should contain either
+            # HTTPException(status_code=<expected_status>, detail=<expected_content>)
+            # or <ErrorType>(<expected_content>)
             assert expected_content["description"] in str(logged_content)
 
         # If no exception, we should have logged the str: '<status>: <message>'
