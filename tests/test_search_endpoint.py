@@ -18,6 +18,7 @@
 import os
 import re
 from copy import deepcopy
+from types import SimpleNamespace
 from urllib.parse import quote, unquote
 
 import pytest
@@ -2940,3 +2941,16 @@ def test_create_stac_collection_validation_error_skips_item():
     )
 
     assert collection.features == []
+
+
+@pytest.mark.unit
+def test_serialize_adgs_asset_missing_external_ids():
+    """Missing externalIds raises HTTP 500 in serialize_adgs_asset."""
+    # externalIds absent -> HTTPException raised
+    feature = SimpleNamespace(id="item-1", properties=SimpleNamespace(dict=lambda: {}))
+    feature_collection = SimpleNamespace(features=[feature])
+
+    with pytest.raises(HTTPException) as excinfo:
+        adgs_utils.serialize_adgs_asset(feature_collection, [])
+
+    assert excinfo.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
