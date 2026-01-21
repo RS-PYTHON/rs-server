@@ -19,12 +19,15 @@ Split it from utils.py because of dependency conflicts between rs-server-catalog
 
 import asyncio
 import functools
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import HTTPException
+from fastapi.concurrency import iterate_in_threadpool
+from fastapi.responses import StreamingResponse
 from filelock import FileLock
 from typing_extensions import Doc
 
@@ -56,6 +59,19 @@ def read_response_error(response):
         detail = response.content.decode("utf-8", errors="ignore")
 
     return detail
+
+
+async def read_streaming_response(response: StreamingResponse) -> Any | None:
+    """Read a json-formatted streaming response content"""
+    body = [chunk async for chunk in response.body_iterator]
+    splits = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)
+    str_content = b"".join(splits).decode()
+    py_content = json.loads(str_content) if str_content else None
+
+    # Reset the StreamingResponse so it can be used again
+    response.body_iterator = iterate_in_threadpool(iter(body))
+
+    return py_content
 
 
 def filelock(func, env_var: str):

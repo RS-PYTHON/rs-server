@@ -22,13 +22,13 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import brotli
 from fastapi import FastAPI, Request, Response, status
-from fastapi.concurrency import iterate_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.oauth2 import LoginAndRedirect
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import read_streaming_response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -128,11 +128,8 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         if not (400 <= response.status_code < 600):
             return response  # no error, return the original response
 
-        # Read content
-        body = [chunk async for chunk in response.body_iterator]
-        content = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)
-        content = b"".join(content).decode()
-        content = json.loads(content)
+        # Read response content
+        content = await read_streaming_response(response)
 
         # The content should be formated as an ErrorResponse
         formatted = None

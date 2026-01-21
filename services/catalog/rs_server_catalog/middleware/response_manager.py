@@ -42,8 +42,8 @@ from rs_server_catalog.utils import (
     headers_minus_content_length,
 )
 from rs_server_common import settings as common_settings
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import read_streaming_response
 from stac_fastapi.api.models import GeoJSONResponse
 from stac_fastapi.pgstac.core import CoreCrudClient
 from starlette.requests import Request
@@ -102,9 +102,8 @@ class CatalogResponseManager:
         status_code = streaming_response.status_code
         if status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
 
-            # Read the body. WARNING: after this, the body cannot be read a second time.
-            body = [chunk async for chunk in streaming_response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type:ignore
+            # Read the body
+            response_content = read_streaming_response(streaming_response)
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
             self.s3_manager.clear_catalog_bucket(response_content)
 
@@ -193,9 +192,7 @@ class CatalogResponseManager:
             self.request_ids["collection_ids"] = [
                 coll.removeprefix(f"{self.request_ids['owner_id']}_") for coll in query["collections"][0].split(",")
             ]
-        body = [chunk async for chunk in response.body_iterator]
-        dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
-        content = json.loads(dec_content)
+        content = read_streaming_response(response)
         content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
             content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
@@ -241,8 +238,7 @@ class CatalogResponseManager:
             )
         ):
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
-        body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(body).decode())  # type:ignore
+        content = read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
             content, code = self.s3_manager.generate_presigned_url(content, request.url.path)
@@ -265,8 +261,7 @@ class CatalogResponseManager:
             Response: The response updated.
         """
         # Load content of the response as a dictionary
-        body = [chunk async for chunk in response.body_iterator]
-        dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
+        dec_content = read_streaming_response(response)
         content = await self._manage_get_response_content(request, dec_content) if dec_content else None
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(content, response.status_code, headers_minus_content_length(response), media_type)
@@ -274,7 +269,7 @@ class CatalogResponseManager:
     async def _manage_get_response_content(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         request: Request,
-        dec_content: str,
+        content: Any,
     ) -> Any:
         """Manage content of GET responses with a body
 
@@ -284,7 +279,6 @@ class CatalogResponseManager:
         Returns:
             Any: the response content
         """
-        content = json.loads(dec_content)
         StacManager.update_stac_catalog_metadata(content)
         auth_roles = []
         user_login = ""
@@ -406,8 +400,7 @@ class CatalogResponseManager:
         """
         try:
             user = self.request_ids["owner_id"]
-            body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type: ignore
+            response_content = read_streaming_response(response)
             response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
 
             # Don't display geometry and bbox for default case since it was added just for compliance.
@@ -440,8 +433,7 @@ class CatalogResponseManager:
         Returns:
             JSONResponse: The new response with the updated collection name.
         """
-        body = [chunk async for chunk in response.body_iterator]
-        response_content = json.loads(b"".join(body).decode())  # type:ignore
+        response_content = read_streaming_response(response)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well
