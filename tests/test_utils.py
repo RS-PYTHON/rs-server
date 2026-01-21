@@ -14,17 +14,18 @@
 
 """Unit tests for utils module."""
 
+import json
 from collections.abc import Callable
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import JSONResponse
 from rs_server_common import middlewares
-from rs_server_common.middlewares import HandleExceptionsMiddleware
+from rs_server_common.middlewares import ErrorResponse, HandleExceptionsMiddleware
 from starlette import status
 
 
 def test_handle_exceptions_middleware(fastapi_app, client, mocker):
-    """Test that HandleExceptionsMiddleware logs errors as expected."""
+    """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
 
     # Spy calls to logger.error(...)
     spy_log_error = mocker.spy(middlewares.logger, "error")
@@ -32,7 +33,7 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
     def test_case(
         mocked_endpoint: Callable,
         expected_status: int,
-        expected_content: str | dict,
+        expected_content: ErrorResponse,
         raise_from_func: bool,
         raise_from_dependency: bool,
     ):
@@ -87,7 +88,7 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
         # If no exception, we should have logged the str: '<status>: <message>'
         else:
             assert str(expected_status) in logged_message
-            assert expected_content in logged_message
+            assert json.dumps(expected_content) in logged_message
 
         # Reset the spy
         spy_log_error.reset_mock()
@@ -95,40 +96,77 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
         # Remove the mocked endpoint
         fastapi_app.router.routes = list(filter(lambda route: route.path != endpoint_path, fastapi_app.router.routes))
 
-    def return_error():
-        """Test case when the endpoint returns a JSONResponse"""
-        return JSONResponse(status_code=status.HTTP_418_IM_A_TEAPOT, content="json response error message")
+    # Test cases
+
+    def return_error_1():
+        """Test case when the endpoint returns a JSONResponse with a dict content == ErrorResponse"""
+        return JSONResponse(
+            status_code=status.HTTP_418_IM_A_TEAPOT,
+            content=ErrorResponse(code="I'MATeapot", description="message from return_error_1"),
+        )
 
     test_case(
-        mocked_endpoint=return_error,
+        mocked_endpoint=return_error_1,
         expected_status=status.HTTP_418_IM_A_TEAPOT,
-        expected_content="json response error message",
+        expected_content=ErrorResponse(code="I'MATeapot", description="message from return_error_1"),
+        raise_from_func=False,
+        raise_from_dependency=False,
+    )
+
+    def return_error_2():
+        """Test case when the endpoint returns a JSONResponse with a dict content != ErrorResponse"""
+        return JSONResponse(
+            status_code=status.HTTP_418_IM_A_TEAPOT,
+            content={"custom field": "message from return_error_2"},
+        )
+
+    test_case(
+        mocked_endpoint=return_error_2,
+        expected_status=status.HTTP_418_IM_A_TEAPOT,
+        # The returned error content is formated by HandleExceptionsMiddleware
+        expected_content=ErrorResponse(
+            code="I'MATeapot",
+            description=str({"custom field": "message from return_error_2"}),
+        ),
+        raise_from_func=False,
+        raise_from_dependency=False,
+    )
+
+    def return_error_3():
+        """Test case when the endpoint returns a JSONResponse with a string content"""
+        return JSONResponse(status_code=status.HTTP_418_IM_A_TEAPOT, content="message from return_error_3")
+
+    test_case(
+        mocked_endpoint=return_error_3,
+        expected_status=status.HTTP_418_IM_A_TEAPOT,
+        # The returned error content is formated by HandleExceptionsMiddleware
+        expected_content=ErrorResponse(code="I'MATeapot", description="message from return_error_3"),
         raise_from_func=False,
         raise_from_dependency=False,
     )
 
     def raise_http():
         """Test case when the endpoint or dependency raises an HTTPException"""
-        raise HTTPException(status.HTTP_418_IM_A_TEAPOT, "http error message")
+        raise HTTPException(status.HTTP_418_IM_A_TEAPOT, "message from raise_http")
 
     for raise_case in True, False:  # raise from either endpoint or dependency
         test_case(
             mocked_endpoint=raise_http,
             expected_status=status.HTTP_418_IM_A_TEAPOT,
-            expected_content={"code": "I'MATeapot", "description": "http error message"},
+            expected_content=ErrorResponse(code="I'MATeapot", description="message from raise_http"),
             raise_from_func=raise_case,
             raise_from_dependency=not raise_case,
         )
 
     def raise_value_error():
         """Test case when the endpoint or dependency raises any Exception different than HTTPException"""
-        raise ValueError("value error message")
+        raise ValueError("message from raise_value_error")
 
     for raise_case in True, False:  # raise from either endpoint or dependency
         test_case(
             mocked_endpoint=raise_value_error,
             expected_status=status.HTTP_500_INTERNAL_SERVER_ERROR,  # a generic 500 server-side error is logged
-            expected_content={"code": "ValueError", "description": "value error message"},
+            expected_content=ErrorResponse(code="ValueError", description="message from raise_value_error"),
             raise_from_func=raise_case,
             raise_from_dependency=not raise_case,
         )
@@ -143,7 +181,7 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
             test_case(
                 mocked_endpoint=raise_value_error,
                 expected_status=status.HTTP_400_BAD_REQUEST,
-                expected_content={"code": "ValueError", "description": "value error message"},
+                expected_content=ErrorResponse(code="ValueError", description="message from raise_value_error"),
                 raise_from_func=raise_case,
                 raise_from_dependency=not raise_case,
             )

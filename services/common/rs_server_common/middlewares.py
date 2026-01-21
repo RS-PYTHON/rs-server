@@ -110,23 +110,45 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         try:
             # Call next middleware, get and return response, handle errors
             response = await call_next(request)
-            await self.handle_errors(response)
-            return response
+            return await self.handle_errors(response)
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            return await self.handle_exceptions(exc)
+            return await self.handle_exceptions(request, exc)
 
-    async def handle_errors(self, response: StreamingResponse) -> None:
-        """In case of errors, log the response contents"""
-        if 400 <= response.status_code < 600:
+    async def format_code(self, status_code: int) -> str:
+        """Convert e.g. HTTP_500_INTERNAL_SERVER_ERROR into 'InternalServerError'"""
+        phrase = HTTPStatus(status_code).phrase
+        return "".join(word.title() for word in phrase.split())
 
-            # Read contents
-            body = [chunk async for chunk in response.body_iterator]
-            dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
-            logger.error(f"{response.status_code}: {json.loads(dec_content)}")
+    async def handle_errors(self, response: StreamingResponse) -> Response:
+        """
+        If no errors, just return the original response.
+        In case of errors, log, format and return the response contents.
+        """
+        if not (400 <= response.status_code < 600):
+            return response  # no error, return the original response
 
-            # Reset the StreamingResponse so it can be used again
-            response.body_iterator = iterate_in_threadpool(iter(body))
+        # Read content
+        body = [chunk async for chunk in response.body_iterator]
+        content = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)
+        content = b"".join(content).decode()
+        content = json.loads(content)
+
+        # The content should be formated as an ErrorResponse
+        formatted = None
+        try:
+            formatted = ErrorResponse(code=str(content["code"]), description=str(content["description"]))
+            if formatted != content:
+                formatted = None
+        except Exception:
+            pass
+
+        # Else format the content
+        if not formatted:
+            formatted = ErrorResponse(code=await self.format_code(response.status_code), description=str(content))
+
+        logger.error(f"{response.status_code}: {json.dumps(formatted)}")
+        return JSONResponse(status_code=response.status_code, content=formatted)
 
     async def handle_exceptions(self, request: Request, exc: Exception) -> JSONResponse:
         """In case of exceptions, log the response contents"""
@@ -137,10 +159,9 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         # Calculate HTTP response status code (int) and ErrorResponse code (str) and description (str)
         if isinstance(exc, StarletteHTTPException):
             status_code = exc.status_code
+            # Format int status code into str
+            str_code = await self.format_code(exc.status_code)
             description = str(exc.detail)
-            # Convert e.g. HTTP_500_INTERNAL_SERVER_ERROR into 'InternalServerError'
-            phrase = HTTPStatus(exc.status_code).phrase
-            str_code = "".join(word.title() for word in phrase.split())
 
         else:
             # Use generic 400 or 500 code
@@ -149,8 +170,8 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 if HandleExceptionsMiddleware.is_bad_request(request, exc)
                 else status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            description = str(exc)
             str_code = exc.__class__.__name__
+            description = str(exc)
 
         return JSONResponse(status_code=status_code, content=ErrorResponse(code=str_code, description=description))
 
