@@ -17,7 +17,7 @@
 # ghcr.io/rs-python/rs-server-adgs
 #
 
-ARG PYTHON_VERSION=3.13.9
+ARG PYTHON_VERSION=3.13.11
 
 # Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
