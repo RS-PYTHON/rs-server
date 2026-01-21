@@ -106,7 +106,7 @@ template:
         operations:
           and:
             - "contains(Name, '{Name}')"
-            - "contains(Id, '{externalIds}')"
+            - "Id eq {externalIds}"
             - "Id in ({externalIdss})"
             - Name in ({Names})
             - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
