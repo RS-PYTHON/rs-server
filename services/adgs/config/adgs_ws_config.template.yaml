@@ -50,6 +50,12 @@ template:
       id:
         - null
         - "$.Id"
+      externalIds:
+        - null
+        - "$.Id"
+      externalIdss:
+        - null
+        - "$.Id"
       Name:
         - null
         - "$.Name"
@@ -125,6 +131,8 @@ template:
         operations:
           and:
             - "contains(Name, '{Name}')"
+            - "contains(Id, '{externalIds}')"
+            - "Id in ({externalIdss})"
             - "Name in ({Names})"
             - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
             - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
