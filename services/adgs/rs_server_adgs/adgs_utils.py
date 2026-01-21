@@ -65,9 +65,58 @@ def select_config(configuration_id: str) -> dict | None:
     )
 
 
+def _normalize_external_ids(value: str | list[str]) -> list[str] | None:
+    """Normalize externalIds search values for the auxip scheme."""
+    tokens: list[str] = []
+    scheme_only_auxip = False
+    scheme_only_other = False
+    values = value if isinstance(value, list) else [value]
+    for raw in values:
+        if raw is None:
+            continue
+        raw_str = str(raw)
+        parts = [s.strip() for s in raw_str.split(",")] if "," in raw_str else [raw_str.strip()]
+        for part in parts:
+            if not part:
+                continue
+            if ":" in part:
+                scheme, val = part.split(":", 1)
+                scheme = scheme.strip()
+                val = val.strip()
+                if not val:
+                    if scheme == "auxip":
+                        scheme_only_auxip = True
+                    else:
+                        scheme_only_other = True
+                    continue
+                if scheme != "auxip":
+                    continue
+                tokens.append(val)
+            else:
+                tokens.append(part)
+    if tokens:
+        return tokens
+    if scheme_only_auxip and not scheme_only_other:
+        return None
+    if scheme_only_auxip and scheme_only_other:
+        return None
+    return []
+
+
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
-    return {auxip_stac_mapper().get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
+    params = dict(stac_params)
+    if "externalIds" in params:
+        normalized = _normalize_external_ids(params.pop("externalIds"))
+        if normalized is None:
+            pass
+        elif not normalized:
+            params["externalIds"] = "__no_match__"
+        elif len(normalized) == 1:
+            params["externalIds"] = normalized[0]
+        else:
+            params["externalIdss"] = normalized
+    return {auxip_stac_mapper().get(stac_key, stac_key): value for stac_key, value in params.items()}
 
 
 def serialize_adgs_asset(feature_collection, products):
