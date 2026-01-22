@@ -169,7 +169,7 @@ class Staging(
         self.station_token_list_lock = station_token_list_lock
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
-    async def execute(
+    async def execute(  # pylint: disable=too-many-return-statements,arguments-differ,invalid-overridden-method,too-many-branches
         self,
         data: dict,
     ) -> tuple[str, dict]:
@@ -206,7 +206,7 @@ class Staging(
                 response_dict = response.json()
                 if response_dict.get("type") not in ("Feature", "FeatureCollection"):
                     raise RequestException(
-                        f"The input link must point to a Feature or FeatureCollection: invalid response {response_dict}"
+                        f"The input link must point to a Feature/FeatureCollection: invalid response {response_dict}",
                     )
 
                 data["items"]["value"] = response_dict
@@ -231,7 +231,7 @@ class Staging(
             # Wrap single Feature into a FeatureCollection
             item_collection = FeatureCollectionModel(
                 type="FeatureCollection",
-                features=[Feature.model_validate(item_value)]
+                features=[Feature.model_validate(item_value)],
             )
         elif item_value.get("type") == "FeatureCollection":
             item_collection = FeatureCollectionModel.model_validate(item_value)
@@ -239,23 +239,17 @@ class Staging(
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
-                "Invalid input type: must be Feature or FeatureCollection"
+                "Invalid input type: must be Feature or FeatureCollection",
             )
 
         catalog_collection: str = data["collection"]
 
         # Determine staging user
-        self.staging_user = (
-            getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
-        )
+        self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
 
         # Handle empty collection
         if not item_collection.features:
-            return self.log_job_execution(
-                JobStatus.successful,
-                100,
-                "Finished without processing any tasks"
-            )
+            return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Filter out features without assets
         item_collection.features = [f for f in item_collection.features if f.assets]
@@ -263,7 +257,7 @@ class Staging(
             return self.log_job_execution(
                 JobStatus.successful,
                 0,
-                "No items with assets were found in the input for staging"
+                "No items with assets were found in the input for staging",
             )
 
         # Check catalog before processing
@@ -271,7 +265,7 @@ class Staging(
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
-                f"Failed to start the staging process. Checking the collection '{catalog_collection}' failed!"
+                f"Failed to start the staging process. Checking the collection '{catalog_collection}' failed!",
             )
 
         self.log_job_execution(JobStatus.running, 0, "Successfully searched catalog")
