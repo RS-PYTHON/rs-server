@@ -194,7 +194,7 @@ class Staging(
 
             return response_dict
 
-        except (RequestException, JSONDecodeError, RuntimeError, ValueError) as exc:
+        except (RequestException, RuntimeError) as exc:
             self.log_job_execution(
                 JobStatus.failed,
                 0,
