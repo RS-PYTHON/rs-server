@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Common functions for fastapi middlewares"""
+
 import json
 import traceback
 from collections.abc import Callable

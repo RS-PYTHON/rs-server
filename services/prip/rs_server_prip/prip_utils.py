@@ -16,6 +16,7 @@
 """
 Module for interacting with PRIP system through a FastAPI APIRouter.
 """
+
 # pylint: disable=duplicate-code
 from __future__ import annotations
 

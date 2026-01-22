@@ -18,7 +18,6 @@ This module provides functionality to retrieve a list of products from the PRIP 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
-
 import os.path as osp
 import traceback
 from collections.abc import Callable
