@@ -98,6 +98,17 @@ insert_middleware_after(
     must_be_authenticated=must_be_authenticated,
 )
 
+from fastapi import Depends, HTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+@app.exception_handler(HTTPException)
+@app.exception_handler(StarletteHTTPException)
+async def dont_handle_http_exceptions(_request: Request, _exc: HTTPException):
+    """Re-raise exceptions, they'll be handled by HandleExceptionsMiddleware"""
+    raise
+
+
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)

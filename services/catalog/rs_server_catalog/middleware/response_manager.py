@@ -103,7 +103,7 @@ class CatalogResponseManager:
         if status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
 
             # Read the body
-            response_content = read_streaming_response(streaming_response)
+            response_content = await read_streaming_response(streaming_response)
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
             self.s3_manager.clear_catalog_bucket(response_content)
 
@@ -192,7 +192,7 @@ class CatalogResponseManager:
             self.request_ids["collection_ids"] = [
                 coll.removeprefix(f"{self.request_ids['owner_id']}_") for coll in query["collections"][0].split(",")
             ]
-        content = read_streaming_response(response)
+        content = await read_streaming_response(response)
         content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
             content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
@@ -238,7 +238,7 @@ class CatalogResponseManager:
             )
         ):
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
-        content = read_streaming_response(response)
+        content = await read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
             content, code = self.s3_manager.generate_presigned_url(content, request.url.path)
@@ -261,7 +261,7 @@ class CatalogResponseManager:
             Response: The response updated.
         """
         # Load content of the response as a dictionary
-        dec_content = read_streaming_response(response)
+        dec_content = await read_streaming_response(response)
         content = await self._manage_get_response_content(request, dec_content) if dec_content else None
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(content, response.status_code, headers_minus_content_length(response), media_type)
@@ -400,7 +400,7 @@ class CatalogResponseManager:
         """
         try:
             user = self.request_ids["owner_id"]
-            response_content = read_streaming_response(response)
+            response_content = await read_streaming_response(response)
             response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
 
             # Don't display geometry and bbox for default case since it was added just for compliance.
@@ -433,7 +433,7 @@ class CatalogResponseManager:
         Returns:
             JSONResponse: The new response with the updated collection name.
         """
-        response_content = read_streaming_response(response)
+        response_content = await read_streaming_response(response)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well

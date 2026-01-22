@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for utils module."""
+"""Implement tests that are common to several services."""
 
 import json
 from collections.abc import Callable
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from rs_server_common import middlewares
 from rs_server_common.middlewares import ErrorResponse, HandleExceptionsMiddleware
@@ -25,7 +25,7 @@ from starlette import status
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
-def test_handle_exceptions_middleware(fastapi_app, client, mocker):
+def test_handle_exceptions_middleware(app: FastAPI, client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
 
     # Spy calls to logger.error(...)
@@ -55,14 +55,14 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
         # Raise exception from the endpoint dependency
         if raise_from_dependency:
 
-            @fastapi_app.get(endpoint_path)
+            @app.get(endpoint_path)
             def test_endpoint_func(_param=Depends(mocked_endpoint)):
                 return "ok"
 
         # Other cases
         else:
 
-            @fastapi_app.get(endpoint_path)
+            @app.get(endpoint_path)
             def test_endpoint_func():
                 return mocked_endpoint()
 
@@ -95,7 +95,7 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
         spy_log_error.reset_mock()
 
         # Remove the mocked endpoint
-        fastapi_app.router.routes = list(filter(lambda route: route.path != endpoint_path, fastapi_app.router.routes))
+        app.router.routes = list(filter(lambda route: route.path != endpoint_path, app.router.routes))
 
     # Test cases
 
@@ -127,7 +127,7 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
         # The returned error content is formated by HandleExceptionsMiddleware
         expected_content=ErrorResponse(
             code="I'MATeapot",
-            description=str({"custom field": "message from return_error_2"}),
+            description=json.dumps({"custom field": "message from return_error_2"}),
         ),
         raise_from_func=False,
         raise_from_dependency=False,

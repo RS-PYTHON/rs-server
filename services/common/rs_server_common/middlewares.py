@@ -143,7 +143,8 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
 
         # Else format the content
         if not formatted:
-            formatted = ErrorResponse(code=await self.format_code(response.status_code), description=str(content))
+            description = json.dumps(content) if isinstance(content, (dict, list, set)) else str(content)
+            formatted = ErrorResponse(code=await self.format_code(response.status_code), description=description)
 
         logger.error(f"{response.status_code}: {json.dumps(formatted)}")
         return JSONResponse(status_code=response.status_code, content=formatted)
