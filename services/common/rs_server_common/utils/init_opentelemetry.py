@@ -118,7 +118,7 @@ def response_hook(span, request, response):  # pylint: disable=W0613
         span.set_attribute("http.response.content", parse_data(response.content))
 
 
-def init_traces(app: fastapi.FastAPI, service_name: str, logger=None):
+def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
     """
     Init instrumentation of OpenTelemetry traces.
 
@@ -158,8 +158,9 @@ def init_traces(app: fastapi.FastAPI, service_name: str, logger=None):
     if not FROM_PYTEST:
         otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
 
-    FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
-    # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
+    if app:
+        FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
+        # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
 
     # Instrument all the dependencies under opentelemetry.instrumentation.*
     # NOTE: we need 'poetry run opentelemetry-bootstrap -a install' to install these.
