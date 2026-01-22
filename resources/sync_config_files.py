@@ -344,8 +344,9 @@ def get_structure(file_contents: dict | None) -> Any:
         stations_value = re.sub(r"\{[A-Z0-9_]+\}", "PLACEHOLDER", stations_value)
         try:
             stations_value = yaml.safe_load(stations_value)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        except yaml.YAMLError:
+            # Keep as string if stations content is not valid YAML.
+            stations_value = stations_value
         file_contents = dict(file_contents)
         file_contents["stations"] = stations_value
     return extract_structure(file_contents)
