@@ -153,19 +153,17 @@ def validate_token_dict(token_dict: Any, config: StationExternalAuthenticationCo
 
     for attr in MANDATORY_TOKEN_ATTRS:
         if attr not in token_dict:
-            raise HTTPException(
+            raise TokenDataNotFound(
                 HTTP_500_INTERNAL_SERVER_ERROR,
                 f"Mandatory attribute {attr} is not defined in the token variable "
                 f"of the station {config.station_id}!",
                 None,
-                TokenDataNotFound,
             )
         if not token_dict[attr]:
-            raise HTTPException(
+            raise TokenDataNotFound(
                 HTTP_500_INTERNAL_SERVER_ERROR,
                 f"Token variable attribute {attr} of the station {config.station_id} is None !",
                 None,
-                TokenDataNotFound,
             )
     for attr in "access_token", "refresh_token":
         validate_token_format(attr)

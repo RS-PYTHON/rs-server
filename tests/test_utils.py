@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse
 from rs_server_common import middlewares
 from rs_server_common.middlewares import ErrorResponse, HandleExceptionsMiddleware
 from starlette import status
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 def test_handle_exceptions_middleware(fastapi_app, client, mocker):
@@ -145,18 +146,20 @@ def test_handle_exceptions_middleware(fastapi_app, client, mocker):
         raise_from_dependency=False,
     )
 
-    def raise_http():
-        """Test case when the endpoint or dependency raises an HTTPException"""
-        raise HTTPException(status.HTTP_418_IM_A_TEAPOT, "message from raise_http")
+    for exception_type in HTTPException, StarletteHTTPException:
 
-    for raise_case in True, False:  # raise from either endpoint or dependency
-        test_case(
-            mocked_endpoint=raise_http,
-            expected_status=status.HTTP_418_IM_A_TEAPOT,
-            expected_content=ErrorResponse(code="I'MATeapot", description="message from raise_http"),
-            raise_from_func=raise_case,
-            raise_from_dependency=not raise_case,
-        )
+        def raise_http():
+            """Test case when the endpoint or dependency raises an HTTPException or StarletteHTTPException"""
+            raise exception_type(status.HTTP_418_IM_A_TEAPOT, "message from raise_http")
+
+        for raise_case in True, False:  # raise from either endpoint or dependency
+            test_case(
+                mocked_endpoint=raise_http,
+                expected_status=status.HTTP_418_IM_A_TEAPOT,
+                expected_content=ErrorResponse(code="I'MATeapot", description="message from raise_http"),
+                raise_from_func=raise_case,
+                raise_from_dependency=not raise_case,
+            )
 
     def raise_value_error():
         """Test case when the endpoint or dependency raises any Exception different than HTTPException"""
