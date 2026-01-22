@@ -168,54 +168,94 @@ class Staging(
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
 
-    # Override from BaseProcessor, execute is async in RSPYProcessor
-    async def execute(self, data: dict) -> tuple[str, dict]:
-        # pylint: disable=too-many-return-statements,arguments-differ,invalid-overridden-method,too-many-branches
+    def _resolve_items_from_link(self, data: dict) -> dict | None:
         """
-        Asynchronously execute the RSPY staging process, starting with a catalog check
-        and proceeding to feature processing if the check succeeds.
-
-        Accepts either a single Feature or a FeatureCollection in `data["items"]["value"]`.
-        If a Feature is provided, it is automatically wrapped into a FeatureCollection
-        for uniform processing.
-
-        Args:
-            data (dict): input data containing 'collection' and 'items'.
-
-        Returns:
-            tuple: (MIME type, response dict with job status and ID/message)
+        Resolve items from an external link if provided.
+        Returns the resolved Feature / FeatureCollection dict or None.
         """
-        # Handle the case where input is a link to a FeatureCollection
         try:
-            if "items" in data and "href" in data["items"] and "value" not in data["items"]:
-                if not any(href in data["items"]["href"] for href in self.server_url):
-                    return self.log_job_execution(
-                        JobStatus.failed,
-                        0,
-                        "The domain name specified in the input link must correspond to an existing server",
-                    )
+            items = data.get("items")
+            if not items or "href" not in items or "value" in items:
+                return None
 
-                response = requests.get(
-                    data["items"]["href"],
-                    headers=self.auth_headers,
-                    timeout=5,
-                )
-                response.raise_for_status()
-                response_dict = response.json()
-                if response_dict.get("type") not in ("Feature", "FeatureCollection"):
-                    raise RequestException(
-                        f"The input link must point to a Feature/FeatureCollection: invalid response {response_dict}",
-                    )
+            if not any(href in items["href"] for href in self.server_url):
+                raise ValueError("The domain name specified in the input link must correspond to an existing server")
 
-                data["items"]["value"] = response_dict
-        except (RequestException, JSONDecodeError, RuntimeError) as exc:
-            return self.log_job_execution(
+            response = requests.get(
+                items["href"],
+                headers=self.auth_headers,
+                timeout=5,
+            )
+            response.raise_for_status()
+            response_dict = response.json()
+
+            if response_dict.get("type") not in ("Feature", "FeatureCollection"):
+                raise ValueError("The input link must point to a Feature or FeatureCollection")
+
+            return response_dict
+
+        except (RequestException, JSONDecodeError, RuntimeError, ValueError) as exc:
+            self.log_job_execution(
                 JobStatus.failed,
                 0,
                 f"Failed to retrieve the ItemCollection from the input link: {exc}",
             )
+            return None
 
-        # Extract the value
+    def _parse_item_collection(self, item_value: dict) -> FeatureCollectionModel | None:
+        """
+        Convert a Feature or FeatureCollection dict into a FeatureCollectionModel.
+        """
+        item_type = item_value.get("type")
+
+        if item_type == "Feature":
+            return FeatureCollectionModel(
+                type="FeatureCollection",
+                features=[Feature.model_validate(item_value)],
+            )
+
+        if item_type == "FeatureCollection":
+            return FeatureCollectionModel.model_validate(item_value)
+
+        return None
+
+    def _filter_features_with_assets(self, item_collection: FeatureCollectionModel) -> bool:
+        """
+        Filter features without assets and validate the remaining collection.
+        Returns False if processing should stop.
+        """
+        if not item_collection.features:
+            self.log_job_execution(
+                JobStatus.successful,
+                100,
+                "Finished without processing any tasks",
+            )
+            return False
+
+        item_collection.features = [feature for feature in item_collection.features if feature.assets]
+        if not item_collection.features:
+            self.log_job_execution(
+                JobStatus.successful,
+                0,
+                "No items with assets were found in the input for staging",
+            )
+            return False
+
+        return True
+
+    async def execute(
+        self, data: dict,
+    ) -> tuple[str, dict]:  # pylint: disable=arguments-differ,invalid-overridden-method
+        """
+        Asynchronously execute the RSPY staging process.
+        """
+        resolved_items = self._resolve_items_from_link(data)
+        if resolved_items is None and "href" in data.get("items", {}):
+            return self._get_execute_result()
+
+        if resolved_items:
+            data["items"]["value"] = resolved_items
+
         item_value = data.get("items", {}).get("value")
         if not item_value:
             return self.log_job_execution(
@@ -224,16 +264,8 @@ class Staging(
                 "No valid items were provided in the input for staging",
             )
 
-        # Convert Feature or FeatureCollection dict into Pydantic model
-        if item_value.get("type") == "Feature":
-            # Wrap single Feature into a FeatureCollection
-            item_collection = FeatureCollectionModel(
-                type="FeatureCollection",
-                features=[Feature.model_validate(item_value)],
-            )
-        elif item_value.get("type") == "FeatureCollection":
-            item_collection = FeatureCollectionModel.model_validate(item_value)
-        else:
+        item_collection = self._parse_item_collection(item_value)
+        if not item_collection:
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
@@ -242,23 +274,11 @@ class Staging(
 
         catalog_collection: str = data["collection"]
 
-        # Determine staging user
         self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
 
-        # Handle empty collection
-        if not item_collection.features:
-            return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
+        if not self._filter_features_with_assets(item_collection):
+            return self._get_execute_result()
 
-        # Filter out features without assets
-        item_collection.features = [f for f in item_collection.features if f.assets]
-        if not item_collection.features:
-            return self.log_job_execution(
-                JobStatus.successful,
-                0,
-                "No items with assets were found in the input for staging",
-            )
-
-        # Check catalog before processing
         if not await self.check_catalog(catalog_collection, item_collection.features):
             return self.log_job_execution(
                 JobStatus.failed,
@@ -268,7 +288,6 @@ class Staging(
 
         self.log_job_execution(JobStatus.running, 0, "Successfully searched catalog")
 
-        # Start asynchronous processing
         loop = asyncio.get_event_loop()
         if loop.is_running():
             asyncio.create_task(self.process_rspy_features(catalog_collection))
@@ -276,6 +295,8 @@ class Staging(
             loop.run_until_complete(self.process_rspy_features(catalog_collection))
 
         return self._get_execute_result()
+
+    # Override from BaseProcessor, execute is async in RSPYProcessor
 
     def _get_execute_result(self) -> tuple[str, dict]:
         return "application/json", {self.status.value: self.job_id}
