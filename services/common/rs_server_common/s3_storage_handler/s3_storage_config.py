@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Functions to get S3 storage settings (bucket name and expiration delay) from CSV configuration file."""
+
 import os
 
 import requests

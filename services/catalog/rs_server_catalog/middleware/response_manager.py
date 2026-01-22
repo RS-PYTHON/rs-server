@@ -109,7 +109,7 @@ class CatalogResponseManager:
 
             # Read the body. WARNING: after this, the body cannot be read a second time.
             body = [chunk async for chunk in streaming_response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type:ignore
+            response_content = json.loads(b"".join(body).decode())  # type: ignore
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
             self.s3_manager.clear_catalog_bucket(response_content)
 
@@ -247,7 +247,7 @@ class CatalogResponseManager:
         ):
             raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(body).decode())  # type:ignore
+        content = json.loads(b"".join(body).decode())  # type: ignore
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
             content, code = self.s3_manager.generate_presigned_url(content, request.url.path)
@@ -446,7 +446,7 @@ class CatalogResponseManager:
             JSONResponse: The new response with the updated collection name.
         """
         body = [chunk async for chunk in response.body_iterator]
-        response_content = json.loads(b"".join(body).decode())  # type:ignore
+        response_content = json.loads(b"".join(body).decode())  # type: ignore
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well

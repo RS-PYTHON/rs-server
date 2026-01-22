@@ -15,6 +15,7 @@
 # limitations under the License.
 
 """Unittests for rs-server search endpoints."""
+
 import os
 import re
 from copy import deepcopy
