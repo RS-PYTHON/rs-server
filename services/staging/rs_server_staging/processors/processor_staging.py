@@ -243,9 +243,10 @@ class Staging(
 
         return True
 
-    async def execute(
-        self, data: dict,
-    ) -> tuple[str, dict]:  # pylint: disable=arguments-differ,invalid-overridden-method
+    async def execute(  # pylint: disable=arguments-differ,invalid-overridden-method
+        self,
+        data: dict,
+    ) -> tuple[str, dict]:
         """
         Asynchronously execute the RSPY staging process.
         """
