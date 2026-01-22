@@ -302,12 +302,9 @@ def test_delete_file_from_s3_fail(mocker):
         with pytest.raises(RuntimeError) as exc:
             s3_handler.delete_file_from_s3(bucket, "some_file_1", 1)
 
-        assert (
-            f"Failed to delete key s3://{bucket}/some_file_1. \
+        assert f"Failed to delete key s3://{bucket}/some_file_1. \
 Reason: An error occurred (botocore.exceptions.BotoCoreError) \
-when calling the DeleteObject operation"
-            in str(exc.value)
-        )
+when calling the DeleteObject operation" in str(exc.value)
     server.stop()
 
 

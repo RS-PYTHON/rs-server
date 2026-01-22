@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """RS-Server STAC catalog based on stac-fastapi-pgstac."""
+
 import os
 
 from stac_fastapi.pgstac.app import settings

@@ -443,7 +443,7 @@ def cmp_dirs(dir1, dir2):
     dirs_cmp = filecmp.dircmp(dir1, dir2)
     if len(dirs_cmp.left_only) > 0 or len(dirs_cmp.right_only) > 0 or len(dirs_cmp.funny_files) > 0:
         return False
-    (_, mismatch, errors) = filecmp.cmpfiles(dir1, dir2, dirs_cmp.common_files, shallow=False)
+    _, mismatch, errors = filecmp.cmpfiles(dir1, dir2, dirs_cmp.common_files, shallow=False)
     if len(mismatch) > 0 or len(errors) > 0:
         return False
     for common_dir in dirs_cmp.common_dirs:

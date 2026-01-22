@@ -15,7 +15,6 @@
 """Test that has to be executed LAST otherwise it breaks the other tests
 as it deletes all the databases in the catalog."""
 
-
 from starlette.status import HTTP_200_OK
 
 
