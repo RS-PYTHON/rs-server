@@ -346,7 +346,7 @@ def get_structure(file_contents: dict | None) -> Any:
             stations_value = yaml.safe_load(stations_value)
         except yaml.YAMLError:
             # Keep as string if stations content is not valid YAML.
-            stations_value = stations_value
+            stations_value = str(stations_value)
         file_contents = dict(file_contents)
         file_contents["stations"] = stations_value
     return extract_structure(file_contents)
