@@ -23,7 +23,7 @@ permissions:
   contents: write
 
 env:
-  PYTHON_VERSION: 3.13.9
+  PYTHON_VERSION: 3.13.11
 
 jobs:
   update-dependent-locks:

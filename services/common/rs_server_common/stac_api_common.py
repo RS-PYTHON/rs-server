@@ -15,6 +15,7 @@
 # pylint: disable=too-many-lines
 
 """Module to share common functionalities for validating / creating stac items"""
+
 import asyncio
 import copy
 import json

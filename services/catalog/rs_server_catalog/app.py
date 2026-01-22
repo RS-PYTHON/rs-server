@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """RS-Server STAC catalog based on stac-fastapi-pgstac."""
+
 import asyncio
 import sys
 from contextlib import asynccontextmanager

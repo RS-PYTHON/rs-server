@@ -14,7 +14,6 @@
 
 """Utility module to get user information from the KeyCloak server."""
 
-
 import os
 from dataclasses import dataclass
 from typing import Any
