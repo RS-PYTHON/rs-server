@@ -143,7 +143,13 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
             return response  # no error, return the original response
 
         # Read response content
-        content = await read_streaming_response(response)
+        try:
+            content = await read_streaming_response(response)
+
+        # If we fail to read content, just return the original response
+        except Exception as exc:
+            logger.error(exc)
+            return response
 
         # The content should be formated as an ErrorResponse
         formatted = None

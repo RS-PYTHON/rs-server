@@ -342,8 +342,11 @@ class CatalogResponseManager:
 
         # If we are in cluster mode and the user_login is not authorized
         # to this endpoint raise a HTTP_401_UNAUTHORIZED status.
-        elif common_settings.CLUSTER_MODE and self.request_ids["collection_ids"] and self.request_ids["owner_id"]:
-            get_authorisation(
+        elif (
+            common_settings.CLUSTER_MODE
+            and self.request_ids["collection_ids"]
+            and self.request_ids["owner_id"]
+            and not get_authorisation(
                 self.request_ids["collection_ids"],
                 auth_roles,
                 "read",
@@ -351,6 +354,8 @@ class CatalogResponseManager:
                 user_login,
                 raise_if_unauthorized=True,
             )
+        ):
+            pass  # an exception was raised by get_authorisation in this case
         elif (
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id

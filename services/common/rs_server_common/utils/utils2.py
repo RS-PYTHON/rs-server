@@ -63,15 +63,17 @@ def read_response_error(response):
 
 async def read_streaming_response(response: StreamingResponse) -> Any | None:
     """Read a json-formatted streaming response content"""
-    body = [chunk async for chunk in response.body_iterator]
-    splits = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)
-    str_content = b"".join(splits).decode()
-    py_content = json.loads(str_content) if str_content else None
+    try:
+        body = [chunk async for chunk in response.body_iterator]
+        splits = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)
+        str_content = b"".join(splits).decode()
+        py_content = json.loads(str_content) if str_content else None
+
+        return py_content
 
     # Reset the StreamingResponse so it can be used again
-    response.body_iterator = iterate_in_threadpool(iter(body))
-
-    return py_content
+    finally:
+        response.body_iterator = iterate_in_threadpool(iter(body))
 
 
 def filelock(func, env_var: str):
