@@ -21,6 +21,7 @@ from datetime import datetime
 from unittest.mock import call
 
 import pytest
+import requests
 from dask_gateway import Gateway
 from pygeoapi.util import JobStatus
 from rs_server_staging.processors.processor_staging import Staging
@@ -362,6 +363,102 @@ class TestStaging:
         assert result is True
         assert item_collection.features == [feature_with_assets]
         log_mock.assert_not_called()
+
+    def test_resolve_items_from_link_no_items(self, staging_instance: Staging):
+        """Return None when items key is missing."""
+
+        data: dict = {}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+
+    def test_resolve_items_from_link_items_without_href(self, staging_instance: Staging):
+        """Return None when items has no href."""
+
+        data: dict = {"items": {}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+
+    def test_resolve_items_from_link_items_with_value(self, staging_instance: Staging):
+        """Return None when items already contains a value."""
+
+        data = {"items": {"href": "https://example.com/items", "value": {}}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+
+    def test_resolve_items_from_link_invalid_domain(self, staging_instance: Staging):
+        """Raise ValueError when href domain does not match server_url."""
+
+        staging_instance.server_url = ["allowed-domain.com"]
+
+        data = {"items": {"href": "https://evil.com/items"}}
+
+        with pytest.raises(ValueError, match="domain name specified"):
+            staging_instance._resolve_items_from_link(data)
+
+    def test_resolve_items_from_link_feature_success(self, staging_instance: Staging, mocker):
+        """Resolve a valid Feature from link."""
+
+        staging_instance.server_url = ["example.com"]
+
+        response_mock = mocker.Mock()
+        response_mock.raise_for_status.return_value = None
+        response_mock.json.return_value = {
+            "type": "Feature",
+            "id": "feature-1",
+        }
+
+        mocker.patch("requests.get", return_value=response_mock)
+
+        data = {"items": {"href": "https://example.com/items/1"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result == response_mock.json.return_value
+
+    def test_resolve_items_from_link_feature_collection_success(self, staging_instance: Staging, mocker):
+        """Resolve a valid FeatureCollection from link."""
+
+        staging_instance.server_url = ["example.com"]
+
+        response_mock = mocker.Mock()
+        response_mock.raise_for_status.return_value = None
+        response_mock.json.return_value = {
+            "type": "FeatureCollection",
+            "features": [],
+        }
+
+        mocker.patch("requests.get", return_value=response_mock)
+
+        data = {"items": {"href": "https://example.com/items"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result == response_mock.json.return_value
+
+    def test_resolve_items_from_link_request_exception(self, staging_instance: Staging, mocker):
+        """Log failure and return None on request exception."""
+
+        staging_instance.server_url = ["example.com"]
+
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        mocker.patch(
+            "requests.get",
+            side_effect=requests.exceptions.RequestException("boom"),
+        )
+
+        data = {"items": {"href": "https://example.com/items"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+        log_mock.assert_called_once()
 
 
 class TestStagingDeleteFromBucket:
