@@ -22,7 +22,7 @@ from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import brotli
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
@@ -106,6 +106,19 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
     Middleware to catch all exceptions and return a JSONResponse instead of raising them.
     This is useful in FastAPI when HttpExceptions are raised within the code but need to be handled gracefully.
     """
+
+    @staticmethod
+    def disable_default_exception_handler(app: FastAPI):
+        """
+        Disable the default FastAPI exception handler for HTTPException and StarletteHTTPException.
+        We just re-raise the exceptions so they'll be handled by HandleExceptionsMiddleware.
+        """
+
+        @app.exception_handler(HTTPException)
+        @app.exception_handler(StarletteHTTPException)
+        async def exception_handler(_request: Request, _exc: HTTPException):
+            """Implement disable_default_exception_handler"""
+            raise
 
     async def dispatch(self, request: Request, call_next: Callable):
         try:

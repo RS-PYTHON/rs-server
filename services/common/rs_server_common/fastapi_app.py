@@ -223,12 +223,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # Catch all exceptions and return a JSONResponse
     app.add_middleware(HandleExceptionsMiddleware)
-
-    @app.exception_handler(HTTPException)
-    @app.exception_handler(StarletteHTTPException)
-    async def dont_handle_http_exceptions(_request: Request, _exc: HTTPException):
-        """Re-raise exceptions, they'll be handled by HandleExceptionsMiddleware"""
-        raise
+    HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:

@@ -130,6 +130,7 @@ async def validate_request_dependency(request: Request):
 
 app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
 app.add_middleware(HandleExceptionsMiddleware)
+HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
