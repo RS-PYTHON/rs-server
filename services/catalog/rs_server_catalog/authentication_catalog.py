@@ -33,6 +33,7 @@ def get_authorisation(
     requested_owner_id: str,
     user_login: str,
     owner_prefix: bool = False,
+    raise_if_unauthorized: bool = False,
 ) -> bool:
     """
     Check if the user is authorized to access collections.
@@ -42,8 +43,9 @@ def get_authorisation(
         auth_roles (list): The list of authorisations for the user_login.
         requested_action (str): Requested action (read, write or download) on the collections.
         requested_owner_id (str): The name of the owner of the collection {collection_id}.
-        user_login (str): The owner of the key linked to the request.
+        user_login (str): The owner of the apikey or oauth2 cookie linked to the request.
         owner_prefix (bool): True if the collection IDs are prefixed by their collection <owner>_
+        raise_if_unauthorized (bool): If True, raise an HTTPException if the user is unauthorized
 
     Returns:
         bool: True if the user is authorized, else False
@@ -100,7 +102,18 @@ def get_authorisation(
         # The user has no role that authorizes him to request this collection.
         # Return False if the user is not authorized for at least one collection.
         if not requested_col_ok:
-            return False
+            if raise_if_unauthorized:
+                requested_roles = [
+                    f"rs_catalog_{requested_owner_id}:{msg_col_id}_{requested_action}"
+                    for msg_col_id in requested_col_ids
+                ]
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    detail=f"Missing authorization roles {requested_roles} "
+                    + f"for user {user_login!r} with roles: {auth_roles}",
+                )
+            else:
+                return False
 
     # Return True if the user is authorized for all collections
     return True
@@ -116,18 +129,17 @@ def check_user_authorization(request_ids: dict) -> None:
     # Retrieve owner ID and check authorizations
     if not request_ids["owner_id"]:
         request_ids["owner_id"] = get_user(None, request_ids["user_login"])
-    if (  # If we are in cluster mode and the user_login is not authorized
-        # to put/post/patch returns a HTTP_401_UNAUTHORIZED status.
-        settings.CLUSTER_MODE
-        and not get_authorisation(
+    # If we are in cluster mode and the user_login is not authorized
+    # to put/post/patch raise a HTTP_401_UNAUTHORIZED status.
+    if settings.CLUSTER_MODE:
+        get_authorisation(
             request_ids["collection_ids"],
             request_ids["auth_roles"],
             "write",
             request_ids["owner_id"],
             request_ids["user_login"],
+            raise_if_unauthorized=True,
         )
-    ):
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
 
 
 def get_all_accessible_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:

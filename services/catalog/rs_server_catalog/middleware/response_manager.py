@@ -224,20 +224,19 @@ class CatalogResponseManager:
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
         if (  # If we are in cluster mode and the user_login is not authorized
-            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
-            # pylint: disable=duplicate-code
+            # to this endpoint raise a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
             and self.request_ids["collection_ids"]
             and self.request_ids["owner_id"]
-            and not get_authorisation(
+        ):
+            get_authorisation(
                 self.request_ids["collection_ids"],
                 auth_roles,
                 "download",
                 self.request_ids["owner_id"],
                 user_login,
+                raise_if_unauthorized=True,
             )
-        ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         content = await read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
@@ -342,23 +341,16 @@ class CatalogResponseManager:
             content["collections"] = StacManager.update_links_for_all_collections(content["collections"])
 
         # If we are in cluster mode and the user_login is not authorized
-        # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
-        elif (
-            common_settings.CLUSTER_MODE
-            and self.request_ids["collection_ids"]
-            and self.request_ids["owner_id"]
-            and not get_authorisation(
+        # to this endpoint raise a HTTP_401_UNAUTHORIZED status.
+        elif common_settings.CLUSTER_MODE and self.request_ids["collection_ids"] and self.request_ids["owner_id"]:
+            get_authorisation(
                 self.request_ids["collection_ids"],
                 auth_roles,
                 "read",
                 self.request_ids["owner_id"],
                 user_login,
+                raise_if_unauthorized=True,
             )
-            # I don't know why but the STAC browser doesn't send authentication for the queryables endpoint.
-            # So allow this endpoint without authentication in this specific case.
-            and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
-        ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
         elif (
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id

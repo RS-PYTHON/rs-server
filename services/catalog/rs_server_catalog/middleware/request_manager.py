@@ -493,16 +493,17 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
 
         # Check authorisation in cluster mode
-        if common_settings.CLUSTER_MODE and not get_authorisation(
-            self.request_ids["collection_ids"],
-            self.request_ids["auth_roles"],
-            "read",
-            self.request_ids["owner_id"],
-            self.request_ids["user_login"],
-            # When calling the /search endpoints, the catalog ids are always prefixed by their <owner>_
-            owner_prefix=True,
-        ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+        if common_settings.CLUSTER_MODE:
+            get_authorisation(
+                self.request_ids["collection_ids"],
+                self.request_ids["auth_roles"],
+                "read",
+                self.request_ids["owner_id"],
+                self.request_ids["user_login"],
+                # When calling the /search endpoints, the catalog ids are always prefixed by their <owner>_
+                owner_prefix=True,
+                raise_if_unauthorized=True,
+            )
         return request
 
     async def manage_patch_request(self, request: Request):
