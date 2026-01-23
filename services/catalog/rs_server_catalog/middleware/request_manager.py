@@ -19,6 +19,7 @@ import getpass
 import json
 from typing import Any, cast
 from urllib.parse import urlencode
+import asyncio
 
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (
@@ -300,7 +301,8 @@ field is not permitted also."
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
 
-                content, self.s3_files_to_be_deleted = self.s3_manager.update_stac_item_publication(
+                content, self.s3_files_to_be_deleted = await asyncio.to_thread(
+                    self.s3_manager.update_stac_item_publication,
                     content,
                     request,
                     self.request_ids,
