@@ -17,6 +17,6 @@
 from rs_server_common.utils.pytest import pytest_common_tests
 
 
-def test_handle_exceptions_middleware(fastapi_app, client, mocker):
+def test_handle_exceptions_middleware(client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
-    pytest_common_tests.test_handle_exceptions_middleware(fastapi_app, client, mocker)
+    pytest_common_tests.test_handle_exceptions_middleware(client, mocker)

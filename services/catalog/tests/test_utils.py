@@ -340,4 +340,4 @@ class TestGetS3Handler:
 def test_handle_exceptions_middleware(client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
     mocker.patch("rs_server_catalog.middleware.catalog_middleware.reroute_url")
-    pytest_common_tests.test_handle_exceptions_middleware(app, client, mocker)
+    pytest_common_tests.test_handle_exceptions_middleware(client, mocker)

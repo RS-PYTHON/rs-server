@@ -25,8 +25,10 @@ from starlette import status
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
-def test_handle_exceptions_middleware(app: FastAPI, client, mocker):
+def test_handle_exceptions_middleware(client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
+
+    app = client.app
 
     # Spy calls to logger.error(...)
     spy_log_error = mocker.spy(middlewares.logger, "error")
