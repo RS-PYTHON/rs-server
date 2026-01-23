@@ -16,6 +16,7 @@
 
 """Unittests for rs-server search endpoints."""
 
+import json
 import os
 import re
 from copy import deepcopy
@@ -1142,7 +1143,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid limits (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json()["detail"][0]["msg"] in (
+        assert json.loads(response.json()["description"])["detail"][0]["msg"] in (
             "Input should be a valid integer, unable to parse string as an integer",
             "Input should be greater than 0",
         )
