@@ -121,13 +121,11 @@ async def authenticate(
 
         # Else try to authenticate with oauth2
         if not auth_info:
-            auth_info = await oauth2.get_user_info(request)
-
-        if not auth_info:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-            )
+            try:
+                auth_info = await oauth2.get_user_info(request)
+            except Exception as exc:
+                exc.add_note("The API key is missing, and we could not read the OAuth2 'session' cookie either.")
+                raise
 
     # Save information in the request state and return it
     request.state.user_login = auth_info.user_login
