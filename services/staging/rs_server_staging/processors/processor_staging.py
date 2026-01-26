@@ -406,7 +406,7 @@ class Staging(
         Returns:
             bool: True in case of success, False otherwise
         """
-        exists = await asyncio.to_thread(self.check_if_collection_exists(catalog_collection))
+        exists = await asyncio.to_thread(self.check_if_collection_exists, catalog_collection)
         if not exists:
             # Stop catalog check if staging is unable to create the collection
             return False
@@ -423,7 +423,8 @@ class Staging(
         search_url = f"{self.catalog_url}/catalog/search"
 
         try:
-            response = requests.get(
+            response = await asyncio.to_thread(
+                requests.get,
                 search_url,
                 headers=self.auth_headers,
                 params=filter_object,
@@ -1002,7 +1003,7 @@ class Staging(
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
             if domain not in ("s3", "FTP"):
-                refresh_token = self.get_refresh_token(domain)
+                refresh_token = await asyncio.to_thread(self.get_refresh_token, domain)
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
                 if domain == "FTP" and not LOCAL_MODE:
