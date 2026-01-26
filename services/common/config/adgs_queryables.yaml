@@ -34,11 +34,6 @@ Name:
   title: Name
   format: string
   description: string
-auxip:id:
-  type: string
-  title: auxip:id
-  format: string
-  description: id
 created:
   type: datetime
   title: created

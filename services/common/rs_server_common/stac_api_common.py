@@ -119,7 +119,7 @@ ServiceRole: TypeAlias = Literal["auxip", "cadip", "prip"]
 class Queryables(BaseModel):
     """
     BaseModel used to describe queryable holder.
-    See: site-packages/pypgstac/migrations/pgstac.0.9.8.sql
+    See: site-packages/pypgstac/migrations/pgstac.0.9.9.sql
     """
 
     id: str = Field("", alias="$id")
@@ -1241,6 +1241,7 @@ def create_stac_collection(
     feature_template: dict,
     stac_mapper: dict,
     collection_provider: Callable[[dict], str | None] | None = None,
+    external_ids_scheme: ServiceRole | None = None,
 ) -> ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
@@ -1260,6 +1261,19 @@ def create_stac_collection(
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper, collection_provider)
+        if external_ids_scheme:
+            external_value = None
+            try:
+                external_value = product.properties.get("id")
+            except AttributeError:
+                external_value = None
+            if external_value is None:
+                external_value = product_data.get("id")
+            if external_value is not None:
+                feature_tmp.setdefault("properties", {})
+                feature_tmp["properties"]["externalIds"] = [
+                    {"scheme": external_ids_scheme, "value": str(external_value)},
+                ]
         try:
             item = Item(**feature_tmp)
             item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore

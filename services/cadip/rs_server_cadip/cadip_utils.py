@@ -120,6 +120,9 @@ def update_product(product: dict) -> dict:
 def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> Asset:
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
+    file_id = product.properties.get("id")
+    if file_id is not None:
+        asset["externalIds"] = [{"scheme": "cadip", "value": str(file_id)}]
     href = re.sub(r"\([^\)]*\)", f'({product.properties["id"]})', href)
     asset.pop("id")
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
@@ -231,6 +234,9 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
                 for map_key, map_value in cadip_stac_mapper().items()
                 if map_value in asset_item
             }
+            file_id = asset_item.get("id") or asset_item.get("Id")
+            if file_id is not None:
+                asset_dict["externalIds"] = [{"scheme": "cadip", "value": str(file_id)}]
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
             if asset.title:
                 feature.assets.update({asset.title: asset})

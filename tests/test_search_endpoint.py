@@ -20,6 +20,7 @@ import json
 import os
 import re
 from copy import deepcopy
+from types import SimpleNamespace
 from urllib.parse import quote, unquote
 
 import pytest
@@ -33,6 +34,7 @@ from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
+from rs_server_common import stac_api_common
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
@@ -2863,3 +2865,94 @@ def test_prip_bbox_intersection(client: TestClient, bbox, filter_wkt, expected_i
         endpoint = f"/prip/collections/S1A_L0_IW_RAW/items?bbox={bbox_str}&filter=intersects={filter_wkt}"
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def _external_ids_feature_template() -> dict:
+    """Return a minimal STAC item template for externalIds tests."""
+    return {
+        "stac_version": "1.1.0",
+        "type": "Feature",
+        "id": "PLACEHOLDER",
+        "geometry": None,
+        "properties": {"datetime": "2020-01-01T00:00:00Z"},
+        "links": [],
+        "assets": {"file": {"href": "PLACEHOLDER"}},
+    }
+
+
+@pytest.mark.unit
+def test_create_stac_collection_external_ids_from_properties():
+    """externalIds sourced from product.properties['id']."""
+
+    class ProductWithProperties:
+        """Simple holder for product properties."""
+
+        def __init__(self, props: dict):
+            self.properties = props
+
+    product = ProductWithProperties({"id": "cadip-123"})
+    collection = stac_api_common.create_stac_collection(
+        [product],
+        _external_ids_feature_template(),
+        {"id": "id"},
+        external_ids_scheme="cadip",
+    )
+
+    assert len(collection.features) == 1
+    external_ids = collection.features[0].properties.dict().get("externalIds")
+    assert external_ids == [{"scheme": "cadip", "value": "cadip-123"}]
+
+
+@pytest.mark.unit
+def test_create_stac_collection_external_ids_from_product_data(monkeypatch):
+    """externalIds fallback to extract_eo_product output."""
+
+    monkeypatch.setattr(
+        stac_api_common,
+        "extract_eo_product",
+        lambda product, mapper: {"id": "auxip-456"},
+    )
+    collection = stac_api_common.create_stac_collection(
+        [object()],
+        _external_ids_feature_template(),
+        {"id": "id"},
+        external_ids_scheme="auxip",
+    )
+
+    assert len(collection.features) == 1
+    external_ids = collection.features[0].properties.dict().get("externalIds")
+    assert external_ids == [{"scheme": "auxip", "value": "auxip-456"}]
+
+
+@pytest.mark.unit
+def test_create_stac_collection_validation_error_skips_item():
+    """Invalid STAC item is skipped when validation fails."""
+
+    class ProductWithProperties:
+        """Simple holder for product properties."""
+
+        def __init__(self, props: dict):
+            self.properties = props
+
+    product = ProductWithProperties({"id": "cadip-789"})
+    collection = stac_api_common.create_stac_collection(
+        [product],
+        _external_ids_feature_template(),
+        {"id": "id", "datetime": "missing"},
+        external_ids_scheme="cadip",
+    )
+
+    assert collection.features == []
+
+
+@pytest.mark.unit
+def test_serialize_adgs_asset_missing_external_ids():
+    """Missing externalIds raises HTTP 500 in serialize_adgs_asset."""
+    # externalIds absent -> HTTPException raised
+    feature = SimpleNamespace(id="item-1", properties=SimpleNamespace(dict=lambda: {}))
+    feature_collection = SimpleNamespace(features=[feature])
+
+    with pytest.raises(HTTPException) as excinfo:
+        adgs_utils.serialize_adgs_asset(feature_collection, [])
+
+    assert excinfo.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
