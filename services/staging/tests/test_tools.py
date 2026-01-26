@@ -48,4 +48,4 @@ def test_get_minimal_collection_body():
 
 def test_handle_exceptions_middleware(staging_client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
-    pytest_common_tests.test_handle_exceptions_middleware(staging_client, mocker)
+    pytest_common_tests.test_handle_exceptions_middleware(staging_client, mocker, rfc7807=True)

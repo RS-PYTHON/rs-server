@@ -15,7 +15,6 @@
 """Test staging module endpoints."""
 
 import copy
-import json
 from datetime import datetime
 
 import pytest
@@ -123,7 +122,7 @@ async def test_get_jobs_endpoint(
     staging_client.app.extra["process_manager"] = mock_db_table
     response = staging_client.get("/jobs")
     assert response.status_code == HTTP_404_NOT_FOUND
-    assert "'type' is a required property" in json.loads(response.json()["description"])["detail"]
+    assert "'type' is a required property" in response.json()["detail"]
 
     # ----- Check that a validation exception is returned if the response doesn't have the required "links" property
     # (and thus is not ogc compliant)
@@ -133,7 +132,7 @@ async def test_get_jobs_endpoint(
     staging_client.app.extra["process_manager"] = mock_db_table
     response = staging_client.get("/jobs")
     assert response.status_code == HTTP_404_NOT_FOUND
-    assert "'links' is a required property" in json.loads(response.json()["description"])["detail"]
+    assert "'links' is a required property" in response.json()["detail"]
 
     # ----- Simulate an error response compliant with ogc
     ogc_error_example = {
@@ -145,7 +144,7 @@ async def test_get_jobs_endpoint(
     mocker.patch("rs_server_staging.main.format_jobs_data", side_effect=Exception("get_jobs failed"))
     response = staging_client.get("/jobs")
     assert response.status_code == HTTP_404_NOT_FOUND
-    assert response.json() == {"code": "NotFound", "description": json.dumps(ogc_error_example)}
+    assert response.json() == ogc_error_example
 
 
 @pytest.mark.asyncio
@@ -226,7 +225,7 @@ async def test_get_job(
     assert response.status_code == expected_status
 
     if expected_status != HTTP_200_OK:
-        assert expected_response in json.loads(response.json()["description"])["detail"]
+        assert expected_response in response.json()["detail"]
     else:
         assert response.json() == expected_response
 
@@ -312,7 +311,7 @@ async def test_get_job_result(
     # Assert response status code and content
     assert response.status_code == expected_status
     if expected_status != HTTP_200_OK:
-        assert expected_response in json.loads(response.json()["description"])["detail"]
+        assert expected_response in response.json()["detail"]
     else:
         assert response.json() == expected_response
 
@@ -394,7 +393,7 @@ async def test_delete_job_endpoint(
     # Assert response status code and content
     assert response.status_code == expected_status
     if expected_status != HTTP_200_OK:
-        assert expected_response in json.loads(response.json()["description"])["detail"]
+        assert expected_response in response.json()["detail"]
     else:
         assert response.json()["message"] == expected_response
 
@@ -450,7 +449,7 @@ async def test_processes(
     mocker.patch.dict("rs_server_staging.main.api.config", {"resources": mock_resources})
     response = staging_client.get("/processes")
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert "is not of type 'string'" in json.loads(response.json()["description"])["detail"]
+    assert "is not of type 'string'" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -579,7 +578,7 @@ async def test_execute_staging(
     staging_client.app.extra["process_manager"] = mock_db_table
     response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert "'type' is a required property" in response.json()["description"]
+    assert "'type' is a required property" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
