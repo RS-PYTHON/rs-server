@@ -124,7 +124,7 @@ ServiceRole: TypeAlias = Literal["auxip", "cadip", "prip"]
 class Queryables(BaseModel):
     """
     BaseModel used to describe queryable holder.
-    See: site-packages/pypgstac/migrations/pgstac.0.9.8.sql
+    See: site-packages/pypgstac/migrations/pgstac.0.9.9.sql
     """
 
     id: str = Field("", alias="$id")
