@@ -47,14 +47,23 @@ search files comming from multiple acquisition sessions.
 
     {
         "stac_version": "1.1.0",
-        "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+        "stac_extensions": [
+            "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
+            "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+            "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
+        ],
         "type": "Feature",
         "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
         "geometry": null,
         "properties": {
             "datetime": "2019-02-16T12:00:00.000Z",
             "eviction_datetime": "2019-12-16T12:00:00.000Z",
-            "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+            "externalIds": [
+                {
+                    "scheme": "cadip",
+                    "value": "2b17b57d-fff4-4645-b539-91f305c27c69"
+                }
+            ],
             "cadip:retransfer": false,
             "cadip:final_block": true,
             "cadip:block_number": 1,
@@ -116,7 +125,10 @@ A valid session search request must contain at least a value for either
             {
                 "stac_version": "1.1.0",
                 "stac_extensions": [
-                    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+                    "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
+                    "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+                    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+                    "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
                 ],
                 "type": "Feature",
                 "id": "S1A_20240328185208053186",
@@ -127,7 +139,12 @@ A valid session search request must contain at least a value for either
                     "end_datetime": "2024-03-28T19:00:52.000Z",
                     "published": "2024-03-28T18:52:26Z",
                     "platform": "S1A",
-                    "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                    "externalIds": [
+                        {
+                            "scheme": "cadip",
+                            "value": "726f387b-ad2d-3538-8834-95e3cf8894c6"
+                        }
+                    ],
                     "cadip:num_channels": 2,
                     "cadip:station_unit_id": "01",
                     "cadip:downlink_orbit": 53186,
@@ -148,7 +165,10 @@ A valid session search request must contain at least a value for either
             {
                 "stac_version": "1.1.0",
                 "stac_extensions": [
-                    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+                    "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
+                    "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+                    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+                    "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
                 ],
                 "type": "Feature",
                 "id": "S1A_20240328185208053186",
@@ -159,7 +179,12 @@ A valid session search request must contain at least a value for either
                     "end_datetime": "2024-03-28T19:00:52.000Z",
                     "published": "2024-03-28T18:52:26Z",
                     "platform": "S1A",
-                    "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                    "externalIds": [
+                        {
+                            "scheme": "cadip",
+                            "value": "726f387b-ad2d-3538-8834-95e3cf8894c6"
+                        }
+                    ],
                     "cadip:num_channels": 2,
                     "cadip:station_unit_id": "01",
                     "cadip:downlink_orbit": 53186,
@@ -180,7 +205,10 @@ A valid session search request must contain at least a value for either
             {
                 "stac_version": "1.1.0",
                 "stac_extensions": [
-                    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+                    "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
+                    "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+                    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+                    "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
                 ],
                 "type": "Feature",
                 "id": "S1A_20240329083700053194",
@@ -191,7 +219,12 @@ A valid session search request must contain at least a value for either
                     "end_datetime": "2024-03-28T19:00:52.000Z",
                     "published": "2024-03-29T08:37:22Z",
                     "platform": "S2B",
-                    "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                    "externalIds": [
+                        {
+                            "scheme": "cadip",
+                            "value": "726f387b-ad2d-3538-8834-95e3cf8894c6"
+                        }
+                    ],
                     "cadip:num_channels": 2,
                     "cadip:station_unit_id": "01",
                     "cadip:downlink_orbit": 53186,

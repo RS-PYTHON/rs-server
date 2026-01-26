@@ -39,11 +39,6 @@ Name:
   title: Name
   format: string
   description: string
-prip:id:
-  type: string
-  title: prip:id
-  format: string
-  description: id
 product:type:
   type: string
   title: product:type

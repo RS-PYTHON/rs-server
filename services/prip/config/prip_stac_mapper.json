@@ -1,6 +1,5 @@
 {
     "id": "Name",
-    "prip:id": "id",
     "published": "PublicationDate",
     "created": "processingDate",
     "expires": "EvictionDate",

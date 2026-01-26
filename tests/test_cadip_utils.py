@@ -17,8 +17,9 @@
 import os.path as osp
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
-from rs_server_cadip.cadip_utils import link_assets_to_session
+from rs_server_cadip.cadip_utils import link_assets_to_session, map_dag_file_to_asset
 from stac_pydantic import Item, ItemProperties
 from stac_pydantic.links import Links
 
@@ -103,3 +104,12 @@ def do_test_link_assets_to_session(start: bool, end: bool):
     else:
         assert item.properties.start_datetime is None  # pylint: disable=no-member
         assert item.properties.end_datetime is None  # pylint: disable=no-member
+
+
+def test_map_dag_file_to_asset_adds_external_ids():
+    """ExternalIds are added to CADIP assets when a file id is present."""
+    # externalIds should be injected from product.properties["id"]
+    product = SimpleNamespace(properties={"id": "file-123", "Name": "file-123.raw"})
+    asset = map_dag_file_to_asset({"id": "id"}, product, "http://example/Files(file-123)/$value")
+
+    assert asset.model_dump().get("externalIds") == [{"scheme": "cadip", "value": "file-123"}]
