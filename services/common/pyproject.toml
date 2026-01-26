@@ -73,7 +73,7 @@ opentelemetry-test-utils = "^0.60b1"
 opentelemetry-exporter-otlp = "^1.39.1"
 protobuf = ">=6.31.1"
 authlib = "^1.6.1"
-python-keycloak = ">=5.7.0,<6.0"
+python-keycloak = ">=5.7.0,<8.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 stac-fastapi-pgstac = ">=6.2.0"
