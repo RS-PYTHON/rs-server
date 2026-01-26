@@ -14,12 +14,12 @@
 
 """Module to process the Requests sent by users to the Catalog before routing them to stac-fastapi."""
 
+import asyncio
 import copy
 import getpass
 import json
 from typing import Any, cast
 from urllib.parse import urlencode
-import asyncio
 
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (

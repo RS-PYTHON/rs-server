@@ -356,7 +356,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         path = s3_path.removeprefix("s3://")
         bucket, _, key = path.partition("/")
         return bucket, key
-    
+
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
         """Used to clear specific files from temporary bucket or from catalog bucket.
 
