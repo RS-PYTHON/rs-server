@@ -50,6 +50,8 @@ class CatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-m
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Redirect the user catalog specific endpoint and adapt the response content."""
+        # NOTE: maybe we could move the UserCatalog.dispatch here but I'm not sure it's thread-safe.
+        # Maybe this is the reason why we init a new UserCatalog instance everytime. To be confirmed.
         return await UserCatalog(api.client).dispatch(request, call_next)
 
 

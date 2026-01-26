@@ -142,15 +142,15 @@ def test_handle_exceptions_middleware(client, mocker, rfc7807: bool = False):
     # Test case 2 #
     ###############
 
-    content = {"custom field": "message from return_error_2"}
+    dict_content = {"custom field": "message from return_error_2"}
     if rfc7807:
-        expected_content = rfc7807_response(status.HTTP_418_IM_A_TEAPOT, detail=json.dumps(content))
+        expected_content = rfc7807_response(status.HTTP_418_IM_A_TEAPOT, detail=json.dumps(dict_content))
     else:
-        expected_content = StacErrorResponse(code="I'MATeapot", description=json.dumps(content))
+        expected_content = StacErrorResponse(code="I'MATeapot", description=json.dumps(dict_content))
 
     def return_error_2():
         """Test case when the endpoint returns a JSONResponse with a dict content != StacErrorResponse"""
-        return JSONResponse(status_code=status.HTTP_418_IM_A_TEAPOT, content=content)
+        return JSONResponse(status_code=status.HTTP_418_IM_A_TEAPOT, content=dict_content)
 
     test_case(
         mocked_endpoint=return_error_2,
