@@ -51,9 +51,6 @@ adgs:
       id:
       - null
       - $.Id
-      auxip:id:
-      - null
-      - $.Id
       Name:
       - null
       - $.Name
@@ -130,7 +127,6 @@ adgs:
         operations:
           and:
           - contains(Name, '{Name}')
-          - contains(Id, '{auxip:id}')
           - Name in ({Names})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
@@ -175,7 +171,6 @@ adgs:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         id: Name
-        auxip:id: Id
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
@@ -228,9 +223,6 @@ adgs2:
     results_entry: $.value | $
     metadata_mapping:
       id:
-      - null
-      - $.Id
-      auxip:id:
       - null
       - $.Id
       Name:
@@ -309,7 +301,6 @@ adgs2:
         operations:
           and:
           - contains(Name, '{Name}')
-          - contains(Id, '{auxip:id}')
           - Name in ({Names})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
@@ -354,7 +345,6 @@ adgs2:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         id: Name
-        auxip:id: Id
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate

@@ -5,7 +5,6 @@
   "end_datetime": "DownlinkStop",
   "published": "PublicationDate",
   "platform": "Satellite",
-  "cadip:id": "id",
   "cadip:num_channels": "NumChannels",
   "cadip:station_id": "StationId",
   "cadip:station_unit_id": "StationUnitId",

@@ -1,6 +1,5 @@
 {
     "id": "Name",
-    "auxip:id": "id",
     "created": "PublicationDate",
     "datetime": "DatetimeStart",
     "start_datetime": "Start",

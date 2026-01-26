@@ -9,7 +9,12 @@
         "platform": "sentinel-1a",
         "constellation": "sentinel-1",
         "published": "2020-01-05T18:52:26.165Z",
-        "cadip:id": "a5e9d3b8-7c4f-4a92-b76a-fa09e1e1b59c",
+        "externalIds": [
+            {
+                "scheme": "cadip",
+                "value": "a5e9d3b8-7c4f-4a92-b76a-fa09e1e1b59c"
+            }
+        ],
         "cadip:num_channels": 2,
         "cadip:station_unit_id": "01",
         "sat:absolute_orbit": 53186,
@@ -33,7 +38,12 @@
             "roles": [
                 "cadu"
             ],
-            "cadip:id": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d",
+            "externalIds": [
+                {
+                    "scheme": "cadip",
+                    "value": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d"
+                }
+            ],
             "cadip:retransfer": false,
             "cadip:final_block": false,
             "cadip:block_number": 1,
@@ -48,7 +58,12 @@
             "roles": [
                 "cadu"
             ],
-            "cadip:id": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300",
+            "externalIds": [
+                {
+                    "scheme": "cadip",
+                    "value": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300"
+                }
+            ],
             "cadip:retransfer": false,
             "cadip:final_block": false,
             "cadip:block_number": 1,
@@ -85,9 +100,10 @@
         }
     ],
     "stac_extensions": [
-        "https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json",
+        "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
         "https://stac-extensions.github.io/file/v2.1.0/schema.json",
-        "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+        "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
     ],
     "collection": "cadip_session_by_id"
 }

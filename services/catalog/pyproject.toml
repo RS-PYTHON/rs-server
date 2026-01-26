@@ -52,7 +52,7 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
 rs-server-common = "*"
-pypgstac = {extras = ["psycopg"], version = "^0.9.8"}
+pypgstac = {extras = ["psycopg"], version = "^0.9.9"}
 xmltodict = "^1.0.2"
 
 [tool.poetry.group.dev]

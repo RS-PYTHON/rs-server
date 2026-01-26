@@ -36,9 +36,6 @@ s1a:
       id:
       - null
       - $.Id
-      prip:id:
-      - null
-      - $.Id
       Name:
       - null
       - $.Name
@@ -157,7 +154,6 @@ s1a:
           and:
           - contains(Name, '{Name}')
           - Name in ({Names})
-          - contains(Id, '{prip:id}')
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -238,7 +234,6 @@ s1a:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         id: Name
-        prip:id: Id
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
@@ -283,9 +278,6 @@ s2b:
       id:
       - null
       - $.Id
-      prip:id:
-      - null
-      - $.Id
       Name:
       - null
       - $.Name
@@ -404,7 +396,6 @@ s2b:
           and:
           - contains(Name, '{Name}')
           - Name in ({Names})
-          - contains(Id, '{prip:id}')
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -485,7 +476,6 @@ s2b:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         id: Name
-        prip:id: Id
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate

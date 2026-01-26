@@ -457,13 +457,13 @@ async def get_cadip_collection_item_details(
     Returns a STAC Item containing metadata and asset details about the requested session, including:
     - **Session metadata**: Contains important temporal information (e.g., `datetime`, `start_datetime`, and
     `end_datetime`),
-      the platform (`platform`), and session-specific details such as `cadip:id`, `cadip:num_channels`,
+      the platform (`platform`), and session-specific details such as `externalIds`, `cadip:num_channels`,
       `cadip:station_id`, `cadip:station_unit_id`, `cadip:antenna_id`, and more.
     - **Satellite information**: Includes satellite attributes such as `sat:absolute_orbit`, `cadip:acquisition_id`, and
     status fields like `cadip:antenna_status_ok`, `cadip:front_end_status_ok`, and `cadip:downlink_status_ok`.
     - **Assets**: A collection of asset objects associated with the session. Each asset contains:
       - A unique asset `href` (link) pointing to the asset resource.
-      - Metadata such as `cadip:id`, `cadip:retransfer`, `cadip:block_number`, `cadip:channel`,
+      - Metadata such as `externalIds`, `cadip:retransfer`, `cadip:block_number`, `cadip:channel`,
         `created`, `eviction_datetime`, and `file:size`.
       - Asset `roles`, indicating the type of resource (e.g., "cadu").
       - Asset title and name.
@@ -569,6 +569,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
             cadip_session_odata_to_stac_template(),
             cadip_session_stac_mapper(),
             collection_provider,
+            external_ids_scheme="cadip",
         )
         return prepare_collection(collection)
 
@@ -638,7 +639,12 @@ def process_files_search(  # pylint: disable=too-many-locals
         if kwargs.get("map_to_session", False):
             # logger.debug(f"Retrieved products from CADIP station {station}: {products}")
             return [product.properties for product in products]
-        cadip_item_collection = create_stac_collection(products, cadip_odata_to_stac_template(), cadip_stac_mapper())
+        cadip_item_collection = create_stac_collection(
+            products,
+            cadip_odata_to_stac_template(),
+            cadip_stac_mapper(),
+            external_ids_scheme="cadip",
+        )
         logger.debug(f"Retrieved item collection from CADIP station {station}: {cadip_item_collection}")
         return cadip_item_collection.model_dump()
     # pylint: disable=duplicate-code
