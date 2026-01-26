@@ -13,18 +13,8 @@
 # limitations under the License.
 """Module with tests for utility functions of staging processors."""
 
-from collections.abc import Callable
-from http.client import HTTPResponse
-
-from fastapi import HTTPException, Request
-from fastapi.responses import JSONResponse
-from httpx import Response
-from rs_server_common import middlewares
-from rs_server_common.middlewares import HandleExceptionsMiddleware
 from rs_server_common.utils.pytest import pytest_common_tests
-from rs_server_staging import main
 from rs_server_staging.utils.tools import get_minimal_collection_body
-from starlette import status
 
 
 def test_get_minimal_collection_body():

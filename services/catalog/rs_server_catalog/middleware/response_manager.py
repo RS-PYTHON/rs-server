@@ -14,7 +14,6 @@
 
 """Module to process the Responses returned by stac-fastapi for the Catalog middleware."""
 
-import json
 import re
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -59,7 +58,6 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_307_TEMPORARY_REDIRECT,
     HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
 )
 
 QUERYABLES = "/queryables"

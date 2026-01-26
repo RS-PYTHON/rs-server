@@ -28,7 +28,6 @@ from requests.auth import AuthBase
 from rs_server_common.authentication.external_authentication_config import (
     StationExternalAuthenticationConfig,
 )
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 from starlette.status import (

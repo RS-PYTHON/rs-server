@@ -18,7 +18,7 @@ import json
 import traceback
 from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any, ParamSpec, Type, TypedDict
+from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import brotli
@@ -84,15 +84,6 @@ class Rfc7807ErrorResponse(TypedDict):
     status: int
     detail: str
 
-    @staticmethod
-    def init(status_code: int, detail: str) -> "Rfc7807ErrorResponse":
-        """Generate instance"""
-        return Rfc7807ErrorResponse(
-            type=f"https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}",
-            status=status_code,
-            detail=detail,
-        )
-
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
@@ -150,7 +141,9 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
         @app.exception_handler(StarletteHTTPException)
         async def exception_handler(_request: Request, _exc: HTTPException):
             """Implement disable_default_exception_handler"""
-            raise
+            # Note: we could raise(_exc) but it would increase the stack trace length with this module info.
+            # We can just call raise because this function is called from an except clause.
+            raise  # pylint: disable=misplaced-bare-raise
 
     async def dispatch(self, request: Request, call_next: Callable):
         try:
@@ -167,12 +160,21 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
         phrase = HTTPStatus(status_code).phrase
         return "".join(word.title() for word in phrase.split())
 
+    @staticmethod
+    def rfc7807_response(status_code: int, detail: str) -> Rfc7807ErrorResponse:
+        """Return Rfc7807ErrorResponse instance"""
+        return Rfc7807ErrorResponse(
+            type=f"https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}",
+            status=status_code,
+            detail=detail,
+        )
+
     async def handle_errors(self, response: StreamingResponse) -> Response:
         """
         If no errors, just return the original response.
         In case of errors, log, format and return the response contents.
         """
-        if not (400 <= response.status_code < 600):
+        if not 400 <= response.status_code < 600:
             return response  # no error, return the original response
 
         # Read response content
@@ -180,12 +182,12 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
             content = await read_streaming_response(response)
 
         # If we fail to read content, just return the original response
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.error(exc)
             return response
 
         # The content should be formated as a XxxErrorResponse
-        formatted = None
+        formatted: Rfc7807ErrorResponse | StacErrorResponse | None = None
         try:
             if self.rfc7807:
                 formatted = Rfc7807ErrorResponse(
@@ -197,14 +199,14 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
                 formatted = StacErrorResponse(code=str(content["code"]), description=str(content["description"]))
             if formatted != content:
                 formatted = None
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # Else format the content
         if not formatted:
             description = json.dumps(content) if isinstance(content, (dict, list, set)) else str(content)
             if self.rfc7807:
-                formatted = Rfc7807ErrorResponse.init(response.status_code, detail=description)
+                formatted = self.rfc7807_response(response.status_code, detail=description)
             else:
                 formatted = StacErrorResponse(code=self.format_code(response.status_code), description=description)
 
@@ -234,8 +236,9 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
             str_code = exc.__class__.__name__
             description = str(exc)
 
+        error_response: Rfc7807ErrorResponse | StacErrorResponse
         if self.rfc7807:
-            error_response = Rfc7807ErrorResponse.init(status_code, detail=description)
+            error_response = self.rfc7807_response(status_code, detail=description)
         else:
             error_response = StacErrorResponse(code=str_code, description=description)
         return JSONResponse(status_code=status_code, content=error_response)

@@ -15,7 +15,7 @@
 """Implement OAuth2 authentication to the KeyCloak server."""
 
 import os
-from typing import Annotated, cast
+from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from authlib.integrations import starlette_client

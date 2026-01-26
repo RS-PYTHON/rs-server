@@ -412,7 +412,7 @@ async def execute_process(
 
     # check if the input resource exists
     if resource not in api.config["resources"]:
-        raise JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Process resource {resource!r} not found")
+        return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Process resource {resource!r} not found")
 
     # Validate request payload
     valid_body = await validate_request(request)

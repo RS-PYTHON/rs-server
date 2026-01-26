@@ -18,7 +18,6 @@ import os
 
 import pytest
 from fastapi import HTTPException
-from rs_server_catalog.app import app
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (

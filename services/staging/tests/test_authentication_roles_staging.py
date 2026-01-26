@@ -20,7 +20,7 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
     init_authentication_test,
 )
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 from .resources.sample_data import sample_process_metadata_model
 

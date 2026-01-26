@@ -19,7 +19,6 @@ import re
 from fastapi import HTTPException
 from rs_server_catalog.data_management.user_handler import get_user
 from rs_server_common import settings
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -112,8 +111,7 @@ def get_authorisation(
                     detail=f"Missing authorization roles {requested_roles} "
                     + f"for user {user_login!r} with roles: {auth_roles}",
                 )
-            else:
-                return False
+            return False
 
     # Return True if the user is authorized for all collections
     return True

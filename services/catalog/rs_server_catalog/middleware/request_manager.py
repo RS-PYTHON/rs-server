@@ -40,7 +40,6 @@ from rs_server_catalog.utils import (
     get_token_for_pagination,
 )
 from rs_server_common import settings as common_settings
-from rs_server_common.utils import utils2
 from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient

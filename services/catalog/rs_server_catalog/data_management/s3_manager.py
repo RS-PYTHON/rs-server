@@ -31,7 +31,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 from starlette.status import (

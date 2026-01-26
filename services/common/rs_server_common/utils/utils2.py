@@ -23,13 +23,11 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import HTTPException
 from fastapi.concurrency import iterate_in_threadpool
 from fastapi.responses import StreamingResponse
 from filelock import FileLock
-from typing_extensions import Doc
 
 
 @dataclass
@@ -51,8 +49,8 @@ def read_response_error(response):
 
     # Try to read the response detail or error
     try:
-        json = response.json()
-        detail = json.get("detail") or json.get("description") or json["error"]
+        _json = response.json()
+        detail = _json.get("detail") or _json.get("description") or _json["error"]
 
     # If this fail, get the full response content
     except Exception:  # pylint: disable=broad-exception-caught
@@ -65,7 +63,7 @@ async def read_streaming_response(response: StreamingResponse) -> Any | None:
     """Read a json-formatted streaming response content"""
     try:
         body = [chunk async for chunk in response.body_iterator]
-        splits = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)
+        splits = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)  # type: ignore[union-attr]
         str_content = b"".join(splits).decode()
         py_content = json.loads(str_content) if str_content else None
 
