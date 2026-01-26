@@ -379,7 +379,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
                 await self.s3_handler.adelete_file_from_s3(bucket, key)
             except RuntimeError as rte:
                 logger.exception(
-                    f"Failed to delete {s3_path} from s3 bucket. Reason: {rte}. However, the process will still continue !",
+                    f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
                 )
         return True
 
