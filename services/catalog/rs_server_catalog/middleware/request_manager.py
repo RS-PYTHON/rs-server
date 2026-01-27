@@ -62,7 +62,6 @@ class CatalogRequestManager:
     def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
         self.request_ids = request_ids
-        self.s3_manager = S3Manager()
         self.s3_files_to_be_deleted: list = []
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
@@ -294,7 +293,8 @@ field is not permitted also."
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
 
-                content, self.s3_files_to_be_deleted = self.s3_manager.update_stac_item_publication(
+                s3_manager = S3Manager()
+                content, self.s3_files_to_be_deleted = s3_manager.update_stac_item_publication(
                     content,
                     request,
                     self.request_ids,
