@@ -42,6 +42,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
 rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
+# rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "feat-rspy898/harmonize-logging", subdirectory = "services/common" } # specific branch, for testing in the ci/cd
 jsonpatch = "^1.33"
 openapi-core = ">=0.22.0"
 ovh = "^1.2.0"
