@@ -31,7 +31,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 from starlette.status import (
@@ -44,11 +43,6 @@ from starlette.status import (
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 
 logger = Logging.default(__name__)
-
-
-def log_http_exception(*args, **kwargs) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    return utils2.log_http_exception(logger, *args, **kwargs)
 
 
 class S3Manager:
@@ -129,12 +123,12 @@ class S3Manager:
         try:
             item_s3_path = existing_asset["href"]
         except KeyError as exc:
-            raise log_http_exception(
+            raise HTTPException(
                 detail=f"Failed to get the s3 path for the asset {asset_name}",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
         if item_s3_path != s3_key:
-            raise log_http_exception(
+            raise HTTPException(
                 detail=(
                     f"Received an updated path for the asset {asset_name} of item {item['id']}. "
                     f"The current path is {item_s3_path}, and the new path is {s3_key}. "
@@ -150,13 +144,13 @@ class S3Manager:
         try:
             s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
             if not s3_key_exists:
-                raise log_http_exception(
+                raise HTTPException(
                     detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
             return True, size
         except RuntimeError as rte:
-            raise log_http_exception(
+            raise HTTPException(
                 detail=f"When checking the presence of the {s3_key} key, an error has been raised: {rte}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from rte
@@ -204,7 +198,7 @@ class S3Manager:
 
             if failed_files:
                 s3_files_to_be_deleted.clear()
-                raise log_http_exception(
+                raise HTTPException(
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
@@ -217,12 +211,12 @@ class S3Manager:
                     s3_files_to_be_deleted.append(item["assets"][asset]["href"])
             return s3_files_to_be_deleted
         except KeyError as kerr:
-            raise log_http_exception(
+            raise HTTPException(
                 detail=f"{err_message} Failed to find S3 credentials.",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr
         except RuntimeError as rte:
-            raise log_http_exception(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
+            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
     def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
         self,
@@ -251,7 +245,7 @@ class S3Manager:
         user = request_ids.get("owner_id")
         logger.debug(f"Update item for user: {user}")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
-            raise log_http_exception(
+            raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
@@ -268,7 +262,7 @@ class S3Manager:
             if alternate_field:
                 if not item:
                     # the asset should be already in the catalog from a previous POST/PUT request
-                    raise log_http_exception(
+                    raise HTTPException(
                         detail=(f"The item that contains asset '{asset}' does not exist in the catalog but it should "),
                         status_code=HTTP_400_BAD_REQUEST,
                     )
@@ -280,7 +274,7 @@ class S3Manager:
             logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
             fid = s3_filename.rsplit("/", maxsplit=1)[-1]
             if fid != asset:
-                raise log_http_exception(
+                raise HTTPException(
                     detail=(
                         f"Invalid structure for the asset '{asset}'. The name of the asset "
                         f"should be the filename, that is {fid} "
@@ -327,7 +321,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
                     # be deleted from the catalog s3 bucket later on
                     item["assets"].pop(asset)
             except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
-                raise log_http_exception(
+                raise HTTPException(
                     detail=f"Failed to handle the s3 level. Reason: {exc}",
                     status_code=HTTP_400_BAD_REQUEST,
                 ) from exc
@@ -417,8 +411,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
             return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
             if not self.s3_handler:
-                raise utils2.log_http_exception(
-                    logger=logger,
+                raise HTTPException(
                     status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to find s3 credentials",
                 )

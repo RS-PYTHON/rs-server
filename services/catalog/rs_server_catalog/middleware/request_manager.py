@@ -41,7 +41,6 @@ from rs_server_catalog.utils import (
     get_token_for_pagination,
 )
 from rs_server_common import settings as common_settings
-from rs_server_common.utils import utils2
 from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient
@@ -55,11 +54,6 @@ from starlette.status import (
 )
 
 logger = Logging.default(__name__)
-
-
-def log_http_exception(*args, **kwargs) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    return utils2.log_http_exception(logger, *args, **kwargs)
 
 
 class CatalogRequestManager:
@@ -117,7 +111,7 @@ class CatalogRequestManager:
             return None
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception(f"Exception: {e}")
-            raise log_http_exception(
+            raise HTTPException(
                 detail=f"Exception when trying to get the item {item_id} from the collection '{collection_id}'",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
@@ -200,7 +194,7 @@ class CatalogRequestManager:
 
         elif request.method == "DELETE":
             if not await self.manage_delete_request(request):
-                raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Deletion not allowed.")
+                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Deletion not allowed.")
 
         elif "/search" in request.scope["path"]:
             # URL: GET: '/catalog/search'
@@ -241,13 +235,13 @@ class CatalogRequestManager:
             check_user_authorization(self.request_ids)
 
             if len(self.request_ids["collection_ids"]) > 1:
-                raise log_http_exception(
+                raise HTTPException(
                     status_code=HTTP_400_BAD_REQUEST,
                     detail="Cannot create or update more than one collection !",
                 )
 
             if len(self.request_ids["collection_ids"]) == 0:
-                raise log_http_exception(
+                raise HTTPException(
                     status_code=HTTP_400_BAD_REQUEST,
                     detail="Cannot create or update -> no collection specified !",
                 )
@@ -270,7 +264,7 @@ class CatalogRequestManager:
                     error = f"The '{self.request_ids['user_login']}' user cannot create a \
 collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
 field is not permitted also."
-                    raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail=error)
+                    raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail=error)
 
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
@@ -293,7 +287,7 @@ field is not permitted also."
             elif "/items" in request.scope["path"]:
                 # first check if the collection exists
                 if not await self._collection_exists(request, f"{self.request_ids['owner_id']}_{collection}"):
-                    raise log_http_exception(
+                    raise HTTPException(
                         status_code=HTTP_404_NOT_FOUND,
                         detail=f"Collection {collection} does not exist.",
                     )
@@ -318,7 +312,7 @@ field is not permitted also."
                             published = item["properties"].get("published", "")
                             expires = item["properties"].get("expires", "")
                         if not published and not expires:
-                            raise log_http_exception(
+                            raise HTTPException(
                                 status_code=HTTP_400_BAD_REQUEST,
                                 detail=f"Item {content['id']} not found.",
                             )
@@ -341,7 +335,7 @@ field is not permitted also."
 
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
-            raise log_http_exception(
+            raise HTTPException(
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg
@@ -449,7 +443,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                         logger.debug(f"Using collection name: {content['collections'][i]}")
                         # Check the existence of the collection after concatenation of owner_id
                         if not await self._collection_exists(request, content["collections"][i]):
-                            raise log_http_exception(
+                            raise HTTPException(
                                 status_code=HTTP_404_NOT_FOUND,
                                 detail=f"Collection {collection} not found.",
                             )
@@ -485,7 +479,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                         logger.debug(f"Using collection name: {coll_list[i]}")
                         # Check the existence of the collection after concatenation of owner_id
                         if not await self._collection_exists(request, coll_list[i]):
-                            raise log_http_exception(
+                            raise HTTPException(
                                 status_code=HTTP_404_NOT_FOUND,
                                 detail=f"Collection {collection} not found.",
                             )
@@ -497,19 +491,20 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         # Check that the collection from the request exists
         for collection in self.request_ids["collection_ids"]:
             if not await self._collection_exists(request, collection):
-                raise log_http_exception(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
+                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
 
         # Check authorisation in cluster mode
-        if common_settings.CLUSTER_MODE and not get_authorisation(
-            self.request_ids["collection_ids"],
-            self.request_ids["auth_roles"],
-            "read",
-            self.request_ids["owner_id"],
-            self.request_ids["user_login"],
-            # When calling the /search endpoints, the catalog ids are always prefixed by their <owner>_
-            owner_prefix=True,
-        ):
-            raise log_http_exception(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized access.")
+        if common_settings.CLUSTER_MODE:
+            get_authorisation(
+                self.request_ids["collection_ids"],
+                self.request_ids["auth_roles"],
+                "read",
+                self.request_ids["owner_id"],
+                self.request_ids["user_login"],
+                # When calling the /search endpoints, the catalog ids are always prefixed by their <owner>_
+                owner_prefix=True,
+                raise_if_unauthorized=True,
+            )
         return request
 
     async def manage_patch_request(self, request: Request):
@@ -537,7 +532,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             return request
 
         except KeyError as kerr_msg:
-            raise log_http_exception(
+            raise HTTPException(
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg

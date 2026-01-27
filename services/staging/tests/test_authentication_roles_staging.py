@@ -20,7 +20,7 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
     init_authentication_test,
 )
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 from .resources.sample_data import sample_process_metadata_model
 
@@ -111,7 +111,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pyl
     mocker.patch.dict("rs_server_staging.main.api.config", {"resources": mock_resources})
 
     unauthorized_resource_process_response = staging_client.get(f"/processes/{resource}", **header)
-    assert unauthorized_resource_process_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert unauthorized_resource_process_response.status_code == HTTP_401_UNAUTHORIZED
     assert (
         "Missing authorization role 'rs_processes_other_staging_read' for user 'pyteam'"
         in unauthorized_resource_process_response.json()["detail"]
@@ -123,7 +123,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pyl
         json=sample_process_metadata_model,
         **header,
     )
-    assert unauthorized_execute_jobs_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert unauthorized_execute_jobs_response.status_code == HTTP_401_UNAUTHORIZED
     assert (
         "Missing authorization role 'rs_processes_other_staging_execute' for user 'pyteam'"
         in unauthorized_execute_jobs_response.json()["detail"]
@@ -133,21 +133,21 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pyl
     mock_db_table.get_job.return_value = {"processID": resource}
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
     unauthorized_resource_jobs_response = staging_client.get(f"/jobs/{job_id}", **header)
-    assert unauthorized_resource_jobs_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert unauthorized_resource_jobs_response.status_code == HTTP_401_UNAUTHORIZED
     assert (
         "Missing authorization role 'rs_processes_other_staging_read' for user 'pyteam'"
         in unauthorized_resource_jobs_response.json()["detail"]
     )
 
     unauthorized_resource_jobs_result_response = staging_client.get(f"/jobs/{job_id}/results", **header)
-    assert unauthorized_resource_jobs_result_response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert unauthorized_resource_jobs_result_response.status_code == HTTP_401_UNAUTHORIZED
     assert (
         "Missing authorization role 'rs_processes_other_staging_read' for user 'pyteam'"
         in unauthorized_resource_jobs_result_response.json()["detail"]
     )
 
     unauthorized_resource_jobs_response_delete = staging_client.delete(f"/jobs/{job_id}", **header)
-    assert unauthorized_resource_jobs_response_delete.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert unauthorized_resource_jobs_response_delete.status_code == HTTP_401_UNAUTHORIZED
     assert (
         "Missing authorization role 'rs_processes_other_staging_dismiss' for user 'pyteam'"
         in unauthorized_resource_jobs_response_delete.json()["detail"]

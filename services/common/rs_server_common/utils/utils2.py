@@ -19,14 +19,15 @@ Split it from utils.py because of dependency conflicts between rs-server-catalog
 
 import asyncio
 import functools
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import HTTPException
+from fastapi.concurrency import iterate_in_threadpool
+from fastapi.responses import StreamingResponse
 from filelock import FileLock
-from typing_extensions import Doc
 
 
 @dataclass
@@ -43,53 +44,34 @@ class AuthInfo:
     attributes: dict[str, Any]
 
 
-def log_http_exception(
-    logger,
-    status_code: Annotated[
-        int,
-        Doc(
-            """
-                HTTP status code to send to the client.
-                """,
-        ),
-    ],
-    detail: Annotated[
-        Any,
-        Doc(
-            """
-                Any data to be sent to the client in the `detail` key of the JSON
-                response.
-                """,
-        ),
-    ] = None,
-    headers: Annotated[
-        dict[str, str] | None,
-        Doc(
-            """
-                Any headers to send to the client in the response.
-                """,
-        ),
-    ] = None,
-    exception_type: type[HTTPException] = HTTPException,
-) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    logger.error(detail)
-    return exception_type(status_code, detail, headers)  # type: ignore
-
-
 def read_response_error(response):
     """Read and return an HTTP response error detail."""
 
     # Try to read the response detail or error
     try:
-        json = response.json()
-        detail = json.get("detail") or json.get("description") or json["error"]
+        _json = response.json()
+        detail = _json.get("detail") or _json.get("description") or _json["error"]
 
     # If this fail, get the full response content
     except Exception:  # pylint: disable=broad-exception-caught
         detail = response.content.decode("utf-8", errors="ignore")
 
     return detail
+
+
+async def read_streaming_response(response: StreamingResponse) -> Any | None:
+    """Read a json-formatted streaming response content"""
+    try:
+        body = [chunk async for chunk in response.body_iterator]
+        splits = map(lambda x: x if isinstance(x, bytes) else x.encode(), body)  # type: ignore[union-attr]
+        str_content = b"".join(splits).decode()
+        py_content = json.loads(str_content) if str_content else None
+
+        return py_content
+
+    # Reset the StreamingResponse so it can be used again
+    finally:
+        response.body_iterator = iterate_in_threadpool(iter(body))
 
 
 def filelock(func, env_var: str):
