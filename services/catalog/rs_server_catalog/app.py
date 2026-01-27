@@ -90,7 +90,10 @@ insert_middleware_after(
     BrotliMiddleware,
     CatalogMiddleware,
 )
+
 insert_middleware_after(app, CORSMiddleware, HandleExceptionsMiddleware)
+HandleExceptionsMiddleware.disable_default_exception_handler(app)
+
 insert_middleware_after(
     app,
     HandleExceptionsMiddleware,

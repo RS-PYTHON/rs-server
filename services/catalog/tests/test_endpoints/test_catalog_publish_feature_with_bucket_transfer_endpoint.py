@@ -498,8 +498,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/UNKNWON",
         )
         assert response.status_code == HTTP_404_NOT_FOUND
-        assert response.content == b"\"Failed to find asset named 'UNKNWON' \
-from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
+        assert response.json()["description"] == "Failed to find asset named 'UNKNWON' \
+from item 'fe916452-ba6f-4631-9154-c249924a122d'"
         # test with a non-existing item id
         assert (
             client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/UNKNWON").status_code
