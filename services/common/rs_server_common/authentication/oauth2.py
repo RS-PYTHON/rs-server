@@ -37,7 +37,6 @@ from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.requests import HTTPConnection
 from starlette.responses import RedirectResponse
 
 logger = Logging.default(__name__)
