@@ -108,7 +108,7 @@ def get_authorisation(
                 ]
                 raise HTTPException(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    detail=f"Missing authorization roles {requested_roles} "
+                    detail=f"Missing authorization role(s): {requested_roles} "
                     + f"for user {user_login!r} with roles: {auth_roles}",
                 )
             return False

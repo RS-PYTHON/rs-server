@@ -37,7 +37,6 @@ from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.requests import HTTPConnection
 from starlette.responses import RedirectResponse
 
 logger = Logging.default(__name__)
@@ -324,13 +323,13 @@ async def get_user_info(request: Request) -> AuthInfo:
         # Note: it would be better to retrieve the actual value from the SessionMiddleware instance
         session_cookie = "session"
         if not middleware:
-            message = "The SessionMiddleware is missing from the service."
+            message = "The SessionMiddleware is missing from the service"
         elif not os.getenv("RSPY_COOKIE_SECRET"):
-            message = "The 'RSPY_COOKIE_SECRET' environment variable is missing from the service."
-        elif session_cookie not in HTTPConnection(request.scope):
-            message = f"Cookie {session_cookie!r} is missing from the HTTP request."
+            message = "The 'RSPY_COOKIE_SECRET' environment variable is missing from the service"
+        elif not request.cookies.get(session_cookie):
+            message = f"{session_cookie!r} cookie is missing from the HTTP request"
         else:
-            message = f"Invalid or expired {session_cookie!r} cookie."
+            message = f"Invalid or expired {session_cookie!r} cookie"
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, message)
 
     # Read the user ID and name from the cookie = from the OAuth2 authentication process
