@@ -178,13 +178,13 @@ class TestDeleteS3Files:
         mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.adelete_key_from_s3 = mocker.AsyncMock()
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock()
         mock_get_s3_handler.return_value = mock_s3_handler
 
         result = await S3Manager().delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is True
-        mock_s3_handler.adelete_key_from_s3.assert_called_once_with("bucket_name", "path/to/file")
+        mock_s3_handler.adelete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
         mock_logger.error.assert_not_called()
 
     @pytest.mark.asyncio
@@ -194,7 +194,7 @@ class TestDeleteS3Files:
         mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.adelete_key_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Deletion failed"))
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Deletion failed"))
         mock_get_s3_handler.return_value = mock_s3_handler
         ftbd = "s3://bucket_name/path/to/file"
         result = await S3Manager().delete_s3_files([ftbd])
