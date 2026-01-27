@@ -24,7 +24,6 @@ from rs_server_adgs import __version__
 from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
-from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 
 # Used to supress stac_pydantic userwarnings related to serialization
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
@@ -35,5 +34,3 @@ app = init_app(__version__, adgs_routers, router_prefix="/auxip")
 # Set properties for the adgs service
 app.state.get_connection = MockPgstacAdgs.get_connection
 app.state.readpool = MockPgstacAdgs.readpool()
-
-register_stac_exception_handlers(app)

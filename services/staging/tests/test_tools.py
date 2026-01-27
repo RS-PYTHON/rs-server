@@ -13,6 +13,7 @@
 # limitations under the License.
 """Module with tests for utility functions of staging processors."""
 
+from rs_server_common.utils.pytest import pytest_common_tests
 from rs_server_staging.utils.tools import get_minimal_collection_body
 
 
@@ -33,3 +34,8 @@ def test_get_minimal_collection_body():
 
     output = get_minimal_collection_body("abc")
     assert output == expected
+
+
+def test_handle_exceptions_middleware(staging_client, mocker):
+    """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
+    pytest_common_tests.test_handle_exceptions_middleware(staging_client, mocker, rfc7807=True)

@@ -19,8 +19,10 @@ Note: calls https://github.com/csgroup-oss/apikey-manager
 """
 
 import os
+import re
 import sys
 import traceback
+import uuid
 from os import environ as env
 from typing import Annotated
 
@@ -116,6 +118,9 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
     except KeyError:
         raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")  # pylint: disable=raise-missing-from
 
+    # Remove the " and ' around the api key
+    apikey_value = (apikey_value or "").strip("\"'")
+
     # Request the uac, pass user-defined api key in http header
     try:
         response = await settings.http_client().get(check_url, headers={APIKEY_HEADER: apikey_value or ""})
@@ -134,5 +139,19 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
             attributes=contents["config"],
         )
 
-    # Forward error
-    raise HTTPException(response.status_code, f"UAC manager: {read_response_error(response)}")
+    # In case of error, check if the api key has the right format.
+    # It should be an uuid.
+
+    message = ""
+    try:
+        uuid.UUID(apikey_value)  # try to parse the uuid
+    except ValueError:
+        masked_key = re.sub("[0-9a-zA-Z]", "*", apikey_value)
+        masked_ok = re.sub("[0-9a-zA-Z]", "*", str(uuid.uuid4()))
+        message = (
+            f"Your API key does not have the right format: {masked_key!r}. "
+            + f"It should be an UUID like: {masked_ok!r}. "
+        )
+
+    # Forward error from the UAC manager
+    raise HTTPException(response.status_code, f"{message}UAC manager response: {read_response_error(response)!r}")

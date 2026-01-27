@@ -85,16 +85,6 @@ JOB_ATTRS_MAPPING = {"identifier": "jobID"}
 OGC_UNCOMPLIANT_JOB_ATTRS = ["_sa_instance_state", "location", "mimetype"]
 
 
-def ogc_error_response(status_code: int, detail: str):
-    """Generate an OGC-compliant error response"""
-    error_response = {
-        "type": f"https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}",
-        "status": status_code,
-        "detail": detail,
-    }
-    return JSONResponse(status_code=status_code, content=error_response)
-
-
 class DatabaseJobFormatError(Exception):
     """Exception raised when an error occurred during the init of a provider."""
 
@@ -129,7 +119,8 @@ async def validate_request_dependency(request: Request):
 
 
 app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
-app.add_middleware(HandleExceptionsMiddleware)
+app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
+HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
@@ -137,17 +128,6 @@ if common_settings.CLUSTER_MODE:
 
 # CORS enabled origins
 app.add_middleware(CORSMiddleware)
-
-
-# Exception handlers
-@app.exception_handler(StarletteHTTPException)
-async def custom_http_exception_handler(
-    request: Request,
-    exc: StarletteHTTPException,
-):  # pylint: disable= unused-argument
-    """HTTP handler"""
-    return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
-
 
 os.environ["PYGEOAPI_OPENAPI"] = ""  # not used
 
@@ -312,25 +292,21 @@ async def ping():
 @router.get("/processes", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
-    try:
-        processes = {
-            "processes": [],
-            "links": [
-                {"href": str(request.url), "rel": "self", "type": "application/json", "title": "List of processes"},
-            ],
-        }
-        for resource in api.config["resources"]:
-            processes["processes"].append(
-                {
-                    "id": api.config["resources"][resource]["processor"]["name"],
-                    "version": "1.0.0",
-                },
-            )
-        validate_response(request, processes)
-        return JSONResponse(status_code=HTTP_200_OK, content=processes)
-
-    except Exception as e:  # pylint: disable=W0718
-        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+    processes = {
+        "processes": [],
+        "links": [
+            {"href": str(request.url), "rel": "self", "type": "application/json", "title": "List of processes"},
+        ],
+    }
+    for resource in api.config["resources"]:
+        processes["processes"].append(
+            {
+                "id": api.config["resources"][resource]["processor"]["name"],
+                "version": "1.0.0",
+            },
+        )
+    validate_response(request, processes)
+    return JSONResponse(status_code=HTTP_200_OK, content=processes)
 
 
 @router.get(
@@ -348,18 +324,15 @@ async def get_resource(request: Request, resource: str):
         ),
         None,
     ):
-        try:
-            auth_validation("read", resource, request=request, staging_process=True)
-            process = {
-                "id": api.config["resources"][resource]["processor"]["name"],
-                "version": "1.0.0",
-            }
-            validate_response(request, process)
-            return JSONResponse(status_code=HTTP_200_OK, content=process)
+        auth_validation("read", resource, request=request, staging_process=True)
+        process = {
+            "id": api.config["resources"][resource]["processor"]["name"],
+            "version": "1.0.0",
+        }
+        validate_response(request, process)
+        return JSONResponse(status_code=HTTP_200_OK, content=process)
 
-        except Exception as e:  # pylint: disable=W0718
-            return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
-    return ogc_error_response(HTTP_404_NOT_FOUND, f"Resource {resource} not found")
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Resource {resource} not found")
 
 
 def format_job_data(job: dict):
@@ -439,16 +412,12 @@ async def execute_process(
 
     # check if the input resource exists
     if resource not in api.config["resources"]:
-        return ogc_error_response(HTTP_404_NOT_FOUND, f"Process resource '{resource}' not found")
+        return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Process resource {resource!r} not found")
 
     # Validate request payload
-    try:
-        valid_body = await validate_request(request)
-        # rs_processes_{resource}_execute role needed to access this endpoint.
-        auth_validation("execute", resource, request=request, staging_process=True)
-    except Exception as e:  # pylint: disable=W0718
-        # Handle exceptions and return an appropriate error message
-        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+    valid_body = await validate_request(request)
+    # rs_processes_{resource}_execute role needed to access this endpoint.
+    auth_validation("execute", resource, request=request, staging_process=True)
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
@@ -473,7 +442,7 @@ async def execute_process(
         formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status[id_key]))
         validate_response(request, formatted_job_data, HTTP_201_CREATED)
         return JSONResponse(status_code=HTTP_201_CREATED, content=formatted_job_data)
-    return ogc_error_response(HTTP_404_NOT_FOUND, f"Processor '{processor_name}' not found")
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Processor {processor_name!r} not found")
 
 
 # Endpoint to get the status of a job by job_id
@@ -484,15 +453,12 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
         job = app.extra["process_manager"].get_job(job_id)
     except JobNotFoundError:  # pylint: disable=W0718
         # Handle case when job_id is not found
-        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
+        return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
 
-    try:
-        auth_validation("read", job["processID"], request=request, staging_process=True)
-        formatted_job_data = format_job_data(job)
-        validate_response(request, formatted_job_data)
-        return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
-    except Exception as e:  # pylint: disable=W0718
-        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+    auth_validation("read", job["processID"], request=request, staging_process=True)
+    formatted_job_data = format_job_data(job)
+    validate_response(request, formatted_job_data)
+    return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
 
 
 @router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
@@ -505,7 +471,7 @@ async def get_jobs_endpoint(request: Request):
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
     except Exception as e:  # pylint: disable=W0718
         # Handle exceptions and return an appropriate error message
-        return ogc_error_response(HTTP_404_NOT_FOUND, str(e))
+        return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=str(e))
 
 
 @router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
@@ -515,17 +481,15 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         job = app.extra["process_manager"].get_job(job_id)
     # Handle case when job_id is not found
     except JobNotFoundError:  # pylint: disable=W0718
-        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
-    try:
-        auth_validation("dismiss", job["processID"], request=request, staging_process=True)
-        app.extra["process_manager"].delete_job(job_id)
-        # Create job response with a status message to confirm the job deletion
-        job["message"] = f"Job {job_id} deleted successfully"
-        formatted_job_data = format_job_data(job)
-        validate_response(request, formatted_job_data)
-        return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
-    except Exception as e:  # pylint: disable=W0718
-        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+        return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
+
+    auth_validation("dismiss", job["processID"], request=request, staging_process=True)
+    app.extra["process_manager"].delete_job(job_id)
+    # Create job response with a status message to confirm the job deletion
+    job["message"] = f"Job {job_id} deleted successfully"
+    formatted_job_data = format_job_data(job)
+    validate_response(request, formatted_job_data)
+    return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
 
 
 @router.get(
@@ -538,13 +502,11 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
     except JobNotFoundError:
-        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
-    try:
-        auth_validation("read", job["processID"], request=request, staging_process=True)
-        validate_response(request, job["status"])
-        return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
-    except Exception as e:  # pylint: disable=W0718
-        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+        return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
+
+    auth_validation("read", job["processID"], request=request, staging_process=True)
+    validate_response(request, job["status"])
+    return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
 
 
 # Configure OpenTelemetry

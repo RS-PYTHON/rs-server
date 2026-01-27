@@ -27,21 +27,16 @@ The middleware:
 * modifies the response to update the links.
 """
 
-from http import HTTPStatus
 from typing import Any, cast
 
 from fastapi import HTTPException
-from fastapi.responses import JSONResponse
 from rs_server_catalog.data_management.user_handler import get_user, reroute_url
 from rs_server_catalog.middleware.request_manager import CatalogRequestManager
 from rs_server_catalog.middleware.response_manager import CatalogResponseManager
 from rs_server_common import settings as common_settings
-from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.api.errors import ErrorResponse
 from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.core import CoreCrudClient
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
@@ -50,26 +45,14 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERRO
 logger = Logging.default(__name__)
 
 
-def log_http_exception(*args, **kwargs) -> type[HTTPException]:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    return utils2.log_http_exception(logger, *args, **kwargs)
-
-
 class CatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """The user catalog middleware."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        try:
-            response = await UserCatalog(api.client).dispatch(request, call_next)
-            return response
-        except (HTTPException, StarletteHTTPException) as exc:
-            phrase = HTTPStatus(exc.status_code).phrase
-            code = "".join(word.title() for word in phrase.split())
-            return JSONResponse(
-                status_code=exc.status_code,
-                content=ErrorResponse(code=code, description=str(exc.detail)),
-            )
+        # NOTE: maybe we could move the UserCatalog.dispatch here but I'm not sure it's thread-safe.
+        # Maybe this is the reason why we init a new UserCatalog instance everytime. To be confirmed.
+        return await UserCatalog(api.client).dispatch(request, call_next)
 
 
 class UserCatalog:  # pylint: disable=too-few-public-methods
@@ -130,12 +113,12 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
-            raise log_http_exception(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
         logger.debug(f"path = {request.scope['path']} | requests_ids = {self.request_ids}")
 
         # Ensure that user_login is not null after rerouting
         if not self.request_ids["user_login"]:
-            raise log_http_exception(
+            raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="user_login is not defined !",
             )

@@ -211,9 +211,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.include_router(need_auth_router)
     app.include_router(technical_router)
 
-    # Catch all exceptions and return a JSONResponse
-    app.add_middleware(HandleExceptionsMiddleware)
-
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)
 
@@ -222,6 +219,10 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # Middleware used to update links with title
     app.add_middleware(StacLinksTitleMiddleware, title="My STAC Title")
+
+    # Catch all exceptions and return a JSONResponse
+    app.add_middleware(HandleExceptionsMiddleware)
+    HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
     # Add CORS requests from the STAC browser
     if settings.CORS_ORIGINS:

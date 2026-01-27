@@ -37,6 +37,7 @@ from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import HTTPConnection
 from starlette.responses import RedirectResponse
 
 logger = Logging.default(__name__)
@@ -313,16 +314,24 @@ async def get_user_info(request: Request) -> AuthInfo:
         if await is_from_browser(request):
             raise LoginAndRedirect
 
-        # Else, the request comes from a console (curl, python console, ...).
+        # Else, the request comes from a server or a user console (curl, python console, ...).
         # It's not possible to redirect so send an HTTP error.
-        # logger.debug(
-        #     "Error login from a console using: "
-        #     f"{str(request.url)!r} with headers:\n{json.dumps(dict(request.headers),indent=2)}",
-        # )
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            f"Error connecting to {str(request.url)!r} without a valid API key or OAuth2 session cookie.",
-        )
+        # Do some diagnostics to help the user.
+        message = ""
+
+        # Get the middlewares that calculates the cookie
+        middleware = [m for m in request.app.user_middleware if m.cls == SessionMiddleware]
+        # Note: it would be better to retrieve the actual value from the SessionMiddleware instance
+        session_cookie = "session"
+        if not middleware:
+            message = "The SessionMiddleware is missing from the service."
+        elif not os.getenv("RSPY_COOKIE_SECRET"):
+            message = "The 'RSPY_COOKIE_SECRET' environment variable is missing from the service."
+        elif session_cookie not in HTTPConnection(request.scope):
+            message = f"Cookie {session_cookie!r} is missing from the HTTP request."
+        else:
+            message = f"Invalid or expired {session_cookie!r} cookie."
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, message)
 
     # Read the user ID and name from the cookie = from the OAuth2 authentication process
     user_id = user.get("sub")

@@ -25,6 +25,7 @@ from rs_server_catalog.utils import (
     is_s3_path,
     verify_existing_item_from_catalog,
 )
+from rs_server_common.utils.pytest import pytest_common_tests
 
 
 class TestVerifyExistingItemFromCatalog:
@@ -333,3 +334,9 @@ class TestGetS3Handler:
         assert s3_handler is None
         assert "Failed to create the s3 handler" in captured.out
         mock_s3_handler.assert_called_once()
+
+
+def test_handle_exceptions_middleware(client, mocker):
+    """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
+    mocker.patch("rs_server_catalog.middleware.catalog_middleware.reroute_url")
+    pytest_common_tests.test_handle_exceptions_middleware(client, mocker)
