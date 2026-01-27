@@ -204,6 +204,26 @@ class TestDeleteS3Files:
             "Failed to delete file from s3 bucket. Reason: Deletion failed. However, the process will still continue !",
         )
 
+    @pytest.mark.asyncio
+    async def test_delete_s3_files_adelete_raises_runtime_error(self, mocker):
+        """Cover the branch where adelete_keys_from_s3 raises RuntimeError."""
+
+        # Prepare S3Manager with a mock s3_handler
+        mock_s3_handler = mocker.Mock()
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Test failure"))
+
+        manager = S3Manager()
+        manager.s3_handler = mock_s3_handler
+
+        files_to_delete = ["s3://bucket/file1.txt"]
+
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+
+        result = await manager.delete_s3_files(files_to_delete)
+
+        assert result is True
+        mock_logger.exception.assert_called_once()
+
 
 class TestIsS3Path:
     """Class to group the test cases for is_s3_path function"""
