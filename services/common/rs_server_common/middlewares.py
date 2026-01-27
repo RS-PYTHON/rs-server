@@ -199,7 +199,7 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
                 formatted = StacErrorResponse(code=str(content["code"]), description=str(content["description"]))
             if formatted != content:
                 formatted = None
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:  # pylint: disable=broad-exception-caught   # nosec B110
             pass
 
         # Else format the content
