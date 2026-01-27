@@ -15,4 +15,4 @@
 """Main package of commons of rs-server services."""
 
 # Set automatically by running `poetry dynamic-versioning`
-__version__ = "1.0a2.post541.dev0"
+__version__ = "0.0.0"
