@@ -18,6 +18,7 @@ from importlib import reload
 
 import pytest
 from rs_server_common import settings as common_settings
+from rs_server_common.utils.pytest import pytest_common_tests
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
@@ -361,3 +362,8 @@ def test_main_osam_task_runs_with_exception(mocker):
     mock_logger_exception = mocker.patch("osam.main.logger.exception")
     main_osam_task(timeout=0)
     mock_logger_exception.assert_any_call("Handle cancellation: ")
+
+
+def test_handle_exceptions_middleware(osam_client, mocker):
+    """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
+    pytest_common_tests.test_handle_exceptions_middleware(osam_client, mocker)
