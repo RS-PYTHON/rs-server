@@ -28,6 +28,7 @@ from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import AuthInfo
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = Logging.default(__name__)
 
@@ -123,8 +124,10 @@ async def authenticate(
         if not auth_info:
             try:
                 auth_info = await oauth2.get_user_info(request)
-            except Exception as exc:
-                exc.add_note("The API key is missing, and we could not read the OAuth2 'session' cookie either.")
+            # Update error message returned by the oauth2 module
+            except StarletteHTTPException as exc:
+                exc.detail = f"Missing API key and OAuth2 token ({exc.args[1]})"
+                exc.args = (*exc.args[0:1], exc.detail, *exc.args[2:])
                 raise
 
     # Save information in the request state and return it
