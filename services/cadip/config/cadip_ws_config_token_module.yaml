@@ -38,6 +38,12 @@ cadip:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -88,6 +94,8 @@ cadip:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -148,6 +156,12 @@ ins:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -198,6 +212,8 @@ ins:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -258,6 +274,12 @@ mps:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -308,6 +330,8 @@ mps:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -368,6 +392,12 @@ mti:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -418,6 +448,8 @@ mti:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -478,6 +510,12 @@ nsg:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -528,6 +566,8 @@ nsg:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -588,6 +628,12 @@ sgs:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -638,6 +684,8 @@ sgs:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -696,6 +744,12 @@ cadip_session:
     results_entry: $.value | $
     metadata_mapping:
       id:
+      - null
+      - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
       - null
       - $.Id
       SessionIds:
@@ -786,6 +840,8 @@ cadip_session:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Satellite eq {platform}
           - Satellite in ({platforms})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -867,6 +923,12 @@ ins_session:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       SessionIds:
       - null
       - $.SessionId
@@ -955,6 +1017,8 @@ ins_session:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Satellite eq {platform}
           - Satellite in ({platforms})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -1034,6 +1098,12 @@ mps_session:
     results_entry: $.value | $
     metadata_mapping:
       id:
+      - null
+      - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
       - null
       - $.Id
       SessionIds:
@@ -1124,6 +1194,8 @@ mps_session:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Satellite eq {platform}
           - Satellite in ({platforms})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -1203,6 +1275,12 @@ mti_session:
     results_entry: $.value | $
     metadata_mapping:
       id:
+      - null
+      - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
       - null
       - $.Id
       SessionIds:
@@ -1293,6 +1371,8 @@ mti_session:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Satellite eq {platform}
           - Satellite in ({platforms})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -1372,6 +1452,12 @@ nsg_session:
     results_entry: $.value | $
     metadata_mapping:
       id:
+      - null
+      - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
       - null
       - $.Id
       SessionIds:
@@ -1462,6 +1548,8 @@ nsg_session:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Satellite eq {platform}
           - Satellite in ({platforms})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -1541,6 +1629,12 @@ sgs_session:
     results_entry: $.value | $
     metadata_mapping:
       id:
+      - null
+      - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
       - null
       - $.Id
       SessionIds:
@@ -1631,6 +1725,8 @@ sgs_session:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Satellite eq {platform}
           - Satellite in ({platforms})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate

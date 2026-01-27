@@ -72,6 +72,62 @@ def validate_str_list(parameter: str) -> list | str:
     return parameter
 
 
+def _iter_external_id_parts(value: str | list[str]) -> Iterable[str]:
+    values = value if isinstance(value, list) else [value]
+    for raw in values:
+        if raw is None:
+            continue
+        for part in (p.strip() for p in str(raw).split(",")):
+            if part:
+                yield part
+
+
+def normalize_external_ids(value: str | list[str], scheme: str) -> list[str] | None:
+    """Normalize externalIds search values for a given scheme."""
+    tokens: list[str] = []
+    scheme_only = False
+    other_scheme_only = False
+
+    for part in _iter_external_id_parts(value):
+        if ":" not in part:
+            tokens.append(part)
+            continue
+        part_scheme, val = (s.strip() for s in part.split(":", 1))
+        if not val:
+            if part_scheme == scheme:
+                scheme_only = True
+            else:
+                other_scheme_only = True
+            continue
+        if part_scheme == scheme:
+            tokens.append(val)
+
+    if tokens:
+        return tokens
+    if scheme_only:
+        return None
+    if other_scheme_only:
+        return []
+    return []
+
+
+def apply_external_ids(params: dict, scheme: str) -> dict:
+    """Apply normalized externalIds to OData parameters."""
+    params = dict(params)
+    if "externalIds" not in params:
+        return params
+    normalized = normalize_external_ids(params.pop("externalIds"), scheme)
+    if normalized is None:
+        return params
+    if not normalized:
+        params["externalIds"] = "__no_match__"
+    elif len(normalized) == 1:
+        params["externalIds"] = normalized[0]
+    else:
+        params["externalIdss"] = normalized
+    return params
+
+
 def validate_inputs_format(
     date_time: str,
     raise_errors: bool = True,
