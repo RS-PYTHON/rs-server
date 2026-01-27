@@ -31,6 +31,12 @@ template:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -148,6 +154,8 @@ template:
           # ---- Name-based matches (contains/startswith/endswith) ----
           - contains(Name, '{Name}')
           - Name in ({Names})
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           # ---- Id match (existing) ----
           # ---- Time on PublicationDate ----
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})

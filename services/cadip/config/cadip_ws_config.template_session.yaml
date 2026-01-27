@@ -50,6 +50,12 @@ template:
       id:
         - null
         - "$.Id"
+      externalIds:
+        - null
+        - "$.Id"
+      externalIdss:
+        - null
+        - "$.Id"
       SessionIds:
         - null
         - "$.SessionId"
@@ -138,6 +144,8 @@ template:
           and:
             - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
+            - "Id eq {externalIds}"
+            - "Id in ({externalIdss})"
             - "Satellite eq {platform}"
             - "Satellite in ({platforms})"
             - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})
