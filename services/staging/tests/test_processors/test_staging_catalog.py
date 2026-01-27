@@ -173,7 +173,7 @@ class TestStagingCatalog:
         mocker.patch.object(staging_instance, "create_streaming_list")  # not called
 
         result = await self._call_check_catalog(staging_instance, staging_inputs)
-        assert result is True
+        assert result is False
 
 
 class TestStagingPublishCatalog:
