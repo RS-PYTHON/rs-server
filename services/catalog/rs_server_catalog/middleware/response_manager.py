@@ -14,10 +14,10 @@
 
 """Module to process the Responses returned by stac-fastapi for the Catalog middleware."""
 
+import asyncio
 import re
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
-import asyncio
 
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (

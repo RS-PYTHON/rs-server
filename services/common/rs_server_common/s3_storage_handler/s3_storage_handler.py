@@ -52,7 +52,7 @@ PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATIO
 # the maximum number of attempts that are made on a single request
 # this defines the number of retries at the s3 protocol level
 # there is also another retry mechanism set on the application level
-# see functions like delete_file_from_s3 / get_keys_from_s3 / put_files_to_s3
+# see functions like delete_key_from_s3 / get_keys_from_s3 / put_files_to_s3
 S3_PROTOCOL_MAX_ATTEMPTS = 5
 
 # The boto3 delete_objects function takes max 1000 items to delete.
@@ -248,7 +248,7 @@ class S3StorageHandler:
         self.s3_client.close()
         self.s3_client = None
 
-    def delete_file_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
+    def delete_key_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
         """Delete a file from S3.
         The functionality implies a retry mechanism at the application level, which is different
         than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
@@ -378,9 +378,9 @@ class S3StorageHandler:
         """Async version of delete_files_from_s3. Call sync function in a separate thread."""
         return await asyncio.to_thread(self.delete_keys_from_s3, *args, **kwargs)
 
-    async def adelete_file_from_s3(self, *args, **kwargs):
+    async def adelete_key_from_s3(self, *args, **kwargs):
         """Async version of delete_files_from_s3. Call sync function in a separate thread."""
-        return await asyncio.to_thread(self.delete_file_from_s3, *args, **kwargs)
+        return await asyncio.to_thread(self.delete_key_from_s3, *args, **kwargs)
 
     # helper functions
 
@@ -917,7 +917,7 @@ retried for %s times. Aborting",
                         datetime.now() - dwn_start,
                     )
                     if not config.copy_only:
-                        self.delete_file_from_s3(config.bucket_src, collection_file[1])
+                        self.delete_key_from_s3(config.bucket_src, collection_file[1])
                     copied = True
                     break
                 except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:

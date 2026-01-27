@@ -956,10 +956,10 @@ def test_transfer_from_s3_to_s3(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("single_file", [True, False], ids=["single", "multiple"])
-async def test_delete_file_from_s3(mocker, single_file: bool):
+async def test_delete_key_from_s3(mocker, single_file: bool):
     """Test the deletion of one or several files from an S3 bucket.
 
-    This unit test verifies the functionality of deleting a file from an S3 bucket using the `delete_file_from_s3`
+    This unit test verifies the functionality of deleting a file from an S3 bucket using the `delete_key_from_s3`
     method in the `S3StorageHandler` class. It ensures proper handling of errors and retries during deletion.
 
     Test flow:
@@ -1005,7 +1005,7 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
         s3_handler.s3_client.put_object(Bucket=bucket, Key=file, Body="testing\n")
     try:
         if single_file:
-            s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
+            s3_handler.delete_key_from_s3(bucket, files_to_be_deleted[0])
         else:
             spy = mocker.spy(s3_handler.s3_client, "delete_objects")
             await s3_handler.adelete_keys_from_s3(keys_to_be_deleted)
@@ -1039,7 +1039,7 @@ async def test_delete_file_from_s3(mocker, single_file: bool):
         boto_mocker.add_client_error("delete_object", service_error_code="botocore.exceptions.BotoCoreError")
         try:
             if single_file:
-                s3_handler.delete_file_from_s3(bucket, files_to_be_deleted[0])
+                s3_handler.delete_key_from_s3(bucket, files_to_be_deleted[0])
             else:
                 await s3_handler.adelete_keys_from_s3(keys_to_be_deleted)
         except RuntimeError:
@@ -1258,9 +1258,9 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
 
     # Clean up: Delete the uploaded file from S3
     try:
-        s3_handler.delete_file_from_s3(bucket, s3_key)
+        s3_handler.delete_key_from_s3(bucket, s3_key)
     except RuntimeError:
-        assert False, "s3_handler.delete_file_from_s3 raised exception!"
+        assert False, "s3_handler.delete_key_from_s3 raised exception!"
 
 
 # end of the helper functions

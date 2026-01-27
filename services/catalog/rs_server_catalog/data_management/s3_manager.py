@@ -94,7 +94,7 @@ class S3Manager:
             # For catalog bucket, data is already stored into href field (from an asset)
             file_key = content["assets"][asset]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
-                self.s3_handler.delete_file_from_s3(bucket_name, file_key)
+                self.s3_handler.delete_key_from_s3(bucket_name, file_key)
 
     def check_s3_key(self, item: dict, asset_name: str, s3_key: str) -> tuple[bool, int]:
         """Check if the given S3 key exists and matches the expected path.
@@ -343,14 +343,6 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         content.update({"collection": f"{user}_{collection_id}"})
         return content, s3_files_to_be_deleted
 
-    def _parse_s3_path(self, s3_path: str) -> tuple[str, str]:
-        if not s3_path.startswith("s3://"):
-            raise ValueError(f"Invalid s3 path: {s3_path}")
-
-        path = s3_path.removeprefix("s3://")
-        bucket, _, key = path.partition("/")
-        return bucket, key
-
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
         """Used to clear specific files from temporary bucket or from catalog bucket.
 
@@ -367,14 +359,12 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
             logger.error("Failed to create the s3 handler when trying to delete the s3 files")
             return False
 
-        for s3_path in s3_files_to_be_deleted:
-            try:
-                bucket, key = self._parse_s3_path(s3_path)
-                await self.s3_handler.adelete_file_from_s3(bucket, key)
-            except RuntimeError as rte:
-                logger.exception(
-                    f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
-                )
+        try:
+            await self.s3_handler.adelete_keys_from_s3(s3_files_to_be_deleted)
+        except RuntimeError as rte:
+            logger.exception(
+                f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
+            )
         return True
 
     def generate_presigned_url(self, content: dict, path: str) -> tuple[str, int]:

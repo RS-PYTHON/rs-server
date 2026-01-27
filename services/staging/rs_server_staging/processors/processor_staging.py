@@ -531,7 +531,7 @@ class Staging(
 
             for s3_obj in self.assets_info:
                 try:
-                    s3_handler.delete_file_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
+                    s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
                 except RuntimeError as error:
                     self.logger.warning(
                         "Failed to delete from the bucket key s3://%s/%s : %s",
