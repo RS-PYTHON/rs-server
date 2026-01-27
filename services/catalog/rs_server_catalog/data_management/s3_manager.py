@@ -343,7 +343,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         content.update({"collection": f"{user}_{collection_id}"})
         return content, s3_files_to_be_deleted
 
-    async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
+    async def delete_s3_keys(self, s3_files_to_be_deleted: list[str]) -> bool:
         """Used to clear specific files from temporary bucket or from catalog bucket.
 
         Args:
