@@ -220,7 +220,7 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
         logger.exception(exc)
 
         # Calculate HTTP response status code (int) and StacErrorResponse code (str) and description (str)
-        if isinstance(exc, StarletteHTTPException):
+        if isinstance(exc, StarletteHTTPException):  # applies to HTTPException and StarletteHTTPException
             status_code = exc.status_code
             # Format int status code into str
             str_code = self.format_code(exc.status_code)
