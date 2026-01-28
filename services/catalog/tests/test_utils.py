@@ -14,7 +14,6 @@
 
 """Unit tests for utils module."""
 
-import logging
 import os
 
 import pytest
