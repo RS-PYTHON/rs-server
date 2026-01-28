@@ -67,7 +67,7 @@ class CatalogRequestManager:
 
     @lru_cache
     def s3_manager(self):
-        """Creates a cached instance of S3Manager for this class."""
+        """Creates a cached instance of S3Manager for this class instance (self)."""
         return S3Manager()
 
     def _override_request_body(self, request: Request, content: Any) -> Request:

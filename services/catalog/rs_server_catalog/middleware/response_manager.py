@@ -82,7 +82,7 @@ class CatalogResponseManager:
 
     @lru_cache
     def s3_manager(self):
-        """Creates a cached instance of S3Manager for this class."""
+        """Creates a cached instance of S3Manager for this class instance (self)."""
         return S3Manager()
 
     async def manage_responses(
