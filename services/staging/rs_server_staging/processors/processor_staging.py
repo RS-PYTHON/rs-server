@@ -214,7 +214,8 @@ class Staging(
                         0,
                         "The domain name specified in the input link must correspond to an existing server",
                     )
-                response = requests.get(
+                response = await asyncio.to_thread(
+                    requests.get,
                     data["items"]["href"],
                     headers=self.auth_headers,
                     timeout=5,
@@ -405,7 +406,8 @@ class Staging(
         Returns:
             bool: True in case of success, False otherwise
         """
-        if not self.check_if_collection_exists(catalog_collection):
+        exists = await asyncio.to_thread(self.check_if_collection_exists, catalog_collection)
+        if not exists:
             # Stop catalog check if staging is unable to create the collection
             return False
         # Set the filter containing the item ids to be inserted
@@ -529,7 +531,7 @@ class Staging(
 
             for s3_obj in self.assets_info:
                 try:
-                    s3_handler.delete_file_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
+                    s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
                 except RuntimeError as error:
                     self.logger.warning(
                         "Failed to delete from the bucket key s3://%s/%s : %s",

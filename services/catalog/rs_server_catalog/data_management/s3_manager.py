@@ -93,7 +93,7 @@ class S3Manager:
             # For catalog bucket, data is already stored into href field (from an asset)
             file_key = content["assets"][asset]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
-                self.s3_handler.delete_file_from_s3(bucket_name, file_key)
+                self.s3_handler.delete_key_from_s3(bucket_name, file_key)
 
     def check_s3_key(self, item: dict, asset_name: str, s3_key: str) -> tuple[bool, int]:
         """Check if the given S3 key exists and matches the expected path.
@@ -340,9 +340,10 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         # 5 - add owner data
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
+        logger.debug(f"The updated item for user: {user} ended")
         return content, s3_files_to_be_deleted
 
-    def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
+    async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
         """Used to clear specific files from temporary bucket or from catalog bucket.
 
         Args:
@@ -359,10 +360,10 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
             return False
 
         try:
-            self.s3_handler.delete_keys_from_s3(s3_files_to_be_deleted)
+            await self.s3_handler.adelete_keys_from_s3(s3_files_to_be_deleted)
         except RuntimeError as rte:
             logger.exception(
-                f"Failed to delete keys from s3 bucket. Reason: {rte}. However, the process will still continue !",
+                f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
             )
         return True
 

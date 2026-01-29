@@ -59,7 +59,7 @@ class LoginAndRedirect(Exception):
     """
 
 
-async def is_from_browser(request: Request) -> bool:
+def is_from_browser(request: Request) -> bool:
     """Return True if the request comes from a browser, False if from a console (curl, python console, ...)"""
 
     # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
@@ -84,13 +84,13 @@ async def is_from_browser(request: Request) -> bool:
     )
 
 
-async def is_logged_in(request: Request) -> bool:
+def is_logged_in(request: Request) -> bool:
     """Return True if the user is logged in."""
     # Check if the session cookie exists
     return COOKIE_NAME in request.session
 
 
-async def console_logged_message() -> HTMLResponse:
+def console_logged_message() -> HTMLResponse:
     """Message sent to the user when they are already logged in from the python console."""
     return HTMLResponse("You are logged in.")
 
@@ -103,9 +103,9 @@ async def login(request: Request):
     called_from_console = calling_endpoint.path.rstrip("/") == f"{AUTH_PREFIX}{LOGIN_FROM_CONSOLE}"
 
     # If the user is already logged in
-    if await is_logged_in(request):
+    if is_logged_in(request):
         if called_from_console:
-            return await console_logged_message()
+            return console_logged_message()
 
         # If the /login endpoint was called from the browser, redirect to the Swagger UI
         if calling_endpoint.path.rstrip("/") == f"{AUTH_PREFIX}{LOGIN_FROM_BROWSER}":
@@ -247,7 +247,7 @@ def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
     @router.get("/console_logged_message", include_in_schema=False)
     async def console_logged_message_endpoint() -> HTMLResponse:
         """Send message to the user when they are already logged in from the python console."""
-        return await console_logged_message()
+        return console_logged_message()
 
     @router.get("/me")
     async def show_my_information(auth_info: Annotated[AuthInfo, Depends(get_user_info)]):
@@ -310,7 +310,7 @@ async def get_user_info(request: Request) -> AuthInfo:
 
         # Else, if the request comes from a browser, we login, then redirect (in the same webpage)
         # to the calling endpoint.
-        if await is_from_browser(request):
+        if is_from_browser(request):
             raise LoginAndRedirect
 
         # Else, the request comes from a server or a user console (curl, python console, ...).

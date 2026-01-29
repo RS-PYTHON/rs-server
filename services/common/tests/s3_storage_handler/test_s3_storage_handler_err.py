@@ -245,13 +245,13 @@ def test_transfer_from_s3_to_s3_fail(mocker):
 
 
 @pytest.mark.unit
-def test_delete_file_from_s3_fail(mocker):
+def test_delete_key_from_s3_fail(mocker):
     """Test handling of s3 client exceptions while deleting a file from a bucket
 
     Test error handling when attempting to delete a file from an S3 bucket with invalid
     inputs and simulated S3 client failures.
 
-    This unit test verifies the behavior of the `delete_file_from_s3` method in the `S3StorageHandler` class when:
+    This unit test verifies the behavior of the `delete_key_from_s3` method in the `S3StorageHandler` class when:
         1. An invalid input (e.g., `None` for the file name) is provided.
         2. The S3 client raises an exception during the deletion process.
 
@@ -280,7 +280,7 @@ def test_delete_file_from_s3_fail(mocker):
     )
     # test when there is no file to be deleted
     with pytest.raises(RuntimeError) as exc:
-        s3_handler.delete_file_from_s3("some_s3_2", None)
+        s3_handler.delete_key_from_s3("some_s3_2", None)
     assert str(exc.value) == "Input error for deleting the file"
     # prepare a bucket for tests
     bucket = "some_s3"
@@ -300,7 +300,7 @@ def test_delete_file_from_s3_fail(mocker):
         boto_mocker.add_client_error("delete_object", service_error_code="botocore.exceptions.BotoCoreError")
 
         with pytest.raises(RuntimeError) as exc:
-            s3_handler.delete_file_from_s3(bucket, "some_file_1", 1)
+            s3_handler.delete_key_from_s3(bucket, "some_file_1", 1)
 
         assert f"Failed to delete key s3://{bucket}/some_file_1. \
 Reason: An error occurred (botocore.exceptions.BotoCoreError) \
