@@ -27,7 +27,8 @@ from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo, log_http_exception
+from rs_server_common.utils.utils2 import AuthInfo
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = Logging.default(__name__)
 
@@ -121,13 +122,13 @@ async def authenticate(
 
         # Else try to authenticate with oauth2
         if not auth_info:
-            auth_info = await oauth2.get_user_info(request)
-
-        if not auth_info:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-            )
+            try:
+                auth_info = await oauth2.get_user_info(request)
+            # Update error message returned by the oauth2 module
+            except StarletteHTTPException as exc:
+                exc.detail = f"Missing API key and OAuth2 token ({exc.args[1]})"
+                exc.args = (*exc.args[0:1], exc.detail, *exc.args[2:])
+                raise
 
     # Save information in the request state and return it
     request.state.user_login = auth_info.user_login
@@ -175,17 +176,13 @@ def auth_validation(
         auth_roles = [role.lower() for role in request.state.auth_roles]
         user_login = request.state.user_login
     except AttributeError as exc:
-        raise log_http_exception(
-            logger,
+        raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authorization information is missing",
         ) from exc
 
-    logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
-
     if requested_role not in auth_roles:
-        raise log_http_exception(
-            logger,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Missing authorization role {requested_role!r} for user {user_login!r}",
+            detail=f"Missing authorization role {requested_role!r} for user {user_login!r} with roles: {auth_roles}",
         )

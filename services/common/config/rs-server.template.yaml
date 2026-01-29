@@ -40,6 +40,9 @@ external_data_sources:
     authentication:
       token_url: http://127.0.0.1:5000/oauth2/token
       authorization: Basic test
+    trusteddomains:
+    - trusted.domain1.eu
+    - trusted.domain2.eu
 
   adgs2:
     domain: mockup-station-adgs2.processing.svc.cluster.local
@@ -181,6 +184,30 @@ external_data_sources:
       token_url: http://127.0.0.1:5008/oauth2/token
       authorization: Basic test
 
+  # EDRS mock stations
+  pedc:
+    service:
+      name: edrs
+      url: mockup-station-edrs-headless.processing.svc.cluster.local
+      port: 21
+    domain: mockup-station-edrs-headless.processing.svc.cluster.local
+    authentication:
+      auth_type: ftp
+      ca_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
+      client_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
+      client_key: "-----BEGIN RSA PRIVATE KEY-----\nMIID...\n-----END RSA PRIVATE KEY-----"
+  bedc:
+    service:
+      name: edrs
+      url: mockup-station-edrs-headless.processing.svc.cluster.local
+      port: 21
+    domain: mockup-station-edrs-headless.processing.svc.cluster.local
+    authentication:
+      auth_type: ftp
+      ca_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
+      client_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
+      client_key: "-----BEGIN RSA PRIVATE KEY-----\nMIID...\n-----END RSA PRIVATE KEY-----"
+
   # External S3 for tests
   s3test:
     service:
@@ -191,3 +218,14 @@ external_data_sources:
       auth_type: s3
       access_key: ${access_key}
       secret_key: ${secret_key}
+
+  # CDSE (S3)
+  cdse:
+    service:
+      name: s3
+      url: https://eodata.dataspace.copernicus.eu
+    domain: eodata.dataspace.copernicus.eu
+    authentication:
+      auth_type: s3
+      access_key: example_s3_access_key
+      secret_key: example_s3_secret_key

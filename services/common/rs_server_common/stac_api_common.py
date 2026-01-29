@@ -69,11 +69,6 @@ from stac_pydantic.shared import BBox
 logger = Logging.default(__name__)
 
 
-def log_http_exception(*args, **kwargs) -> HTTPException:
-    """Log error and return an HTTP exception to be raised by the caller"""
-    return utils2.log_http_exception(logger, *args, **kwargs)
-
-
 DEFAULT_STAC_VERSION = "1.1.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
@@ -286,7 +281,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             collection_id = args[0]
             collection = self.select_config(collection_id)
             if not collection:
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_404_NOT_FOUND,
                     f"Unknown {self.service} collection: {collection_id!r}",
                 )
@@ -307,7 +302,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             params = json.loads(args[0]) if args else {}
             return await self.search(params)
 
-        raise log_http_exception(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
     async def search(self, params: dict) -> dict[str, Any]:
         """
@@ -403,7 +398,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.page < 1:
                     raise ValueError
             except ValueError as exc:
-                raise log_http_exception(
+                raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"Invalid page value: {page!r}",
                 ) from exc
@@ -416,7 +411,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.limit < 1:
                     raise ValueError
             except ValueError as exc:
-                raise log_http_exception(
+                raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
@@ -431,7 +426,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             self.sortby = sortby_param
         elif isinstance(sortby_param, list):
             if len(sortby_param) > 1:
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"Only one 'sortby' search parameter is allowed: {sortby_param!r}",
                 )
@@ -450,7 +445,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 elif self.cadip or self.prip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"Invalid datetime interval: {datetime!r}. "
                     "Expected format is either: 'YYYY-MM-DDThh:mm:ssZ', 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ', "
@@ -468,7 +463,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Read a query or CQL filter property"""
             nonlocal stac_params  # noqa: F824
             if prop not in allowed_properties:
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
@@ -483,7 +478,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # supports Polygon
             t = geom.get("type")
             if str(t).lower() != "polygon":
-                raise log_http_exception(422, f"Unsupported geometry type {t}. Only Polygon is supported (SRID=4326).")
+                raise HTTPException(422, f"Unsupported geometry type {t}. Only Polygon is supported (SRID=4326).")
             ring = geom["coordinates"][0]  # type: ignore[index]
             if ring and ring[0] != ring[-1]:
                 ring = ring + [ring[0]]
@@ -499,14 +494,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # ADD: CQL2-JSON op: {"op":"intersects","args":[{"property":"geometry"}, <geom>]}
             if op and op.lower() == "intersects":
                 if len(args) != 2:
-                    raise log_http_exception(
+                    raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
                         f"Invalid intersects: {format_dict(filt)}",
                     )
                 geom = args[1]
                 if isinstance(geom, dict):
                     if not geom.get("type") or geom.get("coordinates") is None:
-                        raise log_http_exception(422, "Geometry must include 'type' and 'coordinates'.")
+                        raise HTTPException(422, "Geometry must include 'type' and 'coordinates'.")
                     stac_params["intersects"] = _geojson_to_wkt(geom)
                 else:
                     stac_params["intersects"] = str(geom).strip("'\"")
@@ -515,7 +510,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Read a single property
             if op == "=":
                 if (len(args) != 2) or not (prop := args[0].get("property")):
-                    raise log_http_exception(
+                    raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
                         f"Invalid CQL2 filter: {format_dict(filt)}",
                     )
@@ -532,7 +527,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Else we are reading several properties
             if op != "and":
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed, got '{op}': {format_dict(filt)}",  # noqa: E501 # pylint: disable=line-too-long
                 )
@@ -555,7 +550,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 kv = query_arg.split("=")
                 # Extract prop and check if it's in the queryables.
                 if (prop := kv[0].strip()) not in allowed_properties:
-                    raise log_http_exception(
+                    raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
                         f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                     )
@@ -572,7 +567,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 op = match.group(1).lower()
                 logger.debug(f"Temporal operator detected: {op} -> {stac_params[op]}")
             else:
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     "Invalid query filter, only '=' and temporal operators are allowed, got: " + query_arg,
                 )
@@ -589,7 +584,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         query = params.pop("query", {})
         for prop, operator in query.items():
             if (len(operator) != 1) or not (value := operator.get("eq")):
-                raise log_http_exception(
+                raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"Invalid query: {{{prop!r}: {format_dict(operator)}}}"
                     ", only {'<property>': {'eq': <value>}} is allowed",
@@ -639,7 +634,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
                     else:
                         stac_params.pop("intersects", None)
-                        raise log_http_exception(
+                        raise HTTPException(
                             status.HTTP_422_UNPROCESSABLE_CONTENT,
                             "The provided 'bbox' and 'intersects' polygons do not overlap.",
                         )
@@ -655,7 +650,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # If search parameters remain, they are not implemented
         if params:
-            raise log_http_exception(
+            raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 f"Unimplemented search parameters: {format_dict(params)}",
             )
@@ -1120,7 +1115,7 @@ def create_collection(collection: dict) -> stac_pydantic.Collection:
     try:
         return stac_pydantic.Collection(type="Collection", **collection)
     except ValidationError as exc:
-        raise log_http_exception(
+        raise HTTPException(
             detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         ) from exc
@@ -1138,13 +1133,13 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
             yield
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
-            raise log_http_exception(
+            raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Cannot create STAC Collection -> Missing {exc}",
             ) from exc
         except ValidationError as exc:
             logger.error(f"ValidationError caught in {func.__name__}")
-            raise log_http_exception(
+            raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Parameters validation error: {exc}",
             ) from exc
@@ -1337,7 +1332,7 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
     try:
         sorted_items = sorted(item_collection.features, key=get_sort_key, reverse=direction == "-")
     except AttributeError as e:
-        raise log_http_exception(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
         ) from e
@@ -1357,7 +1352,7 @@ def check_input_type(field_info, key, input_value):
     }
 
     if not type_mapping.get(expected_type)(input_value):  # type: ignore
-        raise log_http_exception(
+        raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Invalid CQL2 filter value",
         )
@@ -1380,7 +1375,7 @@ def check_bbox_input(input_value: str | None) -> BBox | None:
         except HTTPException as e:
             raise e
         except Exception as e:
-            raise log_http_exception(status.HTTP_400_BAD_REQUEST, str(e)) from e
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
     return None
 
 

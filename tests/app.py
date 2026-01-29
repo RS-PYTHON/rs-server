@@ -24,7 +24,6 @@ from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.authentication.oauth2 import SWAGGER_HOMEPAGE
 from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
-from rs_server_common.utils.error_handlers import register_stac_exception_handlers
 from rs_server_edrs.api.edrs_endpoints import MockPgstacEdrs
 from rs_server_edrs.edrs_utils import edrs_read_conf
 from rs_server_edrs.fastapi.edrs_routers import edrs_routers
@@ -75,7 +74,6 @@ def init_app(router_prefix: str = "") -> FastAPI:
         routers=routers,
         router_prefix=router_prefix,
     )
-    register_stac_exception_handlers(app)
     app.state.get_connection = MockPgstacTest.get_connection
     app.state.readpool = MockPgstacTest.readpool()
     if router_prefix == "/edrs":

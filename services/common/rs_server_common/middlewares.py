@@ -17,17 +17,19 @@
 import json
 import traceback
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import brotli
-from fastapi import FastAPI, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse, StreamingResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.oauth2 import LoginAndRedirect
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import read_streaming_response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware, _MiddlewareFactory
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -54,8 +56,8 @@ logger = Logging.default(__name__)
 P = ParamSpec("P")
 
 
-class ErrorResponse(TypedDict):
-    """A JSON error response returned by the API.
+class StacErrorResponse(TypedDict):
+    """A JSON error response returned by the API, compliant with the STAC specification.
 
     The STAC API spec expects that `code` and `description` are both present in
     the payload.
@@ -67,6 +69,20 @@ class ErrorResponse(TypedDict):
 
     code: str
     description: str
+
+
+class Rfc7807ErrorResponse(TypedDict):
+    """A JSON error response returned by the API, compliant with the RFC 7807 specification.
+
+    Attributes:
+        type: https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}
+        status: HTTP response status code
+        detail: A description of the error.
+    """
+
+    type: str
+    status: int
+    detail: str
 
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -99,33 +115,143 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         return await call_next(request)
 
 
-class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+class HandleExceptionsMiddleware(BaseHTTPMiddleware):
     """
     Middleware to catch all exceptions and return a JSONResponse instead of raising them.
     This is useful in FastAPI when HttpExceptions are raised within the code but need to be handled gracefully.
+
+    Attributes:
+        rfc7807 (bool): If true, the returned content is compliant with RFC 7807. This is used by pygeoapi/ogc services.
+        False by default = compliant to Stac specifications.
     """
+
+    def __init__(self, app, rfc7807: bool = False, dispatch=None):
+        """Constructor"""
+        self.rfc7807: bool = rfc7807
+        super().__init__(app, dispatch)
+
+    @staticmethod
+    def disable_default_exception_handler(app: FastAPI):
+        """
+        Disable the default FastAPI exception handler for HTTPException and StarletteHTTPException.
+        We just re-raise the exceptions so they'll be handled by HandleExceptionsMiddleware.
+        """
+
+        @app.exception_handler(HTTPException)
+        @app.exception_handler(StarletteHTTPException)
+        async def exception_handler(_request: Request, _exc: HTTPException):
+            """Implement disable_default_exception_handler"""
+            # Note: we could raise(_exc) but it would increase the stack trace length with this module info.
+            # We can just call raise because this function is called from an except clause.
+            raise  # pylint: disable=misplaced-bare-raise
 
     async def dispatch(self, request: Request, call_next: Callable):
         try:
-            return await call_next(request)
-        except StarletteHTTPException as http_exception:
-            # Log stack trace and return HTTP exception details
-            logger.error(traceback.format_exc())
-            return JSONResponse(status_code=http_exception.status_code, content=str(http_exception.detail))
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            # Log stack trace and return generic error response
-            logger.error(traceback.format_exc())
-            return (
-                JSONResponse(
-                    content=ErrorResponse(code=exception.__class__.__name__, description=str(exception)),
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-                if self.is_bad_request(request, exception)
-                else JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(exception))
-            )
+            # Call next middleware, get and return response, handle errors
+            response = await call_next(request)
+            return await self.handle_errors(response)
 
-    def is_bad_request(self, request: Request, e: Exception) -> bool:
-        """Determines if the request that raised this exception shall be considered as a bad request"""
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            return await self.handle_exceptions(request, exc)
+
+    @staticmethod
+    def format_code(status_code: int) -> str:
+        """Convert e.g. HTTP_500_INTERNAL_SERVER_ERROR into 'InternalServerError'"""
+        phrase = HTTPStatus(status_code).phrase
+        return "".join(word.title() for word in phrase.split())
+
+    @staticmethod
+    def rfc7807_response(status_code: int, detail: str) -> Rfc7807ErrorResponse:
+        """Return Rfc7807ErrorResponse instance"""
+        return Rfc7807ErrorResponse(
+            type=f"https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}",
+            status=status_code,
+            detail=detail,
+        )
+
+    async def handle_errors(self, response: StreamingResponse) -> Response:
+        """
+        If no errors, just return the original response.
+        In case of errors, log, format and return the response contents.
+        """
+        if not 400 <= response.status_code < 600:
+            return response  # no error, return the original response
+
+        # Read response content
+        try:
+            content = await read_streaming_response(response)
+
+        # If we fail to read content, just return the original response
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.error(exc)
+            return response
+
+        # The content should be formated as a XxxErrorResponse
+        formatted: Rfc7807ErrorResponse | StacErrorResponse | None = None
+        try:
+            if self.rfc7807:
+                formatted = Rfc7807ErrorResponse(
+                    type=str(content["type"]),
+                    status=int(content["status"]),
+                    detail=str(content["detail"]),
+                )
+            else:
+                formatted = StacErrorResponse(code=str(content["code"]), description=str(content["description"]))
+            if formatted != content:
+                formatted = None
+        except Exception:  # pylint: disable=broad-exception-caught   # nosec B110
+            pass
+
+        # Else format the content
+        if not formatted:
+            description = json.dumps(content) if isinstance(content, (dict, list, set)) else str(content)
+            if self.rfc7807:
+                formatted = self.rfc7807_response(response.status_code, detail=description)
+            else:
+                formatted = StacErrorResponse(code=self.format_code(response.status_code), description=description)
+
+        logger.error(f"{response.status_code}: {json.dumps(formatted)}")
+        return JSONResponse(status_code=response.status_code, content=formatted)
+
+    async def handle_exceptions(self, request: Request, exc: Exception) -> JSONResponse:
+        """In case of exceptions, log the response contents"""
+
+        # Log current stack trace
+        logger.exception(exc)
+
+        # Calculate HTTP response status code (int) and StacErrorResponse code (str) and description (str)
+        if isinstance(exc, StarletteHTTPException):  # applies to HTTPException and StarletteHTTPException
+            status_code = exc.status_code
+            # Format int status code into str
+            str_code = self.format_code(exc.status_code)
+            description = str(exc.detail)
+
+        else:
+            # Use generic 400 or 500 code
+            status_code = (
+                status.HTTP_400_BAD_REQUEST
+                if HandleExceptionsMiddleware.is_bad_request(request, exc)
+                else status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            str_code = exc.__class__.__name__
+            description = str(exc)
+
+        error_response: Rfc7807ErrorResponse | StacErrorResponse
+        if self.rfc7807:
+            error_response = self.rfc7807_response(status_code, detail=description)
+        else:
+            error_response = StacErrorResponse(code=str_code, description=description)
+        return JSONResponse(status_code=status_code, content=error_response)
+
+    @staticmethod
+    def is_bad_request(request: Request, e: Exception) -> bool:
+        """
+        Determines if the request that raised this exception shall be considered as a bad request
+        and return a 400 error code.
+
+        This function can be overriden by the caller if needed with:
+        HandleExceptionsMiddleware.is_bad_request = my_callable
+        """
         return "bbox" in request.query_params and (
             str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
         )

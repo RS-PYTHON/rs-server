@@ -159,6 +159,22 @@ class TestStagingCatalog:
             f"Failed to search catalog: {err_msg}",
         )
 
+    @pytest.mark.asyncio
+    async def test_check_catalog_collection_not_exists(self, mocker, staging_instance: Staging, staging_inputs: dict):
+        """Cover the branch where the catalog collection does NOT exist."""
+
+        # Force the collection to be missing
+        mocker.patch(
+            "asyncio.to_thread",
+            new=mocker.AsyncMock(return_value=False),
+        )
+
+        mocker.patch("requests.get")  # not called
+        mocker.patch.object(staging_instance, "create_streaming_list")  # not called
+
+        result = await self._call_check_catalog(staging_instance, staging_inputs)
+        assert result is False
+
 
 class TestStagingPublishCatalog:
     """Class to group tests for catalog publishing after streaming was processes"""
