@@ -341,6 +341,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         # 5 - add owner data
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
+        logger.debug(f"The updated item for user: {user} ended")
         return content, s3_files_to_be_deleted
 
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:

@@ -294,7 +294,7 @@ field is not permitted also."
 
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
-
+                logger.debug("Starting the update_stac_item_publication thread")
                 content, self.s3_files_to_be_deleted = await asyncio.to_thread(
                     self.s3_manager.update_stac_item_publication,
                     content,
@@ -302,6 +302,7 @@ field is not permitted also."
                     self.request_ids,
                     item,
                 )
+                logger.debug("The update_stac_item_publication thread finished")
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_timestamps_for_creation(content)
@@ -333,6 +334,7 @@ field is not permitted also."
             if content != original_content:
                 request = self._override_request_body(request, content)
 
+            logger.debug(f"Sending back the response for {request.method} {request.scope['path']}")
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
             raise HTTPException(
