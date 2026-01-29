@@ -33,6 +33,9 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
+    trusteddomains:
+    - trusted.domain1.eu
+    - trusted.domain2.eu
   adgs2:
     domain: mockup-station-adgs2.processing.svc.cluster.local
     service:
@@ -273,6 +276,56 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
+  pedc:
+    domain: mockup-station-edrs-headless.processing.svc.cluster.local
+    service:
+      name: edrs
+      url: mockup-station-edrs-headless.processing.svc.cluster.local
+      port: 21
+    authentication:
+      auth_type: ftp
+      username: test
+      password: test
+      ca_crt: '-----BEGIN CERTIFICATE-----
+
+        MIID...
+
+        -----END CERTIFICATE-----'
+      client_crt: '-----BEGIN CERTIFICATE-----
+
+        MIID...
+
+        -----END CERTIFICATE-----'
+      client_key: '-----BEGIN RSA PRIVATE KEY-----
+
+        MIID...
+
+        -----END RSA PRIVATE KEY-----'
+  bedc:
+    domain: mockup-station-edrs-headless.processing.svc.cluster.local
+    service:
+      name: edrs
+      url: mockup-station-edrs-headless.processing.svc.cluster.local
+      port: 21
+    authentication:
+      auth_type: ftp
+      username: test
+      password: test
+      ca_crt: '-----BEGIN CERTIFICATE-----
+
+        MIID...
+
+        -----END CERTIFICATE-----'
+      client_crt: '-----BEGIN CERTIFICATE-----
+
+        MIID...
+
+        -----END CERTIFICATE-----'
+      client_key: '-----BEGIN RSA PRIVATE KEY-----
+
+        MIID...
+
+        -----END RSA PRIVATE KEY-----'
   s3test:
     domain: s3.gra.io.cloud.ovh.net
     service:
@@ -280,13 +333,14 @@ external_data_sources:
       url: https://s3.gra.io.cloud.ovh.net
     authentication:
       auth_type: s3
-      token_url: null
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
       access_key: ${access_key}
       secret_key: ${secret_key}
+  cdse:
+    domain: eodata.dataspace.copernicus.eu
+    service:
+      name: s3
+      url: https://eodata.dataspace.copernicus.eu
+    authentication:
+      auth_type: s3
+      access_key: example_s3_access_key
+      secret_key: example_s3_secret_key

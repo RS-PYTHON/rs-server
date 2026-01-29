@@ -90,6 +90,7 @@ class HelmOrInfraParams:
     output_root_tags: list[str]
     output_doc_index: int
     post_processing: Callable[[dict], None] | None = None
+    prune_missing: bool = False
 
 
 #
@@ -309,6 +310,32 @@ def create_from_template(
                     first_station = False
                 formatted_lines.append(station_line)
             content["stations"] = LiteralStr("\n".join(formatted_lines) + "\n")
+        if file_path.name == "rs-server.yaml" and isinstance(content, dict):
+            # Avoid inheriting OAuth2 fields for non-OAuth auth types in generated configs.
+            sources = content.get("external_data_sources")
+            if isinstance(sources, dict):
+                for source in sources.values():
+                    if not isinstance(source, dict):
+                        continue
+                    auth = source.get("authentication")
+                    if not isinstance(auth, dict):
+                        continue
+                    auth_type = auth.get("auth_type")
+                    if auth_type in ("s3", "ftp", "ftpes"):
+                        # Keep only relevant fields for these auth types.
+                        for key in (
+                            "token_url",
+                            "grant_type",
+                            "scope",
+                            "client_id",
+                            "client_secret",
+                            "authorization",
+                        ):
+                            auth.pop(key, None)
+                        if auth_type == "s3":
+                            # S3 should not have username/password.
+                            auth.pop("username", None)
+                            auth.pop("password", None)
 
     post_process(output_path, all_files)
 
@@ -794,8 +821,22 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
                         elif isinstance(output_subvalue, numbers.Number):
                             output_value[i] = input_subvalue
 
+    def prune_missing_keys(input_value: Any, output_value: Any):
+        """Remove output keys that are not present in the input structure."""
+        if isinstance(input_value, dict) and isinstance(output_value, dict):
+            for key in list(output_value.keys()):
+                if key not in input_value:
+                    output_value.pop(key)
+                    continue
+                prune_missing_keys(input_value[key], output_value[key])
+        elif isinstance(input_value, list) and isinstance(output_value, list) and len(input_value) == len(output_value):
+            for input_subvalue, output_subvalue in zip(input_value, output_value):
+                prune_missing_keys(input_subvalue, output_subvalue)
+
     if isinstance(input_config, dict) and isinstance(output_config, dict):
         update_all_values([], input_config, output_config)
+        if params.prune_missing:
+            prune_missing_keys(input_config, output_config)
     else:
         logger.error(f"Cannot update values for {input_config} => {output_config}")
 
@@ -874,6 +915,7 @@ if __name__ == "__main__":
         ["app", "stations"],
         0,
         remove_session_stations,
+        prune_missing=True,
     )
     copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
 
@@ -889,6 +931,7 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 0,  # output doc index
+                prune_missing=True,
             ),
             HelmOrInfraParams(
                 "services/adgs/config/adgs_ws_config_token_module.yaml",
@@ -900,12 +943,14 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 1,
+                prune_missing=True,
             ),
             HelmOrInfraParams(
                 "services/adgs/config/adgs_search_config.yaml",
                 [],
                 ["data", f"{DCB_OPEN} .Values.app.adgsSearchConfigFile {DCB_CLOSE}"],
                 2,
+                prune_missing=True,
             ),
         ],
         rs_helm_dir / "charts/rs-server-adgs/templates/configmap.yaml",
@@ -935,6 +980,7 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 0,  # output doc index
+                prune_missing=True,
             ),
             HelmOrInfraParams(  # same for _session stations
                 "services/cadip/config/cadip_ws_config.yaml",
@@ -946,6 +992,7 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}_session",
                 ],
                 0,  # output doc index
+                prune_missing=True,
             ),
             HelmOrInfraParams(  # same for _token_module
                 "services/cadip/config/cadip_ws_config_token_module.yaml",
@@ -957,6 +1004,7 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 1,
+                prune_missing=True,
             ),
             HelmOrInfraParams(  # same for _token_module and _session stations
                 "services/cadip/config/cadip_ws_config_token_module.yaml",
@@ -968,12 +1016,14 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}_session",
                 ],
                 1,
+                prune_missing=True,
             ),
             HelmOrInfraParams(
                 "services/cadip/config/cadip_search_config.yaml",
                 [],
                 ["data", f"{DCB_OPEN} .Values.app.cadipSearchConfigFile {DCB_CLOSE}"],
                 2,
+                prune_missing=True,
             ),
         ],
         rs_helm_dir / "charts/rs-server-cadip/templates/configmap.yaml",
@@ -991,6 +1041,7 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 0,  # output doc index
+                prune_missing=True,
             ),
             HelmOrInfraParams(
                 "services/prip/config/prip_ws_config_token_module.yaml",
@@ -1002,12 +1053,14 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 1,
+                prune_missing=True,
             ),
             HelmOrInfraParams(
                 "services/prip/config/prip_search_config.yaml",
                 [],
                 ["data", f"{DCB_OPEN} .Values.app.pripSearchConfigFile {DCB_CLOSE}"],
                 2,
+                prune_missing=True,
             ),
         ],
         rs_helm_dir / "charts/rs-server-prip/templates/configmap.yaml",
