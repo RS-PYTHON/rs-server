@@ -284,14 +284,8 @@ external_data_sources:
       port: 21
     authentication:
       auth_type: ftp
-      token_url: null
-      grant_type: password
-      scope: null
       username: test
       password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
       ca_crt: '-----BEGIN CERTIFICATE-----
 
         MIID...
@@ -315,14 +309,8 @@ external_data_sources:
       port: 21
     authentication:
       auth_type: ftp
-      token_url: null
-      grant_type: password
-      scope: null
       username: test
       password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
       ca_crt: '-----BEGIN CERTIFICATE-----
 
         MIID...
@@ -345,14 +333,6 @@ external_data_sources:
       url: https://s3.gra.io.cloud.ovh.net
     authentication:
       auth_type: s3
-      token_url: null
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
       access_key: ${access_key}
       secret_key: ${secret_key}
   cdse:
@@ -362,13 +342,5 @@ external_data_sources:
       url: https://eodata.dataspace.copernicus.eu
     authentication:
       auth_type: s3
-      token_url: null
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
       access_key: example_s3_access_key
       secret_key: example_s3_secret_key

@@ -310,6 +310,32 @@ def create_from_template(
                     first_station = False
                 formatted_lines.append(station_line)
             content["stations"] = LiteralStr("\n".join(formatted_lines) + "\n")
+        if file_path.name == "rs-server.yaml" and isinstance(content, dict):
+            # Avoid inheriting OAuth2 fields for non-OAuth auth types in generated configs.
+            sources = content.get("external_data_sources")
+            if isinstance(sources, dict):
+                for source in sources.values():
+                    if not isinstance(source, dict):
+                        continue
+                    auth = source.get("authentication")
+                    if not isinstance(auth, dict):
+                        continue
+                    auth_type = auth.get("auth_type")
+                    if auth_type in ("s3", "ftp", "ftpes"):
+                        # Keep only relevant fields for these auth types.
+                        for key in (
+                            "token_url",
+                            "grant_type",
+                            "scope",
+                            "client_id",
+                            "client_secret",
+                            "authorization",
+                        ):
+                            auth.pop(key, None)
+                        if auth_type == "s3":
+                            # S3 should not have username/password.
+                            auth.pop("username", None)
+                            auth.pop("password", None)
 
     post_process(output_path, all_files)
 
@@ -889,6 +915,7 @@ if __name__ == "__main__":
         ["app", "stations"],
         0,
         remove_session_stations,
+        prune_missing=True,
     )
     copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
 
