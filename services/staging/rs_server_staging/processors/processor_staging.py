@@ -168,7 +168,7 @@ class Staging(
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
 
-    def _resolve_items_from_link(self, data: dict) -> dict | tuple[str, dict]| None:
+    def _resolve_items_from_link(self, data: dict) -> dict | tuple[str, dict] | None:
         """
         Resolve items from an external link if provided.
         Returns the resolved Feature / FeatureCollection dict or None.

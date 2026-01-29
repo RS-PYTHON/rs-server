@@ -392,14 +392,17 @@ class TestStaging:
         assert result is None
 
     def test_resolve_items_from_link_invalid_domain(self, staging_instance: Staging):
-        """Raise ValueError when href domain does not match server_url."""
+        """Return a failed log tuple when href domain does not match server_url."""
 
         staging_instance.server_url = ["allowed-domain.com"]
 
-        data = {"items": {"href": "https://evil.com/items"}}
+        data = {"items": {"href": "https://some-random-domein.com/items"}}
 
-        with pytest.raises(ValueError, match="domain name specified"):
-            staging_instance._resolve_items_from_link(data)
+        result = staging_instance._resolve_items_from_link(data)
+
+        # Check that the result indicates a failed job
+        assert isinstance(result, tuple)
+        assert result[1].get("failed") is not None
 
     def test_resolve_items_from_link_feature_success(self, staging_instance: Staging, mocker):
         """Resolve a valid Feature from link."""
