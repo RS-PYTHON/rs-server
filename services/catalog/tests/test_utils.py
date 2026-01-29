@@ -18,7 +18,7 @@ import os
 
 import pytest
 from fastapi import HTTPException
-from rs_server_catalog.data_management.s3_manager import S3Manager
+from rs_server_catalog.data_management.s3_manager import S3Manager, logger
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
     get_temp_bucket_name,
@@ -320,20 +320,30 @@ class TestGetS3Handler:
             "fake_region",
         )
 
-    def test_s3_handler_missing_env_variables(self, mocker, capsys):
+    def test_s3_handler_missing_env_variables(self, mocker):
         """Test that missing environment variables return None and print an error."""
+
+        # Spy calls to logger.warning(...)
+        spy_log_warning = mocker.spy(logger, "warning")
+
         # Clear environment variables
         mocker.patch.dict(os.environ, {}, clear=True)
         # Call the function and capture output
         s3_handler = S3Manager().s3_handler
-        captured = capsys.readouterr()
+
+        # Check logger called
+        spy_log_warning.assert_called_once()
+        logged_message = spy_log_warning.call_args[0][0]
 
         # Assertions
         assert s3_handler is None
-        assert "Failed to find s3 credentials when trying to create the s3 handler" in captured.out
+        assert "Failed to find s3 credentials when trying to create the s3 handler" in str(logged_message)
 
-    def test_s3_handler_creation_runtime_error(self, mocker, capsys):
+    def test_s3_handler_creation_runtime_error(self, mocker):
         """Test that a RuntimeError during s3_handler creation returns None and prints an error."""
+        # Spy calls to logger.warning(...)
+        spy_log_warning = mocker.spy(logger, "warning")
+
         # Mock environment variables
         mocker.patch.dict(
             os.environ,
@@ -353,11 +363,14 @@ class TestGetS3Handler:
 
         # Call the function and capture output
         s3_handler = S3Manager().s3_handler
-        captured = capsys.readouterr()
+
+        # Check logger called
+        spy_log_warning.assert_called_once()
+        logged_message = spy_log_warning.call_args[0][0]
 
         # Assertions
         assert s3_handler is None
-        assert "Failed to create the s3 handler" in captured.out
+        assert "Failed to create the s3 handler" in str(logged_message)
         mock_s3_handler.assert_called_once()
 
 
