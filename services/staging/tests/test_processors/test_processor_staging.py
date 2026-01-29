@@ -477,13 +477,13 @@ class TestStagingDeleteFromBucket:
         )
         # Mock the assets_info to simulate a list of assets
         staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
-        # Mock S3StorageHandler and its delete_file_from_s3 method
+        # Mock S3StorageHandler and its delete_key_from_s3 method
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.processor_staging.S3StorageHandler", return_value=mock_s3_handler)
         # Call the delete_files_from_bucket method
         staging_instance.delete_files_from_bucket()
         # Assert that S3StorageHandler was instantiated with the correct environment variables
-        mock_s3_handler.delete_file_from_s3.assert_called_once_with("fake_bucket", "fake_s3_path")
+        mock_s3_handler.delete_key_from_s3.assert_called_once_with("fake_bucket", "fake_s3_path")
 
     def test_delete_files_from_bucket_empty(self, mocker, staging_instance: Staging):
         """Test delete files with no assets, nothing should happen."""
@@ -493,8 +493,8 @@ class TestStagingDeleteFromBucket:
         mocker.patch("rs_server_staging.processors.processor_staging.S3StorageHandler", return_value=mock_s3_handler)
         # Call the method
         staging_instance.delete_files_from_bucket()
-        # Assert that delete_file_from_s3 was never called since there are no assets
-        mock_s3_handler.delete_file_from_s3.assert_not_called()
+        # Assert that delete_key_from_s3 was never called since there are no assets
+        mock_s3_handler.delete_key_from_s3.assert_not_called()
 
     def test_delete_files_from_bucket_failed_to_create_s3_handler(self, mocker, staging_instance: Staging):
         """Test a failure in creating s3 storage handler."""
@@ -518,7 +518,7 @@ class TestStagingDeleteFromBucket:
         mock_logger.error.assert_called_once_with("Cannot connect to s3 storage, %s", mocker.ANY)
 
     def test_delete_files_from_bucket_fail_while_in_progress(self, mocker, staging_instance: Staging):
-        """Test a runtime error while using s3_handler.delete_file_from_s3, should produce a logger error,
+        """Test a runtime error while using s3_handler.delete_key_from_s3, should produce a logger error,
         nothing else?
         """
         mocker.patch.dict(
@@ -534,7 +534,7 @@ class TestStagingDeleteFromBucket:
         staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
         # Mock S3StorageHandler and raise a RuntimeError
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.delete_file_from_s3.side_effect = RuntimeError("Fake runtime error")
+        mock_s3_handler.delete_key_from_s3.side_effect = RuntimeError("Fake runtime error")
         mocker.patch("rs_server_staging.processors.processor_staging.S3StorageHandler", return_value=mock_s3_handler)
         # Mock the logger to verify error handling
         mock_logger = mocker.patch.object(staging_instance, "logger")

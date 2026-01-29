@@ -34,9 +34,6 @@ template:
       id:
         - null
         - "$.Id"
-      auxip:id:
-        - null
-        - "$.Id"
       Name:
         - null
         - "$.Name"
@@ -103,7 +100,6 @@ template:
         operations:
           and:
             - "contains(Name, '{Name}')"
-            - "contains(Id, '{auxip:id}')"
             - Name in ({Names})
             - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
             - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
@@ -135,7 +131,6 @@ template:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         id: Name
-        auxip:id: Id
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate

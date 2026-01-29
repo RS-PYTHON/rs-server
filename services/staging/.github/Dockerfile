@@ -17,7 +17,7 @@
 # ghcr.io/rs-python/rs-server-staging
 #
 
-ARG PYTHON_VERSION=3.13.9
+ARG PYTHON_VERSION=3.13.11
 
 # Build stage for multi stage build.
 FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm AS builder

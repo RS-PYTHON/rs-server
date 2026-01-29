@@ -26,23 +26,23 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 # Hardcode here the versions to use, with the same variable names as in the files below
 
 # We use a different python version in eopf + the dpr processors + rs-dpr-service
-PYTHON_VERSION=3.13.9
+PYTHON_VERSION=3.13.11
 PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
-PREFECT_TAG=3.6.5
+PREFECT_TAG=3.6.12
 PREFECT_AWS_TAG=0.7.1
-JUPYTER_HUB_VERSION=5.4.2
+JUPYTER_HUB_VERSION=5.4.3
 
 # Old version numbers, before we apply this script.
 # We use the same variable names, suffixed by _OLD
-PYTHON_VERSION_OLD=3.13.9
+PYTHON_VERSION_OLD=3.13.11
 PYTHON_VERSION_DPR_OLD=3.11.7
 DASK_TAG_OLD=2024.5.2
 DASK_GATEWAY_TAG_OLD=2024.1.0
-PREFECT_TAG_OLD=3.6.5
+PREFECT_TAG_OLD=3.6.12
 PREFECT_AWS_TAG_OLD=0.7.1
-JUPYTER_HUB_VERSION_OLD=5.4.2
+JUPYTER_HUB_VERSION_OLD=5.4.3
 
 all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_AWS_TAG JUPYTER_HUB_VERSION) # var names
 

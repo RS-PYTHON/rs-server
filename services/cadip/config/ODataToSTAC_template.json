@@ -1,8 +1,9 @@
 {
     "stac_version": "1.1.0",
     "stac_extensions": [
-        "https://home.rs-python.eu/cadip-stac-extension/v1.3.0/schema.json",
-        "https://stac-extensions.github.io/file/v2.1.0/schema.json"
+        "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
+        "https://stac-extensions.github.io/file/v2.1.0/schema.json",
+        "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
     ],
     "type": "Feature",
     "id": "PLACEHOLDER",
@@ -13,7 +14,6 @@
         "start_datetime": "1970-01-01T12:00:00.000Z",
         "end_datetime": "1970-01-01T12:00:00.000Z",
         "eviction_datetime": "PLACEHOLDER",
-        "cadip:id": "PLACEHOLDER",
         "cadip:retransfer": "PLACEHOLDER",
         "cadip:final_block": "PLACEHOLDER",
         "cadip:block_number": "PLACEHOLDER",

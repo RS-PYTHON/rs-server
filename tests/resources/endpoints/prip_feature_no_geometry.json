@@ -11,13 +11,19 @@
         "https://stac-extensions.github.io/sar/v1.3.0/schema.json",
         "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json",
         "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
     ],
     "type": "Feature",
     "id": "WITHOUT-GEOFOOTPRINT",
     "geometry": null,
     "properties": {
-        "prip:id": "21111111-2222-3333-4444-555555555555",
+        "externalIds": [
+            {
+                "scheme": "prip",
+                "value": "21111111-2222-3333-4444-555555555555"
+            }
+        ],
         "published": "2024-08-01T00:00:00Z",
         "expires": "2024-08-08T00:00:00Z",
         "eopf:origin_datetime": "2024-08-01T00:00:00Z",

@@ -52,7 +52,7 @@ PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATIO
 # the maximum number of attempts that are made on a single request
 # this defines the number of retries at the s3 protocol level
 # there is also another retry mechanism set on the application level
-# see functions like delete_file_from_s3 / get_keys_from_s3 / put_files_to_s3
+# see functions like delete_key_from_s3 / get_keys_from_s3 / put_files_to_s3
 S3_PROTOCOL_MAX_ATTEMPTS = 5
 
 # The boto3 delete_objects function takes max 1000 items to delete.
@@ -248,7 +248,7 @@ class S3StorageHandler:
         self.s3_client.close()
         self.s3_client = None
 
-    def delete_file_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
+    def delete_key_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
         """Delete a file from S3.
         The functionality implies a retry mechanism at the application level, which is different
         than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
@@ -296,54 +296,75 @@ class S3StorageHandler:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
 
-    def delete_keys_from_s3(self, keys: list[str], max_retries: int = S3_MAX_RETRIES):
-        """Delete a list of files from S3.
+    def delete_keys_from_s3(  # pylint: disable=too-many-branches,too-many-nested-blocks
+        self,
+        keys: list[str],
+        max_retries: int = S3_MAX_RETRIES,
+    ):
+        """Delete a list of keys from the S3 location.
         The functionality implies a retry mechanism at the application level, which is different
-        than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
-
+        than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config.
+        It gets recursively all the files from the list of keys and builts another list of keys to delete.
         Args:
-            bucket (str): The S3 bucket name.
             keys (list[str]): The S3 object keys.
-
+            max_retries (int): The maximum number of retries.
         Raises:
             RuntimeError: If an error occurs during the bucket access check.
         """
         if keys is None:
             raise RuntimeError("Input error for deleting the files")
 
-        # NOTE: don't check if the files exist on the bucket.
-        # If they don't, nothing happens, we don't have any error from boto3.
         attempt = 0
-        buckets_collection: dict[str, list[str]] = defaultdict(list)
+        # NOTE: don't check if the files exist on the bucket.
+        # If they don't exist, nothing happens, we don't have any error from boto3
         while True:
             try:
                 self.connect_s3()
+                buckets_collection: dict[str, list[str]] = defaultdict(list)
+
+                # Recursively expand all folders to get all files
                 for key in keys:
                     parsed = urlparse(key)
                     bucket = parsed.netloc
-                    path = key.strip().lstrip("/")
-                    s3_files = self.list_s3_files_obj(parsed.netloc, parsed.path.strip("/"))
-                    if len(s3_files) == 1 and path == s3_files[0]:
-                        # If the key is a file, don't expand it
-                        buckets_collection[bucket].append(key)
-                    else:
-                        # If the key is a folder, expand it with all files inside
-                        buckets_collection[bucket].extend(s3_files)
+                    path = parsed.path.strip("/")
 
-                for bucket, new_keys in buckets_collection.items():
-                    # Convert the key values into a dict
-                    key_dict = [{"Key": key} for key in new_keys]
+                    # Use a queue to handle recursive expansion
+                    to_process = [path]
+                    processed = set()
 
-                # The boto3 delete_objects function takes max 1000 items to delete.
-                # Split the key list and process the chunks in parallel.
+                    while to_process:
+                        current_path = to_process.pop(0)
+
+                        # Avoid processing the same path twice
+                        if current_path in processed:
+                            continue
+                        processed.add(current_path)
+
+                        # List all items at this path
+                        s3_files = self.list_s3_files_obj(bucket, current_path)
+
+                        # If list returns a single item that matches the current path, it's a file
+                        if len(s3_files) == 1 and current_path == s3_files[0]:
+                            # It's a file, add it to the collection
+                            buckets_collection[bucket].append(s3_files[0])
+                        elif len(s3_files) == 0:
+                            # Path doesn't exist, skip it
+                            continue
+                        else:
+                            # It's a folder or prefix - the returned items are the contents
+                            # Add all returned items to the queue for processing
+                            for s3_file in s3_files:
+                                if s3_file not in processed:
+                                    to_process.append(s3_file)
+
+                # Delete all collected files
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-
                     futures = []
-                    for bucket, new_keys in buckets_collection.items():
-
+                    for bucket, file_keys in buckets_collection.items():
                         # Convert the key values into a dict
-                        key_dict = [{"Key": key} for key in new_keys]
+                        key_dict = [{"Key": key} for key in file_keys]
 
+                        # Split into chunks of MAX_DELETE_FILES
                         futures.extend(
                             [
                                 executor.submit(
@@ -351,17 +372,16 @@ class S3StorageHandler:
                                     Bucket=bucket,
                                     Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
                                 )
-                                for i in range(0, len(keys), MAX_DELETE_FILES)
+                                for i in range(0, len(file_keys), MAX_DELETE_FILES)
                             ],
                         )
 
                     for future in concurrent.futures.as_completed(futures):
                         future.result()
 
-                    # If everything went OK, exit the function
-                    return
+                # If everything went OK, exit the function
+                return
 
-            # Else handle retries
             except Exception as e:  # pylint: disable=broad-exception-caught
                 attempt += 1
                 message = f"Failed to delete keys:\n{traceback.format_exc()}"
@@ -913,7 +933,7 @@ retried for %s times. Aborting",
                         datetime.now() - dwn_start,
                     )
                     if not config.copy_only:
-                        self.delete_file_from_s3(config.bucket_src, collection_file[1])
+                        self.delete_key_from_s3(config.bucket_src, collection_file[1])
                     copied = True
                     break
                 except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:

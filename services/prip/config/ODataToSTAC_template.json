@@ -11,14 +11,14 @@
         "https://stac-extensions.github.io/sar/v1.3.0/schema.json",
         "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json",
         "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
     ],
     "id": "PLACEHOLDER",
     "type": "Feature",
     "geometry": null,
     "bbox": null,
     "properties": {
-        "prip:id": "PLACEHOLDER",
         "published": "PLACEHOLDER",
         "created": "PLACEHOLDER",
         "expires": "PLACEHOLDER",

@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-services:
+"""Unit tests for utils module."""
 
-  stac-db:
-    image: ghcr.io/stac-utils/pgstac:v0.9.9
-    container_name: postgres-${POSTGRES_DB}
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - ${POSTGRES_PORT}:5432
-    command: postgres -N 500
+from rs_server_common.utils.pytest import pytest_common_tests
+
+
+def test_handle_exceptions_middleware(client, mocker):
+    """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
+    pytest_common_tests.test_handle_exceptions_middleware(client, mocker)
