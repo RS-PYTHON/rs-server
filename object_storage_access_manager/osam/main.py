@@ -193,12 +193,10 @@ def auth_validation(request: Request):
             detail="Authorization information is missing",
         ) from exc
 
-    logger.debug(f"Authorization roles for user {user_login!r}: {auth_roles}")
-
     if requested_role not in auth_roles:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Missing authorization role {requested_role!r} for user {user_login!r}",
+            detail=f"Missing authorization role {requested_role!r} for user {user_login!r} with roles: {auth_roles}",
         )
 
 
