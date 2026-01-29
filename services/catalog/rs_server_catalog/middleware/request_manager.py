@@ -17,6 +17,7 @@
 import copy
 import getpass
 import json
+from functools import lru_cache
 from typing import Any, cast
 from urllib.parse import urlencode
 
@@ -62,8 +63,12 @@ class CatalogRequestManager:
     def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
         self.request_ids = request_ids
-        self.s3_manager = S3Manager()
         self.s3_files_to_be_deleted: list = []
+
+    @lru_cache
+    def s3_manager(self):
+        """Creates a cached instance of S3Manager for this class instance (self)."""
+        return S3Manager()
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
@@ -294,7 +299,7 @@ field is not permitted also."
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
 
-                content, self.s3_files_to_be_deleted = self.s3_manager.update_stac_item_publication(
+                content, self.s3_files_to_be_deleted = self.s3_manager().update_stac_item_publication(
                     content,
                     request,
                     self.request_ids,

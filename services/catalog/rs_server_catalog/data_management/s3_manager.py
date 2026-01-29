@@ -50,7 +50,6 @@ class S3Manager:
 
     def __init__(self):
         self.s3_handler: S3StorageHandler = self._get_s3_handler()
-        # Retrieve handler only if we are not in local mode
         # If we are in local mode, operations on S3 bucket will be skipped
         self.is_catalog_local_mode = int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)) == 1
 
@@ -68,10 +67,10 @@ class S3Manager:
                 os.environ["S3_REGION"],
             )
         except KeyError:
-            print("Failed to find s3 credentials when trying to create the s3 handler")
+            logger.warning("Failed to find s3 credentials when trying to create the s3 handler")
             return None
         except RuntimeError:
-            print("Failed to create the s3 handler")
+            logger.warning("Failed to create the s3 handler")
             return None
 
         return s3_handler
