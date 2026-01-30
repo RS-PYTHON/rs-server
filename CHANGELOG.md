@@ -24,6 +24,36 @@ Changed
 
 None
 
+[1.0a6] - Sprint 32 - 2026-01-28
+================================
+
+## Added
+
+- RSPY-79: Develop PATCH Catalog endpoints (requires stac-fastapi 6.0)
+- RSPY-763: Replace cadip:id, auxip:id, prip:id with a generic field externalIds
+- RSPY-788: OSAM : access OSAM endpoints with API-KEY authentication.
+- RSPY-795: Deploy multiple Prefect instances
+- RSPY-800: Generate the payload.yaml from dpr-processing flow
+- RSPY-821: Extend dpr-processing flow with DPR execution and product publishing to catalog
+- RSPY-831: Keycloak quota parameters
+- RSPY-871: Set S3 configuration in payload.yaml
+- RSPY-879: Sprint 32 corrections of issues
+- RSPY-884: Replace MinIO by SeaweedFS
+- RSPY-887: Update openapi-core
+- RSPY-898: Harmonize logging of HTTP errors
+- RSPY-909: Sprint 32 update of Python/Jupyter/Prefect
+
+## Fixed
+
+- RSPY-711: Cannot search AUXIP/CADIP by multiple collection/item id ( 5 pts)
+- RSPY-745: async functions should always call long sync functions using `asyncio.to_thread` (3 points)
+- RSPY-875: [Jupyter] Error "groups: cannot find name for group ID 1000" [2 pts]
+- RSPY-877: [CI/CD] [rs-helm] Lint and Test Charts uses wrong rs-server version [2 pts]
+- RSPY-880: Staging on the wrong bucket ( 1 pt )
+- RSPY-893: Error 401 when trying to stage a CADIP session. (1 pt)
+- RSPY-897: Grafana Deployment failed to retrieve his credential for the private repository [1 pt]
+- RSPY-903: Add all the fields found in tasktable to unit dictionary (1 pt)
+
 [1.0a5] - Sprint 31 - 2025-12-17
 ================================
 
