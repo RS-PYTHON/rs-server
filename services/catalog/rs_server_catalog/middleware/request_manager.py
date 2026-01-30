@@ -22,6 +22,7 @@ from functools import lru_cache
 from typing import Any, cast
 from urllib.parse import urlencode
 
+from cql2 import parse_text
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (
     check_user_authorization,
@@ -55,6 +56,78 @@ from starlette.status import (
 )
 
 logger = Logging.default(__name__)
+
+
+def iter_external_id_parts(raw: Any) -> list[str]:
+    """Split externalIds input into clean parts for filtering."""
+    parts: list[str] = []
+    values = raw if isinstance(raw, list) else [raw]
+    for value in values:
+        if value is None:
+            continue
+        for part in str(value).split(","):
+            part = part.strip()
+            if part:
+                parts.append(part)
+    return parts
+
+
+def build_external_ids_tokens(raw: Any) -> list[str]:
+    """Build normalized externalIds tokens for CQL2 filtering."""
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for part in iter_external_id_parts(raw):
+        token = None
+        if ":" in part:
+            scheme, value = part.split(":", 1)
+            scheme = scheme.strip()
+            value = value.strip()
+            if scheme and value:
+                token = f"{scheme}:{value}"
+            elif scheme and not value:
+                token = scheme
+            elif value and not scheme:
+                token = value
+        else:
+            token = part
+        if token and token not in seen:
+            tokens.append(token)
+            seen.add(token)
+    return tokens
+
+
+def build_external_ids_filter(raw: Any) -> dict | None:
+    """Create a CQL2 filter for externalIds if tokens are present."""
+    tokens = build_external_ids_tokens(raw)
+    if not tokens:
+        return None
+    return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
+
+
+def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
+    """Normalize a CQL2 filter (text or json) to CQL2-JSON."""
+    if raw_filter is None:
+        return None
+    if isinstance(raw_filter, dict):
+        return raw_filter
+    if isinstance(raw_filter, str):
+        try:
+            if filter_lang == "cql2-text":
+                return parse_text(raw_filter).to_json()
+            return json.loads(raw_filter)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Invalid filter format for externalIds search.",
+            ) from exc
+    return None
+
+
+def combine_filters(existing: dict | None, extra: dict) -> dict:
+    """Combine two CQL2 filters with AND."""
+    if existing is None:
+        return extra
+    return {"op": "and", "args": [existing, extra]}
 
 
 class CatalogRequestManager:
@@ -418,6 +491,17 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         # ---------- POST requests
         if request.method == "POST":
             content = await request.json()
+            original_content = copy.deepcopy(content)
+
+            # Build a CQL2 filter for externalIds (array of objects) if requested.
+            external_ids_filter = build_external_ids_filter(content.pop("externalIds", None))
+            if external_ids_filter is not None:
+                existing_filter = parse_filter_to_json(
+                    content.get("filter"),
+                    content.get("filter-lang", "cql2-json"),
+                )
+                content["filter"] = combine_filters(existing_filter, external_ids_filter)
+                content["filter-lang"] = "cql2-json"
 
             # Pre-processing of filter extensions
             if "filter" in content:
@@ -456,12 +540,14 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                             )
 
                 self.request_ids["collection_ids"] = content["collections"]
+            if content != original_content:
                 request = self._override_request_body(request, content)
 
         # ---------- GET requests
         elif request.method == "GET":
             # Get dictionary of query parameters
             query_params_dict = dict(request.query_params)
+            original_query_params = dict(query_params_dict)
 
             # Update owner_id if it is not already defined from path parameters
             if not self.request_ids["owner_id"]:
@@ -474,6 +560,17 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     or query_params_dict.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
+
+            # Build a CQL2 filter for externalIds (array of objects) if requested.
+            external_ids_filter = build_external_ids_filter(query_params_dict.pop("externalIds", None))
+            if external_ids_filter is not None:
+                existing_filter = parse_filter_to_json(
+                    query_params_dict.get("filter"),
+                    query_params_dict.get("filter-lang", "cql2-json"),
+                )
+                combined_filter = combine_filters(existing_filter, external_ids_filter)
+                query_params_dict["filter"] = json.dumps(combined_filter)
+                query_params_dict["filter-lang"] = "cql2-json"
 
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
@@ -493,6 +590,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
+            if query_params_dict != original_query_params:
                 request = self._override_request_query_string(request, query_params_dict)
 
         # Check that the collection from the request exists
