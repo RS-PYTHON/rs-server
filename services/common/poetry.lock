@@ -70,18 +70,6 @@ files = [
 tests = ["mypy (>=1.14.0)", "pytest", "pytest-asyncio"]
 
 [[package]]
-name = "async-property"
-version = "0.2.2"
-description = "Python decorator for async properties."
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "async_property-0.2.2-py2.py3-none-any.whl", hash = "sha256:8924d792b5843994537f8ed411165700b27b2bd966cefc4daeefc1253442a9d7"},
-    {file = "async_property-0.2.2.tar.gz", hash = "sha256:17d9bd6ca67e27915a75d92549df64b5c7174e9dc806b30a3934dc4ff0506380"},
-]
-
-[[package]]
 name = "asyncache"
 version = "0.3.1"
 description = "Helpers to use cachetools with async code."
@@ -2818,19 +2806,18 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-keycloak"
-version = "5.12.0"
+version = "7.0.3"
 description = "python-keycloak is a Python package providing access to the Keycloak API."
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "python_keycloak-5.12.0-py3-none-any.whl", hash = "sha256:84bfbc71638bcc3cd0cc71f1ed972895dea46b524aeac5b8d032ec4e2b2d1149"},
-    {file = "python_keycloak-5.12.0.tar.gz", hash = "sha256:c915b5e164a02182ea928ca8ed51db2adcdab5ea5cd6ebcabf06536e91287b31"},
+    {file = "python_keycloak-7.0.3-py3-none-any.whl", hash = "sha256:08de2c53f742360ed228e17f812a49964c5c52dcaf2439c3a6a1ab28e287cdd6"},
+    {file = "python_keycloak-7.0.3.tar.gz", hash = "sha256:13e5ac449acf5334d62550895bfcd2c08d60c8e22f61a6512a6ad9c844cf9f73"},
 ]
 
 [package.dependencies]
 aiofiles = ">=24.1.0"
-async-property = ">=0.2.2"
 deprecation = ">=2.1.0"
 httpx = ">=0.23.2"
 jwcrypto = ">=1.5.4"
@@ -3550,4 +3537,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "ba2a8247a43b4cd92883844307fb83eefb1b73aa2b02a2cb8c7671a2555d9ae6"
+content-hash = "f64eff3b620d35722dd121d5380c50ab8e8e0d2a59d2ba593f64e89e1fff59cd"
