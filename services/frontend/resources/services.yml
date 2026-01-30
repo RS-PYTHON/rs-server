@@ -74,3 +74,5 @@ services:
       Bulk Transaction Extension: Catalog (Bulk Transaction Extension)
   staging:
     openapi_url: http://localhost:8004/openapi.json
+  dpr:
+    openapi_url: http://localhost:6003/openapi.json
