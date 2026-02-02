@@ -103,7 +103,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     fi
 
     i=0
-    while [[ ! $(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:6003/_mgmt/ping) == 200 ]]; do
+    while [[ ! $(curl -s -o /dev/null -w 200 http://127.0.0.1:6003/_mgmt/ping) == 200 ]]; do
         sleep 2
         i=$((i+1))
         ((i>=10)) && >&2 echo "Error with DPR container '$dpr_container'" && exit 1
