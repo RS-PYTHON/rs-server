@@ -83,7 +83,9 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # DPR service
     dpr_image="ghcr.io/rs-python/rs-dpr-service:latest"
     dpr_container="rs-dpr-service"
+
     if ! docker ps --format '{{.Names}}' | grep -q "^$dpr_container\$"; then
+        docker pull "$dpr_image"
         docker run --rm --network=$network --name=$dpr_container \
             -e RSPY_LOCAL_MODE=1 \
             -e POSTGRES_HOST \
@@ -103,12 +105,12 @@ if [[ " $@ " == *" --run-services "* ]]; then
     fi
 
     i=0
-    while [[ ! $(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:6003/_mgmt/ping) == 200 ]]; do
+    while [[ $(docker inspect --format='{{.State.Health.Status}}' $dpr_container) != healthy ]]; do
         sleep 2
         i=$((i+1))
-        ((i>=10)) && >&2 echo "Error with DPR container '$dpr_container'" && exit 1
+        ((i>=20)) && >&2 echo "Error: DPR container '$dpr_container' is not healthy after $((i*2))s" && exit 1
     done
-    echo "DPR service container is healthy (HTTP check)"
+    echo "DPR service container is healthy"
 
     # Run local fastapi services
     run_local_service() {
