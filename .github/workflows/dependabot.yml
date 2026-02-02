@@ -28,7 +28,7 @@ env:
 jobs:
   update-dependent-locks:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: startsWith(github.head_ref, 'dependabot/')
     steps:
       - uses: actions/checkout@v6
 
@@ -47,8 +47,14 @@ jobs:
 
       - name: Commit updated lock files
         run: |
+          if git diff --quiet; then
+            echo "No changes detected, skipping commit."
+            exit 0
+          fi
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
           git commit -m "chore: update dependent poetry.lock files" || echo "No changes to commit"
+          git fetch origin
+          git rebase origin/${{ github.head_ref }} || exit 0
           git push origin HEAD:${{ github.head_ref }}
