@@ -105,13 +105,13 @@ if [[ " $@ " == *" --run-services "* ]]; then
         echo "Using already running DPR container: $dpr_container"
     fi
 
-    # i=0
-    # while [[ $(docker inspect --format='{{.State.Health.Status}}' $dpr_container) != healthy ]]; do
-    #     sleep 2
-    #     i=$((i+1))
-    #     ((i>=20)) && >&2 echo "Error: DPR container '$dpr_container' is not healthy after $((i*2))s" && exit 1
-    # done
-    # echo "DPR service container is healthy"
+    i=0
+    while [[ $(docker inspect --format='{{.State.Health.Status}}' $dpr_container) != healthy ]]; do
+        sleep 2
+        i=$((i+1))
+        ((i>=20)) && >&2 echo "Error: DPR container '$dpr_container' is not healthy after $((i*2))s" && exit 1
+    done
+    echo "DPR service container is healthy"
 
     # Run local fastapi services
     run_local_service() {
