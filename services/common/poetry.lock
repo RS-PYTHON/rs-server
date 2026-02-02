@@ -3251,14 +3251,14 @@ stac-pydantic = ">=3.3.0,<4.0"
 
 [[package]]
 name = "stac-pydantic"
-version = "3.4.0"
+version = "3.5.0"
 description = "Pydantic data models for the STAC spec"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "stac_pydantic-3.4.0-py3-none-any.whl", hash = "sha256:ce2e7b377db078abbb164f378e18d54b53cda2953e44b643cdfa3adc831ca1c8"},
-    {file = "stac_pydantic-3.4.0.tar.gz", hash = "sha256:5e7a45d38df18c4148fe45469447288a5b2eb15b10737608da4fba3dccc50683"},
+    {file = "stac_pydantic-3.5.0-py3-none-any.whl", hash = "sha256:42f326cf397d76a70daeadfe30e1e8a272524c515c14e216f7209f46582846d6"},
+    {file = "stac_pydantic-3.5.0.tar.gz", hash = "sha256:0d70f4e9d0754842a0bfd04c06e41a41af04f313de94b6dfe06c98b6c5eea4fc"},
 ]
 
 [package.dependencies]
@@ -3267,8 +3267,6 @@ geojson-pydantic = ">=1.0.0"
 pydantic = ">=2.4.1"
 
 [package.extras]
-dev = ["dictdiffer (>=0.9.0)", "jsonschema (>=4.19.1)", "pytest (>=7.4.2)", "pytest-cov (>=4.1.0)", "pytest-icdiff (>=0.8)", "pyyaml (>=6.0.1)", "requests (>=2.31.0)", "shapely (>=2.0.1)"]
-lint = ["Flake8-pyproject (>=1.2.3)", "black (>=23.9.1)", "flake8 (>=6.1.0)", "isort (>=5.12.0)", "mypy (>=1.5.1)", "pre-commit (>=3.4.0)", "tox (>=4.11.3)", "types-PyYAML (>=6.0.12.12)", "types-jsonschema (>=4.19.0.3)", "types-requests (>=2.31.0.5)"]
 validation = ["jsonschema (>=4.19.1)", "requests (>=2.31.0)"]
 
 [[package]]
