@@ -83,23 +83,32 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # DPR service
     dpr_image="ghcr.io/rs-python/rs-dpr-service:latest"
     dpr_container="rs-dpr-service"
-    docker pull "$dpr_image"
-    (docker run --rm --network=$network --name=$dpr_container \
-        -e RSPY_LOCAL_MODE=1 \
-        -p 6003:8000 \
-        --health-cmd="curl -f http://127.0.0.1:8000/_mgmt/ping || exit 1" \
-        --health-interval=2s \
-        --health-timeout=2s \
-        --health-retries=10 \
-        "$dpr_image" \
-    )&
+    if ! docker ps --format '{{.Names}}' | grep -q "^$dpr_container\$"; then
+        docker run --rm --network=$network --name=$dpr_container \
+            -e RSPY_LOCAL_MODE=1 \
+            -e POSTGRES_HOST \
+            -e POSTGRES_PORT \
+            -e POSTGRES_DB \
+            -e POSTGRES_USER \
+            -e POSTGRES_PASSWORD \
+            -p 6003:8000 \
+            --health-cmd="curl -f http://127.0.0.1:8000/_mgmt/ping || exit 1" \
+            --health-interval=2s \
+            --health-timeout=2s \
+            --health-retries=10 \
+            "$dpr_image" &
+        echo "DPR container started"
+    else
+        echo "Using already running DPR container: $dpr_container"
+    fi
+
     i=0
-    while [[ $(docker inspect --format='{{.State.Health.Status}}' $dpr_container) != healthy ]]; do
+    while [[ ! $(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:6003/_mgmt/ping) == 200 ]]; do
         sleep 2
         i=$((i+1))
-        ((i>=10)) && >&2 echo "Error starting '$dpr_container'" && exit 1
+        ((i>=10)) && >&2 echo "Error with DPR container '$dpr_container'" && exit 1
     done
-    echo "DPR service container is healthy"
+    echo "DPR service container is healthy (HTTP check)"
 
     # Run local fastapi services
     run_local_service() {
@@ -116,22 +125,12 @@ if [[ " $@ " == *" --run-services "* ]]; then
         export RSPY_COOKIE_SECRET=RSPY_COOKIE_SECRET
 
         # Install the poetry environment and run uvicorn with the environment variables set above
-        if [[ -d "$path" ]]; then
-            cd "$path"
-            poetry install
-            poetry run opentelemetry-bootstrap -a install
-            (poetry run uvicorn "$app" --host=127.0.0.1 --port="$port" --workers=1)&
-            on_exit="$on_exit; kill -9 $!"  # salvăm PID-ul pentru kill la exit
-            cd -
-        else
-            # Presupunem că e un container (DPR sau alt serviciu Docker)
-            docker run -d --rm --network=$network --name=rs-dpr-service \
-                -e RSPY_LOCAL_MODE=1 \
-                -p 6003:8000 \
-                "ghcr.io/rs-python/rs-dpr-service:latest" \
-        
-        fi
-
+        cd "$path"
+        poetry install
+        poetry run opentelemetry-bootstrap -a install # install otel instrumentation packages for dependencies
+        (poetry run uvicorn "$app" --host=127.0.0.1 --port="$port" --workers=1)&
+        on_exit="$on_exit; kill -9 $!" # kill the last process = unvicorn on exit
+        cd -
 
         # Call the health endpoint until it returns a status code OK
         local i=0
@@ -153,7 +152,6 @@ if [[ " $@ " == *" --run-services "* ]]; then
         run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
     run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health"
     run_local_service "../edrs" "rs_server_edrs.fastapi.edrs_app:app" 8006 "health"
-    run_local_service "" "ghcr.io/rs-python/rs-dpr-service:latest" 6003 "_mgmt/ping"
 
     # Use pgstac database
     PGDATABASE=$POSTGRES_DB \
