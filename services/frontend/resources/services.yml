@@ -75,4 +75,4 @@ services:
   staging:
     openapi_url: http://localhost:8004/openapi.json
   dpr:
-    openapi_url: http://rs-dpr-service:6003/openapi.json
+    openapi_url: http://rs-dpr-service:8000/openapi.json
