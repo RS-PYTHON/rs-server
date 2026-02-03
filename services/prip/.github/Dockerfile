@@ -38,6 +38,7 @@ RUN restore-apt.sh && \
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
+RUN pip install --upgrade pyproj
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
