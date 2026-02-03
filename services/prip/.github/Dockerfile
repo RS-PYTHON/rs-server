@@ -28,7 +28,7 @@ RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 # Install git (for dependencies from forks) and system deps for pyproj
 RUN restore-apt.sh && \
     apt update && apt upgrade -y && \
-    apt install -y git libproj-dev proj-data proj build-essential && \
+    apt install -y git libproj-dev proj-data build-essential && \
     layer-cleanup.sh
 
 # Update pip version
