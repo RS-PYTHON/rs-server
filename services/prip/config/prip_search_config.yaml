@@ -253,3 +253,50 @@ collections:
     roles:
     - host
     url: https://home.rs-python.eu/
+- id: SL_2_AOD
+  station: s1a
+  query:
+    productType: SL_2_AOD
+  stac_extensions:
+  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
+  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
+  - https://stac-extensions.github.io/view/v1.1.0/schema.json
+  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
+  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
+  - https://stac-extensions.github.io/product/v1.0.0/schema.json
+  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
+  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
+  title: SL 2 AOD tile products
+  description: Sentinel-1A Level-2 AOD Tile
+  license: other
+  extent:
+    spatial:
+      bbox:
+      - - -180
+        - -82.85
+        - 180
+        - 82.82
+    temporal:
+      interval:
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
