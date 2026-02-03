@@ -25,8 +25,11 @@ FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm
 COPY ./layer-cleanup.sh ./restore-apt.sh /usr/local/bin/
 RUN chmod 755 /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 
-# Install git to install dependencies from forked repositories
-RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y git && layer-cleanup.sh
+# Install git (for dependencies from forks) and system deps for pyproj
+RUN restore-apt.sh && \
+    apt update && apt upgrade -y && \
+    apt install -y git proj-bin libproj-dev build-essential && \
+    layer-cleanup.sh
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
@@ -37,9 +40,10 @@ RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
-# Install the wheel packages in the right order (dependencies first).
-# This also installs all the sub-dependencies e.g. fastapi etc ...
-# https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
+# Install footprint-facility BEFORE the wheels so that pyproj is present
+RUN python -m pip install --no-cache-dir footprint-facility==1.11
+
+# Install the wheel packages in the right order (dependencies first)
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
     rs_server_common-*.whl rs_server_prip-*.whl && \
@@ -48,8 +52,8 @@ RUN cd /tmp/whl && pip install --no-cache-dir \
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install && layer-cleanup.sh
 
-# Remove dependencies that are need only for compilation, not execution
-RUN apt autoremove -y git && layer-cleanup.sh
+# Remove build-only dependencies
+RUN apt autoremove -y git build-essential && layer-cleanup.sh
 
 # Add a default user
 ARG USER=user
