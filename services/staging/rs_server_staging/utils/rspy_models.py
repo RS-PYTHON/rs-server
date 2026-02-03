@@ -99,7 +99,7 @@ class ItemsModel(BaseModel):
     """Model for items containing either a value corresponding to a FeatureCollectionModel or a link"""
 
     href: str | None = None
-    value: FeatureCollectionModel | None = None
+    value: FeatureCollectionModel | Feature | None = None
 
 
 class InputModel(BaseModel):
