@@ -168,124 +168,141 @@ class Staging(
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
 
-    # Override from BaseProcessor, execute is async in RSPYProcessor
-    async def execute(  # pylint: disable=too-many-return-statements,arguments-differ,invalid-overridden-method
-        self,
-        data: dict,
-    ) -> tuple[str, dict]:
+    def _resolve_items_from_link(self, data: dict) -> dict | tuple[str, dict] | None:
         """
-        Asynchronously execute the RSPY staging process, starting with a catalog check and
-        proceeding to feature processing if the check succeeds.
-
-        This method first logs the creation of a new job execution and verifies the connection to
-        the catalog service. If the catalog connection fails, it logs an error and stops further
-        execution. If the connection is successful, it initiates the asynchronous processing of
-        RSPY features.
-
-        If the current event loop is running, the feature processing task is scheduled asynchronously.
-        Otherwise, the event loop runs until the processing task is complete.
-
-        Args:
-            data (dict): input data that the process needs in order to execute
-
-        Returns:
-            tuple: tuple of MIME type and process response (dictionary containing the job ID and a
-                status message).
-                Example: ("application/json", {"running": <job_id>})
-
-        Logs:
-            Error: Logs an error if connecting to the catalog service fails.
-
-        Raises:
-            None: This method doesn't raise any exceptions directly but logs errors if the
-                catalog check fails.
+        Resolve items from an external link if provided.
+        Returns the resolved Feature / FeatureCollection dict or None.
         """
-        # If the content of the staging body is a link STAC itemCollection
-        # (and has no 'value' field containing a STAC ItemCollection)
-        # we launch a request to the corresponding service to load the STAC itemCollection
         try:
-            if "items" in data and "href" in data["items"] and "value" not in data["items"]:
+            items = data.get("items")
+            if not items or "href" not in items or "value" in items:
+                return None
 
-                # Check if the given url is either the cadip or the
-                # auxip - we don't want to send our apikey to any url
-                if not any(href in data["items"]["href"] for href in self.server_url):
-                    return self.log_job_execution(
-                        JobStatus.failed,
-                        0,
-                        "The domain name specified in the input link must correspond to an existing server",
-                    )
-                response = await asyncio.to_thread(
-                    requests.get,
-                    data["items"]["href"],
-                    headers=self.auth_headers,
-                    timeout=5,
+            # Check if the given url is either the cadip or the
+            # auxip - we don't want to send our apikey to any url
+            if not any(href in data["items"]["href"] for href in self.server_url):
+                return self.log_job_execution(
+                    JobStatus.failed,
+                    0,
+                    "The domain name specified in the input link must correspond to an existing server",
                 )
-                response.raise_for_status()
-                response_dict = response.json()
-                if "type" not in response_dict or response_dict["type"] != "FeatureCollection":
-                    raise RequestException(
-                        f"The input link must point to a FeatureCollection: invalid response {response_dict}",
-                    )
+            response = requests.get(
+                items["href"],
+                headers=self.auth_headers,
+                timeout=5,
+            )
+            response.raise_for_status()
+            response_dict = response.json()
 
-                data["items"]["value"] = response_dict
-        except (RequestException, JSONDecodeError, RuntimeError) as exc:
-            return self.log_job_execution(
+            if response_dict.get("type") not in ("Feature", "FeatureCollection"):
+                raise ValueError("The input link must point to a Feature or FeatureCollection")
+
+            return response_dict
+
+        except (RequestException, RuntimeError) as exc:
+            self.log_job_execution(
                 JobStatus.failed,
                 0,
                 f"Failed to retrieve the ItemCollection from the input link: {exc}",
             )
+            return None
 
-        # self.logger.debug(f"Executing staging processor for {data}")
-        item_collection: FeatureCollectionModel | None = (
-            FeatureCollectionModel.model_validate(data["items"]["value"])
-            if "items" in data and "value" in data["items"]
-            else None
-        )
-        catalog_collection: str = data["collection"]
-        # In localmode use getpass.getuser() to get PC username
-        # In clustermode, extract username from apikey or oauth2 cookie.
-        self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
-        # Check for the proper input
-        # Check if item collection is provided
-        if not item_collection or not hasattr(item_collection, "features"):
+    def _parse_item_collection(self, item_value: dict) -> FeatureCollectionModel | None:
+        """
+        Convert a Feature or FeatureCollection dict into a FeatureCollectionModel.
+        """
+        item_type = item_value.get("type")
+
+        if item_type == "Feature":
+            return FeatureCollectionModel(
+                type="FeatureCollection",
+                features=[Feature.model_validate(item_value)],
+            )
+
+        if item_type == "FeatureCollection":
+            return FeatureCollectionModel.model_validate(item_value)
+
+        return None
+
+    def _filter_features_with_assets(self, item_collection: FeatureCollectionModel) -> bool:
+        """
+        Filter features without assets and validate the remaining collection.
+        Returns False if processing should stop.
+        """
+        if not item_collection.features:
+            self.log_job_execution(
+                JobStatus.successful,
+                100,
+                "Finished without processing any tasks",
+            )
+            return False
+
+        item_collection.features = [feature for feature in item_collection.features if feature.assets]
+        if not item_collection.features:
+            self.log_job_execution(
+                JobStatus.successful,
+                0,
+                "No items with assets were found in the input for staging",
+            )
+            return False
+
+        return True
+
+    async def execute(  # pylint: disable=arguments-differ,invalid-overridden-method
+        self,
+        data: dict,
+    ) -> tuple[str, dict]:
+        """
+        Asynchronously execute the RSPY staging process.
+        """
+        resolved_items = self._resolve_items_from_link(data)
+        if resolved_items is None and "href" in data.get("items", {}):
+            return self._get_execute_result()
+
+        if resolved_items:
+            data["items"]["value"] = resolved_items
+
+        item_value = data.get("items", {}).get("value")
+        if not item_value:
             return self.log_job_execution(
                 JobStatus.successful,
                 0,
                 "No valid items were provided in the input for staging",
             )
-        # Handle the case where we have an empty ItemCollection
-        if len(item_collection.features) == 0:
-            return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
-        # Filter out features with no assets
-        item_collection.features = [feature for feature in item_collection.features if feature.assets]
-
-        # Check if any features with assets remain
-        if not item_collection.features:
+        item_collection = self._parse_item_collection(item_value)
+        if not item_collection:
             return self.log_job_execution(
-                JobStatus.successful,
+                JobStatus.failed,
                 0,
-                "No items with assets were found in the input for staging",
+                "Invalid input type: must be Feature or FeatureCollection",
             )
 
-        # Execution section
+        catalog_collection: str = data["collection"]
+
+        self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
+
+        if not self._filter_features_with_assets(item_collection):
+            return self._get_execute_result()
+
         if not await self.check_catalog(catalog_collection, item_collection.features):
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
                 f"Failed to start the staging process. Checking the collection '{catalog_collection}' failed !",
             )
+
         self.log_job_execution(JobStatus.running, 0, "Successfully searched catalog")
-        # Start execution
+
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            # If the loop is running, schedule the async function
             asyncio.create_task(self.process_rspy_features(catalog_collection))
         else:
-            # If the loop is not running, run it until complete
             loop.run_until_complete(self.process_rspy_features(catalog_collection))
 
         return self._get_execute_result()
+
+    # Override from BaseProcessor, execute is async in RSPYProcessor
 
     def _get_execute_result(self) -> tuple[str, dict]:
         return "application/json", {self.status.value: self.job_id}
