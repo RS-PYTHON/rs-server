@@ -19,10 +19,10 @@ import copy
 import getpass
 import json
 from functools import lru_cache
-from typing import Any, cast
+from typing import Any, Callable, cast
 from urllib.parse import urlencode
 
-from cql2 import parse_text
+import cql2
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (
     check_user_authorization,
@@ -113,7 +113,16 @@ def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
     if isinstance(raw_filter, str):
         try:
             if filter_lang == "cql2-text":
-                return parse_text(raw_filter).to_json()
+                # cql2 exposes either parse_text or parse depending on version.
+                parser = getattr(cql2, "parse_text", None) or getattr(cql2, "parse", None)
+                if parser is None or not callable(parser):
+                    raise HTTPException(
+                        status_code=HTTP_400_BAD_REQUEST,
+                        detail="CQL2 text parser is not available.",
+                    )
+                cql2_text_parser = cast(Callable[[str], Any], parser)
+                # pylint can't infer the callable from getattr; runtime is safe after callable() check.
+                return cql2_text_parser(raw_filter).to_json()  # pylint: disable=not-callable
             return json.loads(raw_filter)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             raise HTTPException(
@@ -128,6 +137,57 @@ def combine_filters(existing: dict | None, extra: dict) -> dict:
     if existing is None:
         return extra
     return {"op": "and", "args": [existing, extra]}
+
+
+def filter_has_external_ids(filter_json: Any) -> bool:
+    """Check if a CQL2 filter references externalIds."""
+    if isinstance(filter_json, dict):
+        if filter_json.get("property") == "externalIds":
+            return True
+        return any(filter_has_external_ids(value) for value in filter_json.values())
+    if isinstance(filter_json, list):
+        return any(filter_has_external_ids(item) for item in filter_json)
+    return False
+
+
+def normalize_external_ids_in_filter(filter_json: dict) -> dict:
+    """Rewrite externalIds comparisons into array-overlap filters."""
+    if not isinstance(filter_json, dict):
+        return filter_json
+    op = filter_json.get("op")
+    if op in ("and", "or", "not"):
+        args = filter_json.get("args", [])
+        if isinstance(args, list):
+            return {**filter_json, "args": [normalize_external_ids_in_filter(arg) for arg in args]}
+        return filter_json
+    if op in ("=", "==", "eq", "in"):
+        args = filter_json.get("args", [])
+        if isinstance(args, list) and len(args) == 2:
+            left, right = args
+            if isinstance(left, dict) and left.get("property") == "externalIds":
+                tokens = build_external_ids_tokens(right)
+                if tokens:
+                    return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
+            if isinstance(right, dict) and right.get("property") == "externalIds":
+                tokens = build_external_ids_tokens(left)
+                if tokens:
+                    return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
+    return filter_json
+
+
+def normalize_external_ids_filter_value(raw_filter: Any, filter_lang: str) -> tuple[Any, str, bool]:
+    """Normalize externalIds filters and return (filter, lang, changed)."""
+    if raw_filter is None:
+        return raw_filter, filter_lang, False
+    if isinstance(raw_filter, str) and "externalIds" not in raw_filter:
+        return raw_filter, filter_lang, False
+    # Parse to JSON so we can rewrite externalIds operators for pgstac.
+    filter_json = parse_filter_to_json(raw_filter, filter_lang)
+    if filter_json is None or not filter_has_external_ids(filter_json):
+        return raw_filter, filter_lang, False
+    # Convert externalIds comparisons to array-overlap filters (a_overlaps).
+    normalized = normalize_external_ids_in_filter(filter_json)
+    return normalized, "cql2-json", True
 
 
 class CatalogRequestManager:
@@ -493,6 +553,15 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             content = await request.json()
             original_content = copy.deepcopy(content)
 
+            # Normalize externalIds filters coming from UI (e.g., "=" -> a_overlaps).
+            normalized_filter, normalized_lang, changed = normalize_external_ids_filter_value(
+                content.get("filter"),
+                content.get("filter-lang", "cql2-json"),
+            )
+            if changed:
+                content["filter"] = normalized_filter
+                content["filter-lang"] = normalized_lang
+
             # Build a CQL2 filter for externalIds (array of objects) if requested.
             external_ids_filter = build_external_ids_filter(content.pop("externalIds", None))
             if external_ids_filter is not None:
@@ -515,6 +584,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
 
+            # Ensure normalized filters are serialized in request body.
             # Add filter-lang option to the content if it doesn't already exist
             if "filter" in content:
                 filter_lang = {"filter-lang": content.get("filter-lang", "cql2-json")}
@@ -560,6 +630,15 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     or query_params_dict.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
+
+            # Normalize externalIds filters coming from UI (e.g., "=" -> a_overlaps).
+            normalized_filter, normalized_lang, changed = normalize_external_ids_filter_value(
+                query_params_dict.get("filter"),
+                query_params_dict.get("filter-lang", "cql2-json"),
+            )
+            if changed:
+                query_params_dict["filter"] = json.dumps(normalized_filter)
+                query_params_dict["filter-lang"] = normalized_lang
 
             # Build a CQL2 filter for externalIds (array of objects) if requested.
             external_ids_filter = build_external_ids_filter(query_params_dict.pop("externalIds", None))
