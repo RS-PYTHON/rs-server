@@ -49,21 +49,29 @@ services:
     change_tags:
       "": ADGS stations
       Filter Extension: ADGS (Filter Extension)
+    servers:
+      - url: http://localhost:8001
   cadip:
     openapi_url: http://localhost:8002/cadip/api
     change_tags:
       "": CADIP stations
       Filter Extension: CADIP (Filter Extension)
+    servers:
+      - url: http://localhost:8002
   prip:
     openapi_url: http://localhost:8005/prip/api
     change_tags:
       "": PRIP stations
       Filter Extension: PRIP (Filter Extension)
+    servers:
+      - url: http://localhost:8005
   edrs:
     openapi_url: http://localhost:8006/edrs/api
     change_tags:
       "": EDRS stations
       Filter Extension: EDRS (Filter Extension)
+    servers:
+      - url: http://localhost:8006
   catalog:
     openapi_url: http://localhost:8003/catalog/api
     change_tags:
@@ -74,5 +82,9 @@ services:
       Bulk Transaction Extension: Catalog (Bulk Transaction Extension)
   staging:
     openapi_url: http://localhost:8004/openapi.json
+    servers:
+      - url: http://localhost:8004
   dpr:
     openapi_url: http://127.0.0.1:6003/openapi.json
+    servers:
+      - url: http://127.0.0.1:6003

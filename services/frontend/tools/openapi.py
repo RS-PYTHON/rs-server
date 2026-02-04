@@ -27,7 +27,8 @@ from attr import dataclass
 from requests import HTTPError
 from requests.exceptions import ConnectionError as ConnectionException
 from rs_server_frontend import __version__
-
+from dataclasses import dataclass, field
+from typing import List
 
 class BuildOpenapiFailed(BaseException):
     """Custom exception."""
@@ -50,8 +51,9 @@ class ServiceConf:
 
     name: str
     openapi_url: str
-    openapi_contents: dict = {}  # set after class initialization
-    change_tags: dict = {}  # optional
+    openapi_contents: dict = field(default_factory=dict)
+    change_tags: dict = field(default_factory=dict)
+    servers: list = field(default_factory=list)        
 
     @staticmethod
     def load_service_conf(conf_contents: dict) -> dict[str, ServiceConf]:
@@ -74,6 +76,11 @@ class ServiceConf:
                 response = requests.get(service_json["openapi_url"], timeout=30)
                 response.raise_for_status()
                 service_conf.openapi_contents = json.loads(response.content)
+
+                if service_conf.servers:
+                    for path_item in service_conf.openapi_contents.get("paths", {}).values():
+                        for method in path_item.values():  # get, post, etc.
+                            method["servers"] = service_conf.servers
             except (ConnectionException, HTTPError) as e:
                 # TODO check what kind of base exception is relevant here
                 raise type(e)(
@@ -110,12 +117,19 @@ class AggregatedOpenapi:
         # Override with configuration
         target_info.update(**self.info)
 
-        return {
+        aggregated = {
             "openapi": self.merge_openapi_versions(),
             "info": target_info,
             "paths": self.merge_paths(),
             "components": self.merge_components(),
         }
+    
+        for service in self.services.values():
+            if service.openapi_contents.get("servers"):
+                aggregated["servers"] = service.openapi_contents["servers"]
+                break 
+
+        return aggregated
 
     def merge_openapi_versions(self) -> str:
         """Merge two openapi.json versions"""
