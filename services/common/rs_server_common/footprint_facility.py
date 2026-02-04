@@ -37,7 +37,7 @@ Checks the singularities in the footprints
  - polar : when the footprint contains polar area (also ±180 meridian)
 """
 
-logger = logging.getLogger('footprint_facility')
+logger = logging.getLogger("footprint_facility")
 
 
 class AlreadyReworkedPolygonError(Exception):
@@ -50,10 +50,12 @@ class AlreadyReworkedPolygonError(Exception):
 # point to avoid polar discontinuity.
 # Projection user: polar stereoscopic epsg:3031
 wgs84_to_polar_north = Transformer.from_crs(
-    '+proj=longlat +datum=WGS84 +no_defs', '+proj=stere +lat_0=90 +lat_ts=75'
+    "+proj=longlat +datum=WGS84 +no_defs",
+    "+proj=stere +lat_0=90 +lat_ts=75",
 ).transform
 wgs84_to_polar_south = Transformer.from_crs(
-    '+proj=longlat +datum=WGS84 +no_defs', '+proj=stere +lat_0=-90 +lat_ts=-75'
+    "+proj=longlat +datum=WGS84 +no_defs",
+    "+proj=stere +lat_0=-90 +lat_ts=-75",
 ).transform
 north_pole_m = sh_transform(wgs84_to_polar_north, Point(float(0), float(90)))
 south_pole_m = sh_transform(wgs84_to_polar_south, Point(float(0), float(-90)))
@@ -72,7 +74,7 @@ def check_cross_antimeridian(geometry: Geometry) -> bool:
     :return: True if the geometry pass over antimeridian, False otherwise.
     """
     # Case of Collection of geometries (i.e. Multipolygons)
-    if hasattr(geometry, 'geoms'):
+    if hasattr(geometry, "geoms"):
         for geom in geometry.geoms:
             if check_cross_antimeridian(geom):
                 return True
@@ -81,11 +83,7 @@ def check_cross_antimeridian(geometry: Geometry) -> bool:
     boundary = np.array(shapely.get_coordinates(geometry))
     i = 0
     while i < boundary.shape[0] - 1:
-        if (
-            boundary[i, 0] == 180
-            or boundary[i, 0] == -180
-            or abs(boundary[i + 1, 0] - boundary[i, 0]) > 180
-        ):
+        if boundary[i, 0] == 180 or boundary[i, 0] == -180 or abs(boundary[i + 1, 0] - boundary[i, 0]) > 180:
             return True
         i += 1
     return False
@@ -104,9 +102,7 @@ def _check_contains_north_pole(geometry: Geometry):
     :parameter geometry: the complex reference geometry.
     :return: True if the given geometry contains North Pole
     """
-    north = shapely.intersection(
-        shapely.box(-180, 0, 180, 90), shapely.buffer(geometry, 0)
-    )
+    north = shapely.intersection(shapely.box(-180, 0, 180, 90), shapely.buffer(geometry, 0))
 
     geometry_m = sh_transform(wgs84_to_polar_north, north)
     # Use 1m larger as rounded to handle float values inaccuracies.
@@ -129,9 +125,7 @@ def _check_contains_south_pole(geometry: Geometry):
     :return: True if the given geometry contains South Pole
     """
 
-    south = shapely.intersection(
-        shapely.box(-180, -90, 180, 0), shapely.buffer(geometry, 0)
-    )
+    south = shapely.intersection(shapely.box(-180, -90, 180, 0), shapely.buffer(geometry, 0))
 
     geometry_m = sh_transform(wgs84_to_polar_south, south)
     # Use 1m larger as rounded to handle float values inaccuracies.
@@ -190,7 +184,7 @@ def _polynom_coefficients(px1, py1, px2, py2):
     constant coefficient (b) that can be used as Y=m.X+b
     """
     if px2 - px1 == 0:
-        raise AlreadyReworkedPolygonError('Points are aligned onto the antimeridian')
+        raise AlreadyReworkedPolygonError("Points are aligned onto the antimeridian")
     # leading coefficient
     m = (py2 - py1) / (px2 - px1)
     # retrieves b
@@ -248,29 +242,22 @@ def _split_polygon_to_antimeridian(geometry: Geometry):
 
     hsign = 0 if boundaries[0, 0] < 0 else 1
     for index, boundary in enumerate(boundaries):
-        if (
-            index < boundaries.shape[0] - 1
-            and abs(boundaries[index + 1, 0] - boundaries[index, 0]) > 180
-        ):
+        if index < boundaries.shape[0] - 1 and abs(boundaries[index + 1, 0] - boundaries[index, 0]) > 180:
             hsign = 0 if boundaries[index + 1, 0] < 0 else 1
 
-        if (boundary[0] == -180 or boundary[0] == 180) and (
-            boundary[1] == -90 or boundary[1] == 90
-        ):
+        if (boundary[0] == -180 or boundary[0] == 180) and (boundary[1] == -90 or boundary[1] == 90):
             continue
         polygons[hsign].append(boundary)
 
     # Checks the empty list if any
     if not left_antimeridian and not right_antimeridian:
-        raise ValueError('Footprint cannot be split across the antimeridian')
+        raise ValueError("Footprint cannot be split across the antimeridian")
     elif not left_antimeridian:
         reworked = shapely.polygons(right_antimeridian)
     elif not right_antimeridian:
         reworked = shapely.polygons(left_antimeridian)
     else:
-        reworked = shapely.multipolygons(
-            [shapely.polygons(left_antimeridian), shapely.polygons(right_antimeridian)]
-        )
+        reworked = shapely.multipolygons([shapely.polygons(left_antimeridian), shapely.polygons(right_antimeridian)])
 
     return reworked
 
@@ -281,9 +268,7 @@ def _num_cross_equator(geometry: Geometry):
     previous = []
     count = 0
     for boundary in boundaries:
-        if len(previous) == 2 and (
-            (previous[1] > 0 > boundary[1]) or (previous[1] < 0 < boundary[1])
-        ):
+        if len(previous) == 2 and ((previous[1] > 0 > boundary[1]) or (previous[1] < 0 < boundary[1])):
             count += 1
         previous = boundary
     return count
@@ -306,12 +291,8 @@ def _split_polygon_to_equator(geometry: Geometry):
     :param geometry:
     :return:
     """
-    north = shapely.intersection(
-        shapely.box(-180, 0, 180, 90), shapely.buffer(geometry, 0)
-    )
-    south = shapely.intersection(
-        shapely.box(-180, -90, 180, 0), shapely.buffer(geometry, 0)
-    )
+    north = shapely.intersection(shapely.box(-180, 0, 180, 90), shapely.buffer(geometry, 0))
+    south = shapely.intersection(shapely.box(-180, -90, 180, 0), shapely.buffer(geometry, 0))
     return shapely.MultiPolygon(_to_polygons([north, south]))
 
 
@@ -340,9 +321,7 @@ def _split_crude_polygon_to_latitude(geometry: Geometry, latitude):
             north.append(boundaries[i])
             # Case of transition to the south hemisphere
             if i + 1 < point_number and boundaries[i + 1, 1] < latitude:
-                equator_pts = np.array(
-                    [_lon_cross_equator(boundaries[i + 1], boundaries[i]), latitude]
-                )
+                equator_pts = np.array([_lon_cross_equator(boundaries[i + 1], boundaries[i]), latitude])
                 north.append(equator_pts)
                 north_list.append(north)
                 north = []
@@ -352,9 +331,7 @@ def _split_crude_polygon_to_latitude(geometry: Geometry, latitude):
             south.append(boundaries[i])
             # Case of transition to the north hemisphere
             if i + 1 < point_number and boundaries[i + 1, 1] > latitude:
-                equator_pts = np.array(
-                    [_lon_cross_equator(boundaries[i + 1], boundaries[i]), latitude]
-                )
+                equator_pts = np.array([_lon_cross_equator(boundaries[i + 1], boundaries[i]), latitude])
                 south.append(equator_pts)
                 south_list.append(south)
                 south = []
@@ -446,9 +423,7 @@ def _num_cross_antimeridian(geometry):
 
 # https://shapely.readthedocs.io/en/latest/reference/shapely.make_valid.html
 # Added in version 2.1.0
-_SHAPELY_SUPPORTS_NEW_MAKE_VALID = (
-    'method' in inspect.signature(shapely.make_valid).parameters
-)
+_SHAPELY_SUPPORTS_NEW_MAKE_VALID = "method" in inspect.signature(shapely.make_valid).parameters
 
 
 def rework_to_polygon_geometry(geometry: Geometry):
@@ -471,9 +446,9 @@ def rework_to_polygon_geometry(geometry: Geometry):
 
     count, mixed, latitudes = _num_cross_antimeridian(geometry)
     if mixed and count > 2:
-        logger.debug(f'WARN: Crossing antimeridian {count} times ...')
-        logger.debug(f' And crossing equator {_num_cross_equator(geometry)} times ...')
-        logger.debug('Split footprint at equator to support polar inclusion')
+        logger.debug(f"WARN: Crossing antimeridian {count} times ...")
+        logger.debug(f" And crossing equator {_num_cross_equator(geometry)} times ...")
+        logger.debug("Split footprint at equator to support polar inclusion")
         geometry = _split_crude_polygon_to_equator(geometry)
         rwrk = []
         for geom in geometry.geoms:
@@ -492,17 +467,12 @@ def rework_to_polygon_geometry(geometry: Geometry):
         for geom in geometry.geoms:
             reworked = rework_to_polygon_geometry(geom)
             if isinstance(reworked, BaseMultipartGeometry):
-                raise AlreadyReworkedPolygonError(
-                    'Algorithm not supported already reworked inputs.'
-                )
+                raise AlreadyReworkedPolygonError("Algorithm not supported already reworked inputs.")
             rwrk.append(reworked)
         return shapely.geometry.MultiPolygon(rwrk)
 
     if not isinstance(geometry, shapely.geometry.Polygon):
-        raise ValueError(
-            'Polygon and MultiPolygon features only are '
-            f'supported ({type(geometry).__name__})'
-        )
+        raise ValueError("Polygon and MultiPolygon features only are " f"supported ({type(geometry).__name__})")
 
     boundaries = np.array(shapely.get_coordinates(geometry))
     i = 0
@@ -552,7 +522,7 @@ def rework_to_polygon_geometry(geometry: Geometry):
         # regions.
         if not shapely.is_valid(reworked):
             reworked = (
-                shapely.make_valid(reworked, method='structure', keep_collapsed=False)
+                shapely.make_valid(reworked, method="structure", keep_collapsed=False)
                 if _SHAPELY_SUPPORTS_NEW_MAKE_VALID
                 else shapely.make_valid(reworked)
             )
