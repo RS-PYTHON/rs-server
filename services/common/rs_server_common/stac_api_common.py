@@ -881,18 +881,26 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
 
         # only for PRIP products for now (later to be enabled for LTA)
-        if self.prip:  # or self.lta:
+        if self.prip:  # or self.lta
             for feature in data.features:
-                if geometry := feature.geometry:
-                    if check_cross_antimeridian(shape(geometry)):
-                        reworked_geometry = rework_to_polygon_geometry(shape(geometry))
+                # Skip if feature does not have geometry
+                if not (geometry := feature.geometry):
+                    continue
+                # Skip if geometry does not cross the antimeridian
+                shapely_geom = shape(geometry)
+                if not check_cross_antimeridian(shapely_geom):
+                    continue
 
-                        geo_cls = shapely_to_geojson_cls.get(type(reworked_geometry))
-                        if not geo_cls:
-                            raise TypeError(f"Unsupported geometry type: {type(reworked_geometry)}")
+                # Rework geometry to be a valid Polygon / MultiPolygon
+                reworked_geometry = rework_to_polygon_geometry(shapely_geom)
 
-                        # Convert Shapely to GeoJSON Pydantic
-                        feature.geometry = geo_cls.parse_obj(mapping(reworked_geometry))  # type: ignore
+                geo_cls = shapely_to_geojson_cls.get(type(reworked_geometry))
+                if not geo_cls:
+                    raise TypeError(f"Unsupported geometry type: {type(reworked_geometry)}")
+
+                # Convert Shapely to GeoJSON Pydantic
+                feature.geometry = geo_cls.parse_obj(mapping(reworked_geometry))  # type: ignore
+
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
             dict_data: dict[str, Any] = self.paginate(data)
