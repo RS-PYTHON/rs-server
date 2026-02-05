@@ -214,7 +214,6 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     mocker,
     monkeypatch,
     httpx_mock: HTTPXMock,
-    use_module_for_station_token,  # pylint: disable=unused-argument
     test_apikey: bool,
     test_oauth2: bool,
 ):
@@ -500,7 +499,6 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     mocker,
     monkeypatch,
     httpx_mock: HTTPXMock,
-    use_module_for_station_token,  # pylint: disable=unused-argument
     test_apikey,
     test_oauth2,
     endpoint,
