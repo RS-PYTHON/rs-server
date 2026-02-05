@@ -97,7 +97,8 @@ class StacManager:
         for asset in list(content.get("assets", {}).values()):
             asset["auth:refs"] = ["s3"]
             if ALTERNATE_STRING in asset:
-                asset[ALTERNATE_STRING].update({"auth:refs": ["apikey", "openid", "oauth2"]})
+                for alt_asset in asset[ALTERNATE_STRING].values():
+                    alt_asset["auth:refs"] = ["apikey", "openid", "oauth2"]
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
