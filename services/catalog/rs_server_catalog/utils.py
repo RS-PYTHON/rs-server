@@ -32,7 +32,7 @@ DEFAULT_GEOM = {
     "type": "Polygon",
     "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
 }
-DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
+DEFAULT_BBOX = [-180.0, -90.0, 180.0, 90.0]
 
 # Regular expression pattern to match 's3://path/to/file'
 S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
