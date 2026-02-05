@@ -851,13 +851,8 @@ if __name__ == "__main__":
     for templates in (
         ["services/common/config/rs-server.template.yaml"],
         ["services/adgs/config/adgs_search_config.template.yaml"],
-        ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
         ["services/adgs/config/adgs_ws_config.template.yaml"],
         ["services/cadip/config/cadip_search_config.template.yaml"],
-        [
-            "services/cadip/config/cadip_ws_config_token_module.template.yaml",
-            "services/cadip/config/cadip_ws_config_token_module.template_session.yaml",
-        ],
         [
             "services/cadip/config/cadip_ws_config.template.yaml",
             "services/cadip/config/cadip_ws_config.template_session.yaml",
@@ -865,7 +860,6 @@ if __name__ == "__main__":
         ["services/edrs/config/edrs_search_config.template.yaml"],
         ["services/edrs/config/edrs_stations.template.yaml"],
         ["services/prip/config/prip_search_config.template.yaml"],
-        ["services/prip/config/prip_ws_config_token_module.template.yaml"],
         ["services/prip/config/prip_ws_config.template.yaml"],
     ):
         create_from_template(templates)
@@ -876,9 +870,6 @@ if __name__ == "__main__":
         "services/adgs/config/adgs_ws_config.yaml",
         "services/cadip/config/cadip_ws_config.yaml",
         "services/prip/config/prip_ws_config.yaml",
-        "services/adgs/config/adgs_ws_config_token_module.yaml",
-        "services/cadip/config/cadip_ws_config_token_module.yaml",
-        "services/prip/config/prip_ws_config_token_module.yaml",
         "services/edrs/config/edrs_search_config.yaml",
         "services/edrs/config/edrs_stations.yaml",
     ):
@@ -934,18 +925,6 @@ if __name__ == "__main__":
                 prune_missing=True,
             ),
             HelmOrInfraParams(
-                "services/adgs/config/adgs_ws_config_token_module.yaml",
-                ["adgs"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                1,
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(
                 "services/adgs/config/adgs_search_config.yaml",
                 [],
                 ["data", f"{DCB_OPEN} .Values.app.adgsSearchConfigFile {DCB_CLOSE}"],
@@ -994,30 +973,6 @@ if __name__ == "__main__":
                 0,  # output doc index
                 prune_missing=True,
             ),
-            HelmOrInfraParams(  # same for _token_module
-                "services/cadip/config/cadip_ws_config_token_module.yaml",
-                ["cadip"],
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                1,
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(  # same for _token_module and _session stations
-                "services/cadip/config/cadip_ws_config_token_module.yaml",
-                ["cadip_session"],
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}_session",
-                ],
-                1,
-                prune_missing=True,
-            ),
             HelmOrInfraParams(
                 "services/cadip/config/cadip_search_config.yaml",
                 [],
@@ -1041,18 +996,6 @@ if __name__ == "__main__":
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
                 ],
                 0,  # output doc index
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(
-                "services/prip/config/prip_ws_config_token_module.yaml",
-                ["s1a"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                1,
                 prune_missing=True,
             ),
             HelmOrInfraParams(
