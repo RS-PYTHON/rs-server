@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, protected-access
 
 """Test module for Staging processor."""
 
@@ -21,6 +21,7 @@ from datetime import datetime
 from unittest.mock import call
 
 import pytest
+import requests
 from dask_gateway import Gateway
 from pygeoapi.util import JobStatus
 from rs_server_staging.processors.processor_staging import Staging
@@ -216,6 +217,251 @@ class TestStaging:
                 "updated": fake_now,
             },
         )
+
+    def test_filter_features_with_assets_no_features(self, staging_instance: Staging, mocker):
+        """Test _filter_features_with_assets when item_collection has no features."""
+
+        # Mock log_job_execution
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        # Create empty FeatureCollectionModel
+        item_collection = mocker.Mock()
+        item_collection.features = []
+
+        # Call method
+        result = staging_instance._filter_features_with_assets(item_collection)
+
+        # Assertions
+        assert result is False
+        log_mock.assert_called_once_with(
+            JobStatus.successful,
+            100,
+            "Finished without processing any tasks",
+        )
+
+    def test_filter_features_with_assets_no_assets_after_filter(self, staging_instance: Staging, mocker):
+        """Test _filter_features_with_assets when features exist but none have assets."""
+
+        # Mock log_job_execution
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        # Create features without assets
+        feature_1 = mocker.Mock()
+        feature_1.assets = {}
+
+        feature_2 = mocker.Mock()
+        feature_2.assets = None
+
+        item_collection = mocker.Mock()
+        item_collection.features = [feature_1, feature_2]
+
+        # Call method
+        result = staging_instance._filter_features_with_assets(item_collection)
+
+        # Assertions
+        assert result is False
+        log_mock.assert_called_once_with(
+            JobStatus.successful,
+            0,
+            "No items with assets were found in the input for staging",
+        )
+        assert item_collection.features == []
+
+    def test_parse_item_collection_feature(self, staging_instance: Staging):
+        """Test _parse_item_collection when input is a valid STAC Feature."""
+
+        item_value = {
+            "type": "Feature",
+            "id": "feature-1",
+            "stac_version": "1.0.0",
+            "stac_extensions": [],
+            "geometry": {},
+            "properties": {},
+            "assets": {
+                "asset-1": {
+                    "href": "s3://bucket/file.tif",
+                    "type": "image/tiff",
+                },
+            },
+        }
+
+        result = staging_instance._parse_item_collection(item_value)
+
+        assert result is not None
+        assert result.type == "FeatureCollection"
+        assert len(result.features) == 1
+        assert result.features[0].id == "feature-1"
+
+    def test_parse_item_collection_feature_collection(self, staging_instance: Staging, mocker):
+        """Test _parse_item_collection when input is a FeatureCollection."""
+
+        collection_mock = mocker.Mock()
+
+        model_validate_mock = mocker.patch(
+            "rs_server_staging.utils.rspy_models.FeatureCollectionModel.model_validate",
+            return_value=collection_mock,
+        )
+
+        item_value = {
+            "type": "FeatureCollection",
+            "features": [],
+        }
+        result = staging_instance._parse_item_collection(item_value)
+        assert result == collection_mock
+        model_validate_mock.assert_called_once_with(item_value)
+
+    def test_filter_features_with_assets_empty_features(self, staging_instance: Staging, mocker):
+        """Test _filter_features_with_assets when item_collection has no features."""
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        item_collection = mocker.Mock()
+        item_collection.features = []
+        result = staging_instance._filter_features_with_assets(item_collection)
+        assert result is False
+        log_mock.assert_called_once_with(
+            JobStatus.successful,
+            100,
+            "Finished without processing any tasks",
+        )
+
+    def test_filter_features_with_assets_all_features_without_assets(self, staging_instance: Staging, mocker):
+        """Test _filter_features_with_assets when all features lack assets."""
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        feature_1 = mocker.Mock()
+        feature_1.assets = {}
+
+        feature_2 = mocker.Mock()
+        feature_2.assets = None
+
+        item_collection = mocker.Mock()
+        item_collection.features = [feature_1, feature_2]
+        result = staging_instance._filter_features_with_assets(item_collection)
+        assert result is False
+        assert item_collection.features == []
+
+        log_mock.assert_called_once_with(
+            JobStatus.successful,
+            0,
+            "No items with assets were found in the input for staging",
+        )
+
+    def test_filter_features_with_assets_valid_features(self, staging_instance: Staging, mocker):
+        """Test _filter_features_with_assets when features with assets exist."""
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        feature_with_assets = mocker.Mock()
+        feature_with_assets.assets = {"asset_1": "value"}
+
+        feature_without_assets = mocker.Mock()
+        feature_without_assets.assets = {}
+
+        item_collection = mocker.Mock()
+        item_collection.features = [feature_with_assets, feature_without_assets]
+
+        result = staging_instance._filter_features_with_assets(item_collection)
+        assert result is True
+        assert item_collection.features == [feature_with_assets]
+        log_mock.assert_not_called()
+
+    def test_resolve_items_from_link_no_items(self, staging_instance: Staging):
+        """Return None when items key is missing."""
+
+        data: dict = {}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+
+    def test_resolve_items_from_link_items_without_href(self, staging_instance: Staging):
+        """Return None when items has no href."""
+
+        data: dict = {"items": {}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+
+    def test_resolve_items_from_link_items_with_value(self, staging_instance: Staging):
+        """Return None when items already contains a value."""
+
+        data = {"items": {"href": "https://example.com/items", "value": {}}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+
+    def test_resolve_items_from_link_invalid_domain(self, staging_instance: Staging):
+        """Return a failed log tuple when href domain does not match server_url."""
+
+        staging_instance.server_url = ["allowed-domain.com"]
+
+        data = {"items": {"href": "https://some-random-domein.com/items"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        # Check that the result indicates a failed job
+        assert isinstance(result, tuple)
+        assert result[1].get("failed") is not None
+
+    def test_resolve_items_from_link_feature_success(self, staging_instance: Staging, mocker):
+        """Resolve a valid Feature from link."""
+
+        staging_instance.server_url = ["example.com"]
+
+        response_mock = mocker.Mock()
+        response_mock.raise_for_status.return_value = None
+        response_mock.json.return_value = {
+            "type": "Feature",
+            "id": "feature-1",
+        }
+
+        mocker.patch("requests.get", return_value=response_mock)
+
+        data = {"items": {"href": "https://example.com/items/1"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result == response_mock.json.return_value
+
+    def test_resolve_items_from_link_feature_collection_success(self, staging_instance: Staging, mocker):
+        """Resolve a valid FeatureCollection from link."""
+
+        staging_instance.server_url = ["example.com"]
+
+        response_mock = mocker.Mock()
+        response_mock.raise_for_status.return_value = None
+        response_mock.json.return_value = {
+            "type": "FeatureCollection",
+            "features": [],
+        }
+
+        mocker.patch("requests.get", return_value=response_mock)
+
+        data = {"items": {"href": "https://example.com/items"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result == response_mock.json.return_value
+
+    def test_resolve_items_from_link_request_exception(self, staging_instance: Staging, mocker):
+        """Log failure and return None on request exception."""
+
+        staging_instance.server_url = ["example.com"]
+
+        log_mock = mocker.patch.object(staging_instance, "log_job_execution")
+
+        mocker.patch(
+            "requests.get",
+            side_effect=requests.exceptions.RequestException("boom"),
+        )
+
+        data = {"items": {"href": "https://example.com/items"}}
+
+        result = staging_instance._resolve_items_from_link(data)
+
+        assert result is None
+        log_mock.assert_called_once()
 
 
 class TestStagingDeleteFromBucket:
