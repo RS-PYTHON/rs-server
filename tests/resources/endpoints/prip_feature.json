@@ -1,26 +1,80 @@
 {
-    "stac_version": "1.1.0",
-    "stac_extensions": [
-        "https://stac-extensions.github.io/sat/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/product/v1.0.0/schema.json",
-        "https://stac-extensions.github.io/processing/v1.2.0/schema.json",
-        "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
-        "https://stac-extensions.github.io/grid/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/view/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/sar/v1.3.0/schema.json",
-        "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json",
-        "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
-    ],
+  "stac_version": "1.1.0",
+  "stac_extensions": [
+    "https://stac-extensions.github.io/sat/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/product/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/processing/v1.2.0/schema.json",
+    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+    "https://stac-extensions.github.io/grid/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/view/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/sar/v1.3.0/schema.json",
+    "https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json",
+    "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"
+  ],
   "type": "Feature",
   "id": "ABCD",
   "geometry": {
-    "type": "Polygon",
-    "coordinates": [[[-1.0, 51.0], [-1.0, 52.0], [0.0, 52.0], [0.0, 51.0], [-1.0, 51.0]]]
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            160.948975,
+            37.730877
+          ],
+          [
+            163.052734,
+            38.95826
+          ],
+          [
+            180.0,
+            -13.953413744931368
+          ],
+          [
+            180.0,
+            -23.117388469973207
+          ],
+          [
+            160.948975,
+            37.730877
+          ]
+        ]
+      ],
+      [
+        [
+          [
+            -180.0,
+            -23.117388469973207
+          ],
+          [
+            -180.0,
+            -13.953413744931368
+          ],
+          [
+            -165.051743,
+            -60.623909
+          ],
+          [
+            -167.753052,
+            -62.233685
+          ],
+          [
+            -180.0,
+            -23.117388469973207
+          ]
+        ]
+      ]
+    ]
   },
-  "bbox": [-1.0, 51.0, 0.0, 52.0],
+  "bbox": [
+    -167.753052,
+    -62.233685,
+    163.052734,
+    38.95826
+  ],
   "properties": {
     "externalIds": [
       {
@@ -46,7 +100,10 @@
     "ABCD": {
       "href": "http://127.0.0.1:5000/Products(11111111-2222-3333-4444-555555555555)/$value",
       "type": "application/octet-stream",
-      "roles": ["data", "metadata"],
+      "roles": [
+        "data",
+        "metadata"
+      ],
       "file:size": 1234567,
       "file:checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "eviction_datetime": "2024-08-08T00:00:00Z"
