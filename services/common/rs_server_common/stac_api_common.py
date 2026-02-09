@@ -45,8 +45,14 @@ from fastapi import HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
 from fastapi.datastructures import QueryParams
+from geojson_pydantic.geometries import MultiPolygon as GeoMultiPolygon
+from geojson_pydantic.geometries import Polygon as GeoPolygon
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
+from rs_server_common.footprint_facility import (
+    check_cross_antimeridian,
+    rework_to_polygon_geometry,
+)
 from rs_server_common.rspy_models import Item, ItemCollection
 from rs_server_common.stac_cql2 import temporal_op_query, temporal_operations
 from rs_server_common.utils import utils2
@@ -59,7 +65,7 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from shapely import wkt
-from shapely.geometry import box
+from shapely.geometry import MultiPolygon, Polygon, box, mapping, shape
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
@@ -114,6 +120,12 @@ LimitType = Annotated[
 ]
 PageType = Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")]
 ServiceRole: TypeAlias = Literal["auxip", "cadip", "prip"]
+
+# Map Shapely types to Pydantic GeoJSON types
+shapely_to_geojson_cls = {
+    Polygon: GeoPolygon,
+    MultiPolygon: GeoMultiPolygon,
+}
 
 
 class Queryables(BaseModel):
@@ -876,6 +888,28 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             dict[str, Any]: A dictionary-formatted payload ready for response, potentially including pagination links
             and enriched asset information for CADIP sessions.
         """
+
+        # only for PRIP products for now (later to be enabled for LTA)
+        if self.prip:  # or self.lta
+            for feature in data.features:
+                # Skip if feature does not have geometry
+                if not (geometry := feature.geometry):
+                    continue
+                # Skip if geometry does not cross the antimeridian
+                shapely_geom = shape(geometry)
+                if not check_cross_antimeridian(shapely_geom):
+                    continue
+
+                # Rework geometry to be a valid Polygon / MultiPolygon
+                reworked_geometry = rework_to_polygon_geometry(shapely_geom)
+
+                geo_cls = shapely_to_geojson_cls.get(type(reworked_geometry))
+                if not geo_cls:
+                    raise TypeError(f"Unsupported geometry type: {type(reworked_geometry)}")
+
+                # Convert Shapely to GeoJSON Pydantic
+                feature.geometry = geo_cls.parse_obj(mapping(reworked_geometry))  # type: ignore
+
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
             dict_data: dict[str, Any] = self.paginate(data)

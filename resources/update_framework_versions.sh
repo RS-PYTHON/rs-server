@@ -154,6 +154,7 @@ all_cluster_files=()
 all_cluster_files+=($(_realpath rs-client-libraries/pyproject.toml))
 all_cluster_files+=($(_realpath rs-infra-core/apps/00-crds-dask-gateway/kustomization.yaml))
 all_cluster_files+=($(_realpath rs-infra-core/NOTICE.md))
+all_cluster_files+=($(_realpath rs-infra-monitoring/NOTICE.md))
 all_cluster_files+=($(_realpath rs-server/docs/doc/dev/installation.md))
 all_cluster_files+=($(_realpath rs-server-deployment/apps/01-dask-cluster-staging/deployment.yaml))
 all_cluster_files+=($(_realpath rs-workflow-env/apps/dask-gateway/kustomization.yaml))
@@ -162,6 +163,7 @@ all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-server/values.yaml
 all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-eopf/values.yaml))
 all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-general/values.yaml))
 all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-staging/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/NOTICE.md))
 
 # For each file and variable to update
 for file in "${all_cluster_files[@]}"; do
