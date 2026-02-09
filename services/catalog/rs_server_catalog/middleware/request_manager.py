@@ -18,8 +18,9 @@ import asyncio
 import copy
 import getpass
 import json
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Any, Callable, cast
+from typing import Any, cast
 from urllib.parse import urlencode
 
 import cql2
