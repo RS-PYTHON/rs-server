@@ -17,8 +17,8 @@
 import os
 
 import pytest
-from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
 from ovh.exceptions import BadParametersError
+from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
 
 
 @pytest.fixture(name="handler")
