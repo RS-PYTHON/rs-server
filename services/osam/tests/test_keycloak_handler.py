@@ -18,7 +18,7 @@ import os
 
 import pytest
 from keycloak.exceptions import KeycloakConnectionError, KeycloakPutError
-from osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_osam.utils.keycloak_handler import KeycloakHandler
 
 
 @pytest.fixture(name="handler")
@@ -39,8 +39,8 @@ def handler_fixture(mocker):
 
     # Patch KeycloakAdmin and KeycloakOpenIDConnection
     mock_admin_instance = mocker.MagicMock()
-    mocker.patch("osam.utils.keycloak_handler.KeycloakOpenIDConnection")
-    mocker.patch("osam.utils.keycloak_handler.KeycloakAdmin", return_value=mock_admin_instance)
+    mocker.patch("rs_server_osam.utils.keycloak_handler.KeycloakOpenIDConnection")
+    mocker.patch("rs_server_osam.utils.keycloak_handler.KeycloakAdmin", return_value=mock_admin_instance)
 
     return KeycloakHandler()
 

@@ -17,7 +17,7 @@
 from typing import cast
 
 import pytest
-from osam import main
+from rs_server_osam import main
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import apikey, authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
