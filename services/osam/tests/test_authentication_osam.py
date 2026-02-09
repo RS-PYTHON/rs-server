@@ -18,13 +18,13 @@
 from typing import cast
 
 import pytest
-from rs_server_osam import main
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import apikey, authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_osam import main
 from starlette import status
 from starlette.routing import Route
 
