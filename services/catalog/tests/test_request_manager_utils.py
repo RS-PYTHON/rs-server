@@ -60,8 +60,10 @@ def test_parse_filter_to_json_cql2_json_string():
 
 def test_parse_filter_to_json_cql2_text(monkeypatch):
     """Parses CQL2-text via cql2.parse_text()."""
+
     class ParsedFilter:  # pylint: disable=too-few-public-methods
         """Simple stub returned by parse_text() in tests."""
+
         def to_json(self):
             """Return a minimal CQL2-JSON structure."""
             return {"op": "=", "args": [{"property": "owner"}, "toto"]}
