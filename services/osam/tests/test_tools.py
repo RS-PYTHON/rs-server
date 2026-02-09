@@ -20,7 +20,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from osam.utils.tools import (
+from rs_server_osam.utils.tools import (
     CSV_PATH_ENV_VAR,
     S3StorageConfigurationSingleton,
     create_description_from_template,
@@ -334,7 +334,7 @@ def test_match_roles(roles, expected):
     assert match_roles(roles) == expected
 
 
-@patch("osam.utils.tools.load_configmap_data", return_value=None)
+@patch("rs_server_osam.utils.tools.load_configmap_data", return_value=None)
 def test_match_roles_and_get_configmap_user_values_handle_missing_configmap(mock_load):
     """
     Test that both functions gracefully handle a missing or unreadable configmap CSV file

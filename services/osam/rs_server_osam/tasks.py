@@ -28,9 +28,9 @@ from typing import Any
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
-from osam.utils.cloud_provider_api_handler import OVHApiHandler
-from osam.utils.keycloak_handler import KeycloakHandler
-from osam.utils.tools import (
+from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
+from rs_server_osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_osam.utils.tools import (
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,

@@ -41,7 +41,7 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
-from osam.tasks import (
+from rs_server_osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
