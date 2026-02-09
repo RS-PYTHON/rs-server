@@ -18,7 +18,7 @@
 from typing import cast
 
 import pytest
-from osam import main
+from rs_server_osam import main
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import apikey, authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
@@ -47,10 +47,10 @@ def mock_endpoint_functions(
     osam_client,  # run this fixture after osam_client # pylint: disable=unused-argument
 ):
     """Mock all functions called by the endpoints"""
-    mocker.patch("osam.main.__get_user_rights", return_value={"user": {}})
-    mocker.patch("osam.main.apply_user_access_policy", return_value=[True, "msg"])
-    mocker.patch("osam.main.get_user_s3_credentials", return_value={})
-    mocker.patch("osam.main.load_configmap_data", return_value=[])
+    mocker.patch("rs_server_osam.main.__get_user_rights", return_value={"user": {}})
+    mocker.patch("rs_server_osam.main.apply_user_access_policy", return_value=[True, "msg"])
+    mocker.patch("rs_server_osam.main.get_user_s3_credentials", return_value={})
+    mocker.patch("rs_server_osam.main.load_configmap_data", return_value=[])
 
 
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
