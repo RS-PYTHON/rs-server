@@ -75,7 +75,7 @@ RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 USER $USER
 
 ENTRYPOINT [ \
-    "python", "-m", "uvicorn", "osam.main:app", \
+    "python", "-m", "uvicorn", "rs_server_osam.main:app", \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
