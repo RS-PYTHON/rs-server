@@ -28,6 +28,7 @@ from typing import Any
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from rs_server_common.utils.logging import Logging
 from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
 from rs_server_osam.utils.keycloak_handler import KeycloakHandler
 from rs_server_osam.utils.tools import (
@@ -40,7 +41,6 @@ from rs_server_osam.utils.tools import (
     match_roles,
     parse_role,
 )
-from rs_server_common.utils.logging import Logging
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"

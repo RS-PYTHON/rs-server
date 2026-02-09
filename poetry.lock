@@ -3537,6 +3537,24 @@ packaging = ">=18.0"
 wrapt = ">=1.0.0,<2.0.0"
 
 [[package]]
+name = "opentelemetry-instrumentation-asyncio"
+version = "0.60b1"
+description = "OpenTelemetry instrumentation for asyncio"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "opentelemetry_instrumentation_asyncio-0.60b1-py3-none-any.whl", hash = "sha256:9f326c6947a23dccc02a07ab432b0c62b62bf7312a7608c38771014217199316"},
+    {file = "opentelemetry_instrumentation_asyncio-0.60b1.tar.gz", hash = "sha256:0ddb8ada367c7102662c42433740779a055eace08d65079c86ef65e75d1a66b3"},
+]
+
+[package.dependencies]
+opentelemetry-api = ">=1.14,<2.0"
+opentelemetry-instrumentation = "0.60b1"
+opentelemetry-semantic-conventions = "0.60b1"
+wrapt = ">=1.0.0,<2.0.0"
+
+[[package]]
 name = "opentelemetry-instrumentation-aws-lambda"
 version = "0.60b1"
 description = "OpenTelemetry AWS Lambda instrumentation"
@@ -6967,4 +6985,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "0b4d3d095cdf1d567127c3157c58c1911f2fbe656a4adbd6e568fc4332d46680"
+content-hash = "87faac01fc2b86a07a162076a8094ca5b71784765d6dce376b7a4c53b23887c0"

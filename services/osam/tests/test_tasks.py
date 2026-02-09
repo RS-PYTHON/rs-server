@@ -18,8 +18,9 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from ovh.exceptions import BadParametersError
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,no-name-in-module
 from rs_server_osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
@@ -31,7 +32,6 @@ from rs_server_osam.tasks import (
     update_s3_rights_lists,
 )
 from rs_server_osam.utils.tools import DESCRIPTION_TEMPLATE
-from ovh.exceptions import BadParametersError
 
 from .conftest import TEST_KEYCLOAK_USERS_LIST
 

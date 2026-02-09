@@ -42,7 +42,7 @@ def test_get_user_rights_user_exists(mocker):
     reload(common_settings)
     mocker.patch("rs_server_common.middlewares.apply_middlewares", lambda app: app)
 
-    from osam.main import (  # pylint: disable = import-outside-toplevel
+    from rs_server_osam.main import (  # pylint: disable = import-outside-toplevel
         __get_user_rights,
     )
 

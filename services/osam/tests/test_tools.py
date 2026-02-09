@@ -20,6 +20,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+# pylint: disable = no-name-in-module
 from rs_server_osam.utils.tools import (
     CSV_PATH_ENV_VAR,
     S3StorageConfigurationSingleton,
@@ -195,7 +197,7 @@ def test_load_configmap_data_uses_default_path_when_env_not_set(monkeypatch):
     """Critical fix: patch DEFAULT_CSV_PATH to use real test file."""
     monkeypatch.delenv(CSV_PATH_ENV_VAR, raising=False)
 
-    with patch("osam.utils.tools.DEFAULT_CSV_PATH", S3_EXPIRATION_BUCKET_CSV_FILE):
+    with patch("rs_server_osam.utils.tools.DEFAULT_CSV_PATH", S3_EXPIRATION_BUCKET_CSV_FILE):
         with patch.object(S3StorageConfigurationSingleton, "get_s3_bucket_configuration") as mock_get:
             mock_get.return_value = []
             load_configmap_data()
