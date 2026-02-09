@@ -42,7 +42,7 @@ ADD ./*.whl /tmp/whl
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    rs_osam-*.whl && \
+    rs_server_common-*.whl rs_server_osam-*.whl && \
     layer-cleanup.sh
 
 # Final stage. Don't use alpine, it's too different from the build stage.
