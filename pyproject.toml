@@ -74,7 +74,6 @@ rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
 rs-server-staging = {path = "services/staging", develop = true}
 rs-server-osam = {path = "services/osam", develop = true}
-opentelemetry-instrumentation-asyncio = "^0.60b1"
 
 [tool.poetry.group.dev]
 optional = true
