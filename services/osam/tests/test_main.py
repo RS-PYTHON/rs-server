@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Module use for osam endpoints tests"""
+
 import os
 import threading
 from importlib import reload

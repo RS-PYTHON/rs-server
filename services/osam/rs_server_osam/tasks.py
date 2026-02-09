@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
+
 import copy
 import json
 import logging

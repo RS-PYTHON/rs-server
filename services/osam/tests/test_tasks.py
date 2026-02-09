@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Unit tests for tasks"""
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
