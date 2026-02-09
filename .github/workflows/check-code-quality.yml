@@ -318,7 +318,6 @@ jobs:
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
             -Dsonar.exclusions=tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
             -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
-            -Dsonar.cpd.exclusions=services/osam/tests/test_authentication_osam.py
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
