@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Unit tests for the authentication."""
+
 # pylint: disable = duplicate-code
 from typing import cast
 
