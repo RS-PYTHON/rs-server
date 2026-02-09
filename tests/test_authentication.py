@@ -14,6 +14,7 @@
 
 """Unit tests for the authentication."""
 
+import json
 import os
 from typing import cast
 
@@ -220,21 +221,21 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     """
     Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """
+    # Patch the global variables. See: https://stackoverflow.com/a/69685866
+    mocker.patch("rs_server_common.authentication.authentication.FROM_PYTEST", new=True, autospec=False)
 
-    mocker.patch(
-        "rs_server_common.authentication.authentication.FROM_PYTEST",
-        new=True,
-        autospec=False,
-    )
-
+    # Spy on the authenticate function call
     spy_authenticate = mocker.spy(authentication, "authenticate_from_pytest")
 
+    # Dummy endpoint arguments
     endpoint_params = {
         "collection": "apik_valid_auth",
         "datetime": None,
         "name": None,
     }
 
+    # The user, authenticated with oauth2, can also use an apikey created by another user.
+    # In this case, the apikey authentication has higher priority and should be used.
     roles = [
         "rs_auxip_adgs_read",
         "rs_auxip_adgs_download",
@@ -244,42 +245,41 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
         "rs_cadip_landing_page",
         "rs_edrs_pedc_read",
         "rs_edrs_landing_page",
-        "rs_osam_update",  # merged from OSAM test
     ]
-
     apikey_username = "APIKEY_USERNAME"
     apikey_roles = ["apikey_role1", "apikey_role2", *roles]
     apikey_config = {"apikey": "config"}
-
     oauth2_user_id = "OAUTH2_USER_ID"
     oauth2_username = "OAUTH2_USERNAME"
     oauth2_roles = ["oauth2_role1", "oauth2_role2", *roles]
     oauth2_attributes = {"attr1": "value1", "attr2": "value2"}
-
     monkeypatch.setenv("RSPY_OAUTH2_ATTRIBUTES", ",".join(oauth2_attributes.keys()))
+
+    # Clear oauth2 cookies
     client.cookies.clear()
 
     if test_apikey:
+        # Mock the uac manager url
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-        ttl_cache.clear()
 
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
         httpx_mock.add_response(
             url=RSPY_UAC_CHECK_URL,
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=status.HTTP_200_OK,
-            json={
-                "user_login": apikey_username,
-                "iam_roles": apikey_roles,
-                "config": apikey_config,
-            },
+            json={"user_login": apikey_username, "iam_roles": apikey_roles, "config": apikey_config},
         )
 
+        # With a wrong api key, it returns 403
         httpx_mock.add_response(
             url=RSPY_UAC_CHECK_URL,
             match_headers={APIKEY_HEADER: WRONG_APIKEY},
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
+    # If we test the oauth2 authentication, we login the user.
+    # His authentication information is saved in the client session cookies.
     if test_oauth2:
         await mock_oauth2(
             mocker,
@@ -293,58 +293,52 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
 
     openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
 
+    # For each adgs or cadip api endpoint
     for base_route in fastapi_app.router.routes:
         route = cast(Route, base_route)
-
         if (
             route.path in openapi_urls
+            or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/", "/edrs/"))
             or not route.methods
-            or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/", "/edrs/", "/storage/"))
         ):
             logger.debug(f"Skipping {route.path}")
             continue
 
+        # For each method (get, post, ...)
         for method in route.methods:
-            if route.path.startswith("/storage/"):
-                endpoint = route.path.format(user="any_user")
-            else:
-                endpoint = route.path.replace(
-                    "{collection_id}",
-                    endpoint_params["collection"],  # type: ignore
-                ).format(
-                    session_id="session_id",
-                    station="cadip",
-                    item_id="any",
-                )
-
+            # For new cadip/auxip endpoint, mention a valid-defined collection, either as an argument or in endpoint.
+            endpoint = route.path.replace(
+                "{collection_id}",
+                f"{endpoint_params['collection']}",
+            ).format(session_id="session_id", station="cadip", item_id="any")
             logger.debug(f"Test the {endpoint!r} [{method}] authentication")
 
+            # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
+            # We have other errors on many endpoints because we didn't give the right arguments,
+            # but it's OK it is not what we are testing here.
             if test_apikey or test_oauth2:
                 spy_authenticate.reset_mock()
-
                 response = client.request(
                     method,
                     endpoint,
                     headers={APIKEY_HEADER: VALID_APIKEY} if test_apikey else None,
                 )
-
+                logger.debug(response)
                 assert response.status_code not in (
                     status.HTTP_401_UNAUTHORIZED,
                     status.HTTP_403_FORBIDDEN,
                 )
 
+                # With a wrong apikey, we should have a 403 error
                 if test_apikey:
                     assert (
-                        client.request(
-                            method,
-                            endpoint,
-                            headers={APIKEY_HEADER: WRONG_APIKEY},
-                        ).status_code
+                        client.request(method, endpoint, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
                         == status.HTTP_403_FORBIDDEN
                     )
 
+                # Test that the authenticate function was called only once
+                # and that the apikey information is set rather thatn oauth2 if both are available.
                 spy_authenticate.assert_called_once()
-
                 if test_apikey:
                     assert spy_authenticate.spy_return == AuthInfo(
                         apikey_username,
@@ -358,14 +352,10 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
                         oauth2_attributes,
                     )
 
+            # Check that without authentication, the endpoint is protected and we receive a 401
             else:
                 assert (
-                    client.request(
-                        method,
-                        endpoint,
-                        params=endpoint_params,
-                    ).status_code
-                    == status.HTTP_401_UNAUTHORIZED
+                    client.request(method, endpoint, params=endpoint_params).status_code == status.HTTP_401_UNAUTHORIZED
                 )
 
 
@@ -386,7 +376,6 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
 @pytest.mark.parametrize(
     "fastapi_app, endpoint, method, stations, query_params, expected_role",
     [
-        # ===================== CADIP =====================
         [{**CLUSTER_MODE, **ROUTER_PREFIX_CADIP}, "/cadip", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
@@ -420,7 +409,6 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_cadip_{station}_read",
         ],
-        # ===================== AUXIP =====================
         [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_auxip_landing_page"],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -454,7 +442,6 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_auxip_{station}_read",
         ],
-        # ===================== EDRS =====================
         [{**CLUSTER_MODE, **ROUTER_PREFIX_EDRS}, "/edrs", "GET", edrs_stations, NAME_PARAM, "rs_edrs_landing_page"],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_EDRS},
@@ -488,17 +475,27 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_edrs_{station}_read",
         ],
-        # ===================== STORAGE / OSAM =====================
-        [{**CLUSTER_MODE}, "/storage/accounts/update", "POST", [None], {}, "rs_osam_update"],  # type: ignore
-        [{**CLUSTER_MODE}, "/storage/account/any_user/update", "POST", [None], {}, "rs_osam_update"],  # type: ignore
-        [{**CLUSTER_MODE}, "/storage/account/any_user/rights", "GET", [None], {}, "rs_osam_update"],  # type: ignore
-        # no role required
-        [{**CLUSTER_MODE}, "/storage/account/credentials", "GET", [None], {}, ""],  # type: ignore
     ],
     indirect=["fastapi_app"],
+    ids=[
+        "/cadip",
+        "cadip_collection",
+        "cadip_sp./ecific_collection",
+        "cadip_items",
+        "cadip_specific_item",
+        "/auxip",
+        "auxip_collections",
+        "auxip_specific_collection",
+        "auxip_items",
+        "auxip_specific_item",
+        "/edrs",
+        "edrs_collections",
+        "edrs_specific_collection",
+        "edrs_items",
+        "edrs_specific_item",
+    ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals
-    fastapi_app,
     client,
     mocker,
     monkeypatch,
@@ -513,21 +510,20 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     expected_role,
 ):
     """
-    Test that the api key or oauth2 authentication has the right roles for the http endpoints.
+    Test that the api key has the right roles for the http endpoints.
     """
-
-    is_storage_endpoint = endpoint.startswith("/storage/")
-    is_storage_app = fastapi_app.state.router_prefix is None
-    endpoint_exists = not (is_storage_endpoint and not is_storage_app)
-
-    if test_apikey and endpoint_exists:
+    # Mock the uac manager url
+    if test_apikey:
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
     async def mock_response(user_info: dict):
         """Mock the apikey or oauth2 authentication."""
+
+        # Clear oauth2 cookies
         client.cookies.clear()
 
-        if test_apikey and endpoint_exists:
+        # Mock the UAC response. Clear the cached response everytime.
+        if test_apikey:
             ttl_cache.clear()
             httpx_mock.add_response(
                 url=RSPY_UAC_CHECK_URL,
@@ -535,7 +531,10 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
                 status_code=status.HTTP_200_OK,
                 json=user_info | {"config": {}},
             )
-        elif test_oauth2 and endpoint_exists:
+
+        # Login the user with oauth2.
+        # His authentication information is saved in the client session cookies.
+        elif test_oauth2:
             await mock_oauth2(
                 mocker,
                 client,
@@ -546,64 +545,66 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
                 {},
             )
 
-    def client_request(url: str):
+    def client_request(station_endpoint: str):
+        """Request endpoint."""
         return client.request(
             method,
-            url,
+            station_endpoint,
             params=query_params,
             headers={APIKEY_HEADER: VALID_APIKEY} if test_apikey else None,
         )
 
+    # for each cadip station or just "adgs"
     for station in stations:
-        if is_storage_endpoint:
-            resolved_endpoint = endpoint
-            station_role = expected_role
-        else:
-            collection_id = (
-                edrs_collection_by_station.get(station, station) if endpoint.startswith("/edrs") else station
+        # Replace placeholders in endpoint. For EDRS, use real collection id mapping and a known item_id.
+        collection_id = edrs_collection_by_station.get(station, station) if endpoint.startswith("/edrs") else station
+        station_endpoint = endpoint.format(
+            collection_id=collection_id,
+            station=station,
+            item_id=EDRS_ITEM_ID,
+        )
+        station_role = expected_role.format(station=station)
+
+        logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
+
+        # With no roles ...
+        await mock_response({"iam_roles": [], "user_login": {}})
+        response = client_request(station_endpoint)
+
+        # Test the error message with an unknown cadip station or collection,
+        # skip for landing_pages since no need for stations.
+        if station == UNKNOWN_CADIP_STATION and "landing_page" not in station_role:
+            message = json.loads(response.content)["description"]
+            assert (
+                response.status_code == status.HTTP_401_UNAUTHORIZED
+                and f"Authorization does not include the right role to download from the 'cadip_{station}' station"
+                in message
+            ) or (
+                response.status_code == status.HTTP_404_NOT_FOUND
+                and f"Unknown CADIP collection: {station!r}" in message
             )
-            resolved_endpoint = endpoint.format(
-                collection_id=collection_id,
-                station=station,
-                item_id=EDRS_ITEM_ID,
-            )
-            station_role = expected_role.format(station=station)
+            break  # no need to test the other endpoints
 
-        logger.debug(f"Test the {resolved_endpoint!r} [{method}] authentication roles")
+        # Else, with a valid station, we should receive an unauthorized response
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-        # --- No role ---
-        if station_role:
-            await mock_response({"iam_roles": [], "user_login": {}})
-            response = client_request(resolved_endpoint)
+        # Idem with non-relevant roles
+        await mock_response({"iam_roles": ["any", "non-relevant", "roles"], "user_login": {}})
+        assert client_request(station_endpoint).status_code == status.HTTP_401_UNAUTHORIZED
 
-            assert response.status_code in (
-                status.HTTP_401_UNAUTHORIZED,
-                status.HTTP_404_NOT_FOUND,
-            )
-
-            if response.status_code != status.HTTP_404_NOT_FOUND:
-                await mock_response({"iam_roles": ["any", "non-relevant", "roles"], "user_login": {}})
-                assert client_request(resolved_endpoint).status_code == status.HTTP_401_UNAUTHORIZED
-
-        # --- Correct role ---
+        # With the right expected role, we should be authorized (no 401 or 403)
         await mock_response({"iam_roles": [station_role], "user_login": {}})
-        response = client_request(resolved_endpoint)
+        assert client_request(station_endpoint).status_code not in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
 
-        if response.status_code != status.HTTP_404_NOT_FOUND:
-            assert response.status_code not in (
-                status.HTTP_401_UNAUTHORIZED,
-                status.HTTP_403_FORBIDDEN,
-            )
-
-        # --- Correct role + noise ---
+        # It should also work if other random roles are present
         await mock_response({"iam_roles": [station_role, "any", "other", "role"], "user_login": {}})
-        response = client_request(resolved_endpoint)
-
-        if response.status_code != status.HTTP_404_NOT_FOUND:
-            assert response.status_code not in (
-                status.HTTP_401_UNAUTHORIZED,
-                status.HTTP_403_FORBIDDEN,
-            )
+        assert client_request(station_endpoint).status_code not in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
 
 
 @responses.activate
