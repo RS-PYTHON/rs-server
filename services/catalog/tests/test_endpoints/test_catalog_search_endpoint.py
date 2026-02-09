@@ -24,6 +24,8 @@ from typing import Any
 import fastapi
 import pytest
 
+from tests.helpers import a_feature
+
 
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
@@ -117,6 +119,48 @@ class TestCatalogSearchEndpoint:
         }
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_200_OK
+
+    def supports_external_ids(self, client) -> bool:
+        response = client.get("/catalog/queryables")
+        if response.status_code != fastapi.status.HTTP_200_OK:
+            return False
+        return "externalIds" in response.json().get("properties", {})
+
+    def add_feature_with_external_ids(self, client, item_id: str, external_id: str):
+        feature = a_feature("toto", item_id, "S1_L1").properties
+        feature["properties"]["externalIds"] = [{"scheme": "auxip", "value": external_id}]
+        response = client.post("/catalog/collections/toto:S1_L1/items", json=feature)
+        assert response.status_code in (fastapi.status.HTTP_200_OK, fastapi.status.HTTP_201_CREATED)
+
+    def test_search_endpoint_with_external_ids_filter(self, client):
+        if not self.supports_external_ids(client):
+            pytest.skip("externalIds queryable not available in test database.")
+        self.add_feature_with_external_ids(client, "external-ids-filter-item", "ext-123")
+        test_json = {
+            "collections": ["S1_L1"],
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    {"op": "=", "args": [{"property": "externalIds"}, "ext-123"]},
+                ],
+            },
+        }
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert any(feature["id"] == "external-ids-filter-item" for feature in content["features"])
+
+    def test_search_endpoint_with_external_ids_param(self, client):
+        if not self.supports_external_ids(client):
+            pytest.skip("externalIds queryable not available in test database.")
+        self.add_feature_with_external_ids(client, "external-ids-param-item", "ext-456")
+        test_params = {"collections": "S1_L1", "owner": "toto", "externalIds": "ext-456"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert any(feature["id"] == "external-ids-param-item" for feature in content["features"])
 
     def test_search_in_unexisting_collection(self, client):
         """Test that if the collection does not exist, an HTTP 404 error is returned."""
