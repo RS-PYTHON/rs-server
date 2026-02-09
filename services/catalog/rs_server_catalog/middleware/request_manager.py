@@ -60,12 +60,13 @@ logger = Logging.default(__name__)
 
 
 def iter_external_id_parts(raw: Any) -> list[str]:
-    """Split externalIds input into clean parts for filtering."""
+    """Split externalIds input (string/list) into clean, comma-separated tokens."""
     parts: list[str] = []
     values = raw if isinstance(raw, list) else [raw]
     for value in values:
         if value is None:
             continue
+        # Allow callers to pass a single string with comma-separated ids.
         for part in str(value).split(","):
             part = part.strip()
             if part:
@@ -74,7 +75,7 @@ def iter_external_id_parts(raw: Any) -> list[str]:
 
 
 def build_external_ids_tokens(raw: Any) -> list[str]:
-    """Build normalized externalIds tokens for CQL2 filtering."""
+    """Normalize externalIds values into tokens used by pgstac filtering."""
     tokens: list[str] = []
     seen: set[str] = set()
     for part in iter_external_id_parts(raw):
@@ -83,6 +84,7 @@ def build_external_ids_tokens(raw: Any) -> list[str]:
             scheme, value = part.split(":", 1)
             scheme = scheme.strip()
             value = value.strip()
+            # Keep scheme:value, scheme-only, or value-only depending on input form.
             if scheme and value:
                 token = f"{scheme}:{value}"
             elif scheme and not value:
@@ -90,6 +92,7 @@ def build_external_ids_tokens(raw: Any) -> list[str]:
             elif value and not scheme:
                 token = value
         else:
+            # No scheme provided, keep raw value.
             token = part
         if token and token not in seen:
             tokens.append(token)
@@ -98,10 +101,11 @@ def build_external_ids_tokens(raw: Any) -> list[str]:
 
 
 def build_external_ids_filter(raw: Any) -> dict | None:
-    """Create a CQL2 filter for externalIds if tokens are present."""
+    """Create a CQL2 filter (a_overlaps) for externalIds tokens."""
     tokens = build_external_ids_tokens(raw)
     if not tokens:
         return None
+    # pgstac expects array overlap when querying token arrays.
     return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
 
 
@@ -141,12 +145,14 @@ def combine_filters(existing: dict | None, extra: dict) -> dict:
 
 
 def filter_has_external_ids(filter_json: Any) -> bool:
-    """Check if a CQL2 filter references externalIds."""
+    """Check if a CQL2 filter tree references the externalIds property."""
     if isinstance(filter_json, dict):
         if filter_json.get("property") == "externalIds":
             return True
+        # Recursively scan nested operations/arguments.
         return any(filter_has_external_ids(value) for value in filter_json.values())
     if isinstance(filter_json, list):
+        # Lists can hold nested filter nodes.
         return any(filter_has_external_ids(item) for item in filter_json)
     return False
 
@@ -157,19 +163,24 @@ def normalize_external_ids_in_filter(filter_json: dict) -> dict:
         return filter_json
     op = filter_json.get("op")
     if op in ("and", "or", "not"):
+        # Walk the boolean tree and normalize only the externalIds leaf comparisons.
         args = filter_json.get("args", [])
         if isinstance(args, list):
             return {**filter_json, "args": [normalize_external_ids_in_filter(arg) for arg in args]}
         return filter_json
     if op in ("=", "==", "eq", "in"):
+        # STAC Browser sends "externalIds = <uuid>", but pgstac stores externalIds as an array of tokens.
+        # Using "=" against an array yields no matches, so we convert it to a_overlaps on token list.
         args = filter_json.get("args", [])
         if isinstance(args, list) and len(args) == 2:
             left, right = args
             if isinstance(left, dict) and left.get("property") == "externalIds":
+                # Normalize raw values (string, list, comma-separated) to tokens.
                 tokens = build_external_ids_tokens(right)
                 if tokens:
                     return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
             if isinstance(right, dict) and right.get("property") == "externalIds":
+                # Support the (value, property) argument order too.
                 tokens = build_external_ids_tokens(left)
                 if tokens:
                     return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
