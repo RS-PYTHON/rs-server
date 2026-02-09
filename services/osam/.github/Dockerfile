@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,9 +30,6 @@ RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y git && laye
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
-
-# Install rs-server-common dependency from the "develop" branch before the osam wheel.
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common" && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -82,4 +79,4 @@ ENTRYPOINT [ \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
-LABEL dockerfile.url="https://github.com/RS-PYTHON/operational-services/blob/develop/object_storage_access_manager/.github/Dockerfile"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/osam/.github/Dockerfile"
