@@ -64,7 +64,7 @@ services:
       "": EDRS stations
       Filter Extension: EDRS (Filter Extension)
   osam:
-    openapi_url: http://localhost:7001/osam/api
+    openapi_url: http://localhost:7001/openapi.json
     change_tags:
       "": Object Storage
       Filter Extension: OSAM (Filter Extension)
