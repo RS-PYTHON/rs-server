@@ -40,11 +40,11 @@ from rs_server_common.middlewares import (
 from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.api.middleware import CORSMiddleware
 from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.app import app as sfpg_app
 from stac_fastapi.pgstac.app import with_transactions
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
+from starlette.middleware.cors import CORSMiddleware
 
 logger = Logging.default(__name__)
 
