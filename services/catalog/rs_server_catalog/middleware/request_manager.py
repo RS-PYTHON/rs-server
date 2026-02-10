@@ -64,10 +64,8 @@ def iter_external_id_parts(raw: Any) -> list[str]:
     parts: list[str] = []
     values = raw if isinstance(raw, list) else [raw]
     for value in values:
-        if value is None:
-            continue
         # Allow callers to pass a single string with comma-separated ids.
-        for part in str(value).split(","):
+        for part in str(value or "").split(","):
             part = part.strip()
             if part:
                 parts.append(part)
@@ -132,7 +130,10 @@ def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
         except Exception as exc:  # pylint: disable=broad-exception-caught
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail="Invalid filter format for externalIds search.",
+                detail=(
+                    "Invalid filter format for externalIds search: "
+                    f"raw_filter={raw_filter!r}, filter_lang={filter_lang!r}"
+                ),
             ) from exc
     return None
 

@@ -75,9 +75,7 @@ def validate_str_list(parameter: str) -> list | str:
 def _iter_external_id_parts(value: str | list[str]) -> Iterable[str]:
     values = value if isinstance(value, list) else [value]
     for raw in values:
-        if raw is None:
-            continue
-        for part in (p.strip() for p in str(raw).split(",")):
+        for part in (p.strip() for p in str(raw or "").split(",")):
             if part:
                 yield part
 
