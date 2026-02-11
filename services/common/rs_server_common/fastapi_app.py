@@ -21,7 +21,6 @@ from urllib.parse import urljoin
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
@@ -52,6 +51,7 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.datastructures import State
+from starlette.middleware.cors import CORSMiddleware
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
