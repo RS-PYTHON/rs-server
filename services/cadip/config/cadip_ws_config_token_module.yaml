@@ -871,7 +871,7 @@ cadip_session:
       sort_param_mapping:
         id: SessionId
         start_datetime: DownlinkStart
-        datetime: DownlinkStart
+        datetime: PublicationDate
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
@@ -1048,7 +1048,7 @@ ins_session:
       sort_param_mapping:
         id: SessionId
         start_datetime: DownlinkStart
-        datetime: DownlinkStart
+        datetime: PublicationDate
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
@@ -1225,7 +1225,7 @@ mps_session:
       sort_param_mapping:
         id: SessionId
         start_datetime: DownlinkStart
-        datetime: DownlinkStart
+        datetime: PublicationDate
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
@@ -1402,7 +1402,7 @@ mti_session:
       sort_param_mapping:
         id: SessionId
         start_datetime: DownlinkStart
-        datetime: DownlinkStart
+        datetime: PublicationDate
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
@@ -1579,7 +1579,7 @@ nsg_session:
       sort_param_mapping:
         id: SessionId
         start_datetime: DownlinkStart
-        datetime: DownlinkStart
+        datetime: PublicationDate
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
@@ -1756,7 +1756,7 @@ sgs_session:
       sort_param_mapping:
         id: SessionId
         start_datetime: DownlinkStart
-        datetime: DownlinkStart
+        datetime: PublicationDate
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
