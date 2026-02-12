@@ -51,6 +51,12 @@ adgs:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -127,6 +133,8 @@ adgs:
         operations:
           and:
           - contains(Name, '{Name}')
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Name in ({Names})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
@@ -225,6 +233,12 @@ adgs2:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -301,6 +315,8 @@ adgs2:
         operations:
           and:
           - contains(Name, '{Name}')
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - Name in ({Names})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
