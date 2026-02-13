@@ -38,7 +38,8 @@ yaml.Dumper.ignore_aliases = lambda *_: True  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-# Supported stations: list of CADIP, AUXIP and PRIP stations for which we want to include the config file in the helm chart
+# Supported stations: list of CADIP, AUXIP and PRIP stations
+# for which we want to include the config file in the helm chart
 SUPPORTED_CADIP_STATIONS = ["cadip", "sgs", "mti"]
 SUPPORTED_ADGS_STATIONS = ["adgs", "adgs2"]
 SUPPORTED_PRIP_STATIONS = ["s1a", "s2b"]
