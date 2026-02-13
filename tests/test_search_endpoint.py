@@ -1083,8 +1083,9 @@ class TestFeatureCollectionOdataStacMapping:
         """POST /cadip/search should intersect request datetime with collection PublicationDate."""
         expected_odata = (
             "http://127.0.0.1:5000/Sessions?$filter=Satellite%20eq%20'S1A'%20and%20"
-            "(PublicationDate%20gt%202021-06-01T00:00:00.000Z%20or%20PublicationDate%20eq%202021-06-01T00:00:00.000Z)%20and%20"
-            "(PublicationDate%20lt%202021-06-02T00:00:00.000Z%20or%20PublicationDate%20eq%202021-06-02T00:00:00.000Z)"
+            "(PublicationDate%20gt%202021-06-01T00:00:00.000Z%20or%20PublicationDate%20eq%202021-06-01T00:00:00.000Z)"
+            "%20and%20(PublicationDate%20lt%202021-06-02T00:00:00.000Z"
+            "%20or%20PublicationDate%20eq%202021-06-02T00:00:00.000Z)"
             "&$orderby=PublicationDate desc&$top=10&$skip=0"
         )
         responses.add(responses.GET, expected_odata, json={"value": []}, status=200)
