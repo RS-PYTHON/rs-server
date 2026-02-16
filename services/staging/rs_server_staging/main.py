@@ -289,7 +289,7 @@ async def ping():
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
+@router.get("/processes", dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
     processes = {
@@ -311,7 +311,7 @@ async def get_processes(request: Request):
 
 @router.get(
     "/processes/{resource}",
-    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
+    dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)],
 )
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
@@ -402,7 +402,7 @@ def format_jobs_data(jobs: dict):
 
 
 # Endpoint to execute the staging process and generate a job ID
-@router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
+@router.post("/processes/{resource}/execution", dependencies=[Security(just_for_the_lock_icon)])
 async def execute_process(
     request: Request,
     resource: str,
@@ -446,7 +446,7 @@ async def execute_process(
 
 
 # Endpoint to get the status of a job by job_id
-@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
+@router.get("/jobs/{job_id}", dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     try:
@@ -461,7 +461,7 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
 
 
-@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
+@router.get("/jobs", dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
@@ -474,7 +474,7 @@ async def get_jobs_endpoint(request: Request):
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=str(e))
 
 
-@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
+@router.delete("/jobs/{job_id}", dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     try:
@@ -494,7 +494,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
 
 @router.get(
     "/jobs/{job_id}/results",
-    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
+    dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)],
 )
 async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
