@@ -36,7 +36,7 @@ temporal_operations = {
     "t_finishedby": "ll < rl and lh = rh",
     "t_equals": "ll = rl and lh = rh",
     "t_disjoint": "not (ll <= rh and lh >= rl)",
-    "t_intersects": "ll <= rh and lh >= rl",
+    "t_intersects": "ll < rh or ll = rh and lh > rl or lh = rl",
 }
 
 
