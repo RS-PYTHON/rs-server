@@ -110,11 +110,21 @@ class AggregatedOpenapi:
         # Override with configuration
         target_info.update(**self.info)
 
+        merged_paths = self.merge_paths()
+        merged_components = self.merge_components()
+
+        all_security = [
+            sub.get("security")
+            for sub in self.all_openapi
+            if sub.get("security")
+        ]
+
         return {
             "openapi": self.merge_openapi_versions(),
             "info": target_info,
-            "paths": self.merge_paths(),
-            "components": self.merge_components(),
+            "paths": merged_paths,
+            "components": merged_components,
+            "security": all_security[0] if all_security else []
         }
 
     def merge_openapi_versions(self) -> str:
