@@ -927,7 +927,7 @@ if __name__ == "__main__":
                     prune_missing=True,
                 ),
             ],
-            rs_helm_dir / f"charts/rs-server-adgs/config/{adgs_station}_service_config.yaml",
+            rs_helm_dir / f"charts/rs-server-adgs/config/{adgs_station}_mockup_service_config.yaml",
         )
 
     copy_to_helm_or_infra(
@@ -968,7 +968,7 @@ if __name__ == "__main__":
                     prune_missing=True,
                 ),
             ],
-            rs_helm_dir / f"charts/rs-server-cadip/config/{cadip_station}_service_config.yaml",
+            rs_helm_dir / f"charts/rs-server-cadip/config/{cadip_station}_mockup_service_config.yaml",
         )
         copy_to_helm_or_infra(
             [
@@ -980,7 +980,7 @@ if __name__ == "__main__":
                     prune_missing=True,
                 ),
             ],
-            rs_helm_dir / f"charts/rs-server-cadip/config/{cadip_station}_service_config.yaml",
+            rs_helm_dir / f"charts/rs-server-cadip/config/{cadip_station}_mockup_service_config.yaml",
         )
 
     copy_to_helm_or_infra(
@@ -1008,7 +1008,7 @@ if __name__ == "__main__":
                     prune_missing=True,
                 ),
             ],
-            rs_helm_dir / f"charts/rs-server-prip/config/{prip_station}_service_config.yaml",
+            rs_helm_dir / f"charts/rs-server-prip/config/{prip_station}_mockup_service_config.yaml",
         )
 
     copy_to_helm_or_infra(
