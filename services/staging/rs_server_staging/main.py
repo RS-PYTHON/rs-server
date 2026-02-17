@@ -289,7 +289,7 @@ async def ping():
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@router.get("/processes", dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)])
+@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
     processes = {
@@ -311,7 +311,7 @@ async def get_processes(request: Request):
 
 @router.get(
     "/processes/{resource}",
-    dependencies=[Security(just_for_the_lock_icon), Depends(validate_request_dependency)],
+    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
 )
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""

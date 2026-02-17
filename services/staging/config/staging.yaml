@@ -20,6 +20,8 @@ server:
   admin: False
   languages:
     - en-US
+  security:
+    - ApiKeyAuth: []
 
 logging:
   level: DEBUG
@@ -51,3 +53,10 @@ resources:
 
 openapi:
   path: # not used
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
