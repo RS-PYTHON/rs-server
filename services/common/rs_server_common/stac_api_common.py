@@ -496,7 +496,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 ring = ring + [ring[0]]
             return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
 
-        def read_cql(filt: dict, is_cadip: bool = False):
+        def read_cql(filt: dict, is_cadip_or_auxip: bool = False):
             """Use a recursive function to read all CQL filter levels"""
             if not filt:
                 return
@@ -532,7 +532,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Read temporal operators
             if op in temporal_operations:
-                temporal_query: str = temporal_op_query(op, args, self.temporal_mapping, is_cadip=is_cadip)
+                temporal_query: str = temporal_op_query(
+                    op,
+                    args,
+                    self.temporal_mapping,
+                    is_cadip_or_auxip=is_cadip_or_auxip,
+                )
                 logger.debug(f"Temporal operator {op} with args {args} -> {temporal_query}")
                 stac_params[op] = temporal_query
                 return
@@ -544,7 +549,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed, got '{op}': {format_dict(filt)}",  # noqa: E501 # pylint: disable=line-too-long
                 )
             for sub_filter in args:
-                read_cql(sub_filter, is_cadip=is_cadip)
+                read_cql(sub_filter, is_cadip_or_auxip=is_cadip_or_auxip)
 
         def read_query(query_arg: str | None):
             """Used to read query parameter cql2-text filter."""
@@ -589,7 +594,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             params["filter"] = process_filter_extensions(params["filter"])
 
         # Read filter
-        read_cql(params.pop("filter", {}), is_cadip=self.cadip)
+        read_cql(params.pop("filter", {}), is_cadip_or_auxip=self.cadip or self.auxip)
         read_query(self.request.query_params.get("filter"))
 
         # Read the query
