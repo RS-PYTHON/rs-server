@@ -113,18 +113,15 @@ class AggregatedOpenapi:
         merged_paths = self.merge_paths()
         merged_components = self.merge_components()
 
-        all_security = [
-            sub.get("security")
-            for sub in self.all_openapi
-            if sub.get("security")
-        ]
+        # Adding security header fo also staging
+        all_security = [sub.get("security") for sub in self.all_openapi if sub.get("security")]
 
         return {
             "openapi": self.merge_openapi_versions(),
             "info": target_info,
             "paths": merged_paths,
             "components": merged_components,
-            "security": all_security[0] if all_security else []
+            "security": all_security[0] if all_security else [],
         }
 
     def merge_openapi_versions(self) -> str:
