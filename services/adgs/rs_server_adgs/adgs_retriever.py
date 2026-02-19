@@ -24,14 +24,8 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
-from rs_server_common.settings import env_bool
 
-if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
-    DEFAULT_EODAG_CONFIG = (
-        Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config_token_module.yaml"
-    )
-else:
-    DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config.yaml"
+DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config.yaml"
 
 
 @lru_cache
