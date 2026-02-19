@@ -198,13 +198,15 @@ def link_rspython_users_and_obs_users():
 
         for user in keycloak_users:
             # For each Keycloak user, check if there's an associated OBS user
-            obs_user_id = get_keycloak_handler().get_obs_user_from_keycloak_user(user)
+            obs_user_id = next(iter(get_keycloak_handler().get_obs_user_from_keycloak_user(user) or []), None)
             # If no associated OBS user or if the associated OBS user ID is not in OVH, create a new OBS user account
             if not obs_user_id or obs_user_id not in obs_user_ids:
                 logger.info(f"Creating a new ovh account linked to keycloak user '{user}'")
                 create_obs_user_account_for_keycloak_user(user)
 
         # Refresh state after potential creations
+        # After we create OBS account and update keycloak attributes, we need to refresh the keycloak_users and
+        # obs_users lists to have the updated data for the deletion step
         keycloak_users = get_keycloak_handler().get_keycloak_users()
         obs_users = get_ovh_handler().get_all_users()
         for obs_user in obs_users:
