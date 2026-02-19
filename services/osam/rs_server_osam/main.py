@@ -271,14 +271,14 @@ async def update_obs_user_rights(request: Request, user: str):
     This endpoint is called by an RS operator with the *rs_osam_update* role. It updates the S3 Object Storage (OBS)
     rights of any user, calculated from their associated Keycloak account.
 
-    How it works:
+    When called, this endpoint will:
 
-    1. Reads the user's roles from their Keycloak account.
+    1. Read the user's roles from their Keycloak account.
 
-    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    2. Calculate the associated OBS access policy rights: they describe the buckets, paths, and permission levels
     (such as read, write and download) that the user has access to.
 
-    3. Applies the access policy to the user's OBS account.
+    3. Apply the access policy to the user's OBS account.
 
     The operation ensures that the user's OBS permissions match their Keycloak permissions.
 
@@ -315,14 +315,14 @@ async def get_obs_user_rights(request: Request, user: str):
     This endpoint is called by an RS operator with the *rs_osam_update* role. It returns the S3 Object Storage (OBS)
     rights of any user, calculated from their associated Keycloak account.
 
-    How it works:
+    When called, this endpoint will:
 
-    1. Reads the user's roles from their Keycloak account.
+    1. Read the user's roles from their Keycloak account.
 
-    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    2. Calculate the associated OBS access policy rights: they describe the buckets, paths, and permission levels
     (such as read, write and download) that the user has access to.
 
-    3. Returns the access policy in the OBS JSON format, without applying them to the OBS user account.
+    3. Return the access policy in the OBS JSON format, without applying them to the OBS user account.
 
     ### Args
     user (str) — The Keycloak username for which the access policy should be returned.
