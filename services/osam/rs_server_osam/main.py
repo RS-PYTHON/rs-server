@@ -65,6 +65,8 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
 )
 
+LOCK = threading.Lock()
+
 # The default synchronization time of the keycloak users with the ovh users (twice per day)
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
 # Default timeout of the synchronization logic (2 minutes)
@@ -132,7 +134,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     # the trigger for running the logic in the background task
     fastapi_app.extra["users_sync_trigger"] = threading.Event()
     # save info for future requests of endpoint /storage/account/{user}/rights
-    fastapi_app.extra["users_info"] = dict[str, Any]
+    fastapi_app.extra["users_info"] = None
     # start the background task in a thread using asyncio.to_thread
     fastapi_app.extra["refresh_task"] = asyncio.create_task(
         asyncio.to_thread(main_osam_task, DEFAULT_OSAM_FREQUENCY_SYNC),
@@ -257,6 +259,14 @@ def __get_user_rights(user):
     Raises:
         HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
     """
+
+    # If the users info have not been calculated yet (by calling '/storage/accounts/update')
+    if app.extra["users_info"] is None:
+        # We calculate them in a threading lock (so several threads won't call this at the same time)
+        with LOCK:
+            # Check a second time, in case another thread updated the value
+            if app.extra["users_info"] is None:
+                app.extra["users_info"] = build_users_data_map()
 
     if user not in app.extra["users_info"]:
         return None
