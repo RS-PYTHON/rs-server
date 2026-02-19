@@ -251,9 +251,6 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
-    import pdb
-
-    pdb.set_trace()
     if not all(val in obs_user["description"] for val in LIST_CHECK_OVH_DESCRIPTION):
         logger.info(f"The ovh user '{obs_user['username']}' is not created by osam service. Skipping....")
         return
