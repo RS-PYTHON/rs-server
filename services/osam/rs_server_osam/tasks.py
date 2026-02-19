@@ -36,9 +36,7 @@ from rs_server_osam.utils.tools import (
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
-    get_allowed_buckets,
     get_keycloak_user_from_description,
-    load_configmap_data,
     match_roles,
     parse_role,
 )
@@ -420,44 +418,45 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     ]
     statements: list[dict[str, Any]] = []
     for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks
-        if s3_rights.get(key):
-            resources = []
-            for access in s3_rights[key]:
-                # get the bucket, owner and collection
-                parts = access.strip().split("/")
-                # protection against a wrong obs access policy
-                if len(parts) < 3:
-                    logger.warning(f"Wrong obs policy access found: {access}")
-                    continue
-                bucket = f"arn:aws:s3:::{parts[0]}"
-                owner_collection = f"{parts[1]}/{parts[2]}/*"
-                # ovh does not like */*/* format, so use */*
-                if owner_collection == "*/*/*":
-                    owner_collection = "*/*"
-                # check in the current statements
-                found_in_template_bucket = False
-                for stmt in statements:
-                    if bucket == stmt["Resource"]:
-                        found_in_template_bucket = True
-                        if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
-                            stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
-                        break
-                if not found_in_template_bucket:
-                    template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
-                    template_bucket["Resource"] = bucket
-                    template_bucket["Condition"]["StringLike"]["s3:prefix"] = [owner_collection]
-                    statements.append(template_bucket)
+        if not s3_rights.get(key):
+            continue
+        resources = []
+        for access in s3_rights[key]:
+            # get the bucket, owner and collection
+            parts = access.strip().split("/")
+            # protection against a wrong obs access policy
+            if len(parts) < 3:
+                logger.warning(f"Wrong obs policy access found: {access}")
+                continue
+            bucket = f"arn:aws:s3:::{parts[0]}"
+            owner_collection = f"{parts[1]}/{parts[2]}/*"
+            # ovh does not like */*/* format, so use */*
+            if owner_collection == "*/*/*":
+                owner_collection = "*/*"
+            # check in the current statements
+            found_in_template_bucket = False
+            for stmt in statements:
+                if bucket == stmt["Resource"]:
+                    found_in_template_bucket = True
+                    if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
+                        stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
+                    break
+            if not found_in_template_bucket:
+                template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
+                template_bucket["Resource"] = bucket
+                template_bucket["Condition"]["StringLike"]["s3:prefix"] = [owner_collection]
+                statements.append(template_bucket)
 
-                template: dict[str, Any] = copy.deepcopy(block)
-                resource = f"{template['Resource'].replace('%placeholder%', access)}"
-                # find the first "all" (*) and remove everything after it, because it's useless, and
-                # moreover, ovh will not recognize the syntax
-                # there should be at least one * char, the last one, see the template['Resource'], last char
-                # so no need for protection in case the * char is not found
-                resources.append(resource[: resource.find("*") + 1])
+            template: dict[str, Any] = copy.deepcopy(block)
+            resource = f"{template['Resource'].replace('%placeholder%', access)}"
+            # find the first "all" (*) and remove everything after it, because it's useless, and
+            # moreover, ovh will not recognize the syntax
+            # there should be at least one * char, the last one, see the template['Resource'], last char
+            # so no need for protection in case the * char is not found
+            resources.append(resource[: resource.find("*") + 1])
 
-            template["Resource"] = resources
-            statements.append(template)
+        template["Resource"] = resources
+        statements.append(template)
 
     # Fill in main access policy template
     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)

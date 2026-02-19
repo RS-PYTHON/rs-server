@@ -36,7 +36,6 @@ import json
 import logging
 import threading
 from contextlib import asynccontextmanager
-from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
@@ -53,9 +52,9 @@ from rs_server_osam.tasks import (
     build_users_data_map,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
-    load_configmap_data,
     update_s3_rights_lists,
 )
+from rs_server_osam.utils.tools import load_configmap_data
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse

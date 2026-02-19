@@ -56,9 +56,8 @@ def test_link_rspython_users_and_obs_users(mock_keycloak_handler, mock_ovh_handl
 
     # Deletion of OVH users not linked to Keycloak users: assert that delete_user is called ONCE
     # (there are two users that are not linked to Keycloak users but only one has a fitting description)
-    mock_ovh_handler.return_value.delete_user.assert_called_with("obs2")
-
-    assert True
+    call_args = [call_args[0][0] for call_args in mock_ovh_handler.return_value.delete_user.call_args_list]
+    assert sorted(call_args) == ["obs1", "obs2"]
 
 
 def test_build_users_data_map(mock_keycloak_handler):
