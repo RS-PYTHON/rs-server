@@ -162,7 +162,10 @@ class TestLinkRspythonUsersAndObsUsers:
         mock_ovh_handler.return_value.delete_user.assert_called_once_with("00002")
 
     def test_link_rspython_users_and_obs_users_raises_on_exception(
-        self, mock_keycloak_handler, mock_ovh_handler, caplog,
+        self,
+        mock_keycloak_handler,
+        mock_ovh_handler,
+        caplog,
     ):
         """Test that link_rspython_users_and_obs_users raises RuntimeError if an exception occurs."""
         mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
