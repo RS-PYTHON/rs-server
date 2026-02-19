@@ -3074,7 +3074,7 @@ sqlalchemy = "^2.0.43"
 stac-fastapi-pgstac = ">=6.2.0"
 stac-fastapi-types = "^6.2.0"
 stac-pydantic = "^3.4.0"
-starlette = ">=0.49.1,<0.51"
+starlette = ">=0.49.1,<1"
 urllib3 = ">=2.6.3"
 uvicorn = ">=0.35.0"
 xmltodict = "^1.0.2"
@@ -3390,14 +3390,14 @@ validation = ["jsonschema (>=4.19.1)", "requests (>=2.31.0)"]
 
 [[package]]
 name = "starlette"
-version = "0.50.0"
+version = "0.52.1"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "starlette-0.50.0-py3-none-any.whl", hash = "sha256:9e5391843ec9b6e472eed1365a78c8098cfceb7a74bfd4d6b1c0c0095efb3bca"},
-    {file = "starlette-0.50.0.tar.gz", hash = "sha256:a2a17b22203254bcbc2e1f926d2d55f3f9497f769416b3190768befe598fa3ca"},
+    {file = "starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74"},
+    {file = "starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933"},
 ]
 
 [package.dependencies]
