@@ -33,8 +33,6 @@ from rs_server_osam.tasks import (
 )
 from rs_server_osam.utils.tools import DESCRIPTION_TEMPLATE
 
-from .conftest import TEST_KEYCLOAK_USERS_LIST
-
 
 class TestLinkRspythonUsersAndObsUsers:
     """
@@ -164,33 +162,58 @@ class TestLinkRspythonUsersAndObsUsers:
         mock_ovh_handler.return_value.delete_user.assert_called_once_with("00002")
 
 
-def test_build_users_data_map(mock_keycloak_handler):
-    """Test that values received from Keycloak are correctly mapped to user data"""
+def test_build_users_data_map(mocker):
+    """
+    Test that build_users_data_map correctly maps Keycloak users to their attributes
+    and roles, including updates.
+    """
 
-    # Initial expected mapping
-    expected_user_data_map = {
+    # --- Setup mock handler ---
+    mock_handler = mocker.Mock()
+
+    # Mock users returned from Keycloak
+    mock_handler.get_keycloak_users.return_value = [
+        {"id": "1", "username": "paul"},
+        {"id": "2", "username": "emilie"},
+    ]
+
+    # Mock obs attribute for each user
+    def mock_get_obs_user(user):
+        mapping = {"paul": "obs1", "emilie": "obs2"}
+        return mapping[user["username"]]
+
+    mock_handler.get_obs_user_from_keycloak_user.side_effect = mock_get_obs_user
+
+    # Mock roles (empty lists for simplicity)
+    def mock_get_roles(user_id):
+        return []
+
+    mock_handler.get_keycloak_user_roles.side_effect = mock_get_roles
+
+    # Patch get_keycloak_handler to return our mock
+    mocker.patch("rs_server_osam.tasks.get_keycloak_handler", return_value=mock_handler)
+
+    # --- Test initial mapping ---
+    expected_initial_map = {
         "paul": {"keycloak_attribute": "obs1", "keycloak_roles": []},
         "emilie": {"keycloak_attribute": "obs2", "keycloak_roles": []},
     }
 
-    # Assert initial mapping is correct
-    assert build_users_data_map() == expected_user_data_map
+    assert build_users_data_map() == expected_initial_map
 
-    # Update Keycloak attributes
-    TEST_KEYCLOAK_USERS_LIST[0].setdefault("attributes", {})["obs-user"] = "updated_obs_value_0"  # type: ignore
-    TEST_KEYCLOAK_USERS_LIST[1].setdefault("attributes", {})["obs-user"] = "updated_obs_value_1"  # type: ignore
+    # --- Test updated values ---
+    def mock_get_obs_user_updated(user):
+        mapping = {"paul": "updated_obs_value_0", "emilie": "updated_obs_value_1"}
+        return mapping[user["username"]]
 
-    # Updated expected mapping
-    updated_user_data_map = {
+    mock_handler.get_obs_user_from_keycloak_user.side_effect = mock_get_obs_user_updated
+
+    expected_updated_map = {
         "paul": {"keycloak_attribute": "updated_obs_value_0", "keycloak_roles": []},
         "emilie": {"keycloak_attribute": "updated_obs_value_1", "keycloak_roles": []},
     }
 
-    # Assert updated mapping is correct
-    assert build_users_data_map() == updated_user_data_map
-    # Replace to initial state
-    TEST_KEYCLOAK_USERS_LIST[0].setdefault("attributes", {})["obs-user"] = "obs1"  # type: ignore
-    TEST_KEYCLOAK_USERS_LIST[1].setdefault("attributes", {})["obs-user"] = "obs2"  # type: ignore
+    assert build_users_data_map() == expected_updated_map
 
 
 @pytest.mark.parametrize(
