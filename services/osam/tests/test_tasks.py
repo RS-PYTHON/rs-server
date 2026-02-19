@@ -161,6 +161,21 @@ class TestLinkRspythonUsersAndObsUsers:
         # Check that the OBS user is deleted
         mock_ovh_handler.return_value.delete_user.assert_called_once_with("00002")
 
+    def test_link_rspython_users_and_obs_users_raises_on_exception(
+        self, mock_keycloak_handler, mock_ovh_handler, caplog,
+    ):
+        """Test that link_rspython_users_and_obs_users raises RuntimeError if an exception occurs."""
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
+            {"username": "alice", "id": "00001", "attributes": {"obs-user": ["obs1"]}},
+        ]
+
+        with patch("rs_server_osam.tasks.get_ovh_handler") as mock_ovh:
+            mock_ovh.return_value.get_all_users.side_effect = Exception("OVH API failure")
+            with pytest.raises(RuntimeError) as excinfo:
+                link_rspython_users_and_obs_users()
+
+            assert "Exception occurred while syncing users" in str(excinfo.value)
+
 
 def test_build_users_data_map(mocker):
     """
