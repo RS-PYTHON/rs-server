@@ -130,31 +130,6 @@ def traced_function(name=None):
     return decorator
 
 
-@traced_function()
-def get_keycloak_configmap_values():
-    """
-    Retrieves all Keycloak users and computes the list of allowed S3 buckets
-    for each user based on a predefined ConfigMap.
-
-    Returns:
-        tuple: A tuple containing:
-            - kc_users (list): List of Keycloak user dictionaries.
-            - user_allowed_buckets (dict): A mapping of usernames to lists of allowed buckets.
-    """
-    kc_users = get_keycloak_handler().get_keycloak_users()
-    user_allowed_buckets: dict[str, list[str]] = {}
-    configmap_data = load_configmap_data()
-    if configmap_data is None:
-        return kc_users, user_allowed_buckets
-
-    for user in kc_users:
-        allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
-        logger.debug(f"User {user['username']} allowed buckets: {allowed_buckets}")
-        user_allowed_buckets[user["username"]] = allowed_buckets
-    # ps ps
-    return kc_users, user_allowed_buckets
-
-
 def build_users_data_map() -> dict[str, Any]:
     """
     Builds a dictionary mapping usernames to their associated user data.
