@@ -198,7 +198,8 @@ def link_rspython_users_and_obs_users():
 
         for user in keycloak_users:
             # For each Keycloak user, check if there's an associated OBS user
-            obs_user_id = next(iter(get_keycloak_handler().get_obs_user_from_keycloak_user(user) or []), None)
+            obs_user_id = get_keycloak_handler().get_obs_user_from_keycloak_user(user)
+            obs_user_id = obs_user_id[0] if isinstance(obs_user_id, list) and obs_user_id else obs_user_id
             # If no associated OBS user or if the associated OBS user ID is not in OVH, create a new OBS user account
             if not obs_user_id or obs_user_id not in obs_user_ids:
                 logger.info(f"Creating a new ovh account linked to keycloak user '{user}'")
@@ -250,6 +251,9 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
+    import pdb
+
+    pdb.set_trace()
     if not all(val in obs_user["description"] for val in LIST_CHECK_OVH_DESCRIPTION):
         logger.info(f"The ovh user '{obs_user['username']}' is not created by osam service. Skipping....")
         return
