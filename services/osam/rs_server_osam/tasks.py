@@ -29,6 +29,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import run_in_threads
 from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
 from rs_server_osam.utils.keycloak_handler import KeycloakHandler
 from rs_server_osam.utils.tools import (
@@ -41,6 +42,9 @@ from rs_server_osam.utils.tools import (
     match_roles,
     parse_role,
 )
+
+# Maximum number of parallel calls to the keycloak and obs apis
+MAX_THREAD_COUNT = 5
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"
@@ -151,7 +155,7 @@ def get_keycloak_configmap_values():
     return kc_users, user_allowed_buckets
 
 
-def build_users_data_map():
+def build_users_data_map() -> dict[str, Any]:
     """
     Builds a dictionary mapping usernames to their associated user data.
 
@@ -165,14 +169,22 @@ def build_users_data_map():
                 - "keycloak_attribute": Custom user attribute from Keycloak
                 - "keycloak_roles": List of roles assigned to the user
     """
-    users = get_keycloak_handler().get_keycloak_users()
-    return {
-        user["username"]: {
-            "keycloak_attribute": get_keycloak_handler().get_obs_user_from_keycloak_user(user),
-            "keycloak_roles": [role["name"] for role in get_keycloak_handler().get_keycloak_user_roles(user["id"])],
-        }
-        for user in users
-    }
+
+    def build_user(kc_user: dict) -> tuple[str, dict]:
+        """Process one user in a multithreaded context"""
+        return (
+            kc_user["username"],
+            {
+                "keycloak_attribute": get_keycloak_handler().get_obs_user_from_keycloak_user(kc_user),
+                "keycloak_roles": [
+                    role["name"] for role in get_keycloak_handler().get_keycloak_user_roles(kc_user["id"])
+                ],
+            },
+        )
+
+    kc_users = [(kc_user,) for kc_user in get_keycloak_handler().get_keycloak_users()]
+    users_info = run_in_threads(build_user, kc_users, MAX_THREAD_COUNT, raise_exceptions=True)
+    return dict(users_info)
 
 
 @traced_function()
@@ -187,25 +199,28 @@ def link_rspython_users_and_obs_users():
         The linking/unlinking logic is currently commented out and should be implemented
         based on specific integration rules.
     """
+    logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
 
-    keycloak_users = get_keycloak_handler().get_keycloak_users()
-    try:
-        # Iterate keycloak users and create an cloud provider account if missing
-        logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
-        for user in keycloak_users:
-            if not get_keycloak_handler().get_obs_user_from_keycloak_user(user):
-                logger.info(f"Creating a new ovh account linked to keycloak user '{user}'")
-                create_obs_user_account_for_keycloak_user(user)
+    # Iterate keycloak users and create an cloud provider account if missing
+    def create_user(kc_user):
+        """Create one user in a multithreaded context"""
+        if not get_keycloak_handler().get_obs_user_from_keycloak_user(kc_user):
+            logger.info(f"Creating a new ovh account linked to keycloak user '{kc_user}'")
+            create_obs_user_account_for_keycloak_user(kc_user)
 
-        # Get the updated keycloak users and cloud provider users
-        keycloak_users = get_keycloak_handler().get_keycloak_users()
-        obs_users = get_ovh_handler().get_all_users()
-        for obs_user in obs_users:
-            # If the cloud provider user is not linked with a keycloak account, remove it.
-            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Exception: {e}")
-        raise RuntimeError(f"Exception: {e}") from e
+    kc_users = [(kc_user,) for kc_user in get_keycloak_handler().get_keycloak_users()]
+    run_in_threads(create_user, kc_users, MAX_THREAD_COUNT, raise_exceptions=True)
+
+    # Get the updated keycloak users and cloud provider users
+    kc_users = get_keycloak_handler().get_keycloak_users()
+    obs_users = [(obs_user,) for obs_user in get_ovh_handler().get_all_users()]
+
+    # If the cloud provider user is not linked with a keycloak account, remove it.
+    def delete_user(obs_user: dict):
+        """Delete one user in a multithreaded context"""
+        delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, kc_users)
+
+    run_in_threads(delete_user, obs_users, MAX_THREAD_COUNT, raise_exceptions=True)
 
 
 @traced_function()
