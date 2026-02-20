@@ -17,6 +17,11 @@ id:
   title: id
   format: string
   description: SessionId
+externalIds:
+  type: string
+  title: externalIds
+  format: string
+  description: externalIds
 platform:
   type: string
   title: platform

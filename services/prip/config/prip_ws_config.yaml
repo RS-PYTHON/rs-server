@@ -51,6 +51,12 @@ s1a:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -169,6 +175,8 @@ s1a:
           and:
           - contains(Name, '{Name}')
           - Name in ({Names})
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -308,6 +316,12 @@ s2b:
       id:
       - null
       - $.Id
+      externalIds:
+      - null
+      - $.Id
+      externalIdss:
+      - null
+      - $.Id
       Name:
       - null
       - $.Name
@@ -426,6 +440,8 @@ s2b:
           and:
           - contains(Name, '{Name}')
           - Name in ({Names})
+          - Id eq {externalIds}
+          - Id in ({externalIdss})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate

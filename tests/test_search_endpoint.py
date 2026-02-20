@@ -1058,6 +1058,49 @@ class TestFeatureCollectionOdataStacMapping:
         assert response.status_code == status.HTTP_200_OK
 
     @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
+    def test_cadip_search_post_platform_intersection(self, client: TestClient):
+        """POST /cadip/search should intersect request platform with collection Satellite list."""
+        expected_odata = (
+            "http://127.0.0.1:5000/Sessions?$filter=Satellite%20eq%20'S2B'"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0"
+        )
+        responses.add(responses.GET, expected_odata, json={"value": []}, status=200)
+
+        payload = {
+            "collections": ["cadip_session_by_platform_list"],
+            "filter-lang": "cql2-json",
+            "filter": {"op": "=", "args": [{"property": "platform"}, "sentinel-2b"]},
+        }
+        response = client.post("/cadip/search", json=payload)
+        assert response.status_code == status.HTTP_200_OK
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
+    def test_cadip_search_post_datetime_intersection(self, client: TestClient):
+        """POST /cadip/search should intersect request datetime with collection PublicationDate."""
+        expected_odata = (
+            "http://127.0.0.1:5000/Sessions?$filter=Satellite%20eq%20'S1A'%20and%20"
+            "(PublicationDate%20gt%202021-06-01T00:00:00.000Z"
+            "%20or%20PublicationDate%20eq%202021-06-01T00:00:00.000Z)"
+            "%20and%20(PublicationDate%20lt%202021-06-02T00:00:00.000Z"
+            "%20or%20PublicationDate%20eq%202021-06-02T00:00:00.000Z)"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0"
+        )
+        responses.add(responses.GET, expected_odata, json={"value": []}, status=200)
+
+        payload = {
+            "collections": ["cadip_session_by_start_stop_platform"],
+            "datetime": "2021-06-01T00:00:00Z/2021-06-02T00:00:00Z",
+            "filter-lang": "cql2-json",
+            "filter": {"op": "=", "args": [{"property": "platform"}, "sentinel-1a"]},
+        }
+        response = client.post("/cadip/search", json=payload)
+        assert response.status_code == status.HTTP_200_OK
+
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint",
         [
@@ -2367,11 +2410,6 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
     assert router_prefix is not None, "router_prefix must be set"
     url = f"{router_prefix.rstrip('/')}/search"
 
-    mocker.patch(
-        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
-        return_value={"access_token": "TEST_TOKEN"},
-    )
-
     spy_search = mocker.spy(Provider, "search")
 
     responses.add(responses.GET, expected_odata, status=200, json=prip_response)
@@ -2670,11 +2708,6 @@ def test_post_search_parameters_prip(client, mocker, prip_response, collection_p
     router_prefix = os.getenv("router_prefix")
     assert router_prefix is not None, "router_prefix must be set"
     url = f"{router_prefix.rstrip('/')}/search"
-
-    mocker.patch(
-        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
-        return_value={"access_token": "TEST_TOKEN"},
-    )
 
     spy_search = mocker.spy(Provider, "search")
 

@@ -13,21 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-fix_psycopg2_lock() {
-  # restore line wrongly deleted by poetry
-  if grep -q "6ecddcf573777536bddfefaea8079ce959287798c8f5804bee6933635d538" poetry.lock; then
-    if ! grep -q "964d31caf728e217c697ff77ea69c2ba0865fa41ec20bb00f0977e62fdcc52e3" poetry.lock; then
-      sed -i '/6ecddcf573777536bddfefaea8079ce959287798c8f5804bee6933635d538/a\    {file = "psycopg2-2.9.11.tar.gz", hash = "sha256:964d31caf728e217c697ff77ea69c2ba0865fa41ec20bb00f0977e62fdcc52e3"},' poetry.lock
-    fi
-  fi
-}
-
 cd services || exit 10
 
 for s in common adgs cadip edrs prip catalog staging frontend ; do
   cd "$s"
   poetry lock --regenerate
-  fix_psycopg2_lock
   sed -i 's/version = "0.3.1.post1"/version = "0.3.1.post2"/g' poetry.lock
   poetry show -o
   cd - >/dev/null
@@ -35,6 +25,5 @@ done
 
 cd .. || exit 70
 poetry lock --regenerate || exit 80
-fix_psycopg2_lock
 sed -i 's/version = "0.3.1.post1"/version = "0.3.1.post2"/g' poetry.lock
 poetry show -o || exit 85

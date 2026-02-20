@@ -33,8 +33,6 @@ from fastapi import HTTPException, status
 from rs_server_common.authentication.external_authentication_config import (
     StationExternalAuthenticationConfig,
 )
-from rs_server_common.authentication.token_auth import get_station_token
-from rs_server_common.settings import env_bool
 from rs_server_common.stac_cql2 import temporal_operations
 from rs_server_common.utils.logging import Logging
 
@@ -97,35 +95,30 @@ class CustomEODataAccessGateway(EODataAccessGateway):
             self.all_auth_providers.append(provider)
 
             provider_config = self.providers_config[provider]
-            if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
-                provider_config.update(
-                    {"auth": {"credentials": {"token": get_station_token(external_config, {})["access_token"]}}},
-                )
-            else:
-                # mandatory keys
-                provider_config.update(
-                    {
-                        "auth": {
-                            "auth_uri": external_config.token_url,
-                            "refresh_uri": external_config.token_url,
-                            "req_data": {
-                                "client_id": external_config.client_id,
-                                "client_secret": external_config.client_secret,
-                                "username": external_config.username,
-                                "password": external_config.password,
-                                "grant_type": external_config.grant_type,
-                            },
+            # mandatory keys
+            provider_config.update(
+                {
+                    "auth": {
+                        "auth_uri": external_config.token_url,
+                        "refresh_uri": external_config.token_url,
+                        "req_data": {
+                            "client_id": external_config.client_id,
+                            "client_secret": external_config.client_secret,
+                            "username": external_config.username,
+                            "password": external_config.password,
+                            "grant_type": external_config.grant_type,
                         },
                     },
-                )
+                },
+            )
 
-                # Used to set the authorization for token retrieval
-                if external_config.authorization is not None:
-                    provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
+            # Used to set the authorization for token retrieval
+            if external_config.authorization is not None:
+                provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
 
-                # optional keys
-                if external_config.scope:
-                    provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
+            # optional keys
+            if external_config.scope:
+                provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
 
 
 class EodagProvider(Provider):

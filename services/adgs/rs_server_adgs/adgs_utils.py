@@ -26,7 +26,10 @@ from pathlib import Path
 import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.utils.utils import reverse_adgs_prip_map_mission
+from rs_server_common.utils.utils import (
+    apply_external_ids,
+    reverse_adgs_prip_map_mission,
+)
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
@@ -67,7 +70,8 @@ def select_config(configuration_id: str) -> dict | None:
 
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
-    return {auxip_stac_mapper().get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
+    params = apply_external_ids(stac_params, "auxip")
+    return {auxip_stac_mapper().get(stac_key, stac_key): value for stac_key, value in params.items()}
 
 
 def serialize_adgs_asset(feature_collection, products):

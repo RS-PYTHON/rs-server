@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,9 +36,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from osam import main
-from osam.utils.keycloak_handler import KeycloakHandler
-from osam.utils.tools import S3StorageConfigurationSingleton
+from rs_server_osam import main
+from rs_server_osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_osam.utils.tools import S3StorageConfigurationSingleton
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CONFIG_CSV = RESOURCES_FOLDER / "expiration_bucket.csv"
@@ -91,7 +91,7 @@ NEW_OVH_USER_WHEN_CREATING = {
 @pytest.fixture(name="mock_keycloak_handler")
 def mock_keycloak_handler_():
     """Mock for KeycloakHandler for test_link_rspython_users_and_obs_users"""
-    with patch("osam.tasks.KeycloakHandler") as mock_keycloak_handler:
+    with patch("rs_server_osam.tasks.KeycloakHandler") as mock_keycloak_handler:
         mock_instance = mock_keycloak_handler.return_value
         mock_instance.get_keycloak_users.return_value = TEST_KEYCLOAK_USERS_LIST
         mock_instance.update_keycloak_user.return_value = None
@@ -111,7 +111,7 @@ def mock_keycloak_handler_():
 @pytest.fixture(name="mock_ovh_handler")
 def mock_ovh_handler_():
     """Mock for OVHApiHandler for test_link_rspython_users_and_obs_users"""
-    with patch("osam.tasks.OVHApiHandler") as mock_ovh_api_handler:
+    with patch("rs_server_osam.tasks.OVHApiHandler") as mock_ovh_api_handler:
         mock_instance = mock_ovh_api_handler.return_value
         mock_instance.get_all_users.return_value = TEST_OVH_USERS_LIST
         mock_instance.create_user.return_value = NEW_OVH_USER_WHEN_CREATING
@@ -156,7 +156,7 @@ def client_(request, mocker, monkeypatch):
         reload(main)
 
     # Patch main_osam_task to a no-op so it does NOT start infinite loop thread during tests
-    mocker.patch("osam.main.main_osam_task", AsyncMock())
+    mocker.patch("rs_server_osam.main.main_osam_task", AsyncMock())
 
     # Test the FastAPI application, opens the database session
     with TestClient(main.app) as client:

@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
 # limitations under the License.
 
 """Test file for tools functions."""
+
 import os
 import os.path as osp
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from osam.utils.tools import (
+
+# pylint: disable = no-name-in-module
+from rs_server_osam.utils.tools import (
     CSV_PATH_ENV_VAR,
     S3StorageConfigurationSingleton,
     create_description_from_template,
@@ -194,7 +197,7 @@ def test_load_configmap_data_uses_default_path_when_env_not_set(monkeypatch):
     """Critical fix: patch DEFAULT_CSV_PATH to use real test file."""
     monkeypatch.delenv(CSV_PATH_ENV_VAR, raising=False)
 
-    with patch("osam.utils.tools.DEFAULT_CSV_PATH", S3_EXPIRATION_BUCKET_CSV_FILE):
+    with patch("rs_server_osam.utils.tools.DEFAULT_CSV_PATH", S3_EXPIRATION_BUCKET_CSV_FILE):
         with patch.object(S3StorageConfigurationSingleton, "get_s3_bucket_configuration") as mock_get:
             mock_get.return_value = []
             load_configmap_data()
@@ -333,7 +336,7 @@ def test_match_roles(roles, expected):
     assert match_roles(roles) == expected
 
 
-@patch("osam.utils.tools.load_configmap_data", return_value=None)
+@patch("rs_server_osam.utils.tools.load_configmap_data", return_value=None)
 def test_match_roles_and_get_configmap_user_values_handle_missing_configmap(mock_load):
     """
     Test that both functions gracefully handle a missing or unreadable configmap CSV file
