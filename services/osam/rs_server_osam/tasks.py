@@ -174,17 +174,26 @@ def link_rspython_users_and_obs_users():
     """
     logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
 
-    # Iterate keycloak users and create an cloud provider account if missing
+    # Get all OVH users and their IDs for quick lookup
+    obs_users = get_ovh_handler().get_all_users()
+    obs_user_ids = {str(obs_user["id"]) for obs_user in obs_users}
+
     def create_user(kc_user):
         """Create one user in a multithreaded context"""
-        if not get_keycloak_handler().get_obs_user_from_keycloak_user(kc_user):
+        # For each Keycloak user, check if there's an associated OBS user
+        obs_user_id = get_keycloak_handler().get_obs_user_from_keycloak_user(kc_user)
+        obs_user_id = obs_user_id[0] if isinstance(obs_user_id, list) and obs_user_id else obs_user_id
+        # If no associated OBS user or if the associated OBS user ID is not in OVH, create a new OBS user account
+        if not obs_user_id or obs_user_id not in obs_user_ids:
             logger.info(f"Creating a new ovh account linked to keycloak user '{kc_user}'")
             create_obs_user_account_for_keycloak_user(kc_user)
 
     kc_users = [(kc_user,) for kc_user in get_keycloak_handler().get_keycloak_users()]
     run_in_threads(create_user, kc_users, MAX_THREAD_COUNT, raise_exceptions=True)
 
-    # Get the updated keycloak users and cloud provider users
+    # Refresh state after potential creations
+    # After we create OBS account and update keycloak attributes, we need to refresh the keycloak_users and
+    # obs_users lists to have the updated data for the deletion step
     kc_users = get_keycloak_handler().get_keycloak_users()
     obs_users = [(obs_user,) for obs_user in get_ovh_handler().get_all_users()]
 
