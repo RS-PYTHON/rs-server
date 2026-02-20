@@ -2410,11 +2410,6 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
     assert router_prefix is not None, "router_prefix must be set"
     url = f"{router_prefix.rstrip('/')}/search"
 
-    mocker.patch(
-        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
-        return_value={"access_token": "TEST_TOKEN"},
-    )
-
     spy_search = mocker.spy(Provider, "search")
 
     responses.add(responses.GET, expected_odata, status=200, json=prip_response)
@@ -2713,11 +2708,6 @@ def test_post_search_parameters_prip(client, mocker, prip_response, collection_p
     router_prefix = os.getenv("router_prefix")
     assert router_prefix is not None, "router_prefix must be set"
     url = f"{router_prefix.rstrip('/')}/search"
-
-    mocker.patch(
-        "rs_server_common.data_retrieval.eodag_provider.get_station_token",
-        return_value={"access_token": "TEST_TOKEN"},
-    )
 
     spy_search = mocker.spy(Provider, "search")
 
