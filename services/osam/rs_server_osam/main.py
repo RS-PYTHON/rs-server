@@ -133,7 +133,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     # the trigger for running the logic in the background task
     fastapi_app.extra["users_sync_trigger"] = threading.Event()
     # save info for future requests of endpoint /storage/account/{user}/rights
-    fastapi_app.extra["users_info"] = None
+    fastapi_app.extra["users_info"] = None  # dict[str, Any] | None
     # start the background task in a thread using asyncio.to_thread
     fastapi_app.extra["refresh_task"] = asyncio.create_task(
         asyncio.to_thread(main_osam_task, DEFAULT_OSAM_FREQUENCY_SYNC),
