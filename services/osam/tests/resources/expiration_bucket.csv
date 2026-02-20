@@ -1,0 +1,8 @@
+*,*,*,100,rspython-ops-catalog
+copernicus,s1-l1,*,100,rspython-ops-catalog-copernicus-s1-l1
+copernicus,s1-aux,*,100,rspython-ops-catalog-copernicus-s1-aux
+copernicus,s1-aux,orbsct,100,rspython-ops-catalog-copernicus-s1-aux-infinite
+emilie,s1-aux,obmemc,100,rspython-ops-catalog-emilie-s1-aux-infinite
+paul,*,*,100,rspython-ops-catalog-paul
+emilie,*,*,100,rspython-ops-catalog
+*,s1-l1,*,100,rspython-ops-catalog-default-s1-l1
