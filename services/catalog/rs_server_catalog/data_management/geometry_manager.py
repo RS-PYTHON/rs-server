@@ -34,6 +34,7 @@ def validate_geometry_and_enforce_bbox(item: dict[str, Any]) -> dict[str, Any]:
     if geometry is None:
         return item
 
+    # Validate structural/topological GeoJSON integrity first, then enforce ESA right-hand rule for polygon rings.
     shapely_geometry = validate_geometry(geometry)
     validate_polygon_geometry_orientation(geometry)
 
@@ -45,6 +46,7 @@ def validate_geometry_and_enforce_bbox(item: dict[str, Any]) -> dict[str, Any]:
         item["bbox"] = expected_bbox
         return item
 
+    # Parse and normalize bbox while enforcing STAC 2D shape/order constraints.
     parsed_bbox = parse_bbox(item_bbox)
     # Strict consistency mode: reject any bbox that does not match geometry bounds.
     if any(
@@ -61,7 +63,18 @@ def validate_geometry_and_enforce_bbox(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_geometry(geometry: Any):
-    """Validate GeoJSON geometry format and Shapely validity."""
+    """
+    Validate GeoJSON geometry format and Shapely validity.
+
+    Validity checks performed:
+    - geometry must be a GeoJSON object (`dict`)
+    - geometry must be parseable by `shapely.shape(...)`
+    - parsed geometry must not be empty
+    - parsed geometry must be topologically valid (`is_valid`)
+
+    Raises:
+        HTTPException: 400 Bad Request when any validation condition fails.
+    """
     if not isinstance(geometry, dict):
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
@@ -81,6 +94,7 @@ def validate_geometry(geometry: Any):
             status_code=HTTP_400_BAD_REQUEST,
             detail="Invalid GeoJSON geometry: empty geometry is not allowed.",
         )
+    # Use Shapely validity diagnostics to reject self-intersections and other topology errors.
     if not shapely_geometry.is_valid:
         reason = explain_validity(shapely_geometry)
         raise HTTPException(
@@ -109,7 +123,7 @@ def validate_polygon_geometry_orientation(geometry: dict[str, Any]) -> None:
 
 
 def validate_polygon_rings(rings: Any, geometry_label: str) -> None:
-    """Validate linear rings: first exterior CCW, others interior CW."""
+    """Validate linear rings: first exterior CCW (counterclockwise), others interior CW (clockwise)."""
     if not isinstance(rings, list) or not rings:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
@@ -129,17 +143,20 @@ def validate_polygon_rings(rings: Any, geometry_label: str) -> None:
 
 def validate_linear_ring_orientation(ring: Any, expected_ccw: bool, ring_label: str) -> None:
     """Validate one linear ring: structure, closure, area, and orientation."""
+    # A linear ring must be an ordered array of positions.
     if not isinstance(ring, list):
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail=f"Invalid {ring_label}: ring must be an array of positions.",
         )
+    # GeoJSON linear rings require at least 4 positions (first point repeated at the end).
     if len(ring) < 4:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail=f"Invalid {ring_label}: ring must contain at least 4 positions.",
         )
 
+    # Validate ring closure: first and last positions must match.
     first_x, first_y = parse_position(ring[0], f"{ring_label} first position")
     last_x, last_y = parse_position(ring[-1], f"{ring_label} last position")
     if not (
@@ -152,17 +169,20 @@ def validate_linear_ring_orientation(ring: Any, expected_ccw: bool, ring_label: 
 
     # Shoelace signed area: >0 means CCW, <0 means CW.
     signed_area = 0.0
+    # Iterate over each segment pair (i -> i+1) and accumulate the signed area contribution.
     for index in range(len(ring) - 1):
         x1, y1 = parse_position(ring[index], f"{ring_label} position #{index}")
         x2, y2 = parse_position(ring[index + 1], f"{ring_label} position #{index + 1}")
         signed_area += (x1 * y2) - (x2 * y1)
 
+    # Zero signed area means degenerate geometry (aligned/repeated points), so orientation is undefined.
     if isclose(signed_area, 0.0, abs_tol=AREA_ZERO_TOLERANCE):
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail=f"Invalid {ring_label}: degenerate ring area is zero.",
         )
 
+    # Compare actual orientation with the expected one from right-hand-rule policy.
     is_ccw = signed_area > 0.0
     if is_ccw != expected_ccw:
         expected = "counterclockwise (CCW)" if expected_ccw else "clockwise (CW)"
@@ -174,13 +194,16 @@ def validate_linear_ring_orientation(ring: Any, expected_ccw: bool, ring_label: 
 
 def parse_position(position: Any, position_label: str) -> tuple[float, float]:
     """Parse [lon, lat] position and return numeric pair."""
+    # GeoJSON positions are arrays like [lon, lat] (optionally with extra dimensions).
     if not isinstance(position, (list, tuple)) or len(position) < 2:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail=f"Invalid {position_label}: expected at least [lon, lat].",
         )
+    # Only longitude/latitude are used for ESA/STAC 2D orientation and bbox checks.
     longitude = parse_number(position[0], position_label)
     latitude = parse_number(position[1], position_label)
+    # Return normalized numeric coordinates as float for downstream geometric computations.
     return longitude, latitude
 
 
@@ -197,8 +220,9 @@ def parse_bbox(bbox: Any) -> list[float]:
             detail="Invalid bbox: expected an array of length 4 [minLon, minLat, maxLon, maxLat].",
         )
 
+    # Convert bbox coordinates to floats and reject non-numeric/bool values.
     parsed_bbox = [parse_number(value, "bbox") for value in bbox]
-    # South-West then North-East ordering as required by the story/REQ-0230.
+    # South-West then North-East ordering as required by STAC-CORE-ITEM-REQ-0230 – Minimum-bounding rectangle.
     if parsed_bbox[0] > parsed_bbox[2] or parsed_bbox[1] > parsed_bbox[3]:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
