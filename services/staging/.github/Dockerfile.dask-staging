@@ -18,10 +18,15 @@
 # ghcr.io/rs-python/dask/staging
 #
 
-ARG PYTHON_VERSION=3.13.11
-ARG DASK_GATEWAY_TAG=2024.1.0
+ARG BASE_IMAGE_TARGET=xxx
 
-FROM ghcr.io/rs-python/dask/dask-gateway:${DASK_GATEWAY_TAG}-py${PYTHON_VERSION}
+# Versions used: currently staging use Dask 2026.1.2 with Python 3.13.11, and the base images are all built with dask-gateway 2025.4.0
+# Base images for local mode also include dask-gateway-server with the same version as dask-gateway
+# ANY VERSION CHANGE MUST BE UPDATED IN THE BASE IMAGES SCRIPT GENERATOR (docker/base/build-base-images.sh) AND IN THIS FILE.
+ARG PYTHON_VERSION=3.13.11
+ARG DASK_TAG=2026.1.2
+
+FROM ghcr.io/rs-python/dask/dask-gateway:${BASE_IMAGE_TARGET}-py${PYTHON_VERSION}-${DASK_TAG}
 
 # Default user from parent image
 ARG USER=dask:dask
