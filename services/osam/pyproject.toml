@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [tool.poetry]
-name = "rs-osam"
+name = "rs-server-osam"
 version = "0.0.0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 license = "Apache-2.0"
@@ -34,7 +34,7 @@ classifiers = [
 
 packages = [
 
-    { include = "osam"},
+    { include = "rs_server_osam"},
     # TODO add tests
     # { include = "tests", format = "sdist" },
 ]
@@ -42,7 +42,6 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
 rs-server-common = "*" # then run 'poetry run opentelemetry-bootstrap -a install'
-# rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "feat-rspy898/harmonize-logging", subdirectory = "services/common" } # specific branch, for testing in the ci/cd
 jsonpatch = "^1.33"
 openapi-core = ">=0.22.0"
 ovh = "^1.2.0"
@@ -51,9 +50,7 @@ ovh = "^1.2.0"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "develop", subdirectory = "services/common" }
-# rs-server-common = { git = "https://github.com/RS-PYTHON/rs-server.git", branch = "feat-rspyXXX/my-branch", subdirectory = "services/common" } # specific branch, for testing in the ci/cd
-# rs-server-common = {path = "../../rs-server/services/common", develop = true} # local rs-server-common, for testing locally
+rs-server-common = {path = "../common", develop = true}
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^4.0.2"
 pytest = "^8.4.2"

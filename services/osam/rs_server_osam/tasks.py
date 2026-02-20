@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
+
 import copy
 import json
 import logging
@@ -27,9 +28,10 @@ from typing import Any
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
-from osam.utils.cloud_provider_api_handler import OVHApiHandler
-from osam.utils.keycloak_handler import KeycloakHandler
-from osam.utils.tools import (
+from rs_server_common.utils.logging import Logging
+from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
+from rs_server_osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_osam.utils.tools import (
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
@@ -39,7 +41,6 @@ from osam.utils.tools import (
     match_roles,
     parse_role,
 )
-from rs_server_common.utils.logging import Logging
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"

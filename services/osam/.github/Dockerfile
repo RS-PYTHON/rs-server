@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,9 +31,6 @@ RUN restore-apt.sh && apt update && apt upgrade -y && apt install -y git && laye
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
-# Install rs-server-common dependency from the "develop" branch before the osam wheel.
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common" && layer-cleanup.sh
-
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
 # We copy them into a /tmp directory that we can clean at the end.
@@ -45,7 +42,7 @@ ADD ./*.whl /tmp/whl
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    rs_osam-*.whl && \
+    rs_server_common-*.whl rs_server_osam-*.whl && \
     layer-cleanup.sh
 
 # Final stage. Don't use alpine, it's too different from the build stage.
@@ -78,8 +75,8 @@ RUN rm -f /usr/local/bin/layer-cleanup.sh /usr/local/bin/restore-apt.sh
 USER $USER
 
 ENTRYPOINT [ \
-    "python", "-m", "uvicorn", "osam.main:app", \
+    "python", "-m", "uvicorn", "rs_server_osam.main:app", \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
-LABEL dockerfile.url="https://github.com/RS-PYTHON/operational-services/blob/develop/object_storage_access_manager/.github/Dockerfile"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/osam/.github/Dockerfile"

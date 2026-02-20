@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 import os
 
 import pytest
-from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from ovh.exceptions import BadParametersError
+from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
 
 
 @pytest.fixture(name="handler")
@@ -39,7 +39,7 @@ def handler_fixture(mocker):
 
     # Patch ovh.Client
     mock_ovh_client = mocker.MagicMock()
-    mocker.patch("osam.utils.cloud_provider_api_handler.ovh.Client", return_value=mock_ovh_client)
+    mocker.patch("rs_server_osam.utils.cloud_provider_api_handler.ovh.Client", return_value=mock_ovh_client)
 
     # Also patch get("/cloud/project") to simulate service name retrieval
     mock_ovh_client.get.return_value = ["fake-service"]
@@ -176,7 +176,7 @@ def test_constructor_with_env_service(mocker):
 
     # Patch ovh.Client
     mock_ovh_client = mocker.MagicMock()
-    mocker.patch("osam.utils.cloud_provider_api_handler.ovh.Client", return_value=mock_ovh_client)
+    mocker.patch("rs_server_osam.utils.cloud_provider_api_handler.ovh.Client", return_value=mock_ovh_client)
 
     handler = OVHApiHandler()
 
