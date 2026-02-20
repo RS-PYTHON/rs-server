@@ -31,7 +31,11 @@ import yaml
 from fastapi import HTTPException, status
 from rs_server_common.rspy_models import Item
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import map_stac_platform, strftime_millis
+from rs_server_common.utils.utils import (
+    apply_external_ids,
+    map_stac_platform,
+    strftime_millis,
+)
 from stac_pydantic import ItemCollection, ItemProperties
 from stac_pydantic.shared import Asset
 
@@ -93,9 +97,10 @@ def select_config(configuration_id: str) -> dict | None:
 
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
+    params = apply_external_ids(stac_params, "cadip")
     return {
         cadip_session_stac_mapper().get(stac_key, stac_key): value
-        for stac_key, value in stac_params.items()
+        for stac_key, value in params.items()
         if value is not None
     }
 

@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Main tasks executed by OSAM service."""
+
 import copy
 import json
 import logging
@@ -27,9 +28,10 @@ from typing import Any
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
-from osam.utils.cloud_provider_api_handler import OVHApiHandler
-from osam.utils.keycloak_handler import KeycloakHandler
-from osam.utils.tools import (
+from rs_server_common.utils.logging import Logging
+from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
+from rs_server_osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_osam.utils.tools import (
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
@@ -39,7 +41,6 @@ from osam.utils.tools import (
     match_roles,
     parse_role,
 )
-from rs_server_common.utils.logging import Logging
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"
@@ -189,22 +190,32 @@ def link_rspython_users_and_obs_users():
 
     keycloak_users = get_keycloak_handler().get_keycloak_users()
     try:
-        # Iterate keycloak users and create an cloud provider account if missing
+        # Get all OVH users and their IDs for quick lookup
+        obs_users = get_ovh_handler().get_all_users()
+        obs_user_ids = {str(obs_user["id"]) for obs_user in obs_users}
+
         logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
+
         for user in keycloak_users:
-            if not get_keycloak_handler().get_obs_user_from_keycloak_user(user):
+            # For each Keycloak user, check if there's an associated OBS user
+            obs_user_id = get_keycloak_handler().get_obs_user_from_keycloak_user(user)
+            obs_user_id = obs_user_id[0] if isinstance(obs_user_id, list) and obs_user_id else obs_user_id
+            # If no associated OBS user or if the associated OBS user ID is not in OVH, create a new OBS user account
+            if not obs_user_id or obs_user_id not in obs_user_ids:
                 logger.info(f"Creating a new ovh account linked to keycloak user '{user}'")
                 create_obs_user_account_for_keycloak_user(user)
 
-        # Get the updated keycloak users and cloud provider users
+        # Refresh state after potential creations
+        # After we create OBS account and update keycloak attributes, we need to refresh the keycloak_users and
+        # obs_users lists to have the updated data for the deletion step
         keycloak_users = get_keycloak_handler().get_keycloak_users()
         obs_users = get_ovh_handler().get_all_users()
         for obs_user in obs_users:
             # If the cloud provider user is not linked with a keycloak account, remove it.
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Exception: {e}")
-        raise RuntimeError(f"Exception: {e}") from e
+        logger.exception("Exception occurred while syncing users")
+        raise RuntimeError("Exception occurred while syncing users") from e
 
 
 @traced_function()

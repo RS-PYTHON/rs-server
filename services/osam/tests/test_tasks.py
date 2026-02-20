@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 # limitations under the License.
 
 """Unit tests for tasks"""
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from ovh.exceptions import BadParametersError
 
-# pylint: disable = unused-argument
-from osam.tasks import (
+# pylint: disable = unused-argument,no-name-in-module
+from rs_server_osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
@@ -29,65 +31,207 @@ from osam.tasks import (
     link_rspython_users_and_obs_users,
     update_s3_rights_lists,
 )
-from osam.utils.tools import DESCRIPTION_TEMPLATE
-from ovh.exceptions import BadParametersError
-
-from .conftest import TEST_KEYCLOAK_USERS_LIST
+from rs_server_osam.utils.tools import DESCRIPTION_TEMPLATE
 
 
-def test_link_rspython_users_and_obs_users(mock_keycloak_handler, mock_ovh_handler):
-    """Main unit test for link_rspython_users_and_obs_users"""
+class TestLinkRspythonUsersAndObsUsers:
+    """
+    Unit tests for the function `link_rspython_users_and_obs_users`.
 
-    # Run function with test data and mocks and fixtures from conftest
-    link_rspython_users_and_obs_users()
+    This test suite validates the synchronization logic between Keycloak users
+    and OBS (OVH Object Storage) users, focusing on creation, linking, and cleanup
+    behavior.
 
-    # Creation of new OVH users: assert that create_user is called ONCE
-    # (there is only one Keycloak user in the test data without an OVH user linked)
-    updated_keycloak_user = TEST_KEYCLOAK_USERS_LIST[1]
-    updated_keycloak_user.setdefault("attributes", {})["obs-user"] = "obs2"  # type: ignore
-    mock_ovh_handler.return_value.create_user.assert_called_once_with(
-        description="## linked to keycloak user emilie",
-        role="objectstore_operator",
-    )
-    mock_keycloak_handler.return_value.set_obs_user_in_keycloak_user.assert_called_once_with(
-        updated_keycloak_user,
-        "obs4",
-    )
+    Specifically, it verifies that:
+    - A new OBS user account is created when a Keycloak user has no `obs-user`
+      attribute.
+    - A new OBS user account is created when a Keycloak user has an `obs-user`
+      attribute, but the referenced OBS user ID does not exist in OVH.
+    - No OBS user account is created when a Keycloak user is already correctly
+      linked to an existing OBS user in OVH.
+    - OBS user accounts linked to existing Keycloak users are never deleted.
+    - OBS user accounts that are not linked to any Keycloak user are deleted
+      only if their description matches the expected description template
+      (as defined by `LIST_CHECK_OVH_DESCRIPTION`).
+    - OBS user accounts that are not linked to any Keycloak user but whose
+      description does not match the expected template are preserved.
 
-    # Deletion of OVH users not linked to Keycloak users: assert that delete_user is called ONCE
-    # (there are two users that are not linked to Keycloak users but only one has a fitting description)
-    mock_ovh_handler.return_value.delete_user.assert_called_with("obs2")
+    External dependencies such as Keycloak and OVH handlers are mocked to ensure
+    the tests focus exclusively on the internal decision logic of the function.
+    """
 
-    assert True
+    def test_no_creation_when_all_keycloak_users_are_linked(self, mock_keycloak_handler, mock_ovh_handler):
+        """All Keycloak users already linked to existing OBS users"""
+        # Create keycloak user alice with a obs-user attribute linked to obs1
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
+            {
+                "username": "alice",
+                "attributes": {"obs-user": ["obs1"]},
+            },
+        ]
+
+        # Create OVH user obs1 linked to alice with a descripton containing the expected template
+        mock_ovh_handler.return_value.get_all_users.return_value = [
+            {"id": "obs1", "username": "alice-obs", "description": "## linked to keycloak user alice from platform X"},
+        ]
+
+        link_rspython_users_and_obs_users()
+
+        # Test that no new OBS user is created and no existing OBS user is deleted
+        mock_ovh_handler.return_value.create_user.assert_not_called()
+        mock_ovh_handler.return_value.delete_user.assert_not_called()
+
+    def test_creation_when_obs_attribute_missing(self, mock_keycloak_handler, mock_ovh_handler):
+        """Keycloak user without obs-user attribute → create new OBS user and link it in Keycloak"""
+        # Create keycloak user bob without obs-user attribute
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
+            {"username": "bob", "id": "00002", "enabled": True},
+        ]
+        # No OVH users
+        mock_ovh_handler.return_value.get_all_users.return_value = []
+
+        link_rspython_users_and_obs_users()
+
+        # Check that a new OBS user is created and linked to the Keycloak user bopb
+        mock_ovh_handler.return_value.create_user.assert_called_once_with(
+            description="## linked to keycloak user bob",
+            role="objectstore_operator",
+        )
+        mock_keycloak_handler.return_value.set_obs_user_in_keycloak_user.assert_called_once()
+
+    def test_creation_when_obs_id_not_found_in_ovh(self, mock_keycloak_handler, mock_ovh_handler):
+        """Keycloak user with obs-user attribute but the associated OBS user ID is not found in OVH
+        → create new OBS user and link it in Keycloak"""
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
+            {
+                "username": "toto",
+                "id": "00003",
+                "enabled": True,
+                "attributes": {"obs-user": ["obs-missing"]},
+            },
+        ]
+        # OVH contains a user that is not related to Toto
+        mock_ovh_handler.return_value.get_all_users.return_value = [
+            {
+                "id": "obs-existing",
+                "username": "NOT_TOTO",
+                "description": "## linked to keycloak user NOT_TOTO from platform Y",
+            },
+        ]
+
+        link_rspython_users_and_obs_users()
+        # Check that new OBS is created with correct description
+        mock_ovh_handler.return_value.create_user.assert_called_once_with(
+            description="## linked to keycloak user toto",
+            role="objectstore_operator",
+        )
+
+    def test_no_deletion_when_obs_user_is_linked(self, mock_keycloak_handler, mock_ovh_handler):
+        """OBS user linked to an existing Keycloak user → no deletion"""
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
+            {
+                "username": "toto",
+                "id": "00001",
+                "attributes": {"obs-user": ["obs1"]},
+            },
+        ]
+        # OVH contains a user obs1 linked to toto with a description containing the expected template
+        mock_ovh_handler.return_value.get_all_users.return_value = [
+            {"id": "obs1", "username": "toto-obs", "description": "## linked to keycloak user toto from platform X"},
+        ]
+
+        link_rspython_users_and_obs_users()
+        # Check that no OBS user is deleted
+        mock_ovh_handler.return_value.delete_user.assert_not_called()
+
+    def test_deletion_when_obs_user_not_linked_anymore(self, mock_keycloak_handler, mock_ovh_handler, monkeypatch):
+        """OBS user not linked to any Keycloak user and description contains the expected template → deletion"""
+        monkeypatch.setattr(
+            "rs_server_osam.tasks.LIST_CHECK_OVH_DESCRIPTION",
+            ["## linked to keycloak user ", ""],
+        )
+        # No Keycloak users
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = []
+        # OVH contains a user with a description containing the expected template
+        mock_ovh_handler.return_value.get_all_users.return_value = [
+            {"id": "00002", "username": "obs-toto", "description": "## linked to keycloak user toto"},
+        ]
+
+        link_rspython_users_and_obs_users()
+        # Check that the OBS user is deleted
+        mock_ovh_handler.return_value.delete_user.assert_called_once_with("00002")
+
+    def test_link_rspython_users_and_obs_users_raises_on_exception(
+        self,
+        mock_keycloak_handler,
+        mock_ovh_handler,
+        caplog,
+    ):
+        """Test that link_rspython_users_and_obs_users raises RuntimeError if an exception occurs."""
+        mock_keycloak_handler.return_value.get_keycloak_users.return_value = [
+            {"username": "alice", "id": "00001", "attributes": {"obs-user": ["obs1"]}},
+        ]
+
+        with patch("rs_server_osam.tasks.get_ovh_handler") as mock_ovh:
+            mock_ovh.return_value.get_all_users.side_effect = Exception("OVH API failure")
+            with pytest.raises(RuntimeError) as excinfo:
+                link_rspython_users_and_obs_users()
+
+            assert "Exception occurred while syncing users" in str(excinfo.value)
 
 
-def test_build_users_data_map(mock_keycloak_handler):
-    """Test that values received from Keycloak are correctly mapped to user data"""
+def test_build_users_data_map(mocker):
+    """
+    Test that build_users_data_map correctly maps Keycloak users to their attributes
+    and roles, including updates.
+    """
 
-    # Initial expected mapping
-    expected_user_data_map = {
+    # --- Setup mock handler ---
+    mock_handler = mocker.Mock()
+
+    # Mock users returned from Keycloak
+    mock_handler.get_keycloak_users.return_value = [
+        {"id": "1", "username": "paul"},
+        {"id": "2", "username": "emilie"},
+    ]
+
+    # Mock obs attribute for each user
+    def mock_get_obs_user(user):
+        mapping = {"paul": "obs1", "emilie": "obs2"}
+        return mapping[user["username"]]
+
+    mock_handler.get_obs_user_from_keycloak_user.side_effect = mock_get_obs_user
+
+    # Mock roles (empty lists for simplicity)
+    def mock_get_roles(user_id):
+        return []
+
+    mock_handler.get_keycloak_user_roles.side_effect = mock_get_roles
+
+    # Patch get_keycloak_handler to return our mock
+    mocker.patch("rs_server_osam.tasks.get_keycloak_handler", return_value=mock_handler)
+
+    # --- Test initial mapping ---
+    expected_initial_map = {
         "paul": {"keycloak_attribute": "obs1", "keycloak_roles": []},
         "emilie": {"keycloak_attribute": "obs2", "keycloak_roles": []},
     }
 
-    # Assert initial mapping is correct
-    assert build_users_data_map() == expected_user_data_map
+    assert build_users_data_map() == expected_initial_map
 
-    # Update Keycloak attributes
-    TEST_KEYCLOAK_USERS_LIST[0].setdefault("attributes", {})["obs-user"] = "updated_obs_value_0"  # type: ignore
-    TEST_KEYCLOAK_USERS_LIST[1].setdefault("attributes", {})["obs-user"] = "updated_obs_value_1"  # type: ignore
+    # --- Test updated values ---
+    def mock_get_obs_user_updated(user):
+        mapping = {"paul": "updated_obs_value_0", "emilie": "updated_obs_value_1"}
+        return mapping[user["username"]]
 
-    # Updated expected mapping
-    updated_user_data_map = {
+    mock_handler.get_obs_user_from_keycloak_user.side_effect = mock_get_obs_user_updated
+
+    expected_updated_map = {
         "paul": {"keycloak_attribute": "updated_obs_value_0", "keycloak_roles": []},
         "emilie": {"keycloak_attribute": "updated_obs_value_1", "keycloak_roles": []},
     }
 
-    # Assert updated mapping is correct
-    assert build_users_data_map() == updated_user_data_map
-    # Replace to initial state
-    TEST_KEYCLOAK_USERS_LIST[0].setdefault("attributes", {})["obs-user"] = "obs1"  # type: ignore
-    TEST_KEYCLOAK_USERS_LIST[1].setdefault("attributes", {})["obs-user"] = "obs2"  # type: ignore
+    assert build_users_data_map() == expected_updated_map
 
 
 @pytest.mark.parametrize(
@@ -461,7 +605,7 @@ def test_build_s3_rights(user_info, expected):
         ),
     ],
 )
-@patch("osam.tasks.datetime")
+@patch("rs_server_osam.tasks.datetime")
 def test_update_s3_rights_lists(mock_datetime, s3_rights, expected):
     """Test build s3 rights"""
     mock_datetime.now.return_value = datetime(2025, 1, 1)
@@ -493,9 +637,9 @@ class TestDeleteObsUser:
     and `get_ovh_handler` are mocked to isolate the function behavior.
     """
 
-    @patch("osam.tasks.get_keycloak_user_from_description")
-    @patch("osam.tasks.create_description_from_template")
-    @patch("osam.tasks.get_ovh_handler")
+    @patch("rs_server_osam.tasks.get_keycloak_user_from_description")
+    @patch("rs_server_osam.tasks.create_description_from_template")
+    @patch("rs_server_osam.tasks.get_ovh_handler")
     def test_skip_if_not_osam_user(
         self,
         mock_get_ovh_handler,
@@ -508,15 +652,15 @@ class TestDeleteObsUser:
             "description": "some unrelated description",
             "id": "obs999",
         }
-        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("rs_server_osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, [])
 
         mock_get_keycloak_user.assert_not_called()
         mock_create_description.assert_not_called()
         mock_get_ovh_handler.assert_not_called()
 
-    @patch("osam.tasks.get_keycloak_user_from_description")
-    @patch("osam.tasks.get_ovh_handler")
+    @patch("rs_server_osam.tasks.get_keycloak_user_from_description")
+    @patch("rs_server_osam.tasks.get_ovh_handler")
     def test_skip_if_user_created_from_another_platform(
         self,
         mock_get_ovh_handler,
@@ -533,22 +677,22 @@ class TestDeleteObsUser:
             "description": "## linked to keycloak user paul from platform XYZ",
             "id": "obs999",
         }
-        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("rs_server_osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_ovh_handler.assert_not_called()
 
         with patch(
-            "osam.utils.tools.DESCRIPTION_TEMPLATE",
+            "rs_server_osam.utils.tools.DESCRIPTION_TEMPLATE",
             "## linked to keycloak user %keycloak-user% from platform ANOTHER",
         ):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_ovh_handler.assert_not_called()
 
-    @patch("osam.tasks.get_keycloak_user_from_description")
-    @patch("osam.tasks.create_description_from_template")
-    @patch("osam.tasks.get_ovh_handler")
+    @patch("rs_server_osam.tasks.get_keycloak_user_from_description")
+    @patch("rs_server_osam.tasks.create_description_from_template")
+    @patch("rs_server_osam.tasks.get_ovh_handler")
     def test_user_linked_to_keycloak_user_no_deletion(
         self,
         mock_get_ovh_handler,
@@ -568,16 +712,16 @@ class TestDeleteObsUser:
 
         mock_get_keycloak_user.return_value = "paul"
 
-        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("rs_server_osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
         mock_create_description.assert_not_called()
         mock_get_ovh_handler.assert_not_called()
 
-    @patch("osam.tasks.get_keycloak_user_from_description")
-    @patch("osam.tasks.create_description_from_template")
-    @patch("osam.tasks.get_ovh_handler")
+    @patch("rs_server_osam.tasks.get_keycloak_user_from_description")
+    @patch("rs_server_osam.tasks.create_description_from_template")
+    @patch("rs_server_osam.tasks.get_ovh_handler")
     def test_user_not_linked_and_description_matches_deletes(
         self,
         mock_get_ovh_handler,
@@ -600,16 +744,16 @@ class TestDeleteObsUser:
         mock_ovh_handler_instance = MagicMock()
         mock_get_ovh_handler.return_value = mock_ovh_handler_instance
 
-        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("rs_server_osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
         mock_create_description.assert_called_once_with("99999", template=DESCRIPTION_TEMPLATE)
         mock_ovh_handler_instance.delete_user.assert_called_once_with(obs_user["id"])
 
-    @patch("osam.tasks.get_keycloak_user_from_description")
-    @patch("osam.tasks.create_description_from_template")
-    @patch("osam.tasks.get_ovh_handler")
+    @patch("rs_server_osam.tasks.get_keycloak_user_from_description")
+    @patch("rs_server_osam.tasks.create_description_from_template")
+    @patch("rs_server_osam.tasks.get_ovh_handler")
     def test_user_not_linked_but_description_differs_no_deletion(
         self,
         mock_get_ovh_handler,
@@ -632,7 +776,7 @@ class TestDeleteObsUser:
         mock_ovh_handler_instance = MagicMock()
         mock_get_ovh_handler.return_value = mock_ovh_handler_instance
 
-        with patch("osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
+        with patch("rs_server_osam.utils.tools.DESCRIPTION_TEMPLATE", "## linked to keycloak user %keycloak-user%"):
             delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
 
         mock_get_keycloak_user.assert_called_once_with(obs_user["description"], template=DESCRIPTION_TEMPLATE)
@@ -659,8 +803,8 @@ class TestDeleteObsUser:
     ],
     ids=["ok", "ko1", "ko2", "ko3"],
 )
-@patch("osam.tasks.get_ovh_handler")
-@patch("osam.tasks.get_keycloak_handler")
+@patch("rs_server_osam.tasks.get_ovh_handler")
+@patch("rs_server_osam.tasks.get_keycloak_handler")
 def test_get_user_s3_credentials(
     mock_get_keycloak_handler,
     mock_get_ovh_handler,
@@ -746,8 +890,8 @@ def test_get_user_s3_credentials(
         ),
     ],
 )
-@patch("osam.tasks.get_ovh_handler")
-@patch("osam.tasks.get_keycloak_handler")
+@patch("rs_server_osam.tasks.get_ovh_handler")
+@patch("rs_server_osam.tasks.get_keycloak_handler")
 def test_apply_user_access_policy(
     mock_get_keycloak_handler,
     mock_get_ovh_handler,
@@ -779,8 +923,8 @@ def test_apply_user_access_policy(
     assert result == expected_result
 
 
-@patch("osam.tasks.load_configmap_data", return_value=None)
-@patch("osam.tasks.get_keycloak_handler")
+@patch("rs_server_osam.tasks.load_configmap_data", return_value=None)
+@patch("rs_server_osam.tasks.get_keycloak_handler")
 def test_get_keycloak_configmap_values_configmap_none(mock_handler, mock_load):
     """Test when configmap data is None: returns users and empty buckets dict."""
     users_list = [{"username": "user1"}, {"username": "user2"}]
@@ -790,8 +934,8 @@ def test_get_keycloak_configmap_values_configmap_none(mock_handler, mock_load):
     assert not buckets
 
 
-@patch("osam.tasks.load_configmap_data", return_value=[["*", "coll", "type", "?", "bucket1"]])
-@patch("osam.tasks.get_keycloak_handler")
+@patch("rs_server_osam.tasks.load_configmap_data", return_value=[["*", "coll", "type", "?", "bucket1"]])
+@patch("rs_server_osam.tasks.get_keycloak_handler")
 def test_get_keycloak_configmap_values_no_users(mock_handler, mock_load):
     """Test when no Keycloak users: returns empty list and empty buckets dict."""
     mock_handler.return_value.get_keycloak_users.return_value = []
@@ -800,8 +944,8 @@ def test_get_keycloak_configmap_values_no_users(mock_handler, mock_load):
     assert not buckets
 
 
-@patch("osam.tasks.load_configmap_data")
-@patch("osam.tasks.get_keycloak_handler")
+@patch("rs_server_osam.tasks.load_configmap_data")
+@patch("rs_server_osam.tasks.get_keycloak_handler")
 def test_get_keycloak_configmap_values_happy_path(mock_handler, mock_load):
     """Test happy path: computes allowed buckets correctly for each user."""
     configmap = [
@@ -820,8 +964,8 @@ def test_get_keycloak_configmap_values_happy_path(mock_handler, mock_load):
     }
 
 
-@patch("osam.tasks.load_configmap_data", return_value=[["otheruser", "coll", "type", "?", "bucket"]])
-@patch("osam.tasks.get_keycloak_handler")
+@patch("rs_server_osam.tasks.load_configmap_data", return_value=[["otheruser", "coll", "type", "?", "bucket"]])
+@patch("rs_server_osam.tasks.get_keycloak_handler")
 def test_get_keycloak_configmap_values_no_matching_buckets(mock_handler, mock_load):
     """Test when no matching configmap rules for users: empty buckets lists."""
     users_list = [{"username": "user1"}]

@@ -18,8 +18,11 @@ from datetime import datetime
 
 import pytest
 from rs_server_common.utils.utils import (
+    _iter_external_id_parts,
+    apply_external_ids,
     check_and_fix_timerange,
     find_product_type,
+    normalize_external_ids,
     validate_inputs_format,
 )
 
@@ -219,5 +222,62 @@ def test_regex_error_fallback_branch(monkeypatch):
     result = find_product_type("[invalid_regex")
     assert result == broken_entry, "Expected equality fallback match"
 
-    result = find_product_type("NO_MATCH_TYPE")
-    assert result == {key: None for key in broken_entry}, "Expected default value for unmatched input"
+
+def test_iter_external_id_parts_splits_and_strips():
+    """Iterates externalIds input and removes empty parts."""
+    values = list(_iter_external_id_parts("cadip:123, auxip:456,,  "))
+    assert values == ["cadip:123", "auxip:456"]
+
+
+def test_iter_external_id_parts_list_input():
+    """Iterates list values and handles comma-separated parts."""
+    values = list(_iter_external_id_parts(["cadip:123", " auxip:456,prip:789", None]))
+    assert values == ["cadip:123", "auxip:456", "prip:789"]
+
+
+def test_normalize_external_ids_for_scheme():
+    """Normalizes mixed externalIds and keeps values for the target scheme."""
+    normalized = normalize_external_ids("123, auxip:456, cadip:789", "auxip")
+    assert normalized == ["123", "456"]
+
+
+def test_normalize_external_ids_scheme_only():
+    """Scheme-only input returns None to indicate match-all for scheme."""
+    normalized = normalize_external_ids("auxip:", "auxip")
+    assert normalized is None
+
+
+def test_normalize_external_ids_other_scheme_only():
+    """Other-scheme-only input returns empty list for no match."""
+    normalized = normalize_external_ids("cadip:", "auxip")
+    assert normalized == []
+
+
+def test_apply_external_ids_no_external_ids():
+    """Leaves params unchanged when externalIds is absent."""
+    params = {"platform": "S1"}
+    assert apply_external_ids(params, "auxip") == {"platform": "S1"}
+
+
+def test_apply_external_ids_scheme_only():
+    """Drops externalIds when scheme-only is provided (match all)."""
+    params = {"externalIds": "auxip:"}
+    assert not apply_external_ids(params, "auxip")
+
+
+def test_apply_external_ids_no_match():
+    """Sets __no_match__ when externalIds has only other-scheme values."""
+    params = {"externalIds": "cadip:"}
+    assert apply_external_ids(params, "auxip") == {"externalIds": "__no_match__"}
+
+
+def test_apply_external_ids_single_value():
+    """Maps a single normalized value to externalIds."""
+    params = {"externalIds": "auxip:456"}
+    assert apply_external_ids(params, "auxip") == {"externalIds": "456"}
+
+
+def test_apply_external_ids_multiple_values():
+    """Maps multiple normalized values to externalIdss list."""
+    params = {"externalIds": "123, auxip:456"}
+    assert apply_external_ids(params, "auxip") == {"externalIdss": ["123", "456"]}

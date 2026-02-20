@@ -34,7 +34,9 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # On exit, kill the containers and network and send the exit signal to subprocesses
     pg_container="postgres"
     pgstac_container="pgstac"
-    on_exit="docker rm -f $pg_container $pgstac_container || true; docker network rm $network || true"
+    dpr_container="rs-dpr-service"
+
+    on_exit="docker rm -f $pg_container $pgstac_container $dpr_container || true; docker network rm $network || true"
     trap 'eval $on_exit' EXIT # use simple quotes so the string is interpreted when we exit
 
     # Use the same configuration as in the cluster deployment.
@@ -80,6 +82,37 @@ if [[ " $@ " == *" --run-services "* ]]; then
         i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$pgstac_container'" && exit 1
     done
 
+    # DPR service
+    dpr_image="ghcr.io/rs-python/rs-dpr-service:latest"
+
+    if ! docker ps --format '{{.Names}}' | grep -q "^$dpr_container\$"; then
+        docker pull "$dpr_image"
+        docker run --rm --network=$network --name=$dpr_container \
+            -e RSPY_LOCAL_MODE=1 \
+            -e POSTGRES_HOST=postgres \
+            -e POSTGRES_PORT \
+            -e POSTGRES_DB \
+            -e POSTGRES_USER \
+            -e POSTGRES_PASSWORD \
+            -p 6003:8000 \
+            --health-cmd="python3 -c 'import requests; assert requests.get(\"http://127.0.0.1:8000/_mgmt/ping\").ok'" \
+            --health-interval=2s \
+            --health-timeout=2s \
+            --health-retries=10 \
+            "$dpr_image" &
+        echo "DPR container started"
+    else
+        echo "Using already running DPR container: $dpr_container"
+    fi
+
+    i=0
+    while [[ $(docker inspect --format='{{.State.Health.Status}}' $dpr_container) != healthy ]]; do
+        sleep 2
+        i=$((i+1))
+        ((i>=20)) && >&2 echo "Error: DPR container '$dpr_container' is not healthy after $((i*2))s" && exit 1
+    done
+    echo "DPR service container is healthy"
+
     # Run local fastapi services
     run_local_service() {
         path=$(realpath "${FRONT_DIR}/$1")
@@ -122,6 +155,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
         run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
     run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health"
     run_local_service "../edrs" "rs_server_edrs.fastapi.edrs_app:app" 8006 "health"
+    run_local_service "../osam" "rs_server_osam.main:app" 7001 "_mgmt/ping"
 
     # Use pgstac database
     PGDATABASE=$POSTGRES_DB \

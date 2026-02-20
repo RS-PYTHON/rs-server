@@ -1,4 +1,4 @@
-# Copyright 2025 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import os
 
 import pytest
 from keycloak.exceptions import KeycloakConnectionError, KeycloakPutError
-from osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_osam.utils.keycloak_handler import KeycloakHandler
 
 
 @pytest.fixture(name="handler")
@@ -39,8 +39,8 @@ def handler_fixture(mocker):
 
     # Patch KeycloakAdmin and KeycloakOpenIDConnection
     mock_admin_instance = mocker.MagicMock()
-    mocker.patch("osam.utils.keycloak_handler.KeycloakOpenIDConnection")
-    mocker.patch("osam.utils.keycloak_handler.KeycloakAdmin", return_value=mock_admin_instance)
+    mocker.patch("rs_server_osam.utils.keycloak_handler.KeycloakOpenIDConnection")
+    mocker.patch("rs_server_osam.utils.keycloak_handler.KeycloakAdmin", return_value=mock_admin_instance)
 
     return KeycloakHandler()
 

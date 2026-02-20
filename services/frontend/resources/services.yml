@@ -31,7 +31,6 @@ info:
     <a href="https://home.rs-python.eu/" target="_blank">Website</a> /
     <a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
     <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a> /
-    <a href="/osam/docs" target="_blank">OSAM</a>
 
     ---
     #### STAC Browser
@@ -64,6 +63,11 @@ services:
     change_tags:
       "": EDRS stations
       Filter Extension: EDRS (Filter Extension)
+  osam:
+    openapi_url: http://localhost:7001/openapi.json
+    change_tags:
+      "": Object Storage
+      Filter Extension: OSAM (Filter Extension)
   catalog:
     openapi_url: http://localhost:8003/catalog/api
     change_tags:
@@ -74,3 +78,5 @@ services:
       Bulk Transaction Extension: Catalog (Bulk Transaction Extension)
   staging:
     openapi_url: http://localhost:8004/openapi.json
+  dpr:
+    openapi_url: http://127.0.0.1:6003/openapi.json

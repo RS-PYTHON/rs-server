@@ -603,6 +603,15 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             read_property(prop, value)
 
+        # Read externalIds from GET/POST parameters when supported by queryables
+        external_ids_param = params.pop("externalIds", None)
+        if external_ids_param is None:
+            external_ids_param = self.request.query_params.get("externalIds")
+        if external_ids_param is None and post_json_body:
+            external_ids_param = post_json_body.get("externalIds")
+        if external_ids_param is not None and "externalIds" in allowed_properties:
+            read_property("externalIds", external_ids_param)
+
         # map stac platform/constellation values to odata values...
         mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
         # ... still saved with stac keys for now
@@ -964,7 +973,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             # Comma-separated lists
             elif key in COMMA_SEPARATED_LISTS_KEYS:
-                mode = "union" if key in ["productType", "Satellite"] else "intersection"
+                mode = "union" if key == "productType" else "intersection"
                 odata_merged[key], key_empty_selection = self.resolve_comma_separated_list_conflict(
                     odata_params[key],
                     odata_hardcoded[key],

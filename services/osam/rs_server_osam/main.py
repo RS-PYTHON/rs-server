@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,13 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
-from osam.tasks import (
+from rs_server_common import settings
+from rs_server_common.authentication import oauth2
+from rs_server_common.authentication.authentication import authenticate
+from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
+from rs_server_common.utils import init_opentelemetry
+from rs_server_common.utils.logging import Logging
+from rs_server_osam.tasks import (
     apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
@@ -50,12 +56,6 @@ from osam.tasks import (
     load_configmap_data,
     update_s3_rights_lists,
 )
-from rs_server_common import settings
-from rs_server_common.authentication import oauth2
-from rs_server_common.authentication.authentication import authenticate
-from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
-from rs_server_common.utils import init_opentelemetry
-from rs_server_common.utils.logging import Logging
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -166,6 +166,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     logger.info("Application gracefully stopped...")
 
 
+# pylint: disable=duplicate-code
 def auth_validation(request: Request):
     """
     Authorization validation: check that the user has the right role for a specific action.

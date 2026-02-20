@@ -20,6 +20,7 @@ import json
 import sys
 from functools import reduce
 from pathlib import Path
+from typing import Any
 
 import requests
 import yaml  # pylint: disable=redefined-builtin
@@ -110,11 +111,21 @@ class AggregatedOpenapi:
         # Override with configuration
         target_info.update(**self.info)
 
+        merged_paths = self.merge_paths()
+        merged_components = self.merge_components()
+
+        # Adding security header for also staging
+        all_security: list[dict[str, Any]] = next(
+            (sub["security"] for sub in self.all_openapi if "security" in sub),
+            [],
+        )
+
         return {
             "openapi": self.merge_openapi_versions(),
             "info": target_info,
-            "paths": self.merge_paths(),
-            "components": self.merge_components(),
+            "paths": merged_paths,
+            "components": merged_components,
+            "security": all_security,
         }
 
     def merge_openapi_versions(self) -> str:

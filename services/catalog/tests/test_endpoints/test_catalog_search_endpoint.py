@@ -24,6 +24,8 @@ from typing import Any
 import fastapi
 import pytest
 
+from tests.helpers import a_feature
+
 
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
@@ -117,6 +119,18 @@ class TestCatalogSearchEndpoint:
         }
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_200_OK
+
+    def supports_external_ids(self, client) -> bool:
+        response = client.get("/catalog/queryables")
+        if response.status_code != fastapi.status.HTTP_200_OK:
+            return False
+        return "externalIds" in response.json().get("properties", {})
+
+    def add_feature_with_external_ids(self, client, item_id: str, external_id: str):
+        feature = a_feature("toto", item_id, "S1_L1").properties
+        feature["properties"]["externalIds"] = [{"scheme": "auxip", "value": external_id}]
+        response = client.post("/catalog/collections/toto:S1_L1/items", json=feature)
+        assert response.status_code in (fastapi.status.HTTP_200_OK, fastapi.status.HTTP_201_CREATED)
 
     def test_search_in_unexisting_collection(self, client):
         """Test that if the collection does not exist, an HTTP 404 error is returned."""
