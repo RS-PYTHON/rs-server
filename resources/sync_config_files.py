@@ -38,6 +38,12 @@ yaml.Dumper.ignore_aliases = lambda *_: True  # type: ignore
 
 logger = logging.getLogger(__name__)
 
+# Supported stations: list of CADIP, AUXIP and PRIP stations
+# for which we want to include the config file in the helm chart
+SUPPORTED_CADIP_STATIONS = ["cadip", "sgs", "mti"]
+SUPPORTED_ADGS_STATIONS = ["adgs", "adgs2"]
+SUPPORTED_PRIP_STATIONS = ["s1a", "s2b"]
+
 #
 # Class definition
 
@@ -502,16 +508,16 @@ def copy_to_demo(input_path_relative: str):
 # rs-helm and rs-server-deployment
 
 
-def copy_to_helm_or_infra(
-    all_params: list[HelmOrInfraParams],
-    output_path: Path,
-):
+def copy_to_helm_or_infra(all_params: list[HelmOrInfraParams], output_path: Path, ignore_existing_file: bool = False):
     """
     Copy and update a configuration file from rs-server to rs-helm or rs-server-deployment.
 
     Args:
         all_params: parameters to copy each configuration file
         output_path: output configuration absolute path
+        ignore_existing_file: if there is already a file with the same name as the output path, ignore it
+            and completely rewrite it. Use this option ONLY for files that contain only configuration (not for
+            configmap for example) and that don't have helm templating in them.
     """
     logger.info(f"Update: '{output_path!s}'")
 
@@ -520,7 +526,7 @@ def copy_to_helm_or_infra(
 
     # Open the output file if it exists.
     output_configs = None
-    if output_path.is_file():
+    if output_path.is_file() and not ignore_existing_file:
         with open(output_path, encoding="utf-8") as opened:
             output_configs = read_helm_or_infra(opened.read(), yaml_as_string)
 
@@ -851,13 +857,8 @@ if __name__ == "__main__":
     for templates in (
         ["services/common/config/rs-server.template.yaml"],
         ["services/adgs/config/adgs_search_config.template.yaml"],
-        ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
         ["services/adgs/config/adgs_ws_config.template.yaml"],
         ["services/cadip/config/cadip_search_config.template.yaml"],
-        [
-            "services/cadip/config/cadip_ws_config_token_module.template.yaml",
-            "services/cadip/config/cadip_ws_config_token_module.template_session.yaml",
-        ],
         [
             "services/cadip/config/cadip_ws_config.template.yaml",
             "services/cadip/config/cadip_ws_config.template_session.yaml",
@@ -865,7 +866,6 @@ if __name__ == "__main__":
         ["services/edrs/config/edrs_search_config.template.yaml"],
         ["services/edrs/config/edrs_stations.template.yaml"],
         ["services/prip/config/prip_search_config.template.yaml"],
-        ["services/prip/config/prip_ws_config_token_module.template.yaml"],
         ["services/prip/config/prip_ws_config.template.yaml"],
     ):
         create_from_template(templates)
@@ -876,9 +876,6 @@ if __name__ == "__main__":
         "services/adgs/config/adgs_ws_config.yaml",
         "services/cadip/config/cadip_ws_config.yaml",
         "services/prip/config/prip_ws_config.yaml",
-        "services/adgs/config/adgs_ws_config_token_module.yaml",
-        "services/cadip/config/cadip_ws_config_token_module.yaml",
-        "services/prip/config/prip_ws_config_token_module.yaml",
         "services/edrs/config/edrs_search_config.yaml",
         "services/edrs/config/edrs_stations.yaml",
     ):
@@ -919,41 +916,32 @@ if __name__ == "__main__":
     )
     copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
 
+    for adgs_station in SUPPORTED_ADGS_STATIONS:
+        copy_to_helm_or_infra(
+            [
+                HelmOrInfraParams(
+                    "services/adgs/config/adgs_ws_config.yaml",
+                    [adgs_station],  # use the station name as input value
+                    [adgs_station],
+                    0,  # output doc index
+                    prune_missing=True,
+                ),
+            ],
+            rs_helm_dir / f"charts/rs-server-adgs/config/{adgs_station}_mockup_service_config.yaml",
+        )
+
     copy_to_helm_or_infra(
         [
             HelmOrInfraParams(
-                "services/adgs/config/adgs_ws_config.yaml",
-                ["adgs"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                0,  # output doc index
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(
-                "services/adgs/config/adgs_ws_config_token_module.yaml",
-                ["adgs"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                1,
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(
                 "services/adgs/config/adgs_search_config.yaml",
                 [],
-                ["data", f"{DCB_OPEN} .Values.app.adgsSearchConfigFile {DCB_CLOSE}"],
-                2,
+                [],
+                0,
                 prune_missing=True,
             ),
         ],
-        rs_helm_dir / "charts/rs-server-adgs/templates/configmap.yaml",
+        rs_helm_dir / "charts/rs-server-adgs/config/adgs_search_config.yaml",
+        ignore_existing_file=True,
     )
 
     copy_to_helm_or_infra(
@@ -961,107 +949,78 @@ if __name__ == "__main__":
             HelmOrInfraParams(
                 "services/edrs/config/edrs_search_config.yaml",
                 [],
-                ["data", f"{DCB_OPEN} .Values.app.edrsSearchConfigFile {DCB_CLOSE}"],
+                [],
                 0,
             ),
         ],
-        rs_helm_dir / "charts/rs-server-edrs/templates/configmap.yaml",
+        rs_helm_dir / "charts/rs-server-edrs/config/edrs_search_config.yaml",
+        ignore_existing_file=True,
     )
+
+    for cadip_station in SUPPORTED_CADIP_STATIONS:
+        copy_to_helm_or_infra(
+            [
+                HelmOrInfraParams(
+                    "services/cadip/config/cadip_ws_config.yaml",
+                    [cadip_station],  # use the station name as input value
+                    [cadip_station],
+                    0,  # output doc index
+                    prune_missing=True,
+                ),
+            ],
+            rs_helm_dir / f"charts/rs-server-cadip/config/{cadip_station}_mockup_service_config.yaml",
+        )
+        copy_to_helm_or_infra(
+            [
+                HelmOrInfraParams(  # same for _session stations
+                    "services/cadip/config/cadip_ws_config.yaml",
+                    [f"{cadip_station}_session"],
+                    [f"{cadip_station}_session"],
+                    0,  # output doc index
+                    prune_missing=True,
+                ),
+            ],
+            rs_helm_dir / f"charts/rs-server-cadip/config/{cadip_station}_mockup_service_config.yaml",
+        )
 
     copy_to_helm_or_infra(
         [
-            HelmOrInfraParams(
-                "services/cadip/config/cadip_ws_config.yaml",
-                ["cadip"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                0,  # output doc index
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(  # same for _session stations
-                "services/cadip/config/cadip_ws_config.yaml",
-                ["cadip_session"],
-                [
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}_session",
-                ],
-                0,  # output doc index
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(  # same for _token_module
-                "services/cadip/config/cadip_ws_config_token_module.yaml",
-                ["cadip"],
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                1,
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(  # same for _token_module and _session stations
-                "services/cadip/config/cadip_ws_config_token_module.yaml",
-                ["cadip_session"],
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}_session",
-                ],
-                1,
-                prune_missing=True,
-            ),
             HelmOrInfraParams(
                 "services/cadip/config/cadip_search_config.yaml",
                 [],
-                ["data", f"{DCB_OPEN} .Values.app.cadipSearchConfigFile {DCB_CLOSE}"],
-                2,
+                [],
+                0,
                 prune_missing=True,
             ),
         ],
-        rs_helm_dir / "charts/rs-server-cadip/templates/configmap.yaml",
+        rs_helm_dir / "charts/rs-server-cadip/config/cadip_search_config.yaml",
+        ignore_existing_file=True,
     )
+
+    for prip_station in SUPPORTED_PRIP_STATIONS:
+        copy_to_helm_or_infra(
+            [
+                HelmOrInfraParams(
+                    "services/prip/config/prip_ws_config.yaml",
+                    [prip_station],  # use the station name as input value
+                    [prip_station],
+                    0,  # output doc index
+                    prune_missing=True,
+                ),
+            ],
+            rs_helm_dir / f"charts/rs-server-prip/config/{prip_station}_mockup_service_config.yaml",
+        )
 
     copy_to_helm_or_infra(
         [
             HelmOrInfraParams(
-                "services/prip/config/prip_ws_config.yaml",
-                ["s1a"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                0,  # output doc index
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(
-                "services/prip/config/prip_ws_config_token_module.yaml",
-                ["s1a"],  # use the first input station values for all other stations
-                [  # where to write in the output file
-                    "data",
-                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
-                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-                    f"{DCB_OPEN} $k {DCB_CLOSE}",
-                ],
-                1,
-                prune_missing=True,
-            ),
-            HelmOrInfraParams(
                 "services/prip/config/prip_search_config.yaml",
                 [],
-                ["data", f"{DCB_OPEN} .Values.app.pripSearchConfigFile {DCB_CLOSE}"],
-                2,
+                [],
+                0,
                 prune_missing=True,
             ),
         ],
-        rs_helm_dir / "charts/rs-server-prip/templates/configmap.yaml",
+        rs_helm_dir / "charts/rs-server-prip/config/prip_search_config.yaml",
+        ignore_existing_file=True,
     )
