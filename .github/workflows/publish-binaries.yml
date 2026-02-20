@@ -704,18 +704,35 @@ jobs:
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
         shell: bash
 
-      - id: publish-docker
+      - id: publish-docker-cluster-mode
         uses: ./.github/actions/publish-docker
         with:
           dockerfile: ./services/staging/.github/Dockerfile.dask-staging
           build_context_path: ./build_context_path
           image_basename: "${{ github.repository_owner }}"
-          image_suffix: /dask/staging
+          image_suffix: /dask/staging/k8s
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          build_args: "BASE_IMAGE_TARGET=k8s"
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
+          debug_mode: false
+
+      - id: publish-docker-local-mode
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/staging/.github/Dockerfile.dask-staging
+          build_context_path: ./build_context_path
+          image_basename: "${{ github.repository_owner }}"
+          image_suffix: /dask/staging/local
+          version_name: ${{ needs.services-staging-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          build_args: "BASE_IMAGE_TARGET=local"
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: false
 
