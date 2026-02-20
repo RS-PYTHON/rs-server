@@ -24,7 +24,7 @@ ARG BASE_IMAGE_TARGET=xxx
 # Base images for local mode also include dask-gateway-server with the same version as dask-gateway
 # ANY VERSION CHANGE MUST BE UPDATED IN THE BASE IMAGES SCRIPT GENERATOR (docker/base/build-base-images.sh) AND IN THIS FILE.
 ARG PYTHON_VERSION=3.13.11
-ARG DASK_TAG=2026.1.2
+ARG DASK_TAG_STAGING=2026.1.2
 
 FROM ghcr.io/rs-python/dask/dask-gateway:${BASE_IMAGE_TARGET}-py${PYTHON_VERSION}-${DASK_TAG}
 
