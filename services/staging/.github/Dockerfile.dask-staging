@@ -26,7 +26,7 @@ ARG BASE_IMAGE_TARGET=xxx
 ARG PYTHON_VERSION=3.13.11
 ARG DASK_TAG_STAGING=2026.1.2
 
-FROM ghcr.io/rs-python/dask/dask-gateway:${BASE_IMAGE_TARGET}-py${PYTHON_VERSION}-${DASK_TAG}
+FROM ghcr.io/rs-python/dask/dask-gateway:${BASE_IMAGE_TARGET}-py${PYTHON_VERSION}-${DASK_TAG_STAGING}
 
 # Default user from parent image
 ARG USER=dask:dask
