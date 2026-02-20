@@ -27,7 +27,22 @@ AREA_ZERO_TOLERANCE = 1e-12
 
 
 def validate_geometry_and_enforce_bbox(item: dict[str, Any]) -> dict[str, Any]:
-    """Validate item geometry and enforce bbox consistency when geometry is provided."""
+    """
+    Validate item geometry and enforce geometry/bbox consistency for Catalog item ingest/update.
+
+    ESA/STAC requirements covered:
+    - STAC-CORE-ITEM-REQ-0220 (Polygon Geometry):
+      validates right-hand-rule orientation for Polygon/MultiPolygon
+      (exterior ring CCW, interior rings CW).
+    - STAC-CORE-ITEM-REQ-0230 (Minimum-bounding rectangle):
+      enforces 2D bbox format [minLon, minLat, maxLon, maxLat] in SW->NE order.
+
+    Behavior:
+    - if `geometry` is missing/null, no geometry check is performed.
+    - if `geometry` is present and `bbox` is missing, bbox is computed from geometry bounds.
+    - if `geometry` and `bbox` are both present, bbox must be consistent with geometry bounds.
+      In strict mode, inconsistency raises HTTP 400.
+    """
     geometry = item.get("geometry")
 
     # Items without geometry (e.g. CADIP sessions) are accepted with no geometry checks.
