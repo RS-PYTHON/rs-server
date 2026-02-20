@@ -94,7 +94,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [1.43, 43.5, 1.45, 43.7]
+        updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
 
         feature_put_response = client.put(
@@ -140,7 +140,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         first_expires_date = content["properties"]["expires"]
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
+        updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
 
         # Test that updated field is correctly updated.
@@ -208,7 +208,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
 
             # Update the feature and PUT it into catalogDB
             updated_feature_sent = copy.deepcopy(a_correct_feature)
-            updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
+            updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
             del updated_feature_sent["collection"]
 
             # Test that updated field is correctly updated.

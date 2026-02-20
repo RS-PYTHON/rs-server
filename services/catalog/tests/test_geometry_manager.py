@@ -16,9 +16,10 @@
 
 import pytest
 from fastapi import HTTPException
+from rs_server_catalog.data_management.geometry_manager import (
+    validate_geometry_and_enforce_bbox,
+)
 from starlette.status import HTTP_400_BAD_REQUEST
-
-from rs_server_catalog.data_management.geometry_manager import validate_geometry_and_enforce_bbox
 
 
 def valid_polygon() -> dict:
