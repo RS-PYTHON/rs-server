@@ -40,6 +40,8 @@ from rs_server_catalog.data_management.user_handler import (
     owner_id_and_collection_id,
 )
 from rs_server_catalog.utils import (
+    DEFAULT_BBOX,
+    DEFAULT_GEOM,
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
     get_token_for_pagination,
@@ -58,6 +60,14 @@ from starlette.status import (
 )
 
 logger = Logging.default(__name__)
+
+
+def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[str, Any]:
+    """Inject internal default geometry/bbox when both are null for pgstac persistence compatibility."""
+    if content.get("geometry") is None and content.get("bbox") is None:
+        content["geometry"] = copy.deepcopy(DEFAULT_GEOM)
+        content["bbox"] = copy.deepcopy(DEFAULT_BBOX)
+    return content
 
 
 def iter_external_id_parts(raw: Any) -> list[str]:
@@ -449,6 +459,8 @@ field is not permitted also."
 
                 # Geometry checks and bbox enforcement are done before any S3 side effect.
                 content = validate_geometry_and_enforce_bbox(content)
+                # Keep ESA behavior (accept null geometry+bbox) while ensuring pgstac persistence compatibility.
+                content = enforce_pgstac_defaults_for_null_geometry(content)
 
                 logger.debug("Starting the update_stac_item_publication thread")
                 content, self.s3_files_to_be_deleted = await asyncio.to_thread(
@@ -743,7 +755,10 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     merged_content["bbox"] = content["bbox"]
 
                 merged_content = validate_geometry_and_enforce_bbox(merged_content)
-                # Propagate enforced bbox back to patch body so stored item stays consistent.
+                # Keep ESA behavior for null geometry+bbox while making PATCH payload acceptable for pgstac.
+                merged_content = enforce_pgstac_defaults_for_null_geometry(merged_content)
+                # Propagate enforced geometry/bbox back to patch body so stored item stays consistent.
+                content["geometry"] = merged_content.get("geometry", None)
                 content["bbox"] = merged_content.get("bbox", None)
 
             # Update "updated" timestamp (different field if it is an item or a collection)
