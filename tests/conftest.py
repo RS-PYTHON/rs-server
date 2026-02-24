@@ -309,26 +309,6 @@ def clear_caches():
     stac_api_common.get_adgs_queryables.cache_clear()
 
 
-@pytest.fixture(scope="function")
-def use_module_for_station_token(monkeypatch):
-    """
-    Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    usage of the internal token module  for getting the token and setting it to the eodag
-    """
-    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
-    reload(adgs_retriever)
-    reload(prip_retriever)
-    reload(cadip_retriever)
-
-    yield
-
-    # Restore default value = False at the end of the test function
-    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
-    reload(adgs_retriever)
-    reload(prip_retriever)
-    reload(cadip_retriever)
-
-
 @pytest.fixture(scope="module", name="a_product")
 def a_product_fixture():
     """Fixture factory to build a dummy cadip/aux product.
