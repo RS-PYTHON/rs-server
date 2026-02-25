@@ -2297,14 +2297,19 @@ jsonpointer = ">=1.9"
 
 [[package]]
 name = "jsonpath-ng"
-version = "1.8.0"
+version = "1.7.0"
 description = "A final implementation of JSONPath for Python that aims to be standard compliant, including arithmetic and binary comparison operators and providing clear AST for metaprogramming."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "jsonpath_ng-1.8.0.tar.gz", hash = "sha256:54252968134b5e549ea5b872f1df1168bd7defe1a52fed5a358c194e1943ddc3"},
+    {file = "jsonpath-ng-1.7.0.tar.gz", hash = "sha256:f6f5f7fd4e5ff79c785f1573b394043b39849fb2bb47bcead935d12b00beab3c"},
+    {file = "jsonpath_ng-1.7.0-py2-none-any.whl", hash = "sha256:898c93fc173f0c336784a3fa63d7434297544b7198124a68f9a3ef9597b0ae6e"},
+    {file = "jsonpath_ng-1.7.0-py3-none-any.whl", hash = "sha256:f3d7f9e848cba1b6da28c55b1c26ff915dc9e0b1ba7e752a53d6da8d5cbd00b6"},
 ]
+
+[package.dependencies]
+ply = "*"
 
 [[package]]
 name = "jsonpointer"
@@ -3863,6 +3868,18 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["coverage", "pytest", "pytest-benchmark"]
+
+[[package]]
+name = "ply"
+version = "3.11"
+description = "Python Lex & Yacc"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "ply-3.11-py2.py3-none-any.whl", hash = "sha256:096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce"},
+    {file = "ply-3.11.tar.gz", hash = "sha256:00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3"},
+]
 
 [[package]]
 name = "pre-commit"
@@ -5488,7 +5505,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5505,7 +5522,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5522,7 +5539,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5541,7 +5558,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5561,6 +5578,7 @@ filelock = ">=3.20.3"
 geojson-pydantic = "2.1.0"
 httpx = "^0.28.1"
 itsdangerous = "^2.2.0"
+jsonpath-ng = "==1.7.0"
 markdown = "^3.8.2"
 opentelemetry-distro = "^0.60b1"
 opentelemetry-exporter-otlp = "^1.39.1"
@@ -5588,7 +5606,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-edrs"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, EDRS service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5606,7 +5624,7 @@ url = "services/edrs"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5628,7 +5646,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-osam"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5648,7 +5666,7 @@ url = "services/osam"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5665,7 +5683,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a5.post699.dev0"
+version = "1.0a5.post700.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
