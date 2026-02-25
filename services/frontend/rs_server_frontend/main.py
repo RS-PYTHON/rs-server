@@ -19,18 +19,12 @@ import os
 from os import environ as env
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from rs_server_common.middlewares import HealthMiddleware
 from rs_server_frontend import __version__
 
 
 class FrontendFailed(BaseException):
     """Exception raised if the frontend initialization failed."""
-
-
-class HealthSchema(BaseModel):
-    """Health status flag."""
-
-    healthy: bool
 
 
 class Frontend:
@@ -72,18 +66,12 @@ class Frontend:
                 },
             )
             self.app.openapi = self.get_openapi  # type: ignore
+
+            # More responsive /health and /ping endpoints
+            self.app.add_middleware(HealthMiddleware)
+
         except BaseException as e:
             raise FrontendFailed("Unable to serve openapi specification.") from e
-
-        # include_in_schema=False: hide this endpoint from the swagger
-        @self.app.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
-        async def health() -> HealthSchema:
-            """
-            Always return a flag set to 'true' when the service is up and running.
-            \f
-            Otherwise this code won't be run anyway and the caller will have other sorts of errors.
-            """
-            return HealthSchema(healthy=True)
 
     @staticmethod
     def load_openapi_spec() -> dict:

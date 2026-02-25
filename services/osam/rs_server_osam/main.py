@@ -456,13 +456,6 @@ def main_osam_task(timeout: int = 60):
     logger.info("Exiting from the getting keycloack attributes thread !")
 
 
-# Health check route
-@technical_router.get("/_mgmt/ping", include_in_schema=False)
-async def ping():
-    """Liveliness probe."""
-    return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
-
-
 dependencies = []
 if settings.CLUSTER_MODE:
 

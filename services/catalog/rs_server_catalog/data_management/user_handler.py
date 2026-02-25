@@ -98,8 +98,6 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         CATALOG_PREFIX + "/api.html",
         CATALOG_PREFIX + "/docs/oauth2-redirect",
         CATALOG_PREFIX + "/conformance",
-        CATALOG_PREFIX + "/_mgmt/health",
-        CATALOG_PREFIX + "/_mgmt/ping",
     ]
     if any(re.fullmatch(pattern, path) for pattern in regexp_list):
         # Don't validate other conditions if we alredy matched the previous regexps

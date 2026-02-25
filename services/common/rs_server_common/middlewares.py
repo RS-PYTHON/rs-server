@@ -85,6 +85,11 @@ class Rfc7807ErrorResponse(TypedDict):
     detail: str
 
 
+#############################
+# Middleware implementation #
+#############################
+
+
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
     Implement authentication verification.
@@ -362,43 +367,43 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def get_link_title(link: dict, entity: dict) -> str:
-    """
-    Determine a human-readable STAC link title based on the link relation and context.
-    """
-    rel = link.get("rel")
-    href = link.get("href", "")
-    if "title" in link:
-        # don't overwrite
-        return link["title"]
-    match rel:
-        # --- special cases needing entity context ---
-        case "collection":
-            return entity.get("title") or entity.get("id") or REL_TITLES["collection"]
-        case "item":
-            return entity.get("title") or entity.get("id") or REL_TITLES["item"]
-        case "self" if entity.get("type") == "Catalog":
-            return "STAC Landing Page"
-        case "self" if href.endswith("/collections"):
-            return "All Collections"
-        case "child":
-            path = urlparse(href).path
-            collection_id = path.split("/")[-1] if path else "unknown"
-            return f"All from collection {collection_id}"
-        # --- all others: just lookup in REL_TITLES ---
-        case _:
-            return REL_TITLES.get(rel, href or "Unknown Entity")  # type: ignore
-
-
-def normalize_href(href: str) -> str:
-    """Encode query parameters in href to match expected STAC format."""
-    parsed = urlparse(href)
-    query = urlencode(parse_qsl(parsed.query), safe="")  # encode ":" -> "%3A"
-    return urlunparse(parsed._replace(query=query))
-
-
 class StacLinksTitleMiddleware(BaseHTTPMiddleware):
     """Middleware used to update links with title"""
+
+    @staticmethod
+    def get_link_title(link: dict, entity: dict) -> str:
+        """
+        Determine a human-readable STAC link title based on the link relation and context.
+        """
+        rel = link.get("rel")
+        href = link.get("href", "")
+        if "title" in link:
+            # don't overwrite
+            return link["title"]
+        match rel:
+            # --- special cases needing entity context ---
+            case "collection":
+                return entity.get("title") or entity.get("id") or REL_TITLES["collection"]
+            case "item":
+                return entity.get("title") or entity.get("id") or REL_TITLES["item"]
+            case "self" if entity.get("type") == "Catalog":
+                return "STAC Landing Page"
+            case "self" if href.endswith("/collections"):
+                return "All Collections"
+            case "child":
+                path = urlparse(href).path
+                collection_id = path.split("/")[-1] if path else "unknown"
+                return f"All from collection {collection_id}"
+            # --- all others: just lookup in REL_TITLES ---
+            case _:
+                return REL_TITLES.get(rel, href or "Unknown Entity")  # type: ignore
+
+    @staticmethod
+    def normalize_href(href: str) -> str:
+        """Encode query parameters in href to match expected STAC format."""
+        parsed = urlparse(href)
+        query = urlencode(parse_qsl(parsed.query), safe="")  # encode ":" -> "%3A"
+        return urlunparse(parsed._replace(query=query))
 
     def __init__(self, app: FastAPI, title: str = "Default Title"):
         """
@@ -443,9 +448,9 @@ class StacLinksTitleMiddleware(BaseHTTPMiddleware):
                     if isinstance(link, dict):
                         # normalize href to decode any %xx
                         if "href" in link:
-                            link["href"] = normalize_href(link["href"])
+                            link["href"] = self.normalize_href(link["href"])
                         # update title
-                        link["title"] = get_link_title(link, data)
+                        link["title"] = self.get_link_title(link, data)
 
             headers = dict(response.headers)
             headers.pop("content-length", None)
@@ -468,6 +473,31 @@ class StacLinksTitleMiddleware(BaseHTTPMiddleware):
             )
 
         return response
+
+
+class HealthMiddleware(BaseHTTPMiddleware):
+    """
+    When Kubernetes calls the /health or /ping endpoint from this service, return response immediately,
+    because if the latency is too high (>2s) Kubernetes will kill and restart the pod.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """Middleware implementation"""
+
+        if request.url.path.endswith("/health"):
+            # NOTE: for the catalog we could call "await self.api.health_check(request)" like in stac_fastapi.api.app
+            # but this async call may be slow and so may kill the pod. So we hardcode the response instead.
+            return JSONResponse({"healthy": True}, status.HTTP_200_OK)
+        if request.url.path.endswith("/_mgmt/ping"):
+            return JSONResponse({"message": "PONG"}, status.HTTP_200_OK)
+
+        # All other endpoints
+        return await call_next(request)
+
+
+#####################
+# Utility functions #
+#####################
 
 
 def insert_middleware_at(app: FastAPI, index: int, middleware: Middleware):

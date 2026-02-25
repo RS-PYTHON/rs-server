@@ -33,9 +33,11 @@ from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    HealthMiddleware,
     PaginationLinksMiddleware,
     apply_middlewares,
     insert_middleware_after,
+    insert_middleware_at,
 )
 from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
@@ -44,12 +46,13 @@ from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.app import app as sfpg_app
 from stac_fastapi.pgstac.app import with_transactions
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
+from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
 logger = Logging.default(__name__)
 
 # Technical endpoints (no authentication)
-TECH_ENDPOINTS = ["/_mgmt/health", "/_mgmt/ping", "/api", "/api.html"]
+TECH_ENDPOINTS = ["/api", "/api.html"]
 
 
 def must_be_authenticated(route_path: str) -> bool:
@@ -85,15 +88,20 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
 
 
 app: FastAPI = sfpg_app
-insert_middleware_after(
-    app,
-    BrotliMiddleware,
-    CatalogMiddleware,
-)
 
+# Add middlewares. When sending a request, the middleware order must be:
+# Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...] -> Brotli -> Catalog
+# Then after processing the request, the response is sent in the opposite order:
+# Catalog -> Brotli -> [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
+
+# More responsive /health and /ping endpoints
+insert_middleware_at(app, 0, Middleware(HealthMiddleware))
+
+# Catch all exceptions and return a JSONResponse
 insert_middleware_after(app, CORSMiddleware, HandleExceptionsMiddleware)
 HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
+# Authentication verification
 insert_middleware_after(
     app,
     HandleExceptionsMiddleware,
@@ -101,11 +109,23 @@ insert_middleware_after(
     must_be_authenticated=must_be_authenticated,
 )
 
+# Middleware for implementing first and last buttons in STAC Browser
+insert_middleware_after(
+    app,
+    AuthenticationMiddleware,
+    PaginationLinksMiddleware,
+)
+
+# Process catalog endpoints
+insert_middleware_after(
+    app,
+    BrotliMiddleware,
+    CatalogMiddleware,
+)
+
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
-
-app.add_middleware(PaginationLinksMiddleware)
 
 logger.debug(f"Middlewares: {app.user_middleware}")
 
