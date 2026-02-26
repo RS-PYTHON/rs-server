@@ -290,6 +290,11 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             oauth2_attributes,
         )
 
+    # Check that we don't need authentication for the /health endpoints.
+    # NOTE: they are implemented by the HealthMiddleware
+    for path in ["/health", "/_mgmt/health", "/ping", "/_mgmt/ping"]:
+        assert client.get(path).status_code == status.HTTP_200_OK
+
     openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
 
     # For each adgs or cadip api endpoint

@@ -97,6 +97,7 @@ class JobsFormatError(Exception):
 def must_be_authenticated(path: str, prefix: str = "") -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
 
+    # NOTE: /health and /_mgmt/ping are actually handled by the HealthMiddleware
     no_auth = (path in [prefix + "/api", prefix + "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
     return not no_auth
 
