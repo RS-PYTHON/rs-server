@@ -98,18 +98,14 @@ def must_be_authenticated(path: str, prefix: str = "") -> bool:
 
     # Keep OpenAPI/Swagger endpoints publicly accessible so tooling (e.g. aggregated swagger generator)
     # can fetch the schema without having to handle auth/redirect flows.
-    no_auth = (
-        path
-        in [
-            prefix + "/api",
-            prefix + "/api.html",
-            prefix + "/openapi.json",
-            "/openapi.json",
-            "/health",
-            "/_mgmt/ping",
-        ]
-        or path.startswith("/auth/")
-    )
+    no_auth = path in [
+        prefix + "/api",
+        prefix + "/api.html",
+        prefix + "/openapi.json",
+        "/openapi.json",
+        "/health",
+        "/_mgmt/ping",
+    ] or path.startswith("/auth/")
     return not no_auth
 
 
