@@ -21,7 +21,6 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
-from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, FastAPI, Request, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
@@ -52,7 +51,8 @@ from starlette.middleware.cors import CORSMiddleware
 logger = Logging.default(__name__)
 
 # Technical endpoints (no authentication)
-TECH_ENDPOINTS = ["/api", "/api.html"]
+# NOTE: /_mgmt/health and /_mgmt/ping are actually handled by the HealthMiddleware
+TECH_ENDPOINTS = ["/_mgmt/health", "/_mgmt/ping", "/api", "/api.html"]
 
 
 def must_be_authenticated(route_path: str) -> bool:
@@ -201,8 +201,3 @@ if common_settings.CLUSTER_MODE:
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds
 app.state.pg_timeout = 30
-
-
-@app.get("/toto")
-def mytoto():
-    bp = 0
