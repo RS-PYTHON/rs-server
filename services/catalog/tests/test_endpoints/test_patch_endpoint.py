@@ -135,20 +135,16 @@ def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pyli
     assert patched_feature["properties"]["updated"] > updated_timestamp  # Check updated date changed
 
     # Patch geometry only: middleware must merge with current item and recompute bbox for consistency.
-    new_geometry = {
-        "type": "Polygon",
-        "coordinates": [
-            [
-                [-94.6324839, 37.0585608],
-                [-94.6324839, 37.0342547],
-                [-94.6015249, 37.0342547],
-                [-94.6015249, 37.0585608],
-                [-94.6324839, 37.0585608],
-            ],
-        ],
-    }
-    lons = [pos[0] for pos in new_geometry["coordinates"][0]]
-    lats = [pos[1] for pos in new_geometry["coordinates"][0]]
+    ring: list[list[float]] = [
+        [-94.6324839, 37.0585608],
+        [-94.6324839, 37.0342547],
+        [-94.6015249, 37.0342547],
+        [-94.6015249, 37.0585608],
+        [-94.6324839, 37.0585608],
+    ]
+    new_geometry = {"type": "Polygon", "coordinates": [ring]}
+    lons = [pos[0] for pos in ring]
+    lats = [pos[1] for pos in ring]
     expected_bbox = [min(lons), min(lats), max(lons), max(lats)]
 
     patch_response = client.patch(

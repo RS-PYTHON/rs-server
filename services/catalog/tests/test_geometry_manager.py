@@ -16,7 +16,7 @@
 
 import pytest
 from fastapi import HTTPException
-import rs_server_catalog.data_management.geometry_manager as geometry_manager
+from rs_server_catalog.data_management import geometry_manager
 from rs_server_catalog.data_management.geometry_manager import (
     validate_geometry_and_enforce_bbox,
 )
