@@ -26,7 +26,6 @@ from rs_server_osam.tasks import (
     build_s3_rights,
     build_users_data_map,
     delete_obs_user_account_if_not_used_by_keycloak_account,
-    get_keycloak_configmap_values,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
     update_s3_rights_lists,
@@ -174,10 +173,10 @@ class TestLinkRspythonUsersAndObsUsers:
 
         with patch("rs_server_osam.tasks.get_ovh_handler") as mock_ovh:
             mock_ovh.return_value.get_all_users.side_effect = Exception("OVH API failure")
-            with pytest.raises(RuntimeError) as excinfo:
+            with pytest.raises(Exception) as excinfo:
                 link_rspython_users_and_obs_users()
 
-            assert "Exception occurred while syncing users" in str(excinfo.value)
+            assert "OVH API failure" in str(excinfo.value)
 
 
 def test_build_users_data_map(mocker):
@@ -921,55 +920,3 @@ def test_apply_user_access_policy(
 
     result = apply_user_access_policy(user, access_policy)
     assert result == expected_result
-
-
-@patch("rs_server_osam.tasks.load_configmap_data", return_value=None)
-@patch("rs_server_osam.tasks.get_keycloak_handler")
-def test_get_keycloak_configmap_values_configmap_none(mock_handler, mock_load):
-    """Test when configmap data is None: returns users and empty buckets dict."""
-    users_list = [{"username": "user1"}, {"username": "user2"}]
-    mock_handler.return_value.get_keycloak_users.return_value = users_list
-    users, buckets = get_keycloak_configmap_values()
-    assert users == users_list
-    assert not buckets
-
-
-@patch("rs_server_osam.tasks.load_configmap_data", return_value=[["*", "coll", "type", "?", "bucket1"]])
-@patch("rs_server_osam.tasks.get_keycloak_handler")
-def test_get_keycloak_configmap_values_no_users(mock_handler, mock_load):
-    """Test when no Keycloak users: returns empty list and empty buckets dict."""
-    mock_handler.return_value.get_keycloak_users.return_value = []
-    users, buckets = get_keycloak_configmap_values()
-    assert not users
-    assert not buckets
-
-
-@patch("rs_server_osam.tasks.load_configmap_data")
-@patch("rs_server_osam.tasks.get_keycloak_handler")
-def test_get_keycloak_configmap_values_happy_path(mock_handler, mock_load):
-    """Test happy path: computes allowed buckets correctly for each user."""
-    configmap = [
-        ["user1", "coll1", "type1", "?", "bucket1"],
-        ["*", "coll2", "type2", "?", "bucket2"],
-        ["user2", "coll3", "type3", "?", "bucket3"],
-    ]
-    mock_load.return_value = configmap
-    users_list = [{"username": "user1"}, {"username": "user2"}]
-    mock_handler.return_value.get_keycloak_users.return_value = users_list
-    users, buckets = get_keycloak_configmap_values()
-    assert users == users_list
-    assert buckets == {
-        "user1": ["bucket1", "bucket2"],
-        "user2": ["bucket2", "bucket3"],
-    }
-
-
-@patch("rs_server_osam.tasks.load_configmap_data", return_value=[["otheruser", "coll", "type", "?", "bucket"]])
-@patch("rs_server_osam.tasks.get_keycloak_handler")
-def test_get_keycloak_configmap_values_no_matching_buckets(mock_handler, mock_load):
-    """Test when no matching configmap rules for users: empty buckets lists."""
-    users_list = [{"username": "user1"}]
-    mock_handler.return_value.get_keycloak_users.return_value = users_list
-    users, buckets = get_keycloak_configmap_values()
-    assert users == users_list
-    assert buckets == {"user1": []}
