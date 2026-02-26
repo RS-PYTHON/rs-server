@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ repos:
   hooks:
   - id: addlicense
     files: \.(py|sh|yml|yaml)$
-    args: [ "-c", "Airbus, CS Group", "-l", "apache", "-y", "2023-2025" ]
+    args: [ "-c", "Airbus, CS Group", "-l", "apache", "-y", "2023-2026" ]
 
 # Remarks:
 #   - don't run flake8, pylint and mypy because they are already run in the CI.
