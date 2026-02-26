@@ -14,6 +14,7 @@
 
 """Tests endpoint for patching collections or items in catalog"""
 
+import copy
 import json
 
 import fastapi
@@ -86,17 +87,20 @@ def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pyli
     - Test that the feature is created with proper fields
     - Patch "height" and "width" values of the properties of the feature with PATCH request
     - Test that the feature was updated with a GET request and also check that the timestamps are correct
+    - Patch geometry only (no bbox) and check bbox is recomputed and persisted
+    - Patch bbox only with invalid SW/NE ordering and check it is rejected with HTTP 400
     """
     # Change correct feature collection id to match with minimal collection and post it
-    a_correct_feature["collection"] = "fixture_collection"
+    feature = copy.deepcopy(a_correct_feature)
+    feature["collection"] = "fixture_collection"
     feature_post_response = client.post(
         "/catalog/collections/fixture_owner:fixture_collection/items",
-        json=a_correct_feature,
+        json=feature,
     )
     assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
 
     # Get feature using specific endpoint with featureID
-    feature_id = a_correct_feature["id"]
+    feature_id = feature["id"]
     created_feature_response = client.get(
         f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
     )
@@ -112,7 +116,7 @@ def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pyli
     # Patch a property of the feature
     patch_values = {"properties": {"height": 3000, "width": 3000}}
     patch_response = client.patch(
-        f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature["id"]}",
+        f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
         json=patch_values,
     )
     assert patch_response.status_code == fastapi.status.HTTP_200_OK
@@ -130,7 +134,69 @@ def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pyli
     assert patched_feature["properties"]["published"] == published_timestamp  # Check publication date didn't change
     assert patched_feature["properties"]["updated"] > updated_timestamp  # Check updated date changed
 
+    # Patch geometry only: middleware must merge with current item and recompute bbox for consistency.
+    new_geometry = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [-94.6324839, 37.0585608],
+                [-94.6324839, 37.0342547],
+                [-94.6015249, 37.0342547],
+                [-94.6015249, 37.0585608],
+                [-94.6324839, 37.0585608],
+            ],
+        ],
+    }
+    lons = [pos[0] for pos in new_geometry["coordinates"][0]]
+    lats = [pos[1] for pos in new_geometry["coordinates"][0]]
+    expected_bbox = [min(lons), min(lats), max(lons), max(lats)]
+
+    patch_response = client.patch(
+        f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
+        # Item PATCH payload must contain "properties" so the middleware can update the "updated" timestamp.
+        json={"geometry": new_geometry, "properties": {}},
+    )
+    assert patch_response.status_code == fastapi.status.HTTP_200_OK
+
+    patched_feature_response = client.get(
+        f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
+    )
+    assert patched_feature_response.status_code == fastapi.status.HTTP_200_OK
+    patched_feature = json.loads(patched_feature_response.content)
+    assert patched_feature["geometry"] == new_geometry
+    assert patched_feature["bbox"] == expected_bbox
+
+    # Patch bbox only with invalid SW/NE ordering: must be rejected.
+    invalid_bbox = [expected_bbox[2], expected_bbox[3], expected_bbox[0], expected_bbox[1]]
+    patch_response = client.patch(
+        f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
+        # Item PATCH payload must contain "properties" so the middleware can update the "updated" timestamp.
+        json={"bbox": invalid_bbox, "properties": {}},
+    )
+    assert patch_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+    assert (
+        patch_response.json()["description"]
+        == "Invalid bbox: expected southwesterly point followed by northeasterly point."
+    )
+
     # Delete feature
     assert (
         client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code == fastapi.status.HTTP_200_OK
     )
+
+
+def test_patch_feature_geometry_on_missing_item_returns_400(
+    client,
+    a_minimal_collection,
+):  # pylint: disable=unused-argument
+    """
+    PATCHing geometry/bbox of a missing item must fail early with HTTP 400.
+
+    This covers the request middleware branch that loads the current item for geometry/bbox patches.
+    """
+    patch_response = client.patch(
+        "/catalog/collections/fixture_owner:fixture_collection/items/does-not-exist",
+        json={"geometry": None},
+    )
+    assert patch_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+    assert patch_response.json()["description"] == "Item does-not-exist not found."

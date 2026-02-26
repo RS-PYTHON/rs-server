@@ -16,9 +16,12 @@
 
 import pytest
 from fastapi import HTTPException
+import rs_server_catalog.data_management.geometry_manager as geometry_manager
 from rs_server_catalog.data_management.geometry_manager import (
     validate_geometry_and_enforce_bbox,
 )
+from shapely.geometry import shape as shapely_shape
+from shapely.validation import explain_validity
 from starlette.status import HTTP_400_BAD_REQUEST
 
 
@@ -105,3 +108,61 @@ def test_reject_wrong_polygon_orientation():
         validate_geometry_and_enforce_bbox(item)
     assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
     assert "right-hand rule" in str(exc_info.value.detail)
+
+
+@pytest.mark.unit
+def test_reject_geometry_not_an_object():
+    """Non-object geometry is rejected."""
+    item = {"id": "item-5", "geometry": "not-an-object"}
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid GeoJSON geometry: expected an object."
+
+
+@pytest.mark.unit
+def test_reject_empty_geometry():
+    """Empty geometries are rejected."""
+    item = {"id": "item-6", "geometry": {"type": "GeometryCollection", "geometries": []}}
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid GeoJSON geometry: empty geometry is not allowed."
+
+
+@pytest.mark.unit
+def test_reject_invalid_geometry_with_explain_validity_reason():
+    """Invalid geometries are rejected with Shapely explain_validity reason."""
+    invalid_polygon = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [0.0, 0.0],
+                [1.0, 1.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [0.0, 0.0],
+            ],
+        ],
+    }
+    expected_reason = explain_validity(shapely_shape(invalid_polygon))
+
+    item = {"id": "item-7", "geometry": invalid_polygon}
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == f"Invalid GeoJSON geometry: {expected_reason}."
+
+
+@pytest.mark.unit
+def test_reject_polygon_with_no_linear_rings(monkeypatch):
+    """Polygon with empty coordinate rings is rejected by the right-hand-rule ring validator."""
+
+    # Force validate_geometry() to succeed so we can reach the ring-structure validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {"id": "item-8", "geometry": {"type": "Polygon", "coordinates": []}}
+    with pytest.raises(HTTPException) as exc_info:
+        geometry_manager.validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid Polygon: expected at least one linear ring."
