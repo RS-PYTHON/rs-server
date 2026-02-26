@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ import json
 import logging
 import threading
 from contextlib import asynccontextmanager
-from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
@@ -53,9 +52,9 @@ from rs_server_osam.tasks import (
     build_users_data_map,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
-    load_configmap_data,
     update_s3_rights_lists,
 )
+from rs_server_osam.utils.tools import load_configmap_data
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -64,6 +63,8 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
 )
+
+LOCK = threading.Lock()
 
 # The default synchronization time of the keycloak users with the ovh users (twice per day)
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
@@ -132,7 +133,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     # the trigger for running the logic in the background task
     fastapi_app.extra["users_sync_trigger"] = threading.Event()
     # save info for future requests of endpoint /storage/account/{user}/rights
-    fastapi_app.extra["users_info"] = dict[str, Any]
+    fastapi_app.extra["users_info"] = None  # dict[str, Any] | None
     # start the background task in a thread using asyncio.to_thread
     fastapi_app.extra["refresh_task"] = asyncio.create_task(
         asyncio.to_thread(main_osam_task, DEFAULT_OSAM_FREQUENCY_SYNC),
@@ -258,6 +259,14 @@ def __get_user_rights(user):
         HTTPException: If the user is not found in the in-memory Keycloak user store (HTTP 404).
     """
 
+    # If the users info have not been calculated yet (by calling '/storage/accounts/update')
+    if app.extra["users_info"] is None:
+        # We calculate them in a threading lock (so several threads won't call this at the same time)
+        with LOCK:
+            # Check a second time, in case another thread updated the value
+            if app.extra["users_info"] is None:
+                app.extra["users_info"] = build_users_data_map()
+
     if user not in app.extra["users_info"]:
         return None
     logger.debug(f"Building the rights for user {user}")
@@ -271,14 +280,14 @@ async def update_obs_user_rights(request: Request, user: str):
     This endpoint is called by an RS operator with the *rs_osam_update* role. It updates the S3 Object Storage (OBS)
     rights of any user, calculated from their associated Keycloak account.
 
-    How it works:
+    When called, this endpoint will:
 
-    1. Reads the user's roles from their Keycloak account.
+    1. Read the user's roles from their Keycloak account.
 
-    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    2. Calculate the associated OBS access policy rights: they describe the buckets, paths, and permission levels
     (such as read, write and download) that the user has access to.
 
-    3. Applies the access policy to the user's OBS account.
+    3. Apply the access policy to the user's OBS account.
 
     The operation ensures that the user's OBS permissions match their Keycloak permissions.
 
@@ -315,14 +324,14 @@ async def get_obs_user_rights(request: Request, user: str):
     This endpoint is called by an RS operator with the *rs_osam_update* role. It returns the S3 Object Storage (OBS)
     rights of any user, calculated from their associated Keycloak account.
 
-    How it works:
+    When called, this endpoint will:
 
-    1. Reads the user's roles from their Keycloak account.
+    1. Read the user's roles from their Keycloak account.
 
-    2. Calculates the associated OBS access policy rights: they describe the buckets, paths, and permission levels
+    2. Calculate the associated OBS access policy rights: they describe the buckets, paths, and permission levels
     (such as read, write and download) that the user has access to.
 
-    3. Returns the access policy in the OBS JSON format, without applying them to the OBS user account.
+    3. Return the access policy in the OBS JSON format, without applying them to the OBS user account.
 
     ### Args
     user (str) — The Keycloak username for which the access policy should be returned.
