@@ -329,7 +329,7 @@ async def get_allowed_cadip_collections(request: Request) -> dict:
     authentication.auth_validation("cadip", "landing_page", request=request)
     collections = await request.app.state.pgstac_client.all_collections(request=request)
     for collection in collections.get("collections", []):
-        if collection.get("query") is not None:
+        if collection.get("query"):
             collection["summaries"] = build_summaries("cadip", collection.get("query"))
 
     return collections
