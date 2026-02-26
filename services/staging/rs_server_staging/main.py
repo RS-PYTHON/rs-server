@@ -96,21 +96,27 @@ class JobsFormatError(Exception):
 def must_be_authenticated(path: str, prefix: str = "") -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
 
-    no_auth = (path in [prefix + "/api", prefix + "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
+    # Keep OpenAPI/Swagger endpoints publicly accessible so tooling (e.g. aggregated swagger generator)
+    # can fetch the schema without having to handle auth/redirect flows.
+    no_auth = path in [
+        prefix + "/api",
+        prefix + "/api.html",
+        prefix + "/openapi.json",
+        "/openapi.json",
+        "/health",
+        "/_mgmt/ping",
+    ] or path.startswith("/auth/")
     return not no_auth
 
 
-if common_settings.CLUSTER_MODE:
+async def just_for_the_lock_icon(
+    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+):
+    """Dummy function to add a lock icon in Swagger to enter an API key.
 
-    async def just_for_the_lock_icon(
-        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
-    ):
-        """Dummy function to add a lock icon in Swagger to enter an API key."""
-
-else:
-
-    async def just_for_the_lock_icon():  # type: ignore # different signature than above
-        """In local mode it does nothing."""
+    Note: authentication is enforced by `AuthenticationMiddleware` (in cluster mode only),
+    this dependency exists only so the aggregated OpenAPI/Swagger shows secured endpoints.
+    """
 
 
 async def validate_request_dependency(request: Request):
