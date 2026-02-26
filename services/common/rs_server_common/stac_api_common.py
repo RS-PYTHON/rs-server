@@ -269,45 +269,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return queryables
 
-    def build_summaries(self, query: dict) -> dict | None:
-        """
-        Builds summaries for CADIP/AUXIP/PRIP collections.
-
-        Returns a dict:
-            - {"platform": [...]} for CADIP
-            - {"product:type": [...]} for AUXIP/PRIP
-        """
-        if self.service == "cadip":
-            satellites = query.get("Satellite") or []
-            if isinstance(satellites, str):
-                satellites = [s.strip() for s in satellites.split(",")]
-
-            platforms = set()
-
-            for sat in satellites:
-                for satellite in map_stac_platform()["satellites"]:
-                    for key, info in satellite.items():
-                        if info.get("code") == sat:
-                            platforms.add(key)
-
-            results = sorted(platforms)
-            return {"platform": results}
-
-        products = query.get("productType") or []
-        if isinstance(products, str):
-            products = [s.strip() for s in products.split(",")]
-
-        ptype = set()
-        if self.service == "prip":
-            for p in products:
-                ptype.add(find_product_type(p)["productType"])
-        else:
-            for p in products:
-                ptype.add(p)
-
-        results = sorted(ptype)
-        return {"product:type": results}
-
     async def fetchval(self, query, *args, column=0, timeout=None):  # pylint: disable=unused-argument
         """Run a query and return a value in the first row.
 
@@ -340,8 +301,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
 
             query = collection.get("query")
-            if query:
-                collection["summaries"] = self.build_summaries(query)
+            if query and collection.get("summaries") is None:
+                collection["summaries"] = build_summaries(self.service, query)
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
@@ -1187,6 +1148,46 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         Search cadip files for each input cadip session. Update the sessions data with their files data.
         """
         raise NotImplementedError
+
+
+def build_summaries(service, query: dict) -> dict | None:
+    """
+    Builds summaries for CADIP/AUXIP/PRIP collections.
+
+    Returns a dict:
+        - {"platform": [...]} for CADIP
+        - {"product:type": [...]} for AUXIP/PRIP
+    """
+    if service == "cadip":
+        satellites = query.get("Satellite") or []
+        if isinstance(satellites, str):
+            satellites = [s.strip() for s in satellites.split(",")]
+
+        platforms = set()
+
+        for sat in satellites:
+            for satellite in map_stac_platform()["satellites"]:
+                for key, info in satellite.items():
+                    if info.get("code") == sat:
+                        platforms.add(key)
+
+        results = sorted(platforms)
+        return {"platform": results}
+
+    products = query.get("productType") or []
+    if isinstance(products, str):
+        products = [s.strip() for s in products.split(",")]
+
+    ptype = set()
+    if service == "prip":
+        for p in products:
+            ptype.add(find_product_type(p)["productType"])
+    else:
+        for p in products:
+            ptype.add(p)
+
+    results = sorted(ptype)
+    return {"product:type": results}
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

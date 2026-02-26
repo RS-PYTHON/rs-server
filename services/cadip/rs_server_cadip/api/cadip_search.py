@@ -63,6 +63,7 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     PageType,
     SortByType,
+    build_summaries,
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
@@ -326,7 +327,12 @@ async def get_allowed_cadip_collections(request: Request) -> dict:
     """
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)
-    return await request.app.state.pgstac_client.all_collections(request=request)
+    collections = await request.app.state.pgstac_client.all_collections(request=request)
+    for collection in collections.get("collections", []):
+        if collection.get("query") is not None:
+            collection["summaries"] = build_summaries("cadip", collection.get("query"))
+
+    return collections
 
 
 @router.get("/cadip/collections/{collection_id}")
