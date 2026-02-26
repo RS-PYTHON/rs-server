@@ -19,12 +19,18 @@ import os
 from os import environ as env
 
 from fastapi import FastAPI
-from rs_server_common.middlewares import HandleExceptionsMiddleware, HealthMiddleware
+from pydantic import BaseModel
 from rs_server_frontend import __version__
 
 
 class FrontendFailed(BaseException):
     """Exception raised if the frontend initialization failed."""
+
+
+class HealthSchema(BaseModel):
+    """Health status flag."""
+
+    healthy: bool
 
 
 class Frontend:
@@ -66,21 +72,18 @@ class Frontend:
                 },
             )
             self.app.openapi = self.get_openapi  # type: ignore
-
-            # Add middlewares. When sending a request, the middleware order must be:
-            # Health -> HandleExceptions -> [any other middlewares ...]
-            # Then after processing the request, the response is sent in the opposite order:
-            # [any other middlewares ...] -> HandleExceptions -> Health
-
-            # Catch all exceptions and return a JSONResponse
-            self.app.add_middleware(HandleExceptionsMiddleware)
-            HandleExceptionsMiddleware.disable_default_exception_handler(self.app)
-
-            # More responsive /health and /ping endpoints
-            self.app.add_middleware(HealthMiddleware)
-
         except BaseException as e:
             raise FrontendFailed("Unable to serve openapi specification.") from e
+
+        # include_in_schema=False: hide this endpoint from the swagger
+        @self.app.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
+        async def health() -> HealthSchema:
+            """
+            Always return a flag set to 'true' when the service is up and running.
+            \f
+            Otherwise this code won't be run anyway and the caller will have other sorts of errors.
+            """
+            return HealthSchema(healthy=True)
 
     @staticmethod
     def load_openapi_spec() -> dict:
