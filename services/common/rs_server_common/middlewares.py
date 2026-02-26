@@ -484,11 +484,11 @@ class HealthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         """Middleware implementation"""
 
-        if request.url.path.endswith("/health"):
+        if request.url.path in ["/health", "/_mgmt/health", "/catalog/_mgmt/health"]:
             # NOTE: for the catalog we could call "await self.api.health_check(request)" like in stac_fastapi.api.app
             # but this async call may be slow and so may kill the pod. So we hardcode the response instead.
             return JSONResponse({"healthy": True}, status.HTTP_200_OK)
-        if request.url.path.endswith("/_mgmt/ping"):
+        if request.url.path in ["/ping", "/_mgmt/ping", "/catalog/_mgmt/ping"]:
             return JSONResponse({"message": "PONG"}, status.HTTP_200_OK)
 
         # All other endpoints

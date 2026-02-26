@@ -41,6 +41,7 @@ from rs_server_common.authentication.authentication import auth_validation
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    HealthMiddleware,
     apply_middlewares,
 )
 from rs_server_common.utils import init_opentelemetry
@@ -118,16 +119,25 @@ async def validate_request_dependency(request: Request):
     await validate_request(request)
 
 
-app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
-app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
-HandleExceptionsMiddleware.disable_default_exception_handler(app)
+# Add middlewares. When sending a request, the middleware order must be:
+# Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...]
+# Then after processing the request, the response is sent in the opposite order:
+# [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
 
-# In cluster mode, add the oauth2 authentication
+app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
+
+# In cluster mode, add the oauth2 authentication and the SessionMiddleware
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
+app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
+HandleExceptionsMiddleware.disable_default_exception_handler(app)
+
 # CORS enabled origins
 app.add_middleware(CORSMiddleware)
+
+# More responsive /health and /ping endpoints
+app.add_middleware(HealthMiddleware)
 
 os.environ["PYGEOAPI_OPENAPI"] = ""  # not used
 

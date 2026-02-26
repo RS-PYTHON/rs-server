@@ -90,42 +90,38 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
 app: FastAPI = sfpg_app
 
 # Add middlewares. When sending a request, the middleware order must be:
-# Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...] -> Brotli -> Catalog
+# Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...] -> Catalog
 # Then after processing the request, the response is sent in the opposite order:
-# Catalog -> Brotli -> [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
+# Catalog -> [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
 
-# More responsive /health and /ping endpoints
-insert_middleware_at(app, 0, Middleware(HealthMiddleware))
+# Our custom middleware to process catalog endpoints is at the end
+insert_middleware_at(app, len(app.user_middleware), Middleware(CatalogMiddleware))
+
+# Middleware for implementing first and last buttons in STAC Browser
+insert_middleware_after(
+    app,
+    CORSMiddleware,
+    PaginationLinksMiddleware,
+)
+
+# Authentication verification
+insert_middleware_after(
+    app,
+    CORSMiddleware,
+    AuthenticationMiddleware,
+    must_be_authenticated=must_be_authenticated,
+)
+
+# In cluster mode, add the oauth2 authentication and the SessionMiddleware
+if common_settings.CLUSTER_MODE:
+    app = apply_middlewares(app)
 
 # Catch all exceptions and return a JSONResponse
 insert_middleware_after(app, CORSMiddleware, HandleExceptionsMiddleware)
 HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
-# Authentication verification
-insert_middleware_after(
-    app,
-    HandleExceptionsMiddleware,
-    AuthenticationMiddleware,
-    must_be_authenticated=must_be_authenticated,
-)
-
-# Middleware for implementing first and last buttons in STAC Browser
-insert_middleware_after(
-    app,
-    AuthenticationMiddleware,
-    PaginationLinksMiddleware,
-)
-
-# Process catalog endpoints
-insert_middleware_after(
-    app,
-    BrotliMiddleware,
-    CatalogMiddleware,
-)
-
-# In cluster mode, add the oauth2 authentication
-if common_settings.CLUSTER_MODE:
-    app = apply_middlewares(app)
+# More responsive /health and /ping endpoints
+app.add_middleware(HealthMiddleware)
 
 logger.debug(f"Middlewares: {app.user_middleware}")
 
@@ -205,3 +201,8 @@ if common_settings.CLUSTER_MODE:
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds
 app.state.pg_timeout = 30
+
+
+@app.get("/toto")
+def mytoto():
+    bp = 0

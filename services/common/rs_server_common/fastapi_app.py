@@ -185,7 +185,8 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     dependencies = []
     if settings.CLUSTER_MODE:
 
-        # Apply middlewares and authentication routes to the FastAPI application
+        # Apply middlewares and authentication routes to the FastAPI application.
+        # This also adds the SessionMiddleware
         apply_middlewares(app)
 
         # Add the api key / oauth2 security: the user must provide
@@ -204,9 +205,9 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.include_router(technical_router)
 
     # Add middlewares. When sending a request, the middleware order must be:
-    # Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...]
+    # Health -> CORS -> HandleExceptions -> Session -> [any other middlewares ...]
     # Then after processing the request, the response is sent in the opposite order:
-    # [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
+    # [any other middlewares ...] -> Session -> HandleExceptions -> CORS -> Health
 
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)

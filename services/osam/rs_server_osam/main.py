@@ -43,7 +43,11 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
-from rs_server_common.middlewares import HandleExceptionsMiddleware, apply_middlewares
+from rs_server_common.middlewares import (
+    HandleExceptionsMiddleware,
+    HealthMiddleware,
+    apply_middlewares,
+)
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_osam.tasks import (
@@ -468,7 +472,8 @@ def main_osam_task(timeout: int = 60):
 dependencies = []
 if settings.CLUSTER_MODE:
 
-    # Apply middlewares and authentication routes to the FastAPI application
+    # Apply middlewares and authentication routes to the FastAPI application.
+    # This also adds the SessionMiddleware
     apply_middlewares(app)
 
     # Add the api key / oauth2 security: the user must provide
@@ -485,9 +490,17 @@ need_auth_router.include_router(router)
 app.include_router(need_auth_router)
 app.include_router(technical_router)
 
+# Add middlewares. When sending a request, the middleware order must be:
+# Health -> HandleExceptions -> [any other middlewares ...] -> Session
+# Then after processing the request, the response is sent in the opposite order:
+# Session -> [any other middlewares ...] -> HandleExceptions -> Health
+
 # Catch all exceptions and return a JSONResponse
 app.add_middleware(HandleExceptionsMiddleware)
 HandleExceptionsMiddleware.disable_default_exception_handler(app)
+
+# More responsive /health and /ping endpoints
+app.add_middleware(HealthMiddleware)
 
 app.router.lifespan_context = app_lifespan  # type: ignore
 init_opentelemetry.init_traces(app, "osam.service")

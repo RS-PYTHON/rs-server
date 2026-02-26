@@ -19,7 +19,7 @@ import os
 from os import environ as env
 
 from fastapi import FastAPI
-from rs_server_common.middlewares import HealthMiddleware
+from rs_server_common.middlewares import HandleExceptionsMiddleware, HealthMiddleware
 from rs_server_frontend import __version__
 
 
@@ -66,6 +66,15 @@ class Frontend:
                 },
             )
             self.app.openapi = self.get_openapi  # type: ignore
+
+            # Add middlewares. When sending a request, the middleware order must be:
+            # Health -> HandleExceptions -> [any other middlewares ...]
+            # Then after processing the request, the response is sent in the opposite order:
+            # [any other middlewares ...] -> HandleExceptions -> Health
+
+            # Catch all exceptions and return a JSONResponse
+            self.app.add_middleware(HandleExceptionsMiddleware)
+            HandleExceptionsMiddleware.disable_default_exception_handler(self.app)
 
             # More responsive /health and /ping endpoints
             self.app.add_middleware(HealthMiddleware)
