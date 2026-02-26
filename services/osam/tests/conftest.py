@@ -35,6 +35,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import rs_server_osam
 from fastapi.testclient import TestClient
 from rs_server_osam import main
 from rs_server_osam.utils.keycloak_handler import KeycloakHandler
@@ -86,6 +87,13 @@ NEW_OVH_USER_WHEN_CREATING = {
     "description": "## linked to keycloak user 00002",
     "roles": [],
 }
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_caches():
+    """Clear caches at the end of each test"""
+    yield
+    rs_server_osam.utils.tools.load_configmap_data.cache_clear()
 
 
 @pytest.fixture(name="mock_keycloak_handler")

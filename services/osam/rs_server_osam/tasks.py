@@ -29,18 +29,20 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import run_in_threads
 from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
 from rs_server_osam.utils.keycloak_handler import KeycloakHandler
 from rs_server_osam.utils.tools import (
     DESCRIPTION_TEMPLATE,
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
-    get_allowed_buckets,
     get_keycloak_user_from_description,
-    load_configmap_data,
     match_roles,
     parse_role,
 )
+
+# Maximum number of parallel calls to the keycloak and obs apis
+MAX_THREAD_COUNT = 5
 
 OVH_ROLE_FOR_NEW_USERS = "objectstore_operator"
 STRKEY_ACCESS_RIGHT_READ_LIST = "read"
@@ -126,32 +128,7 @@ def traced_function(name=None):
     return decorator
 
 
-@traced_function()
-def get_keycloak_configmap_values():
-    """
-    Retrieves all Keycloak users and computes the list of allowed S3 buckets
-    for each user based on a predefined ConfigMap.
-
-    Returns:
-        tuple: A tuple containing:
-            - kc_users (list): List of Keycloak user dictionaries.
-            - user_allowed_buckets (dict): A mapping of usernames to lists of allowed buckets.
-    """
-    kc_users = get_keycloak_handler().get_keycloak_users()
-    user_allowed_buckets: dict[str, list[str]] = {}
-    configmap_data = load_configmap_data()
-    if configmap_data is None:
-        return kc_users, user_allowed_buckets
-
-    for user in kc_users:
-        allowed_buckets = get_allowed_buckets(user["username"], configmap_data)
-        logger.debug(f"User {user['username']} allowed buckets: {allowed_buckets}")
-        user_allowed_buckets[user["username"]] = allowed_buckets
-    # ps ps
-    return kc_users, user_allowed_buckets
-
-
-def build_users_data_map():
+def build_users_data_map() -> dict[str, Any]:
     """
     Builds a dictionary mapping usernames to their associated user data.
 
@@ -165,14 +142,22 @@ def build_users_data_map():
                 - "keycloak_attribute": Custom user attribute from Keycloak
                 - "keycloak_roles": List of roles assigned to the user
     """
-    users = get_keycloak_handler().get_keycloak_users()
-    return {
-        user["username"]: {
-            "keycloak_attribute": get_keycloak_handler().get_obs_user_from_keycloak_user(user),
-            "keycloak_roles": [role["name"] for role in get_keycloak_handler().get_keycloak_user_roles(user["id"])],
-        }
-        for user in users
-    }
+
+    def build_user(kc_user: dict) -> tuple[str, dict]:
+        """Process one user in a multithreaded context"""
+        return (
+            kc_user["username"],
+            {
+                "keycloak_attribute": get_keycloak_handler().get_obs_user_from_keycloak_user(kc_user),
+                "keycloak_roles": [
+                    role["name"] for role in get_keycloak_handler().get_keycloak_user_roles(kc_user["id"])
+                ],
+            },
+        )
+
+    kc_users = [(kc_user,) for kc_user in get_keycloak_handler().get_keycloak_users()]
+    users_info = run_in_threads(build_user, kc_users, MAX_THREAD_COUNT, raise_exceptions=True)
+    return dict(users_info)
 
 
 @traced_function()
@@ -187,35 +172,37 @@ def link_rspython_users_and_obs_users():
         The linking/unlinking logic is currently commented out and should be implemented
         based on specific integration rules.
     """
+    logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
 
-    keycloak_users = get_keycloak_handler().get_keycloak_users()
-    try:
-        # Get all OVH users and their IDs for quick lookup
-        obs_users = get_ovh_handler().get_all_users()
-        obs_user_ids = {str(obs_user["id"]) for obs_user in obs_users}
+    # Get all OVH users and their IDs for quick lookup
+    obs_users = get_ovh_handler().get_all_users()
+    obs_user_ids = {str(obs_user["id"]) for obs_user in obs_users}
 
-        logger.info("Checking the link between keycloak users and ovh accounts. Creating ovh accounts if missing")
+    def create_user(kc_user):
+        """Create one user in a multithreaded context"""
+        # For each Keycloak user, check if there's an associated OBS user
+        obs_user_id = get_keycloak_handler().get_obs_user_from_keycloak_user(kc_user)
+        obs_user_id = obs_user_id[0] if isinstance(obs_user_id, list) and obs_user_id else obs_user_id
+        # If no associated OBS user or if the associated OBS user ID is not in OVH, create a new OBS user account
+        if not obs_user_id or obs_user_id not in obs_user_ids:
+            logger.info(f"Creating a new ovh account linked to keycloak user '{kc_user}'")
+            create_obs_user_account_for_keycloak_user(kc_user)
 
-        for user in keycloak_users:
-            # For each Keycloak user, check if there's an associated OBS user
-            obs_user_id = get_keycloak_handler().get_obs_user_from_keycloak_user(user)
-            obs_user_id = obs_user_id[0] if isinstance(obs_user_id, list) and obs_user_id else obs_user_id
-            # If no associated OBS user or if the associated OBS user ID is not in OVH, create a new OBS user account
-            if not obs_user_id or obs_user_id not in obs_user_ids:
-                logger.info(f"Creating a new ovh account linked to keycloak user '{user}'")
-                create_obs_user_account_for_keycloak_user(user)
+    kc_users = [(kc_user,) for kc_user in get_keycloak_handler().get_keycloak_users()]
+    run_in_threads(create_user, kc_users, MAX_THREAD_COUNT, raise_exceptions=True)
 
-        # Refresh state after potential creations
-        # After we create OBS account and update keycloak attributes, we need to refresh the keycloak_users and
-        # obs_users lists to have the updated data for the deletion step
-        keycloak_users = get_keycloak_handler().get_keycloak_users()
-        obs_users = get_ovh_handler().get_all_users()
-        for obs_user in obs_users:
-            # If the cloud provider user is not linked with a keycloak account, remove it.
-            delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, keycloak_users)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception("Exception occurred while syncing users")
-        raise RuntimeError("Exception occurred while syncing users") from e
+    # Refresh state after potential creations
+    # After we create OBS account and update keycloak attributes, we need to refresh the keycloak_users and
+    # obs_users lists to have the updated data for the deletion step
+    kc_users = get_keycloak_handler().get_keycloak_users()
+    obs_users = [(obs_user,) for obs_user in get_ovh_handler().get_all_users()]
+
+    # If the cloud provider user is not linked with a keycloak account, remove it.
+    def delete_user(obs_user: dict):
+        """Delete one user in a multithreaded context"""
+        delete_obs_user_account_if_not_used_by_keycloak_account(obs_user, kc_users)
+
+    run_in_threads(delete_user, obs_users, MAX_THREAD_COUNT, raise_exceptions=True)
 
 
 @traced_function()
@@ -440,44 +427,45 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     ]
     statements: list[dict[str, Any]] = []
     for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks
-        if s3_rights.get(key):
-            resources = []
-            for access in s3_rights[key]:
-                # get the bucket, owner and collection
-                parts = access.strip().split("/")
-                # protection against a wrong obs access policy
-                if len(parts) < 3:
-                    logger.warning(f"Wrong obs policy access found: {access}")
-                    continue
-                bucket = f"arn:aws:s3:::{parts[0]}"
-                owner_collection = f"{parts[1]}/{parts[2]}/*"
-                # ovh does not like */*/* format, so use */*
-                if owner_collection == "*/*/*":
-                    owner_collection = "*/*"
-                # check in the current statements
-                found_in_template_bucket = False
-                for stmt in statements:
-                    if bucket == stmt["Resource"]:
-                        found_in_template_bucket = True
-                        if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
-                            stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
-                        break
-                if not found_in_template_bucket:
-                    template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
-                    template_bucket["Resource"] = bucket
-                    template_bucket["Condition"]["StringLike"]["s3:prefix"] = [owner_collection]
-                    statements.append(template_bucket)
+        if not s3_rights.get(key):
+            continue
+        resources = []
+        for access in s3_rights[key]:
+            # get the bucket, owner and collection
+            parts = access.strip().split("/")
+            # protection against a wrong obs access policy
+            if len(parts) < 3:
+                logger.warning(f"Wrong obs policy access found: {access}")
+                continue
+            bucket = f"arn:aws:s3:::{parts[0]}"
+            owner_collection = f"{parts[1]}/{parts[2]}/*"
+            # ovh does not like */*/* format, so use */*
+            if owner_collection == "*/*/*":
+                owner_collection = "*/*"
+            # check in the current statements
+            found_in_template_bucket = False
+            for stmt in statements:
+                if bucket == stmt["Resource"]:
+                    found_in_template_bucket = True
+                    if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
+                        stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
+                    break
+            if not found_in_template_bucket:
+                template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
+                template_bucket["Resource"] = bucket
+                template_bucket["Condition"]["StringLike"]["s3:prefix"] = [owner_collection]
+                statements.append(template_bucket)
 
-                template: dict[str, Any] = copy.deepcopy(block)
-                resource = f"{template['Resource'].replace('%placeholder%', access)}"
-                # find the first "all" (*) and remove everything after it, because it's useless, and
-                # moreover, ovh will not recognize the syntax
-                # there should be at least one * char, the last one, see the template['Resource'], last char
-                # so no need for protection in case the * char is not found
-                resources.append(resource[: resource.find("*") + 1])
+            template: dict[str, Any] = copy.deepcopy(block)
+            resource = f"{template['Resource'].replace('%placeholder%', access)}"
+            # find the first "all" (*) and remove everything after it, because it's useless, and
+            # moreover, ovh will not recognize the syntax
+            # there should be at least one * char, the last one, see the template['Resource'], last char
+            # so no need for protection in case the * char is not found
+            resources.append(resource[: resource.find("*") + 1])
 
-            template["Resource"] = resources
-            statements.append(template)
+        template["Resource"] = resources
+        statements.append(template)
 
     # Fill in main access policy template
     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
