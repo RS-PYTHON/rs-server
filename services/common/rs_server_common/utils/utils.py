@@ -432,6 +432,7 @@ def run_in_threads(
     func: Callable[..., Any],
     args_list: Sequence[tuple],
     max_workers: int | None = None,
+    raise_exceptions: bool = False,
 ) -> list[Any]:
     """
     Executes a function in parallel using threads, and returns the list of non-None results.
@@ -442,6 +443,7 @@ def run_in_threads(
         func (Callable[..., Any]): The function to be executed concurrently.
         args_list (Sequence[tuple]): A sequence of argument tuples for each thread.
         max_workers (int | None): The maximum number of threads to use.
+        raise_exceptions (bool): If True, re-raise exceptions. If False, add exceptions to the return list.
 
     Returns:
         list[Any]: A list of results, one per thread, excluding any result that is None, in the same order as args_list.
@@ -453,6 +455,8 @@ def run_in_threads(
                 if (result := future.result()) is not None:
                     results.append(result)
             except Exception as e:  # pylint: disable=broad-exception-caught
+                if raise_exceptions:
+                    raise
                 logger.error(traceback.format_exc())
                 results.append(e)
     return results
