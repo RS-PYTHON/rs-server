@@ -27,8 +27,8 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
-from asyncache import cached
 from cachetools import TTLCache
+from cachetools_async import cached
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 from rs_server_common import settings

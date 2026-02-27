@@ -66,8 +66,8 @@ python-dotenv = "^1.0.0"
 filelock = ">=3.20.3"
 uvicorn = ">=0.35.0"
 httpx = "^0.28.1"
-cachetools = ">=5.5.2" # idem as stac-fastapi-pgstac
-asyncache = "^0.3.1"
+cachetools = ">=7.0.1"
+cachetools_async = ">=0.0.5"
 opentelemetry-distro = "^0.60b1" # then run 'poetry run opentelemetry-bootstrap -a install'
 opentelemetry-instrumentation-aws-lambda = "^0.60b1"
 opentelemetry-test-utils = "^0.60b1"

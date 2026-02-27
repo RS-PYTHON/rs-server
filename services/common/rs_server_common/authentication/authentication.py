@@ -20,8 +20,8 @@ import os
 from typing import Annotated, Literal
 
 import jwt
-from asyncache import cached
 from cachetools import TTLCache
+from cachetools_async import cached
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
