@@ -29,6 +29,7 @@ from importlib import reload
 # flake8: noqa
 # pylint: disable=wrong-import-order,wrong-import-position
 os.environ["RSPY_LOCAL_MODE"] = "1"
+os.environ["CORS_ORIGINS"] = "http://domain_a,http://domain_b"  # also mockup the cors settings
 from rs_server_common import settings, stac_api_common
 
 reload(settings)

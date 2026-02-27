@@ -374,6 +374,11 @@ class TestGetS3Handler:
         mock_s3_handler.assert_called_once()
 
 
+def test_middleware_order(client):
+    """Check that the FastAPI application middlewares were inserted in the right order."""
+    pytest_common_tests.test_middleware_order(client, use_auth_middleware=True)
+
+
 def test_handle_exceptions_middleware(client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
     mocker.patch("rs_server_catalog.middleware.catalog_middleware.reroute_url")
