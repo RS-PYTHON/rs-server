@@ -275,17 +275,17 @@ jobs:
         with:
           fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name:
             check-linting
       - name: Download vulnerability reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name:
             check-security
       - name: Download pytest reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name:
             run-all-pytests
