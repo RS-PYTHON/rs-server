@@ -1040,6 +1040,11 @@ class TestAuthentication:
         )
         header = VALID_APIKEY_HEADER if test_apikey else {}
 
+        # Check that we don't need authentication for the /health endpoints.
+        # NOTE: they are implemented by the HealthMiddleware
+        for path in ["/health", "/_mgmt/health", "/ping", "/_mgmt/ping"]:
+            assert client.get(path).status_code == HTTP_200_OK
+
         # For each route and method from the openapi specification i.e. with the /catalog/ prefixes
         for path, methods in app.openapi()["paths"].items():
             if not must_be_authenticated(path):

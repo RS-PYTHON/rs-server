@@ -26,11 +26,7 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 from rs_server_staging.main import app, must_be_authenticated
 from rs_server_staging.processors.processor_staging import Staging
 from rs_server_staging.utils.asset_info import AssetInfo
-from starlette.status import (
-    HTTP_401_UNAUTHORIZED,
-    HTTP_403_FORBIDDEN,
-    HTTP_422_UNPROCESSABLE_CONTENT,
-)
+from starlette import status
 
 from .resources.sample_data import sample_process_metadata_model
 
@@ -71,6 +67,11 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals,
     )
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
+    # Check that we don't need authentication for the /health endpoints.
+    # NOTE: they are implemented by the HealthMiddleware
+    for path in ["/health", "/_mgmt/health", "/ping", "/_mgmt/ping"]:
+        assert staging_client.get(path).status_code == status.HTTP_200_OK
+
     # For each route and method from the openapi specification i.e. with the /processes/ and /jobs/ prefixes
     for path, methods in app.openapi()["paths"].items():
         if not must_be_authenticated(path):
@@ -93,20 +94,20 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals,
                 response = staging_client.request(method, endpoint, json=json_data, **header)
                 logger.debug(response)
                 assert response.status_code not in (
-                    HTTP_401_UNAUTHORIZED,
-                    HTTP_403_FORBIDDEN,
-                    HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
+                    status.HTTP_401_UNAUTHORIZED,
+                    status.HTTP_403_FORBIDDEN,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,  # with 422, the authentication is not called and not tested
                 )
                 # With a wrong apikey, we should have a 403 error
                 if test_apikey:
                     assert (
                         staging_client.request(method, endpoint, **WRONG_APIKEY_HEADER).status_code
-                        == HTTP_403_FORBIDDEN
+                        == status.HTTP_403_FORBIDDEN
                     )
 
             # Check that without authentication, the endpoint is protected and we receive a 401
             else:
-                assert staging_client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
+                assert staging_client.request(method, endpoint).status_code == status.HTTP_401_UNAUTHORIZED
 
     # Also test the processor rights
     collection = "test_collection"

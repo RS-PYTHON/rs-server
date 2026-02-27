@@ -27,6 +27,8 @@ from starlette.status import (
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
+from tests.test_authentication_osam import CLUSTER_MODE
+
 
 @pytest.mark.unit
 def test_ping_endpoint(osam_client):
@@ -364,6 +366,13 @@ def test_main_osam_task_runs_with_exception(mocker):
     mock_logger_exception = mocker.patch("rs_server_osam.main.logger.exception")
     main_osam_task(timeout=0)
     mock_logger_exception.assert_any_call("Handle cancellation: ")
+
+
+# Use cluster mode so we check the SessionMiddleware
+@pytest.mark.parametrize("osam_client", [CLUSTER_MODE], indirect=["osam_client"], ids=["cluster_mode"])
+def test_middleware_order(osam_client):
+    """Check that the FastAPI application middlewares were inserted in the right order."""
+    pytest_common_tests.test_middleware_order(osam_client, use_auth_middleware=False)
 
 
 def test_handle_exceptions_middleware(osam_client, mocker):
