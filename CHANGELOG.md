@@ -24,6 +24,37 @@ Changed
 
 None
 
+[1.0a7] - Sprint 33 - 2026-02-25
+================================
+
+## Added
+
+- RSPY-490: Allow to externalize CADIP/AUXIP collections configuration files
+- RSPY-661: Staging: allow staging of a single item without FeatureCollection
+- RSPY-786: Deploy a prefect3 deployment flow from ansible
+- RSPY-796: Isolate dask cluster per Prefect instance
+- RSPY-849: Support of PRIP products crossing the antimeridian
+- RSPY-881: Collect Object Storage activities (logs) for quota management
+- RSPY-882: Clean old logs from S3 activity
+- RSPY-888: Update to stac-browser 4.0.0
+- RSPY-906: STAC search for external ids
+- RSPY-908: OSAM : recreate OBS account from /storage/accounts/update
+- RSPY-913: Add endpoint to cancel processing jobs in DPR service
+- RSPY-914: Add DPR service endpoints in RS frontend
+- RSPY-915: Simplify cloudnative / pgstac deployment
+- RSPY-916: Test and update generic processing flow for S3 Level-0 processor
+- RSPY-917: Sprint 33 corrections of issues
+- RSPY-926: Make OSAM a service of RS-Server
+
+## Fixed
+
+- RSPY-894: Swagger for staging service not protected by API-KEY [2 pts]
+- RSPY-924: [prometheus] Service without pod [1 pt]
+- RSPY-930: [stac-browser] catalog products with asset are not displayed [1 pt]
+- RSPY-932: Cannot search CADIP sessions per satellite [1 pt]
+- RSPY-933: Wrong mapping of CADIP datetime sort parameter [1 pt]
+- RSPY-942: Wrong computation of OBS access rights (2 pts)
+
 [1.0a6] - Sprint 32 - 2026-01-28
 ================================
 
