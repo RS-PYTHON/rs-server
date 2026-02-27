@@ -175,6 +175,22 @@ def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pyli
         == "Invalid bbox: expected southwesterly point followed by northeasterly point."
     )
 
+    # Patch geometry and bbox to null: request middleware must inject internal defaults for pgstac persistence,
+    # while the API response must still expose geometry/bbox as null (ESA behavior for sessions/items without extent).
+    patch_response = client.patch(
+        f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
+        json={"geometry": None, "bbox": None, "properties": {}},
+    )
+    assert patch_response.status_code == fastapi.status.HTTP_200_OK
+
+    patched_feature_response = client.get(
+        f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
+    )
+    assert patched_feature_response.status_code == fastapi.status.HTTP_200_OK
+    patched_feature = json.loads(patched_feature_response.content)
+    assert patched_feature["geometry"] is None
+    assert patched_feature["bbox"] is None
+
     # Delete feature
     assert (
         client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code == fastapi.status.HTTP_200_OK

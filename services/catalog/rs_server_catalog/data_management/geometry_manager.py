@@ -44,9 +44,17 @@ def validate_geometry_and_enforce_bbox(item: dict[str, Any]) -> dict[str, Any]:
       In strict mode, inconsistency raises HTTP 400.
     """
     geometry = item.get("geometry")
+    item_bbox = item.get("bbox")
 
     # Items without geometry (e.g. CADIP sessions) are accepted with no geometry checks.
     if geometry is None:
+        # A bbox without a geometry is considered inconsistent: clients must either provide geometry (and optional bbox)
+        # or omit both. This avoids persisting misleading spatial metadata.
+        if item_bbox is not None:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST,
+                detail="Invalid STAC item: bbox provided but geometry is null.",
+            )
         return item
 
     # Validate structural/topological GeoJSON integrity first, then enforce ESA right-hand rule for polygon rings.
@@ -55,7 +63,6 @@ def validate_geometry_and_enforce_bbox(item: dict[str, Any]) -> dict[str, Any]:
 
     # RFC7946/STAC bbox for 2D geometries is always [minLon, minLat, maxLon, maxLat].
     expected_bbox = [float(coord) for coord in shapely_geometry.bounds]
-    item_bbox = item.get("bbox")
     if item_bbox is None:
         # Missing bbox is auto-populated from geometry bounds.
         item["bbox"] = expected_bbox

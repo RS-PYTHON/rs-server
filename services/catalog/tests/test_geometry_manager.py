@@ -51,11 +51,35 @@ def test_accept_item_without_geometry_and_bbox():
 
 
 @pytest.mark.unit
+def test_reject_bbox_without_geometry():
+    """A bbox without geometry is rejected to avoid inconsistent spatial metadata."""
+    item = {"id": "item-bbox-only", "geometry": None, "bbox": [-1.0, -1.0, 1.0, 1.0]}
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid STAC item: bbox provided but geometry is null."
+
+
+@pytest.mark.unit
 def test_compute_bbox_when_missing():
     """Bbox is computed from geometry when missing."""
     item = {"id": "item-1", "geometry": valid_polygon()}
     result = validate_geometry_and_enforce_bbox(item)
     assert result["bbox"] == [-1.0, -1.0, 1.0, 1.0]
+
+
+@pytest.mark.unit
+def test_reject_bbox_with_non_numeric_value():
+    """Non-numeric bbox coordinates are rejected (covers parse_number invalid numeric value path)."""
+    item = {
+        "id": "item-bbox-non-numeric",
+        "geometry": valid_polygon(),
+        "bbox": ["nope", -1.0, 1.0, 1.0],
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid numeric value in bbox."
 
 
 @pytest.mark.unit
@@ -166,3 +190,222 @@ def test_reject_polygon_with_no_linear_rings(monkeypatch):
         geometry_manager.validate_geometry_and_enforce_bbox(item)
     assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
     assert exc_info.value.detail == "Invalid Polygon: expected at least one linear ring."
+
+
+@pytest.mark.unit
+def test_reject_position_with_missing_lat(monkeypatch):
+    """A position without [lon, lat] is rejected (covers parse_position expected at least [lon, lat])."""
+
+    # Force validate_geometry() to succeed so we can reach parse_position validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {
+        "id": "item-position-missing-lat",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [0.0],  # invalid: missing lat
+                    [1.0, 0.0],
+                    [1.0, 1.0],
+                    [0.0, 0.0],
+                ],
+            ],
+        },
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid Polygon exterior ring first position: expected at least [lon, lat]."
+
+
+@pytest.mark.unit
+def test_reject_degenerate_ring_area_zero(monkeypatch):
+    """A degenerate linear ring with zero area is rejected."""
+
+    # Force validate_geometry() to succeed so we can reach the ring area/orientation validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {
+        "id": "item-degenerate-ring",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [0.0, 0.0],
+                    [1.0, 0.0],
+                    [2.0, 0.0],
+                    [0.0, 0.0],
+                ],
+            ],
+        },
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid Polygon exterior ring: degenerate ring area is zero."
+
+
+@pytest.mark.unit
+def test_reject_ring_not_closed(monkeypatch):
+    """A linear ring that is not closed (first != last) is rejected."""
+
+    # Force validate_geometry() to succeed so we can reach ring closure validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {
+        "id": "item-ring-not-closed",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [0.0, 0.0],
+                    [1.0, 0.0],
+                    [1.0, 1.0],
+                    [0.0, 1.0],
+                    [0.0, 2.0],  # invalid: last point differs from first
+                ],
+            ],
+        },
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert (
+        exc_info.value.detail
+        == "Invalid Polygon exterior ring: ring must be closed (first and last positions must match)."
+    )
+
+
+@pytest.mark.unit
+def test_reject_ring_with_less_than_four_positions(monkeypatch):
+    """A linear ring with fewer than 4 positions is rejected."""
+
+    # Force validate_geometry() to succeed so we can reach ring length validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {
+        "id": "item-ring-too-short",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [0.0, 0.0],
+                    [1.0, 0.0],
+                    [0.0, 0.0],
+                ],
+            ],
+        },
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid Polygon exterior ring: ring must contain at least 4 positions."
+
+
+@pytest.mark.unit
+def test_reject_ring_not_an_array_of_positions(monkeypatch):
+    """A linear ring that is not an array of positions is rejected."""
+
+    # Force validate_geometry() to succeed so we can reach ring structure validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {
+        "id": "item-ring-not-array",
+        "geometry": {"type": "Polygon", "coordinates": ["not-a-ring"]},
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid Polygon exterior ring: ring must be an array of positions."
+
+
+@pytest.mark.unit
+def test_reject_interior_ring_wrong_orientation():
+    """Interior rings must be clockwise (CW) according to the right-hand rule."""
+    item = {
+        "id": "item-interior-ring-wrong-orientation",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                # Exterior ring (CCW): ok
+                [
+                    [-2.0, -2.0],
+                    [2.0, -2.0],
+                    [2.0, 2.0],
+                    [-2.0, 2.0],
+                    [-2.0, -2.0],
+                ],
+                # Interior ring (hole) must be CW, but this one is CCW -> rejected
+                [
+                    [-1.0, -1.0],
+                    [1.0, -1.0],
+                    [1.0, 1.0],
+                    [-1.0, 1.0],
+                    [-1.0, -1.0],
+                ],
+            ],
+        },
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert (
+        exc_info.value.detail
+        == "Invalid Polygon interior ring #1: expected clockwise (CW) orientation (right-hand rule)."
+    )
+
+
+@pytest.mark.unit
+def test_reject_multipolygon_coordinates_not_array(monkeypatch):
+    """MultiPolygon coordinates must be an array."""
+
+    # Force validate_geometry() to succeed so we can reach MultiPolygon structure validation.
+    monkeypatch.setattr(geometry_manager, "validate_geometry", lambda _geometry: shapely_shape(valid_polygon()))
+
+    item = {
+        "id": "item-multipolygon-coordinates-not-array",
+        "geometry": {"type": "MultiPolygon", "coordinates": "not-an-array"},
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "Invalid GeoJSON MultiPolygon: coordinates must be an array."
+
+
+@pytest.mark.unit
+def test_reject_multipolygon_interior_ring_wrong_orientation():
+    """MultiPolygon interior rings must be clockwise (CW) according to the right-hand rule."""
+    item = {
+        "id": "item-multipolygon-interior-ring-wrong-orientation",
+        "geometry": {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    # Polygon 0 exterior ring (CCW): ok
+                    [
+                        [-2.0, -2.0],
+                        [2.0, -2.0],
+                        [2.0, 2.0],
+                        [-2.0, 2.0],
+                        [-2.0, -2.0],
+                    ],
+                    # Polygon 0 interior ring must be CW, but this one is CCW -> rejected
+                    [
+                        [-1.0, -1.0],
+                        [1.0, -1.0],
+                        [1.0, 1.0],
+                        [-1.0, 1.0],
+                        [-1.0, -1.0],
+                    ],
+                ],
+            ],
+        },
+    }
+    with pytest.raises(HTTPException) as exc_info:
+        validate_geometry_and_enforce_bbox(item)
+    assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+    assert (
+        exc_info.value.detail
+        == "Invalid MultiPolygon[0] interior ring #1: expected clockwise (CW) orientation (right-hand rule)."
+    )
