@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
-from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, FastAPI, Request, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
@@ -33,9 +32,11 @@ from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    HealthMiddleware,
     PaginationLinksMiddleware,
     apply_middlewares,
     insert_middleware_after,
+    insert_middleware_at,
 )
 from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
@@ -44,11 +45,13 @@ from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.app import app as sfpg_app
 from stac_fastapi.pgstac.app import with_transactions
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
+from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
 logger = Logging.default(__name__)
 
 # Technical endpoints (no authentication)
+# NOTE: /_mgmt/health and /_mgmt/ping are actually handled by the HealthMiddleware
 TECH_ENDPOINTS = ["/_mgmt/health", "/_mgmt/ping", "/api", "/api.html"]
 
 
@@ -85,27 +88,40 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
 
 
 app: FastAPI = sfpg_app
+
+# Add middlewares. When sending a request, the middleware order must be:
+# Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...] -> Catalog
+# Then after processing the request, the response is sent in the opposite order:
+# Catalog -> [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
+
+# Our custom middleware to process catalog endpoints is at the end
+insert_middleware_at(app, len(app.user_middleware), Middleware(CatalogMiddleware))
+
+# Middleware for implementing first and last buttons in STAC Browser
 insert_middleware_after(
     app,
-    BrotliMiddleware,
-    CatalogMiddleware,
+    CORSMiddleware,
+    PaginationLinksMiddleware,
 )
 
-insert_middleware_after(app, CORSMiddleware, HandleExceptionsMiddleware)
-HandleExceptionsMiddleware.disable_default_exception_handler(app)
-
+# Authentication verification
 insert_middleware_after(
     app,
-    HandleExceptionsMiddleware,
+    CORSMiddleware,
     AuthenticationMiddleware,
     must_be_authenticated=must_be_authenticated,
 )
 
-# In cluster mode, add the oauth2 authentication
+# In cluster mode, add the oauth2 authentication and the SessionMiddleware
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
-app.add_middleware(PaginationLinksMiddleware)
+# Catch all exceptions and return a JSONResponse
+insert_middleware_after(app, CORSMiddleware, HandleExceptionsMiddleware)
+HandleExceptionsMiddleware.disable_default_exception_handler(app)
+
+# More responsive /health and /ping endpoints
+app.add_middleware(HealthMiddleware)
 
 logger.debug(f"Middlewares: {app.user_middleware}")
 

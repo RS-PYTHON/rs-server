@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 cd services || exit 10
 
-for s in common adgs cadip edrs prip catalog staging frontend ; do
+for s in common adgs cadip edrs prip catalog staging frontend osam ; do
   cd "$s"
   poetry lock --regenerate
   sed -i 's/version = "0.3.1.post1"/version = "0.3.1.post2"/g' poetry.lock

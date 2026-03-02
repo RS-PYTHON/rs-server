@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,13 +27,14 @@ from rs_server_common import settings
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
+    HealthMiddleware,
     PaginationLinksMiddleware,
     StacLinksTitleMiddleware,
     apply_middlewares,
 )
-from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.settings import docs_params
 from rs_server_common.utils import init_opentelemetry
+from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.errors import add_exception_handlers
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware
@@ -53,19 +54,10 @@ from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.datastructures import State
 from starlette.middleware.cors import CORSMiddleware
 
+logger = Logging.default(__name__)
+
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
-
-
-# include_in_schema=False: hide this endpoint from the swagger
-@technical_router.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
-async def health() -> HealthSchema:
-    """
-    Always return a flag set to 'true' when the service is up and running.
-    \f
-    Otherwise this code won't be run anyway and the caller will have other sorts of errors.
-    """
-    return HealthSchema(healthy=True)
 
 
 @typing.no_type_check
@@ -193,7 +185,8 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     dependencies = []
     if settings.CLUSTER_MODE:
 
-        # Apply middlewares and authentication routes to the FastAPI application
+        # Apply middlewares and authentication routes to the FastAPI application.
+        # This also adds the SessionMiddleware
         apply_middlewares(app)
 
         # Add the api key / oauth2 security: the user must provide
@@ -210,6 +203,11 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     # Add routers to the FastAPI app
     app.include_router(need_auth_router)
     app.include_router(technical_router)
+
+    # Add middlewares. When sending a request, the middleware order must be:
+    # Health -> CORS -> HandleExceptions -> Session -> [any other middlewares ...]
+    # Then after processing the request, the response is sent in the opposite order:
+    # [any other middlewares ...] -> Session -> HandleExceptions -> CORS -> Health
 
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)
@@ -233,6 +231,11 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
             allow_headers=["*"],
             allow_credentials=True,
         )
+
+    # More responsive /health and /ping endpoints
+    app.add_middleware(HealthMiddleware)
+
+    logger.debug(f"Middlewares: {app.user_middleware}")
 
     # Finally, apply stac-fastapi openapi patch to comply with the STAC API spec
     return update_openapi(app)

@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ from rs_server_common.authentication.authentication import auth_validation
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    HealthMiddleware,
     apply_middlewares,
 )
 from rs_server_common.utils import init_opentelemetry
@@ -96,21 +97,28 @@ class JobsFormatError(Exception):
 def must_be_authenticated(path: str, prefix: str = "") -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
 
-    no_auth = (path in [prefix + "/api", prefix + "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
+    # Keep OpenAPI/Swagger endpoints publicly accessible so tooling (e.g. aggregated swagger generator)
+    # can fetch the schema without having to handle auth/redirect flows.
+    # NOTE: /health and /_mgmt/ping are actually handled by the HealthMiddleware
+    no_auth = path in [
+        prefix + "/api",
+        prefix + "/api.html",
+        prefix + "/openapi.json",
+        "/openapi.json",
+        "/health",
+        "/_mgmt/ping",
+    ] or path.startswith("/auth/")
     return not no_auth
 
 
-if common_settings.CLUSTER_MODE:
+async def just_for_the_lock_icon(
+    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+):
+    """Dummy function to add a lock icon in Swagger to enter an API key.
 
-    async def just_for_the_lock_icon(
-        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
-    ):
-        """Dummy function to add a lock icon in Swagger to enter an API key."""
-
-else:
-
-    async def just_for_the_lock_icon():  # type: ignore # different signature than above
-        """In local mode it does nothing."""
+    Note: authentication is enforced by `AuthenticationMiddleware` (in cluster mode only),
+    this dependency exists only so the aggregated OpenAPI/Swagger shows secured endpoints.
+    """
 
 
 async def validate_request_dependency(request: Request):
@@ -118,16 +126,25 @@ async def validate_request_dependency(request: Request):
     await validate_request(request)
 
 
-app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
-app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
-HandleExceptionsMiddleware.disable_default_exception_handler(app)
+# Add middlewares. When sending a request, the middleware order must be:
+# Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...]
+# Then after processing the request, the response is sent in the opposite order:
+# [any other middlewares ...] -> Authentication -> Session -> HandleExceptions -> CORS -> Health
 
-# In cluster mode, add the oauth2 authentication
+app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
+
+# In cluster mode, add the oauth2 authentication and the SessionMiddleware
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
+app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
+HandleExceptionsMiddleware.disable_default_exception_handler(app)
+
 # CORS enabled origins
 app.add_middleware(CORSMiddleware)
+
+# More responsive /health and /ping endpoints
+app.add_middleware(HealthMiddleware)
 
 os.environ["PYGEOAPI_OPENAPI"] = ""  # not used
 

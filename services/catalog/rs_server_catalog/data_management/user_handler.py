@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -98,8 +98,6 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         CATALOG_PREFIX + "/api.html",
         CATALOG_PREFIX + "/docs/oauth2-redirect",
         CATALOG_PREFIX + "/conformance",
-        CATALOG_PREFIX + "/_mgmt/health",
-        CATALOG_PREFIX + "/_mgmt/ping",
     ]
     if any(re.fullmatch(pattern, path) for pattern in regexp_list):
         # Don't validate other conditions if we alredy matched the previous regexps

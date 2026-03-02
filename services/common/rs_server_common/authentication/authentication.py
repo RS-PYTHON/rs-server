@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import os
 from typing import Annotated, Literal
 
 import jwt
-from asyncache import cached
 from cachetools import TTLCache
+from cachetools_async import cached
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2

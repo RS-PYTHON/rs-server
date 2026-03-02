@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
-from asyncache import cached
 from cachetools import TTLCache
+from cachetools_async import cached
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 from rs_server_common import settings

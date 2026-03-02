@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -372,6 +372,11 @@ class TestGetS3Handler:
         assert s3_handler is None
         assert "Failed to create the s3 handler" in str(logged_message)
         mock_s3_handler.assert_called_once()
+
+
+def test_middleware_order(client):
+    """Check that the FastAPI application middlewares were inserted in the right order."""
+    pytest_common_tests.test_middleware_order(client, use_auth_middleware=True)
 
 
 def test_handle_exceptions_middleware(client, mocker):

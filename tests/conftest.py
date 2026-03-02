@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ from importlib import reload
 # flake8: noqa
 # pylint: disable=wrong-import-order,wrong-import-position
 os.environ["RSPY_LOCAL_MODE"] = "1"
+os.environ["CORS_ORIGINS"] = "http://domain_a,http://domain_b"  # also mockup the cors settings
 from rs_server_common import settings, stac_api_common
 
 reload(settings)
