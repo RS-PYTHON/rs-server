@@ -330,7 +330,9 @@ async def get_allowed_cadip_collections(request: Request) -> dict:
     collections = await request.app.state.pgstac_client.all_collections(request=request)
     for collection in collections.get("collections", []):
         if collection.get("query"):
-            collection["summaries"] = build_summaries("cadip", collection.get("query"))
+            summaries = build_summaries("cadip", collection.get("query"))
+            if summaries:
+                collection["summaries"] = summaries
 
     return collections
 

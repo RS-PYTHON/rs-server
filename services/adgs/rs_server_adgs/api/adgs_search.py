@@ -204,7 +204,9 @@ async def get_allowed_adgs_collections(request: Request):
     collections = await request.app.state.pgstac_client.all_collections(request=request)
     for collection in collections.get("collections", []):
         if collection.get("query"):
-            collection["summaries"] = build_summaries("adgs", collection.get("query"))
+            summaries =  build_summaries("adgs", collection.get("query"))
+            if summaries:
+                collection["summaries"] = summaries
 
     return collections
 
