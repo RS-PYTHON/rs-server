@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -193,20 +193,6 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         assert request.scope["path"] == ""
         assert request_ids == valid_request_ids
 
-    def test_work_with_ping_endpoint(self, request_ids):
-        request = Request(
-            scope={
-                "type": "http",
-                "method": "GET",
-                "path": "/catalog/_mgmt/ping",
-                "query_string": "",
-                "user": "",
-                "headers": {},
-            },
-        )
-        reroute_url(request, request_ids)
-        assert request.scope["path"] == ("/catalog/_mgmt/ping")
-
     def test_reroute_oauth2(self, request_ids):
         request = Request(
             scope={
@@ -271,28 +257,6 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         )
         reroute_url(request, request_ids)
         assert request.scope["path"] == "/catalog/queryables"
-
-    @pytest.mark.parametrize(
-        "path, expected",
-        [
-            ("/whatever-test/health", ""),
-            ("/catalog/_mgmt/health", "/catalog/_mgmt/health"),
-        ],
-    )
-    def test_reroute_health(self, request_ids, path, expected):
-        """Test that reroute_url catch health endpoints "/health"."""
-        request = Request(
-            scope={
-                "type": "http",
-                "method": "GET",
-                "path": path,
-                "query_string": "",
-                "user": "",
-                "headers": {},
-            },
-        )
-        reroute_url(request, request_ids)
-        assert request.scope["path"] == expected
 
     def test_reroute_collections_queryables(self, request_ids):
         request = Request(

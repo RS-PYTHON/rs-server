@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -128,6 +128,11 @@ async def test_endpoints_security(  # pylint: disable=too-many-locals
             oauth2_roles,
             oauth2_attributes,
         )
+
+    # Check that we don't need authentication for the /health endpoints.
+    # NOTE: they are implemented by the HealthMiddleware
+    for path in ["/health", "/_mgmt/health", "/ping", "/_mgmt/ping"]:
+        assert client.get(path).status_code == status.HTTP_200_OK
 
     # For each application endpoint
     for base_route in fastapi_app.router.routes:

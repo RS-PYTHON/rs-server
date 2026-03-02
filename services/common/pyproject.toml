@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,7 +51,8 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
-fastapi = ">=0.123.0"
+fastapi = "==0.131.0" #">=0.123.0" # TEMPORARY FIX, SHOULD USE THE LATEST VERSION
+jsonpath-ng = "==1.7.0" # TEMPORARY FIX, SHOULD BE REMOVED
 starlette = ">=0.49.1,<1"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
@@ -65,8 +66,8 @@ python-dotenv = "^1.0.0"
 filelock = ">=3.20.3"
 uvicorn = ">=0.35.0"
 httpx = "^0.28.1"
-cachetools = ">=5.5.2" # idem as stac-fastapi-pgstac
-asyncache = "^0.3.1"
+cachetools = ">=7.0.1"
+cachetools_async = ">=0.0.5"
 opentelemetry-distro = "^0.60b1" # then run 'poetry run opentelemetry-bootstrap -a install'
 opentelemetry-instrumentation-aws-lambda = "^0.60b1"
 opentelemetry-test-utils = "^0.60b1"

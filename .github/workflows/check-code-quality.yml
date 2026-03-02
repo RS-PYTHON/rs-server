@@ -1,4 +1,4 @@
-# Copyright 2023-2025 Airbus, CS Group
+# Copyright 2023-2026 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,7 +114,7 @@ jobs:
           poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: check-linting
@@ -179,7 +179,7 @@ jobs:
 
       - name: Save reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: check-security
           path: |
@@ -250,7 +250,7 @@ jobs:
           filename: ./cov-report.xml
 
       - name: Save reports
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         with:
           name: run-all-pytests
@@ -275,17 +275,17 @@ jobs:
         with:
           fetch-depth: 0 # Full history for SCM and branch analysis
       - name: Download linting reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name:
             check-linting
       - name: Download vulnerability reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name:
             check-security
       - name: Download pytest reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name:
             run-all-pytests
