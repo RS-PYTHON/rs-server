@@ -129,6 +129,11 @@ async def test_endpoints_security(  # pylint: disable=too-many-locals
             oauth2_attributes,
         )
 
+    # Check that we don't need authentication for the /health endpoints.
+    # NOTE: they are implemented by the HealthMiddleware
+    for path in ["/health", "/_mgmt/health", "/ping", "/_mgmt/ping"]:
+        assert client.get(path).status_code == status.HTTP_200_OK
+
     # For each application endpoint
     for base_route in fastapi_app.router.routes:
         route = cast(Route, base_route)

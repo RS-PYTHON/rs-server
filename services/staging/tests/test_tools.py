@@ -36,6 +36,11 @@ def test_get_minimal_collection_body():
     assert output == expected
 
 
+def test_middleware_order(staging_client):
+    """Check that the FastAPI application middlewares were inserted in the right order."""
+    pytest_common_tests.test_middleware_order(staging_client, use_auth_middleware=True)
+
+
 def test_handle_exceptions_middleware(staging_client, mocker):
     """Test that HandleExceptionsMiddleware handles and logs errors as expected."""
     pytest_common_tests.test_handle_exceptions_middleware(staging_client, mocker, rfc7807=True)
