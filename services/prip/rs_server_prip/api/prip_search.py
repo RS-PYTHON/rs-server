@@ -176,7 +176,7 @@ async def get_allowed_prip_collections(request: Request):
     collections = await request.app.state.pgstac_client.all_collections(request=request)
     for collection in collections.get("collections", []):
         if collection.get("query"):
-            summaries =build_summaries("prip", collection.get("query"))
+            summaries = build_summaries("prip", collection.get("query"))
             collection["summaries"] = summaries
 
     return collections

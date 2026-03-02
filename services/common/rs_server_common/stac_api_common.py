@@ -305,7 +305,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 summaries = build_summaries(self.service, query)
                 if summaries:
                     collection["summaries"] = summaries
-                    
+
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
             return create_collection(collection).model_dump()
@@ -1164,7 +1164,7 @@ def build_summaries(service, query: dict) -> dict | None:
         satellites = query.get("Satellite")
         if not satellites:
             return None
-        
+
         if isinstance(satellites, str):
             satellites = [s.strip() for s in satellites.split(",")]
 
@@ -1181,7 +1181,7 @@ def build_summaries(service, query: dict) -> dict | None:
     products = query.get("productType")
     if not products:
         return None
-    
+
     if isinstance(products, str):
         products = [s.strip() for s in products.split(",")]
 
