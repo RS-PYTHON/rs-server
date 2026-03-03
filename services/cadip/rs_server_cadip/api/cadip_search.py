@@ -1,4 +1,4 @@
-# Copyright 2023-2026 Airbus, CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,7 +63,6 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     PageType,
     SortByType,
-    build_summaries,
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
@@ -327,14 +326,7 @@ async def get_allowed_cadip_collections(request: Request) -> dict:
     """
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)
-    collections = await request.app.state.pgstac_client.all_collections(request=request)
-    for collection in collections.get("collections", []):
-        if collection.get("query"):
-            summaries = build_summaries("cadip", collection.get("query"))
-            if summaries:
-                collection["summaries"] = summaries
-
-    return collections
+    return await request.app.state.pgstac_client.all_collections(request=request)
 
 
 @router.get("/cadip/collections/{collection_id}")

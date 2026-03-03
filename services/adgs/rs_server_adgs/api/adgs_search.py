@@ -52,7 +52,6 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     PageType,
     SortByType,
-    build_summaries,
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
@@ -200,15 +199,7 @@ async def get_allowed_adgs_collections(request: Request):
     """Return the ADGS collections to which the user has access to."""
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("auxip", "landing_page", request=request)
-
-    collections = await request.app.state.pgstac_client.all_collections(request=request)
-    for collection in collections.get("collections", []):
-        if collection.get("query"):
-            summaries = build_summaries("adgs", collection.get("query"))
-            if summaries:
-                collection["summaries"] = summaries
-
-    return collections
+    return await request.app.state.pgstac_client.all_collections(request=request)
 
 
 @router.get("/auxip/collections/{collection_id}")

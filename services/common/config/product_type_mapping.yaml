@@ -16,6 +16,9 @@
 
 types:
 
+  - productType: S00__ADF_MSLPC
+    legacyType: SR_2_CP(?:0[06]|12|18)AX
+
   - productType: S01SSMGRD
     mission: S1
     instrumentMode: SM

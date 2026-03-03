@@ -2992,6 +2992,7 @@ def test_serialize_adgs_asset_missing_external_ids():
 
 
 def test_build_summaries_cadip_valid(monkeypatch):
+    """Test mapping of Satellite values to platform for summaries in Cadip."""
     query = {"Satellite": ["S1A", "S1C"]}
 
     monkeypatch.setattr(
@@ -3009,13 +3010,26 @@ def test_build_summaries_cadip_valid(monkeypatch):
 
 
 def test_build_summaries_auxip_valid():
-    query = {"productType": ["AUX_PP2", "OPER_AUX_RESORB_OPOD"]}
+    """Test mapping of productType values to legacy type for summaries in Auxip."""
+
+    query = {"productType": ["SR_2_CP00AX", "SR_2_CP06AX", "SR_2_CP12AX", "SR_2_CP18AX"]}
 
     result = stac_api_common.build_summaries("auxip", query)
-    assert result == {"product:type": ["AUX_PP2", "OPER_AUX_RESORB_OPOD"]}
+    assert result == {"product:type": ["S00__ADF_MSLPC"]}
+
+
+def test_build_summaries_auxip_no_summaries():
+    """Test mapping of productType values to legacy type for summaries in Auxip."""
+
+    query = {"productType": ["AUX_PP2"]}
+
+    result = stac_api_common.build_summaries("auxip", query)
+    assert result is None
 
 
 def test_build_summaries_prip_valid(monkeypatch):
+    """Test mapping of productType values to legacy type for summaries in PRIP."""
+
     query = {"productType": ["EW_SLC__1S", "IW_SLC__1S"]}
 
     monkeypatch.setattr(

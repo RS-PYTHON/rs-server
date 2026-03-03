@@ -42,7 +42,6 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     PageType,
     SortByType,
-    build_summaries,
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
@@ -172,14 +171,7 @@ async def get_allowed_prip_collections(request: Request):
     """Return the PRIP collections to which the user has access to."""
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("prip", "landing_page", request=request)
-
-    collections = await request.app.state.pgstac_client.all_collections(request=request)
-    for collection in collections.get("collections", []):
-        if collection.get("query"):
-            summaries = build_summaries("prip", collection.get("query"))
-            collection["summaries"] = summaries
-
-    return collections
+    return await request.app.state.pgstac_client.all_collections(request=request)
 
 
 @router.get("/prip/collections/{collection_id}")

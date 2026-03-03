@@ -1,4 +1,4 @@
-# Copyright 2023-2026 Airbus, CS Group
+# Copyright 2023-2025 Airbus, CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -286,7 +286,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
         if query == "SELECT * FROM all_collections();":
-            return filter_allowed_collections(self.all_collections(), self.service, self.request)
+            all_collections = filter_allowed_collections(self.all_collections(), self.service, self.request)
+            for collection in all_collections:
+                query = collection.get("query")
+                if query:
+                    summaries = build_summaries(self.service, query)
+                    if summaries:
+                        collection["summaries"] = summaries
+            return all_collections
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
         if query == "SELECT * FROM get_collection($1::text);":
@@ -1157,7 +1164,7 @@ def build_summaries(service, query: dict) -> dict | None:
     Builds summaries for CADIP/AUXIP/PRIP collections.
 
     Returns a dict:
-        - {"platform": [...]} for CADIP
+        - {"platform": [...]} for CADIP/EDRS
         - {"product:type": [...]} for AUXIP/PRIP
     """
     if service == "cadip":
@@ -1185,15 +1192,11 @@ def build_summaries(service, query: dict) -> dict | None:
     if isinstance(products, str):
         products = [s.strip() for s in products.split(",")]
 
-    ptype = set()
-    if service == "prip":
-        for p in products:
-            ptype.add(find_product_type(p)["productType"])
-    else:
-        for p in products:
-            ptype.add(p)
+    ptype = {pt["productType"] for p in products if (pt := find_product_type(p)) and pt.get("productType")}
 
-    return {"product:type": sorted(ptype)}
+    if ptype:
+        return {"product:type": sorted(ptype)}
+    return None
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
