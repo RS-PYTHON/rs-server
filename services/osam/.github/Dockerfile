@@ -17,7 +17,7 @@
 # ghcr.io/rs-python/operational-services-osam
 #
 
-ARG PYTHON_VERSION=3.13.11
+ARG PYTHON_VERSION=3.13.12
 
 # Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:${PYTHON_VERSION}-slim-bookworm AS builder

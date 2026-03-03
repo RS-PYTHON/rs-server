@@ -37,14 +37,14 @@ Follow instructions from https://github.com/pyenv/pyenv?tab=readme-ov-file#a-get
 ```sh
 # Install the python versions that are used in the project
 pyenv install 3.11.7
-pyenv install 3.13.11
+pyenv install 3.13.12
 
 # Go to the root folder of your rspy project, that contains all you local git repositories
 # and use newest version in all this folder and subfolders
 cd /path/to/parent/rspy
-pyenv local 3.13.11
-# Or if you prefer to use this version everywhere in your system, use: pyenv global 3.13.11
-python -V # should display 3.13.11
+pyenv local 3.13.12
+# Or if you prefer to use this version everywhere in your system, use: pyenv global 3.13.12
+python -V # should display 3.13.12
 
 # WARNING: in rs-dpr-service we still need the old version
 cd rs-dpr-service

@@ -18,7 +18,7 @@
 # ghcr.io/rs-python/dask/staging
 #
 
-ARG PYTHON_VERSION=3.13.11
+ARG PYTHON_VERSION=3.13.12
 ARG DASK_GATEWAY_TAG=2024.1.0
 
 FROM ghcr.io/rs-python/dask/dask-gateway:${DASK_GATEWAY_TAG}-py${PYTHON_VERSION}
