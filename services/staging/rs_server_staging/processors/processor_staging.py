@@ -398,7 +398,10 @@ class Staging(
                 # If status is not found, create collection body and try to post it.
                 create_response = requests.post(
                     f"{self.catalog_url}/catalog/collections",
-                    headers=self.auth_headers,
+                    headers={
+                        **self.auth_headers,
+                        "Content-Type": "application/json",
+                    },
                     data=dumps(get_minimal_collection_body(catalog_collection)),
                     timeout=5,
                 )
@@ -1098,8 +1101,11 @@ class Staging(
         try:
             response = requests.post(
                 publish_url,
-                headers=self.auth_headers,
-                data=feature.json(),
+                headers={
+                    **self.auth_headers,
+                    "Content-Type": "application/geo+json",
+                },
+                data=feature.model_dump_json(),
                 timeout=10,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
