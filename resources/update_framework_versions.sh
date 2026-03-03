@@ -132,8 +132,8 @@ all_files+=($(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.prefe
 # [local mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/jupyter/rs-client-libraries/local]
 all_files+=($(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.jupyter)) # + run rs-client-libraries ci/cd
 
-# [cluster mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/rs-infra-core-jupyter]
-all_files+=($(_realpath rs-infra-core/.github/jupyter/Dockerfile)) # + run rs-infra-core ci/cd
+# [cluster mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/rs-workflow-env-jupyter]
+all_files+=($(_realpath rs-workflow-env/docker/jupyter/Dockerfile)) # + run rs-workflow-env ci/cd
 
 #
 # Update files
