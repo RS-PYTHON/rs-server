@@ -182,7 +182,9 @@ class TestStagingPublishCatalog:
     def test_publish_rspy_feature_success(self, mocker, staging_instance: Staging):
         """Test successful feature publishing to the catalog."""
         feature = mocker.Mock()  # Mock the feature object
-        feature.json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'  # Mock the JSON serialization
+        feature.model_dump_json.return_value = (
+            '{"id": "feature1", "properties": {"name": "test"}}'  # Mock the JSON serialization
+        )
         feature.assets = {}
 
         # Mock requests.post to return a successful response
@@ -195,16 +197,16 @@ class TestStagingPublishCatalog:
         assert result is True  # Should return True for successful publishing
         mock_post.assert_called_once_with(
             f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
-            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
-            data=feature.json(),
+            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key", "Content-Type": "application/geo+json"},
+            data=feature.model_dump_json(),
             timeout=10,
         )
-        feature.json.assert_called()  # Ensure the feature JSON serialization was called
+        feature.model_dump_json.assert_called()  # Ensure the feature JSON serialization was called
 
     def test_publish_rspy_feature_fail(self, mocker, staging_instance: Staging):
         """Test failure during feature publishing and cleanup on error."""
         feature = mocker.Mock()
-        feature.json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'
+        feature.model_dump_json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'
         feature.assets = {}
 
         for possible_exception in [
@@ -224,8 +226,12 @@ class TestStagingPublishCatalog:
             assert result is False  # Should return False for failure
             mock_post.assert_called_once_with(
                 f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
-                headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
-                data=feature.json(),
+                headers={
+                    "cookie": "fake-cookie",
+                    APIKEY_HEADER: "fake-api-key",
+                    "Content-Type": "application/geo+json",
+                },
+                data=feature.model_dump_json(),
                 timeout=10,
             )
             mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
