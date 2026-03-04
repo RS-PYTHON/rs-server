@@ -288,6 +288,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if query == "SELECT * FROM all_collections();":
             all_collections = filter_allowed_collections(self.all_collections(), self.service, self.request)
             for collection in all_collections:
+                # Add summaries for each collection that has query
+                # This branch is typically executed first in the normal request flow
+                # Because of that, we do not perform additional checks for existing summaries
                 if (query := collection.get("query")) and (summaries := build_summaries(self.service, query)):
                     collection["summaries"] = summaries
             return all_collections
@@ -304,6 +307,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     f"Unknown {self.service} collection: {collection_id!r}",
                 )
 
+            # The summaries field is initialized if this SQL command happens to be executed before all_collections()
+            # If the field is already set, don't overwrite it
             if (
                 (query := collection.get("query"))
                 and (collection.get("summaries") is None)
@@ -1159,13 +1164,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
 def build_summaries(service, query: dict) -> dict | None:
     """
-    Builds summaries for CADIP/AUXIP/PRIP collections.
+    Builds summaries for CADIP/EDRS/AUXIP/PRIP collections.
 
     Returns a dict:
         - {"platform": [...]} for CADIP/EDRS
         - {"product:type": [...]} for AUXIP/PRIP
     """
-    if service == "cadip":
+    if service in ["cadip", "edrs"]:
         satellites = query.get("Satellite")
         if not satellites:
             return None
