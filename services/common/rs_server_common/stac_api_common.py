@@ -288,11 +288,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if query == "SELECT * FROM all_collections();":
             all_collections = filter_allowed_collections(self.all_collections(), self.service, self.request)
             for collection in all_collections:
-                query = collection.get("query")
-                if query:
-                    summaries = build_summaries(self.service, query)
-                    if summaries:
-                        collection["summaries"] = summaries
+                if (query := collection.get("query")) and (summaries := build_summaries(self.service, query)):
+                    collection["summaries"] = summaries
             return all_collections
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
@@ -307,11 +304,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     f"Unknown {self.service} collection: {collection_id!r}",
                 )
 
-            query = collection.get("query")
-            if query and collection.get("summaries") is None:
-                summaries = build_summaries(self.service, query)
-                if summaries:
-                    collection["summaries"] = summaries
+            if (
+                (query := collection.get("query"))
+                and (collection.get("summaries") is None)
+                and (summaries := build_summaries(self.service, query))
+            ):
+                collection["summaries"] = summaries
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
