@@ -69,8 +69,6 @@ httpx = "^0.28.1"
 cachetools = ">=7.0.1"
 cachetools_async = ">=0.0.5"
 opentelemetry-distro = "^0.61b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.61b0"
-opentelemetry-test-utils = "^0.61b0"
 opentelemetry-exporter-otlp = "^1.40.0"
 protobuf = ">=6.31.1"
 authlib = "^1.6.1"
