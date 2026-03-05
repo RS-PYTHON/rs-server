@@ -55,21 +55,6 @@ idna = ">=2.8"
 trio = ["trio (>=0.31.0) ; python_version < \"3.10\"", "trio (>=0.32.0) ; python_version >= \"3.10\""]
 
 [[package]]
-name = "asgiref"
-version = "3.11.1"
-description = "ASGI specs, helper code, and adapters"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "asgiref-3.11.1-py3-none-any.whl", hash = "sha256:e8667a091e69529631969fd45dc268fa79b99c92c5fcdda727757e52146ec133"},
-    {file = "asgiref-3.11.1.tar.gz", hash = "sha256:5f184dc43b7e763efe848065441eac62229c9f7b0475f41f80e207a114eda4ce"},
-]
-
-[package.extras]
-tests = ["mypy (>=1.14.0)", "pytest", "pytest-asyncio"]
-
-[[package]]
 name = "asyncpg"
 version = "0.31.0"
 description = "An asyncio PostgreSQL driver"
@@ -2066,38 +2051,6 @@ packaging = ">=18.0"
 wrapt = ">=1.0.0,<2.0.0"
 
 [[package]]
-name = "opentelemetry-instrumentation-aws-lambda"
-version = "0.61b0"
-description = "OpenTelemetry AWS Lambda instrumentation"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_instrumentation_aws_lambda-0.61b0-py3-none-any.whl", hash = "sha256:51b721a17ab275a41e7de513b39339257bc22fdfe7899d74c94b99459fe1b6a0"},
-    {file = "opentelemetry_instrumentation_aws_lambda-0.61b0.tar.gz", hash = "sha256:9fa74e96071e60063cbb3584f48f01d41144a9d265b1a20c8ac6f6d953d01a33"},
-]
-
-[package.dependencies]
-opentelemetry-instrumentation = "0.61b0"
-opentelemetry-propagator-aws-xray = ">=1.0,<2.0"
-opentelemetry-semantic-conventions = "0.61b0"
-
-[[package]]
-name = "opentelemetry-propagator-aws-xray"
-version = "1.0.2"
-description = "AWS X-Ray Propagator for OpenTelemetry"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_propagator_aws_xray-1.0.2-py3-none-any.whl", hash = "sha256:1c99181ee228e99bddb638a0c911a297fa21f1c3a0af951f841e79919b5f1934"},
-    {file = "opentelemetry_propagator_aws_xray-1.0.2.tar.gz", hash = "sha256:6b2cee5479d2ef0172307b66ed2ed151f598a0fd29b3c01133ac87ca06326260"},
-]
-
-[package.dependencies]
-opentelemetry-api = ">=1.12,<2.0"
-
-[[package]]
 name = "opentelemetry-proto"
 version = "1.40.0"
 description = "OpenTelemetry Python Proto"
@@ -2144,23 +2097,6 @@ files = [
 [package.dependencies]
 opentelemetry-api = "1.40.0"
 typing-extensions = ">=4.5.0"
-
-[[package]]
-name = "opentelemetry-test-utils"
-version = "0.61b0"
-description = "Test utilities for OpenTelemetry unit tests"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_test_utils-0.61b0-py3-none-any.whl", hash = "sha256:45ea50e84197500d43dd2257891a6f9055525f65bd1bf7dfaec1d8db054069f3"},
-    {file = "opentelemetry_test_utils-0.61b0.tar.gz", hash = "sha256:429070116ab2e6827257c5dbd7d1c9daf0bf0a0364bbfd814db7410f0d5a8f1c"},
-]
-
-[package.dependencies]
-asgiref = ">=3.0,<4.0"
-opentelemetry-api = "1.40.0"
-opentelemetry-sdk = "1.40.0"
 
 [[package]]
 name = "orjson"
@@ -3539,4 +3475,4 @@ tests = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "9b7eac863591afe8c7d3ffbb3da6f4fe9f5184b1e47aa3b74cdde6760b81a9ca"
+content-hash = "75674c26c58f07bc8cf0d8322fc6a573ba31f8888a008462a2f056c145d8fbac"
