@@ -26,12 +26,12 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 # Hardcode here the versions to use, with the same variable names as in the files below
 
 # We use a different python version in eopf + the dpr processors + rs-dpr-service
-PYTHON_VERSION=3.13.11
+PYTHON_VERSION=3.13.12
 PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
-PREFECT_TAG=3.6.12
-PREFECT_AWS_TAG=0.7.1
+PREFECT_TAG=3.6.20
+PREFECT_AWS_TAG=0.7.5
 JUPYTER_HUB_VERSION=5.4.3
 
 # Old version numbers, before we apply this script.
@@ -41,7 +41,7 @@ PYTHON_VERSION_DPR_OLD=3.11.7
 DASK_TAG_OLD=2024.5.2
 DASK_GATEWAY_TAG_OLD=2024.1.0
 PREFECT_TAG_OLD=3.6.12
-PREFECT_AWS_TAG_OLD=0.7.1
+PREFECT_AWS_TAG_OLD=0.7.4
 JUPYTER_HUB_VERSION_OLD=5.4.3
 
 all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_AWS_TAG JUPYTER_HUB_VERSION) # var names
@@ -70,8 +70,6 @@ all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.python))
 
 # [local mode] [cluster mode] [ci/cd]
 # + run rs-server ci/cd
-all_files+=($(_realpath operational-services/.github/workflows/check-code-quality.yml))
-all_files+=($(_realpath operational-services/.github/workflows/publish-binaries.yml))
 all_files+=($(_realpath rs-client-libraries/.github/workflows/check-code-quality.yml))
 all_files+=($(_realpath rs-client-libraries/.github/workflows/publish-binaries.yml))
 all_files+=($(_realpath rs-demo/.github/workflows/run_demos.yml))
@@ -83,8 +81,6 @@ all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [cluster mode] [docker images]
 # + run rs-server ci/cd
-# [ghcr.io/rs-python/operational-services-osam]
-all_files+=($(_realpath operational-services/object_storage_access_manager/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-dpr-service]
 all_files+=($(_realpath rs-dpr-service/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-adgs]
@@ -95,6 +91,8 @@ all_files+=($(_realpath rs-server/services/cadip/.github/Dockerfile))
 all_files+=($(_realpath rs-server/services/catalog/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-frontend]
 all_files+=($(_realpath rs-server/services/frontend/.github/Dockerfile))
+# [ghcr.io/rs-python/rs-server-osam]
+all_files+=($(_realpath rs-server/services/osam/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-prip]
 all_files+=($(_realpath rs-server/services/prip/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-staging]
