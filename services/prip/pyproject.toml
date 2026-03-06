@@ -52,6 +52,8 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
 rs-server-common = "*"
+# to enable after https://github.com/CS-SI/opentelemetry-instrumentation-eodag/issues/23 is fixed
+# opentelemetry-instrumentation-eodag = "0.4.0"
 
 [tool.poetry.group.dev]
 optional = true

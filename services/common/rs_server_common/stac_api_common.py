@@ -60,6 +60,8 @@ from rs_server_common.utils.cql2_filter_extension import process_filter_extensio
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     extract_eo_product,
+    find_product_type,
+    map_stac_platform,
     odata_to_stac,
     run_in_threads,
     validate_inputs_format,
@@ -284,7 +286,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
         if query == "SELECT * FROM all_collections();":
-            return filter_allowed_collections(self.all_collections(), self.service, self.request)
+            all_collections = filter_allowed_collections(self.all_collections(), self.service, self.request)
+            for collection in all_collections:
+                # Add summaries for each collection that has query
+                # This branch is typically executed first in the normal request flow
+                # Because of that, we do not perform additional checks for existing summaries
+                if (query := collection.get("query")) and (summaries := build_summaries(self.service, query)):
+                    collection["summaries"] = summaries
+            return all_collections
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
         if query == "SELECT * FROM get_collection($1::text);":
@@ -297,6 +306,15 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     status.HTTP_404_NOT_FOUND,
                     f"Unknown {self.service} collection: {collection_id!r}",
                 )
+
+            # The summaries field is initialized if this SQL command happens to be executed before all_collections()
+            # If the field is already set, don't overwrite it
+            if (
+                (query := collection.get("query"))
+                and (collection.get("summaries") is None)
+                and (summaries := build_summaries(self.service, query))
+            ):
+                collection["summaries"] = summaries
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
@@ -1142,6 +1160,46 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         Search cadip files for each input cadip session. Update the sessions data with their files data.
         """
         raise NotImplementedError
+
+
+def build_summaries(service, query: dict) -> dict | None:
+    """
+    Builds summaries for CADIP/EDRS/AUXIP/PRIP collections.
+
+    Returns a dict:
+        - {"platform": [...]} for CADIP/EDRS
+        - {"product:type": [...]} for AUXIP/PRIP
+    """
+    if service in ["cadip", "edrs"]:
+        satellites = query.get("Satellite")
+        if not satellites:
+            return None
+
+        if isinstance(satellites, str):
+            satellites = [s.strip() for s in satellites.split(",")]
+
+        platforms = set()
+
+        for sat in satellites:
+            for satellite in map_stac_platform()["satellites"]:
+                for key, info in satellite.items():
+                    if info.get("code") == sat:
+                        platforms.add(key)
+
+        return {"platform": sorted(platforms)}
+
+    products = query.get("productType")
+    if not products:
+        return None
+
+    if isinstance(products, str):
+        products = [s.strip() for s in products.split(",")]
+
+    ptype = {pt["productType"] for p in products if (pt := find_product_type(p)) and pt.get("productType")}
+
+    if ptype:
+        return {"product:type": sorted(ptype)}
+    return None
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
