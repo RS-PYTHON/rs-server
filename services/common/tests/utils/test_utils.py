@@ -223,6 +223,16 @@ def test_regex_error_fallback_branch(monkeypatch):
     assert result == broken_entry, "Expected equality fallback match"
 
 
+def test_regex_types_match_auxip():
+    """Test legacy type are matched by the single regex."""
+    legacy_type_entry = find_product_type("SR_2_CP00AX")
+    assert legacy_type_entry["productType"] == "S00__ADF_MSLPC"
+
+    # invalid regex for S00__ADF_MSLPC
+    legacy_type_entry = find_product_type("SR_2_CP224AX")
+    assert legacy_type_entry["productType"] is None
+
+
 def test_iter_external_id_parts_splits_and_strips():
     """Iterates externalIds input and removes empty parts."""
     values = list(_iter_external_id_parts("cadip:123, auxip:456,,  "))
