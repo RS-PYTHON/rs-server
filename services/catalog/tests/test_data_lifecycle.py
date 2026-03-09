@@ -25,13 +25,13 @@ from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
 from rs_server_catalog.data_management.timestamps_extension import ISO_8601_FORMAT
 
 from tests.helpers import (
-    TEMP_BUCKET,
+    CATALOG_BUCKET,
     a_collection,
     add_collection,
 )
 
 USER = "lifecycleuser"
-TEMP_BUCKET_PATH = f"s3://{TEMP_BUCKET}/"
+TEMP_BUCKET_PATH = f"s3://{CATALOG_BUCKET}/"
 OLD_DATE: str = datetime(2000, 1, 1).strftime(ISO_8601_FORMAT)
 
 
@@ -87,11 +87,11 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
                 # Then they will be copied to the final bucket by rs-server.
                 for key in local_item["assets"].values():
                     s3_handler.s3_client.put_object(
-                        Bucket=TEMP_BUCKET,
+                        Bucket=CATALOG_BUCKET,
                         Key=key["href"].removeprefix(TEMP_BUCKET_PATH),
                         Body="testing\n",
                     )
-                assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+                assert s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
                 # Mark only the first n items of the first collection to be expired
                 stac_item: dict = {}

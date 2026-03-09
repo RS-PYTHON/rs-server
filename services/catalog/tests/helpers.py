@@ -35,7 +35,6 @@ from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 
-TEMP_BUCKET = "temp-bucket"
 CATALOG_BUCKET = "rspython-ops-catalog-all-production"  # Default bucket from the config file
 
 # Authentication fields
@@ -283,13 +282,14 @@ class Feature:
 
     @property
     def properties(self) -> dict[str, Any]:  # pylint: disable=missing-function-docstring
+        bucket = "s3://rspython-ops-catalog-all-production"
         return {
             "id": self.id_,
             "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
             "type": "Feature",
             "assets": {
                 "may24C355000e4102500n.tif": {
-                    "href": f"""s3://temp-bucket/{self.collection}/images/may24C355000e4102500n.tif""",
+                    "href": f"""{bucket}/{self.collection}/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
                 },
