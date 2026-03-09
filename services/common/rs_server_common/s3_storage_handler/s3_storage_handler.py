@@ -611,38 +611,46 @@ class S3StorageHandler:
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
 
     def check_s3_key_on_bucket(self, bucket, s3_key):
-        """Check if the s3 key is available in the bucket.
+        """Check if the s3 key or folder prefix is available in the bucket.
 
         Args:
             bucket (str): The S3 bucket name.
-            s3_key (str): The s3 key that should be checked
+            s3_key (str): The s3 key or prefix that should be checked
 
-        Returns: True and size if the s3 key is available, False and -1 and it isn't
+        Returns:
+            tuple: (True, size) if the s3 key exists; (False, -1) if it doesn't exist
+                For folders/prefixes, size will be -1.
 
         Raises:
             RuntimeError: If an error occurs during the bucket access check or if
-                the s3_key is not available.
+                        the bucket is private or inaccessible.
         """
         size = -1
         try:
             self.connect_s3()
             self.logger.debug(f"Checking for the presence of the s3 key s3://{bucket}/{s3_key}")
-            response = self.s3_client.head_object(Bucket=bucket, Key=s3_key)
-            # get the size of the file as well
-            if isinstance(response, dict):
-                size = response.get("ContentLength", -1)
-        except botocore.client.ClientError as error:
-            # check that it was a 404 vs 403 errors
-            # If it was a 404 error, then the bucket does not exist.
-            error_code = error.response["Error"]["Code"]
-            if error_code == S3_ERR_FORBIDDEN_ACCESS:
-                self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
-                raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
-            if error_code == S3_ERR_NOT_FOUND:
-                self.logger.exception(f"The key s3://{bucket}/{s3_key} does not exist!")
-                return False, size
-            self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
-            raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
+
+            try:
+                # Try as a file/object
+                response = self.s3_client.head_object(Bucket=bucket, Key=s3_key)
+                if isinstance(response, dict):
+                    size = response.get("ContentLength", -1)
+                return True, size
+            except botocore.client.ClientError as error:
+                error_code = error.response["Error"]["Code"]
+                if error_code == "404":
+                    # Might be a folder/prefix, check with list_objects_v2
+                    response = self.s3_client.list_objects_v2(Bucket=bucket, Prefix=s3_key, MaxKeys=1)
+                    if response.get("KeyCount", 0) > 0:
+                        return True, -1  # size unknown for folder/prefix
+                    self.logger.exception(f"The key s3://{bucket}/{s3_key} does not exist!")
+                    return False, -1
+                if error_code == S3_ERR_FORBIDDEN_ACCESS:
+                    self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
+                    raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
+                self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
+                raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
+
         except (
             botocore.exceptions.EndpointConnectionError,
             botocore.exceptions.NoCredentialsError,
@@ -653,8 +661,6 @@ class S3StorageHandler:
         except Exception as error:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
-
-        return True, size
 
     def wait_timeout(self, timeout):
         """
