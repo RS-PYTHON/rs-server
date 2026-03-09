@@ -165,7 +165,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         assert sorted(s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")) == sorted(lst_with_files_to_be_copied)
 
         updated_feature_sent = copy.deepcopy(a_correct_feature_copy)
-        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
+        updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
 
         path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"

@@ -758,7 +758,7 @@ jobs:
       - dask-staging-local-img
     steps:
       - name: Log into Docker registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}

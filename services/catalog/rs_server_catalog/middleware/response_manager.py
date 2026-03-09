@@ -67,6 +67,37 @@ QUERYABLES = "/queryables"
 logger = Logging.default(__name__)
 
 
+def mask_internal_default_geometry_and_bbox(payload: Any) -> Any:
+    """
+    Hide internal DEFAULT_GEOM/DEFAULT_BBOX values from API responses.
+
+    DEFAULT_GEOM/DEFAULT_BBOX are injected only to satisfy pgstac persistence constraints
+    (pgstac.items.geometry is NOT NULL). Clients should still observe geometry/bbox as null
+    when those values were not provided by the upstream station / user.
+    """
+    if not isinstance(payload, dict):
+        return payload
+
+    # Item response shape.
+    if payload.get("geometry") == DEFAULT_GEOM:
+        payload["geometry"] = None
+    if payload.get("bbox") == DEFAULT_BBOX:
+        payload["bbox"] = None
+
+    # ItemCollection response shape.
+    features = payload.get("features")
+    if isinstance(features, list):
+        for feature in features:
+            if not isinstance(feature, dict):
+                continue
+            if feature.get("geometry") == DEFAULT_GEOM:
+                feature["geometry"] = None
+            if feature.get("bbox") == DEFAULT_BBOX:
+                feature["bbox"] = None
+
+    return payload
+
+
 class CatalogResponseManager:
     """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
     Each type of Response is managed in one of the functions."""
@@ -200,6 +231,7 @@ class CatalogResponseManager:
         content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
             content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
+        content = mask_internal_default_geometry_and_bbox(content)
 
         # Add the stac authentication extension
         await StacManager.add_authentication_extension(content)
@@ -286,10 +318,7 @@ class CatalogResponseManager:
         auth_roles = []
         user_login = ""
 
-        if content.get("geometry") == DEFAULT_GEOM:
-            content["geometry"] = None
-        if content.get("bbox") == DEFAULT_BBOX:
-            content["bbox"] = None
+        content = mask_internal_default_geometry_and_bbox(content)
 
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
@@ -404,14 +433,11 @@ class CatalogResponseManager:
             response_content = await read_streaming_response(response)
             response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
 
-            # Don't display geometry and bbox for default case since it was added just for compliance.
+            # Hide internal default geometry/bbox (used only to satisfy pgstac persistence constraints).
             if request.scope["path"].startswith(
                 f"{CATALOG_COLLECTIONS}/{user}_{self.request_ids['collection_ids'][0]}/items",
             ):
-                if response_content.get("geometry") == DEFAULT_GEOM:
-                    response_content["geometry"] = None
-                if response_content.get("bbox") == DEFAULT_BBOX:
-                    response_content["bbox"] = None
+                response_content = mask_internal_default_geometry_and_bbox(response_content)
             await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
