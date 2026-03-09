@@ -32,14 +32,14 @@ info:
     <a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
     <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
     <br><br>
-    <a href="#/ADGS%20stations">ADGS stations</a> /
-    <a href="#/CADIP%20stations">CADIP stations</a> /
-    <a href="#/PRIP%20stations">PRIP stations</a> /
-    <a href="#/EDRS%20stations">EDRS stations</a> /
-    <a href="#/OSAM%20service">OSAM service</a> /
-    <a href="#/Catalog">Catalog</a> /
-    <a href="#/Staging%20service">Staging service</a> /
-    <a href="#/Processing%20service">Processing service</a>
+    <a href="#/ADGS%20stations" target="_blank">ADGS stations</a> /
+    <a href="#/CADIP%20stations" target="_blank">CADIP stations</a> /
+    <a href="#/PRIP%20stations" target="_blank">PRIP stations</a> /
+    <a href="#/EDRS%20stations" target="_blank">EDRS stations</a> /
+    <a href="#/OSAM%20service" target="_blank">OSAM service</a> /
+    <a href="#/Catalog" target="_blank">Catalog</a> /
+    <a href="#/Staging%20service" target="_blank">Staging service</a> /
+    <a href="#/Processing%20service" target="_blank">Processing service</a>
 
     ---
     #### STAC Browser
