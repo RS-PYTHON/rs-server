@@ -31,8 +31,8 @@ from filelock import FileLock
 
 
 @dataclass
-class S3Auth:
-    """S3 object storage authentication."""
+class S3Credentials:
+    """S3 object storage credentials."""
 
     # Access key ID
     access_key_id: str

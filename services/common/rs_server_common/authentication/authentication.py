@@ -16,6 +16,7 @@
 Authentication functions implementation.
 """
 
+import asyncio
 import os
 from contextlib import suppress
 from threading import Lock
@@ -34,7 +35,7 @@ from rs_server_common.authentication.apikey import (
     apikey_security,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo, S3Auth, read_response_error
+from rs_server_common.utils.utils2 import AuthInfo, S3Credentials, read_response_error
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import HTTPConnection
 
@@ -138,8 +139,8 @@ async def authenticate(
                 exc.args = (*exc.args[0:1], exc.detail, *exc.args[2:])
                 raise
 
-    # Lock to calculate the S3 authentication
-    request.state.s3_auth_lock = Lock()
+    # Lock to calculate the S3 credentials
+    request.state.s3_credentials_lock = Lock()
 
     # Save information in the request state and return it
     request.state.user_login = auth_info.user_login
@@ -199,31 +200,31 @@ def auth_validation(
         )
 
 
-def get_s3_auth(request: Request) -> S3Auth:
+def get_s3_credentials(request: Request) -> S3Credentials:
     """
-    Return the S3 object storage authentication for the logged user.
-    This authentication is returned by the OSAM service.
+    Return the S3 object storage credentials for the logged user.
+    These credentials returned by the OSAM service.
     """
 
     # In local mode, return the local s3 storage authentication
     if settings.LOCAL_MODE:
-        return S3Auth(
+        return S3Credentials(
             os.environ["S3_ACCESSKEY"],
             os.environ["S3_SECRETKEY"],
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
 
-    # Try to return the S3 auth already calculated for this request (and thus for this logged user)
+    # Try to return the S3 credentials already calculated for this request (and thus for this logged user)
     with suppress(AttributeError):
-        return request.state.s3_auth
+        return request.state.s3_credentials
 
     # Else we're calculating it, in a threading lock (so several threads won't call this at the same time)
-    with request.state.s3_auth_lock:
+    with request.state.s3_credentials_lock:
 
         # Check a second time, in case another thread updated the value
         with suppress(AttributeError):
-            return request.state.s3_auth
+            return request.state.s3_credentials
 
         # We create a new HTTP request to OSAM to retrieve the S3 credentials of the user.
         # The user is already logged in, this is why he's able to call the current request.
@@ -247,17 +248,23 @@ def get_s3_auth(request: Request) -> S3Auth:
         if not osam_response.ok:
             raise HTTPException(
                 osam_response.status_code,
-                f"Authentication to OSAM failed: {read_response_error(osam_response)}",
+                f"Failed to get user credentials from OSAM: {read_response_error(osam_response)}",
             )
 
         # Read result from osam
         osam_credentials = osam_response.json()
         try:
-            request.state.s3_auth = S3Auth(
+            request.state.s3_credentials = S3Credentials(
                 access_key_id=osam_credentials["access_key"],
                 secret_access_key=osam_credentials["secret_key"],
                 endpoint_url=osam_credentials["endpoint"],
                 region_name=osam_credentials["region"],
             )
         except KeyError:
+            # WARNING: print only the s3 credential keys in this error message, not the values !
             raise KeyError(f"Invalid credentials returned by OSAM: {list(osam_credentials.keys())}")
+
+
+async def aget_s3_credentials(request: Request) -> S3Credentials:
+    """Async version of get_s3_credentials. Call sync function in a separate thread."""
+    return await asyncio.to_thread(get_s3_credentials, request)

@@ -34,7 +34,7 @@ import botocore.exceptions
 import requests
 from rs_server_common.ftp_handler.ftp_handler import FTPClient
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import S3Auth
+from rs_server_common.utils.utils2 import S3Credentials
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -164,22 +164,22 @@ class S3StorageHandler:
     WARNING: THIS CLASS IS NOT THREAD-SAFE because of the connect_s3 and disconnect_s3 methods.
 
     Attributes:
-        s3_auth (S3Auth): S3 authentication
+        s3_credentials (S3Credentials): S3 credentials
         s3_client (boto3.client): The s3 client to interact with the s3 storage
     """
 
-    def __init__(self, s3_auth: S3Auth):
+    def __init__(self, s3_credentials: S3Credentials):
         """Initialize the S3StorageHandler instance.
 
         Args:
-            s3_auth (S3Auth): S3 authentication
+            s3_credentials (S3Credentials): S3 credentials
 
         Raises:
             RuntimeError: If the connection to the S3 storage cannot be established.
         """
         self.logger = Logging.default(__name__)
 
-        self.s3_auth = s3_auth
+        self.s3_credentials = s3_credentials
         self.s3_client: boto3.client = None
         self.connect_s3()
         # Suppress botocore debug messages
@@ -207,10 +207,10 @@ class S3StorageHandler:
         try:
             return boto3.client(
                 "s3",
-                aws_access_key_id=self.s3_auth.access_key_id,
-                aws_secret_access_key=self.s3_auth.secret_access_key,
-                endpoint_url=self.s3_auth.endpoint_url,
-                region_name=self.s3_auth.region_name,
+                aws_access_key_id=self.s3_credentials.access_key_id,
+                aws_secret_access_key=self.s3_credentials.secret_access_key,
+                endpoint_url=self.s3_credentials.endpoint_url,
+                region_name=self.s3_credentials.region_name,
                 config=client_config,
             )
 

@@ -41,6 +41,7 @@ from pygeoapi.process.manager.postgresql import (
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
@@ -542,12 +543,8 @@ class Staging(
             self.logger.debug("Trying to remove file from bucket, but no asset info defined.")
             return
         try:
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
+            # Use S3 object storage authentication for the logged user
+            s3_handler = S3StorageHandler(authentication.get_s3_credentials(self.request))
 
             for s3_obj in self.assets_info:
                 try:

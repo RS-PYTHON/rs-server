@@ -43,6 +43,7 @@ from rs_server_catalog.utils import (
     headers_minus_content_length,
 )
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import read_streaming_response
 from stac_fastapi.api.models import GeoJSONResponse
@@ -113,9 +114,9 @@ class CatalogResponseManager:
         self.s3_files_to_be_deleted = s3_files_to_be_deleted or []
 
     @lru_cache
-    def s3_manager(self):
+    def s3_manager(self, request: Request):
         """Creates a cached instance of S3Manager for this class instance (self)."""
-        return S3Manager()
+        return S3Manager(authentication.get_s3_credentials(request))
 
     async def manage_responses(
         self,
@@ -140,7 +141,7 @@ class CatalogResponseManager:
             # Read the body
             response_content = await read_streaming_response(streaming_response)
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
-            await asyncio.to_thread(self.s3_manager().clear_catalog_bucket, response_content)
+            await asyncio.to_thread(self.s3_manager(request).clear_catalog_bucket, response_content)
 
             # GET: '/catalog/queryables' when no collections in the catalog
             if (
@@ -188,7 +189,7 @@ class CatalogResponseManager:
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             response = await self.manage_put_post_response(request, streaming_response)
         elif request.method == "DELETE" and self.request_ids["owner_id"]:
-            response = await self.manage_delete_response(streaming_response, self.request_ids["owner_id"])
+            response = await self.manage_delete_response(request, streaming_response, self.request_ids["owner_id"])
 
         return response
 
@@ -276,7 +277,11 @@ class CatalogResponseManager:
         content = await read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
-            content, code = await asyncio.to_thread(self.s3_manager().generate_presigned_url, content, request.url.path)
+            content, code = await asyncio.to_thread(
+                self.s3_manager(request).generate_presigned_url,
+                content,
+                request.url.path,
+            )
             if code == HTTP_302_FOUND:
                 return RedirectResponse(url=content, status_code=code)
             return JSONResponse(content, code, headers_minus_content_length(response))
@@ -438,7 +443,7 @@ class CatalogResponseManager:
                 f"{CATALOG_COLLECTIONS}/{user}_{self.request_ids['collection_ids'][0]}/items",
             ):
                 response_content = mask_internal_default_geometry_and_bbox(response_content)
-            await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
+            await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
             raise HTTPException(
@@ -450,7 +455,7 @@ class CatalogResponseManager:
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
 
-    async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
+    async def manage_delete_response(self, request: Request, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
 
         Args:
@@ -464,6 +469,6 @@ class CatalogResponseManager:
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well
-        await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
+        await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
         self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))

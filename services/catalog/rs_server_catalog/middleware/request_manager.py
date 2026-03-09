@@ -47,6 +47,7 @@ from rs_server_catalog.utils import (
     get_token_for_pagination,
 )
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
 from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient
@@ -224,9 +225,9 @@ class CatalogRequestManager:
         self.s3_files_to_be_deleted: list = []
 
     @lru_cache
-    def s3_manager(self):
+    def s3_manager(self, request: Request):
         """Creates a cached instance of S3Manager for this class instance (self)."""
-        return S3Manager()
+        return S3Manager(authentication.get_s3_credentials(request))
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
@@ -464,7 +465,7 @@ field is not permitted also."
 
                 logger.debug("Starting the update_stac_item_publication thread")
                 content, self.s3_files_to_be_deleted = await asyncio.to_thread(
-                    self.s3_manager().update_stac_item_publication,
+                    self.s3_manager(request).update_stac_item_publication,
                     content,
                     request,
                     self.request_ids,
