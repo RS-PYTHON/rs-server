@@ -18,18 +18,25 @@ Authentication functions implementation.
 
 import os
 from contextlib import suppress
+from threading import Lock
 from typing import Annotated, Literal
 
 import jwt
+import requests
 from cachetools import TTLCache
 from cachetools_async import cached
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
-from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
+from rs_server_common.authentication.apikey import (
+    APIKEY_AUTH_HEADER,
+    APIKEY_HEADER,
+    apikey_security,
+)
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo, S3Auth
+from rs_server_common.utils.utils2 import AuthInfo, S3Auth, read_response_error
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import HTTPConnection
 
 logger = Logging.default(__name__)
 
@@ -131,6 +138,9 @@ async def authenticate(
                 exc.args = (*exc.args[0:1], exc.detail, *exc.args[2:])
                 raise
 
+    # Lock to calculate the S3 authentication
+    request.state.s3_auth_lock = Lock()
+
     # Save information in the request state and return it
     request.state.user_login = auth_info.user_login
     request.state.auth_roles = auth_info.iam_roles
@@ -208,11 +218,46 @@ def get_s3_auth(request: Request) -> S3Auth:
     with suppress(AttributeError):
         return request.state.s3_auth
 
-    # Else we're calculating it
-    try:
-        user_login = request.state.user_login
-    except AttributeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Authorization information is missing",
-        ) from exc
+    # Else we're calculating it, in a threading lock (so several threads won't call this at the same time)
+    with request.state.s3_auth_lock:
+
+        # Check a second time, in case another thread updated the value
+        with suppress(AttributeError):
+            return request.state.s3_auth
+
+        # We create a new HTTP request to OSAM to retrieve the S3 credentials of the user.
+        # The user is already logged in, this is why he's able to call the current request.
+        # The current request contains the user credentials in its api key and/or oauth2 cookie.
+        # So we copy the api key and oauth2 cookie to the new request so the user will also be authenticated in osam.
+        osam_request = requests.Session()
+
+        # Copy the api key from the request headers
+        apikey_value = request.headers.get(APIKEY_HEADER)
+
+        # Copy the "session" cookie from the request, as in starlette/middleware/sessions.py::__call__
+        connection = HTTPConnection(request.scope)
+        if session_cookie := connection.cookies.get("session"):
+            osam_request.cookies.set("session", session_cookie)
+
+        # Send request to osam and check result
+        osam_response = osam_request.get(
+            os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
+            headers={APIKEY_HEADER: apikey_value} if apikey_value else {},
+        )
+        if not osam_response.ok:
+            raise HTTPException(
+                osam_response.status_code,
+                f"Authentication to OSAM failed: {read_response_error(osam_response)}",
+            )
+
+        # Read result from osam
+        osam_credentials = osam_response.json()
+        try:
+            request.state.s3_auth = S3Auth(
+                access_key_id=osam_credentials["access_key"],
+                secret_access_key=osam_credentials["secret_key"],
+                endpoint_url=osam_credentials["endpoint"],
+                region_name=osam_credentials["region"],
+            )
+        except KeyError:
+            raise KeyError(f"Invalid credentials returned by OSAM: {list(osam_credentials.keys())}")
