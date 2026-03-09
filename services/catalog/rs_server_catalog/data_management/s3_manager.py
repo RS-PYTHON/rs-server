@@ -32,6 +32,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Auth
 from starlette.requests import Request
 from starlette.status import (
     HTTP_302_FOUND,
@@ -48,24 +49,28 @@ logger = Logging.default(__name__)
 class S3Manager:
     """Tool class to handle all operations on S3 bucket."""
 
-    def __init__(self):
-        self.s3_handler: S3StorageHandler = self._get_s3_handler()
+    def __init__(self, s3_auth: S3Auth):
+        """
+        Constructor.
+
+        Args:
+            s3_auth: S3 authentication
+        """
+        self.s3_handler: S3StorageHandler = self._get_s3_handler(s3_auth)
         # If we are in local mode, operations on S3 bucket will be skipped
         self.is_catalog_local_mode = int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)) == 1
 
-    def _get_s3_handler(self) -> S3StorageHandler:
-        """Used to create the s3_handler to be used with s3 buckets.
+    def _get_s3_handler(self, s3_auth: S3Auth) -> S3StorageHandler:
+        """
+        Used to create the s3_handler to be used with s3 buckets.
 
+        Args:
+            s3_auth: S3 authentication
         Returns:
             S3StorageHandler: S3 handler
         """
         try:
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
+            s3_handler = S3StorageHandler(s3_auth)
         except KeyError:
             logger.warning("Failed to find s3 credentials when trying to create the s3 handler")
             return None

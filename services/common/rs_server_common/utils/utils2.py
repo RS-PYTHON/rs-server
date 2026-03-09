@@ -31,6 +31,23 @@ from filelock import FileLock
 
 
 @dataclass
+class S3Auth:
+    """S3 object storage authentication."""
+
+    # Access key ID
+    access_key_id: str
+
+    # Secret access key
+    secret_access_key: str
+
+    # Endpoint URL
+    endpoint_url: str
+
+    # Region name
+    region_name: str
+
+
+@dataclass
 class AuthInfo:
     """User authentication information in KeyCloak."""
 

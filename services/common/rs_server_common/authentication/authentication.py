@@ -17,6 +17,7 @@ Authentication functions implementation.
 """
 
 import os
+from contextlib import suppress
 from typing import Annotated, Literal
 
 import jwt
@@ -27,7 +28,7 @@ from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_common.utils.utils2 import AuthInfo, S3Auth
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = Logging.default(__name__)
@@ -186,3 +187,32 @@ def auth_validation(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Missing authorization role {requested_role!r} for user {user_login!r} with roles: {auth_roles}",
         )
+
+
+def get_s3_auth(request: Request) -> S3Auth:
+    """
+    Return the S3 object storage authentication for the logged user.
+    This authentication is returned by the OSAM service.
+    """
+
+    # In local mode, return the local s3 storage authentication
+    if settings.LOCAL_MODE:
+        return S3Auth(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
+
+    # Try to return the S3 auth already calculated for this request (and thus for this logged user)
+    with suppress(AttributeError):
+        return request.state.s3_auth
+
+    # Else we're calculating it
+    try:
+        user_login = request.state.user_login
+    except AttributeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authorization information is missing",
+        ) from exc
