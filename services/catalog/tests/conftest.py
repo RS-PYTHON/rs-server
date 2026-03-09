@@ -288,7 +288,7 @@ def a_correct_feature_fixture() -> dict:
                 "roles": ["data"],
             },
         },
-        "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
+        "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
         "geometry": {
             "type": "Polygon",
             "coordinates": [

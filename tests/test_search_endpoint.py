@@ -2989,3 +2989,58 @@ def test_serialize_adgs_asset_missing_external_ids():
         adgs_utils.serialize_adgs_asset(feature_collection, [])
 
     assert excinfo.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+
+def test_build_summaries_cadip_valid(monkeypatch):
+    """Test mapping of Satellite values to platform for summaries in Cadip."""
+    query = {"Satellite": ["S1A", "S1C"]}
+
+    monkeypatch.setattr(
+        "rs_server_common.utils.utils.map_stac_platform",
+        lambda: {
+            "satellites": [
+                {"sentinel-1a": {"code": "S1A"}},
+                {"sentinel-1c": {"code": "S1C"}},
+            ],
+        },
+    )
+
+    result = stac_api_common.build_summaries("cadip", query)
+    assert result == {"platform": ["sentinel-1a", "sentinel-1c"]}
+
+
+def test_build_summaries_auxip_valid():
+    """Test mapping of productType values to legacy type for summaries in Auxip."""
+
+    query = {"productType": ["SR_2_CP00AX", "SR_2_CP06AX", "SR_2_CP12AX", "SR_2_CP18AX"]}
+
+    result = stac_api_common.build_summaries("auxip", query)
+    assert result == {"product:type": ["S00__ADF_MSLPC"]}
+
+
+def test_build_summaries_auxip_no_summaries():
+    """Test mapping of productType values to legacy type for summaries in Auxip."""
+
+    query = {"productType": ["AUX_PP2"]}
+
+    result = stac_api_common.build_summaries("auxip", query)
+    assert result is None
+
+
+def test_build_summaries_prip_valid(monkeypatch):
+    """Test mapping of productType values to legacy type for summaries in PRIP."""
+
+    query = {"productType": ["EW_SLC__1S", "IW_SLC__1S"]}
+
+    monkeypatch.setattr(
+        "rs_server_common.utils.utils.find_product_type",
+        lambda p: {"productType": f"{p}"},
+    )
+
+    result = stac_api_common.build_summaries("prip", query)
+    assert result == {
+        "product:type": [
+            "S01SEWSLC",
+            "S01SIWSLC",
+        ],
+    }

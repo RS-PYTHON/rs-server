@@ -30,6 +30,9 @@ from rs_server_catalog.authentication_catalog import (
     get_authorisation,
 )
 from rs_server_catalog.data_management import timestamps_extension
+from rs_server_catalog.data_management.geometry_manager import (
+    validate_geometry_and_enforce_bbox,
+)
 from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
@@ -57,6 +60,14 @@ from starlette.status import (
 )
 
 logger = Logging.default(__name__)
+
+
+def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[str, Any]:
+    """Inject internal default geometry/bbox when both are null for pgstac persistence compatibility."""
+    if content.get("geometry") is None and content.get("bbox") is None:
+        content["geometry"] = copy.deepcopy(DEFAULT_GEOM)
+        content["bbox"] = copy.deepcopy(DEFAULT_BBOX)
+    return content
 
 
 def iter_external_id_parts(raw: Any) -> list[str]:
@@ -445,6 +456,12 @@ field is not permitted also."
 
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
+
+                # Geometry checks and bbox enforcement are done before any S3 side effect.
+                content = validate_geometry_and_enforce_bbox(content)
+                # Keep ESA behavior (accept null geometry+bbox) while ensuring pgstac persistence compatibility.
+                content = enforce_pgstac_defaults_for_null_geometry(content)
+
                 logger.debug("Starting the update_stac_item_publication thread")
                 content, self.s3_files_to_be_deleted = await asyncio.to_thread(
                     self.s3_manager().update_stac_item_publication,
@@ -473,11 +490,6 @@ field is not permitted also."
                             original_published=published,
                             original_expires=expires,
                         )
-                    # If item doesn't contain a geometry/bbox, just fill with a default one.
-                    if not content.get("geometry", None):
-                        content["geometry"] = DEFAULT_GEOM
-                    if not content.get("bbox", None):
-                        content["bbox"] = DEFAULT_BBOX
                 if hasattr(content, "status_code"):
                     return content
 
@@ -707,7 +719,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
     async def manage_patch_request(self, request: Request):
         """
         Pre-processing of a PATCH request to the Catalog.
-        Does authorization checks and updates the "updated" field of the item to patch.
+        Does authorization checks, enforces geometry/bbox consistency when patched,
+        and updates the "updated" field.
 
         Args:
             request (Request): The request from the Client
@@ -721,8 +734,34 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
             check_user_authorization(self.request_ids)
 
-            # Update "updated" timestamp (different field if it is an item or a collection)
             is_item = "/items/" in request.scope["path"]
+            if is_item and ("geometry" in content or "bbox" in content):
+                # Load current item because PATCH payload can contain only partial geometry/bbox fields.
+                item = await self._get_item_from_collection(request)
+                if not item:
+                    raise HTTPException(
+                        status_code=HTTP_400_BAD_REQUEST,
+                        detail=f"Item {self.request_ids['item_id']} not found.",
+                    )
+
+                # Merge patched geometry/bbox over current item, then validate the result.
+                merged_content = copy.deepcopy(item)
+                if "geometry" in content:
+                    merged_content["geometry"] = content["geometry"]
+                    # Force bbox recomputation/removal according to the new geometry.
+                    if "bbox" not in content:
+                        merged_content["bbox"] = None
+                if "bbox" in content:
+                    merged_content["bbox"] = content["bbox"]
+
+                merged_content = validate_geometry_and_enforce_bbox(merged_content)
+                # Keep ESA behavior for null geometry+bbox while making PATCH payload acceptable for pgstac.
+                merged_content = enforce_pgstac_defaults_for_null_geometry(merged_content)
+                # Propagate enforced geometry/bbox back to patch body so stored item stays consistent.
+                content["geometry"] = merged_content.get("geometry", None)
+                content["bbox"] = merged_content.get("bbox", None)
+
+            # Update "updated" timestamp (different field if it is an item or a collection)
             content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=is_item)
 
             request = self._override_request_body(request, content)
