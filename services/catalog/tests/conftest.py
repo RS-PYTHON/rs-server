@@ -24,6 +24,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHand
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
+from rs_server_common.utils.utils2 import S3Credentials
 
 from tests.helpers import clear_aws_credentials, export_aws_credentials
 
@@ -133,18 +134,17 @@ def _init_buckets():
     # Create moto server and temp / catalog bucket
     moto_endpoint = "http://localhost:8077"
     export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
     # Enable bucket transfer
     os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
     server = ThreadedMotoServer(port=8077)
     server.start()
 
+    # NOTE: this seems uncompatible with the pytest-responses package
     requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+
     s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
+        S3Credentials(access_key_id=None, secret_access_key=None, endpoint_url=moto_endpoint, region_name=""),
     )
 
     for bucket in TEMP_BUCKET, CATALOG_BUCKET:

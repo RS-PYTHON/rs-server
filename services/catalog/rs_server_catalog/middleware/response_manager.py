@@ -115,7 +115,10 @@ class CatalogResponseManager:
 
     @lru_cache
     def s3_manager(self, request: Request):
-        """Creates a cached instance of S3Manager for this class instance (self)."""
+        """
+        Creates a cached instance of S3Manager for this class instance (self).
+        Use S3 object storage credentials of the logged user.
+        """
         return S3Manager(authentication.get_s3_credentials(request))
 
     async def manage_responses(

@@ -25,6 +25,7 @@ from typing import Any, Literal
 
 import pytest
 import requests
+import responses
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.app import app, must_be_authenticated
 from rs_server_common.utils.logging import Logging
@@ -906,6 +907,7 @@ async def test_authorization_download(
         assert response.status_code == HTTP_404_NOT_FOUND  # 404 in all cases
 
 
+@responses.activate
 @AUTH_PARAM
 @get_test_cases("POST/DELETE one item", AuthorizationInfo("toto", "S1_L1", "write"))
 async def test_authorization_post_and_delete_one_item(
@@ -932,6 +934,18 @@ async def test_authorization_post_and_delete_one_item(
 
         # Upload dummy object before each post and delete
         _init_bucket_for_auth_download["upload_object"]()
+
+        # # OSAM should return these obs credentials for the pytest user
+        # responses.get(
+        #     url=os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
+        #     status=HTTP_200_OK,
+        #     json={
+        #         "access_key": os.environ["S3_ACCESSKEY"],
+        #         "secret_key": os.environ["S3_SECRETKEY"],
+        #         "endpoint": os.environ["S3_ENDPOINT"],
+        #         "region": os.environ["S3_REGION"],
+        #     },
+        # )
 
         # Create the item
         post_response = client.post(

@@ -25,6 +25,7 @@ import pytest
 import requests
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.utils.utils2 import S3Credentials
 from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
@@ -521,17 +522,13 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'"
         """Test failure in transferring files between buckets."""
         moto_endpoint = "http://localhost:8088"
         export_aws_credentials()
-        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
         server = ThreadedMotoServer(port=8088)
         server.start()
         try:
             requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             s3_handler = S3StorageHandler(
-                secrets["accesskey"],
-                secrets["secretkey"],
-                secrets["s3endpoint"],
-                secrets["region"],
+                S3Credentials(access_key_id=None, secret_access_key=None, endpoint_url=moto_endpoint, region_name=""),
             )
 
             s3_handler.s3_client.create_bucket(Bucket=TEMP_BUCKET)

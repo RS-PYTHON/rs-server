@@ -206,7 +206,7 @@ def get_s3_credentials(request: Request) -> S3Credentials:
     These credentials returned by the OSAM service.
     """
 
-    # In local mode, return the local s3 storage authentication
+    # In local mode, return the local s3 storage credentials
     if settings.LOCAL_MODE:
         return S3Credentials(
             os.environ["S3_ACCESSKEY"],
@@ -260,11 +260,7 @@ def get_s3_credentials(request: Request) -> S3Credentials:
                 endpoint_url=osam_credentials["endpoint"],
                 region_name=osam_credentials["region"],
             )
+            return request.state.s3_credentials
         except KeyError:
             # WARNING: print only the s3 credential keys in this error message, not the values !
             raise KeyError(f"Invalid credentials returned by OSAM: {list(osam_credentials.keys())}")
-
-
-async def aget_s3_credentials(request: Request) -> S3Credentials:
-    """Async version of get_s3_credentials. Call sync function in a separate thread."""
-    return await asyncio.to_thread(get_s3_credentials, request)

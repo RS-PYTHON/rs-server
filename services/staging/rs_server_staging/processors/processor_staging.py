@@ -543,7 +543,7 @@ class Staging(
             self.logger.debug("Trying to remove file from bucket, but no asset info defined.")
             return
         try:
-            # Use S3 object storage authentication for the logged user
+            # Use S3 object storage credentials of the logged user
             s3_handler = S3StorageHandler(authentication.get_s3_credentials(self.request))
 
             for s3_obj in self.assets_info:
@@ -644,6 +644,7 @@ class Staging(
                 initial_batch_tasks = {
                     client.submit(
                         streaming_task,
+                        self.request,
                         next(data_iter),
                         None,
                         None,
@@ -660,6 +661,7 @@ class Staging(
                 initial_batch_tasks = {
                     client.submit(
                         streaming_task,
+                        self.request,
                         next(data_iter),
                         refresh_token.config,
                         access_token,
@@ -693,6 +695,7 @@ class Staging(
                         tasks.add(
                             client.submit(
                                 streaming_task,
+                                self.request,
                                 new_task,
                                 None,
                                 None,
@@ -707,6 +710,7 @@ class Staging(
                         tasks.add(
                             client.submit(
                                 streaming_task,
+                                self.request,
                                 new_task,
                                 refresh_token.config,
                                 access_token,

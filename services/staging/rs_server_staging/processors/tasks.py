@@ -18,6 +18,8 @@ import logging
 import os
 from urllib.parse import urlparse
 
+from requests import Request
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication_to_external import (
     S3ExternalAuthenticationConfig,
     ServiceNotFound,
@@ -44,6 +46,7 @@ logger = Logging.default(__name__)
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
+    request: Request,
     asset_info: AssetInfo,
     config: StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig,
     auth: str,
@@ -90,13 +93,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
     attempt = 0
     while attempt < max_retries:
         try:
+            # Use S3 object storage credentials of the logged user
             logger_dask.debug(f"{s3_file}: Creating the s3_handler")
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
+            s3_handler = S3StorageHandler(authentication.get_s3_credentials(request))
             if "/NOMINAL" in asset_info.product_url:
                 s3_handler.s3_streaming_from_ftp(product_url, bucket, s3_file)
             elif not auth:
