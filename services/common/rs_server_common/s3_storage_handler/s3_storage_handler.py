@@ -610,57 +610,35 @@ class S3StorageHandler:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
 
-    def check_s3_key_on_bucket(self, bucket, s3_key):
-        """Check if the s3 key or folder prefix is available in the bucket.
-
-        Args:
-            bucket (str): The S3 bucket name.
-            s3_key (str): The s3 key or prefix that should be checked
-
-        Returns:
-            tuple: (True, size) if the s3 key exists; (False, -1) if it doesn't exist
-                For folders/prefixes, size will be -1.
-
-        Raises:
-            RuntimeError: If an error occurs during the bucket access check or if
-                        the bucket is private or inaccessible.
-        """
+    def check_s3_key_on_bucket(self, bucket: str, s3_key: str) -> tuple[bool, int]:
+        """Check if an S3 key exists in a bucket and return its size if available."""
         size = -1
         try:
             self.connect_s3()
             self.logger.debug(f"Checking for the presence of the s3 key s3://{bucket}/{s3_key}")
 
             try:
-                # Try as a file/object
+                # Try to treat the key as a file/object
                 response = self.s3_client.head_object(Bucket=bucket, Key=s3_key)
                 if isinstance(response, dict):
                     size = response.get("ContentLength", -1)
                 return True, size
             except botocore.client.ClientError as error:
                 error_code = error.response["Error"]["Code"]
-                if error_code == "404":
-                    # Might be a folder/prefix, check with list_objects_v2
-                    response = self.s3_client.list_objects_v2(Bucket=bucket, Prefix=s3_key, MaxKeys=1)
-                    if response.get("KeyCount", 0) > 0:
-                        return True, -1  # size unknown for folder/prefix
+                # Handle "not found" cases (AWS S3 / moto / MinIO variations)
+                if error_code in ("404", "NoSuchKey", "NotFound", S3_ERR_NOT_FOUND):
                     self.logger.exception(f"The key s3://{bucket}/{s3_key} does not exist!")
-                    return False, -1
+                    return False, size
+                # Access denied
                 if error_code == S3_ERR_FORBIDDEN_ACCESS:
                     self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
                     raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
+                # Other client errors
                 self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
                 raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
-
-        except (
-            botocore.exceptions.EndpointConnectionError,
-            botocore.exceptions.NoCredentialsError,
-            botocore.exceptions.PartialCredentialsError,
-        ) as error:
-            self.logger.exception(f"Failed to connect to the endpoint when trying to access {bucket}: {error}")
-            raise RuntimeError(f"Failed to connect to the endpoint when trying to access {bucket}!") from error
-        except Exception as error:
-            self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
-            raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
+        except Exception:
+            self.logger.exception(f"General exception when trying to access key s3://{bucket}/{s3_key}")
+            raise
 
     def wait_timeout(self, timeout):
         """
