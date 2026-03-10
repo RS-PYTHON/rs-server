@@ -22,8 +22,8 @@ import responses
 from _pytest.monkeypatch import (
     MonkeyPatch,  # see: https://github.com/pytest-dev/pytest/issues/1872#issuecomment-375108891
 )
-from rs_server_common.authentication.apikey import APIKEY_HEADER
 from moto import mock_aws
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
@@ -136,24 +136,19 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
 @contextmanager
 def _init_buckets():
     """Initialize s3 moto server and create buckets"""
-
-    # Create moto server and temp / catalog bucket
     export_aws_credentials()
 
-
+    # Create moto server and temp / catalog bucket
     with mock_aws():
-
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
             os.environ["S3_SECRETKEY"],
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-
         for bucket in TEMP_BUCKET, CATALOG_BUCKET:
             s3_handler.s3_client.create_bucket(Bucket=bucket)
             assert not s3_handler.list_s3_files_obj(bucket, "")
-
         yield s3_handler
 
 
@@ -369,7 +364,7 @@ def expiration_delays_test_data_fixture(client):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def apply_global_osam_mock():
+def _apply_global_osam_mock():
     """
     Mocks the osam endpoint call to fetch the S3 storage configuration used in
     s3_storage_config module.
@@ -386,10 +381,10 @@ def apply_global_osam_mock():
     config_mod.fetch_csv_from_endpoint = fake_fetch
 
 
-@pytest.fixture(scope="function", name="mock_osam_credentials")
-def _mock_osam_credentials(apply_global_osam_mock):
+def __mock_osam_credentials():
     """OSAM should return these obs credentials for the pytest user"""
-    response = responses.get(
+    export_aws_credentials()
+    return responses.get(
         url=os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
         status=status.HTTP_200_OK,
         json={
@@ -399,16 +394,17 @@ def _mock_osam_credentials(apply_global_osam_mock):
             "region": os.environ["S3_REGION"],
         },
     )
-    yield response
 
-    # At the end of the test, check that each call to the osam server
-    # has been made using either an apikey or oauth2 cookie
-    for call in response.calls:
-        assert (APIKEY_HEADER in call.request.headers) or ("session" in call.request._cookies)
+
+@pytest.fixture(scope="function", name="mock_osam_credentials", autouse=True)
+def mock_osam_credentials_fixture(_apply_global_osam_mock):
+    """Fixture to mock OSAM credentials, run automatically before each pytest."""
+    yield __mock_osam_credentials()
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_database(
+    _apply_global_osam_mock,
     client,
     toto_s1_l1,
     toto_s2_l3,
@@ -438,16 +434,7 @@ def setup_database(
         feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
         user id titi.
     """
-
-    from rs_server_common.authentication import authentication
-
-    old_get_s3_credentials = authentication.get_s3_credentials
-    authentication.get_s3_credentials = lambda *_: S3Credentials(
-        os.environ["S3_ACCESSKEY"],
-        os.environ["S3_SECRETKEY"],
-        os.environ["S3_ENDPOINT"],
-        os.environ["S3_REGION"],
-    )
+    __mock_osam_credentials()
 
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
@@ -461,5 +448,3 @@ def setup_database(
     add_feature(client, feature_toto_s2_l3_0)
     add_feature(client, feature_titi_s2_l1_0)
     add_feature(client, feature_pyteam_s1_l1_0)
-
-    authentication.get_s3_credentials = old_get_s3_credentials

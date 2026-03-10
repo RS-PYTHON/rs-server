@@ -28,6 +28,7 @@ import requests
 import responses
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.app import app, must_be_authenticated
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
@@ -42,7 +43,6 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_CONTENT,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from .helpers import (  # pylint: disable=no-name-in-module
@@ -280,6 +280,7 @@ def get_test_cases(  # pylint: disable=too-many-branches
 async def init_authorization_test(
     mocker,
     httpx_mock: HTTPXMock,
+    mock_osam_credentials,
     client,
     test_apikey: bool,
     test_oauth2: bool,
@@ -312,7 +313,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
     )
 
     # Init mockers for test
-    await init_authentication_test(
+    yield await init_authentication_test(
         mocker,
         httpx_mock,
         client,
@@ -323,6 +324,14 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
         user_login=user_login,
         **(init_test_params or {}),
     )
+
+    # At the end of the test, check that each call to the osam server
+    # has been made using either an apikey or oauth2 cookie
+    for call in mock_osam_credentials.calls:
+        if test_apikey:
+            assert APIKEY_HEADER in call.request.headers
+        else:
+            assert "session" in call.request._cookies
 
 
 @pytest.fixture(scope="function", name="_init_bucket_for_auth_download")
@@ -518,7 +527,6 @@ async def test_authorization_get_collections(
 @get_test_cases("GET one collection", AuthorizationInfo("toto", "S1_L1", "read"))
 async def test_authorization_get_one_collection(
     _init_authorization_test,
-    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
@@ -823,7 +831,6 @@ async def test_authorization_search(
 async def test_authorization_download(
     _init_authorization_test,
     _init_bucket_for_auth_download,
-    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
@@ -883,13 +890,11 @@ async def test_authorization_download(
         assert response.status_code == HTTP_404_NOT_FOUND  # 404 in all cases
 
 
-@responses.activate
 @AUTH_PARAM
 @get_test_cases("POST/DELETE one item", AuthorizationInfo("toto", "S1_L1", "write"))
 async def test_authorization_post_and_delete_one_item(
     _init_authorization_test,
     _init_bucket_for_auth_download,
-    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
@@ -956,7 +961,6 @@ async def test_authorization_post_and_delete_one_item(
 @get_test_cases("PUT one item", AuthorizationInfo("toto", "S1_L1", "write"))
 async def test_authorization_put_one_item(
     _init_authorization_test,
-    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
