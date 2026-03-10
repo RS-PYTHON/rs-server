@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Endpoint tests for publishing feature in catalog without beucket transfer"""
+"""Endpoint tests for publishing feature in catalog"""
 
 # pylint: disable=unused-argument
 
 import copy
 import json
+import os
 import time
 from unittest.mock import patch
 
 import fastapi
+from services.frontend.tests.conftest import client
 
 
-class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
-    """Class used to group tests that publish a collection and move assets between buckets."""
+class TestCatalogPublishFeature:
+    """Class used to group tests that publish a feature"""
 
     def test_create_new_minimal_feature(self, client, a_minimal_collection, a_correct_feature):
         """Test that a feature is correctly published into catalogDB
@@ -381,3 +383,27 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         """
         response = client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+
+    # def test_publish_a_feature_with_correct_asset(self):
+    #     pass
+
+    # def test_publish_a_feature_with_incorrect_asset_href_path_not_found(self):
+    #     pass
+    
+    # def test_publish_a_feature_with_incorrect_asset_href_path_incorrect_item_id(self):
+    #     pass
+    
+    # def test_publish_a_feature_with_incorrect_asset_href_path_incorrect_collection_id(self):
+    #     pass
+    
+    # def test_publish_a_feature_with_incorrect_asset_bucket_privileges(self):
+    #     pass
+
+    # def test_modify_feature_with_incorrect_asset_href_path_not_found(self):
+    #     pass
+
+    # def test_modify_feature_with_incorrect_asset_href_path_incorrect_item_id(self):
+    #     pass
+
+    # def test_modify_feature_with_incorrect_asset_href_path_incorrect_collection_id(self):
+    #     pass
