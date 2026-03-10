@@ -18,12 +18,10 @@
 
 import copy
 import json
-import os
 import time
 from unittest.mock import patch
 
 import fastapi
-from services.frontend.tests.conftest import client
 
 
 class TestCatalogPublishFeature:
@@ -389,13 +387,13 @@ class TestCatalogPublishFeature:
 
     # def test_publish_a_feature_with_incorrect_asset_href_path_not_found(self):
     #     pass
-    
+
     # def test_publish_a_feature_with_incorrect_asset_href_path_incorrect_item_id(self):
     #     pass
-    
+
     # def test_publish_a_feature_with_incorrect_asset_href_path_incorrect_collection_id(self):
     #     pass
-    
+
     # def test_publish_a_feature_with_incorrect_asset_bucket_privileges(self):
     #     pass
 
