@@ -296,6 +296,148 @@ class TestGetS3Handler:
         assert "Failed to create the s3 handler" in str(logged_message)
         mock_s3_handler.assert_called_once()
 
+    def test_check_if_item_can_be_published_success(self, mocker):
+        """
+        Test that an item with multiple assets and valid S3 keys can be published successfully.
+
+        This test mocks the `check_s3_key` method of S3Manager to simulate that all assets
+        exist in S3, and ensures that `check_if_item_can_be_published` returns True.
+
+        - Sets `is_catalog_local_mode` to False to force real S3 checks.
+        - Provides a content dictionary with two assets.
+        - Mocks `check_s3_key` to return (True, size) for each asset.
+        """
+        # Mock a content with 2 assets and valid S3 paths
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {
+                "asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"},
+                "asset2": {"href": "s3://rspython-ops-catalog-all-production/file2"},
+            },
+        }
+
+        s3_manager = S3Manager()
+        s3_manager.is_catalog_local_mode = False
+        # Mock the check_s3_key method to return (True, size) for both assets
+        mocker.patch.object(
+            s3_manager,
+            "check_s3_key",
+            side_effect=[(True, 1), (True, 2)],
+        )
+        # Make sure that item can be published successfully
+        assert s3_manager.check_if_item_can_be_published(content) is True
+
+    def test_check_if_item_can_be_published_href_failure(self):
+        """
+        Test that an item with assets having invalid or empty S3 hrefs cannot be published.
+
+        - Sets `is_catalog_local_mode` to False to enforce S3 checks.
+        - Provides a content dictionary where all asset 'href' fields are empty.
+        - Ensures that `check_if_item_can_be_published` returns False,
+        indicating the item cannot be published.
+        """
+        # Mock a content with 2 assets with invalid hrefs
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {
+                "asset1": {"href": ""},
+                "asset2": {"href": ""},
+            },
+        }
+
+        s3_manager = S3Manager()
+        s3_manager.is_catalog_local_mode = False
+        # Make sure that item can't be published successfully
+        assert s3_manager.check_if_item_can_be_published(content) is False
+
+    def test_check_if_item_can_be_published_bucket_failure(self):
+        """
+        Test that an item with assets stored in disallowed S3 buckets cannot be published.
+
+        - Sets `is_catalog_local_mode` to False to enforce S3 bucket validation.
+        - Provides a content dictionary where all asset 'href' fields point to non-allowed buckets.
+        - Ensures that `check_if_item_can_be_published` returns False,
+        indicating the item cannot be published due to invalid bucket paths.
+        """
+        # Mock a content with 2 assets with not allowed href paths
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {
+                "asset1": {"href": "s3://not-allowed-bucket/file1"},
+                "asset2": {"href": "s3://not-allowed-bucket/file2"},
+            },
+        }
+
+        s3_manager = S3Manager()
+        s3_manager.is_catalog_local_mode = False
+        # Make sure that item can't be published
+        assert s3_manager.check_if_item_can_be_published(content) is False
+
+    def test_check_if_item_can_be_published_item_not_found_on_bucket(self, mocker):
+        """
+        Test that an item cannot be published if at least one asset is not found on S3.
+
+        - Sets `is_catalog_local_mode` to False to enforce S3 checks.
+        - Provides a content dictionary with multiple assets.
+        - Mocks `check_s3_key` so that one asset is missing (exists=False) and the other exists.
+        - Ensures that `check_if_item_can_be_published` returns False,
+        reflecting that the item cannot be published if any asset is missing on the bucket.
+        """
+        # Mock a content with 2 assets and valid S3 paths
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {
+                "asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"},
+                "asset2": {"href": "s3://rspython-ops-catalog-all-production/file2"},
+            },
+        }
+
+        s3_manager = S3Manager()
+        s3_manager.is_catalog_local_mode = False
+        # Mock the check_s3_key method to return False for one asset, meaning not found on bucket.
+        mocker.patch.object(
+            s3_manager,
+            "check_s3_key",
+            side_effect=[(False, -1), (True, 2)],
+        )
+        # Make sure that item can't be published
+        assert s3_manager.check_if_item_can_be_published(content) is False
+
+    def test_check_if_item_can_be_published_exception(self, mocker):
+        """
+        Test that an item cannot be published if `check_s3_key` raises an HTTP exception.
+
+        - Sets `is_catalog_local_mode` to False to enforce S3 checks.
+        - Provides a content dictionary with multiple assets.
+        - Mocks `check_s3_key` to raise an HTTPException for all assets.
+        - Ensures that `check_if_item_can_be_published` returns False,
+        reflecting that the item cannot be published when S3 checks fail due to exceptions.
+        """
+        # Mock a content with 2 assets and valid S3 paths
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {
+                "asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"},
+                "asset2": {"href": "s3://rspython-ops-catalog-all-production/file2"},
+            },
+        }
+
+        s3_manager = S3Manager()
+        s3_manager.is_catalog_local_mode = False
+        # Mock the check_s3_key method to return a http exception.
+        mocker.patch.object(
+            s3_manager,
+            "check_s3_key",
+            side_effect=HTTPException(status_code=500, detail="Unexpected error"),
+        )
+        # Make sure that item can't be published
+        assert s3_manager.check_if_item_can_be_published(content) is False
+
 
 def test_middleware_order(client):
     """Check that the FastAPI application middlewares were inserted in the right order."""
