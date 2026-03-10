@@ -205,16 +205,6 @@ def get_s3_credentials(request: Request) -> S3Credentials:
     Return the S3 object storage credentials for the logged user.
     These credentials returned by the OSAM service.
     """
-
-    # In local mode, return the local s3 storage credentials
-    if settings.LOCAL_MODE:
-        return S3Credentials(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
-        )
-
     # Try to return the S3 credentials already calculated for this request (and thus for this logged user)
     with suppress(AttributeError):
         return request.state.s3_credentials

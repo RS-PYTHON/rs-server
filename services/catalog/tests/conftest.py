@@ -19,12 +19,15 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 import requests
+import responses
 from moto.server import ThreadedMotoServer
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
 from rs_server_common.utils.utils2 import S3Credentials
+from starlette import status
 
 from tests.helpers import clear_aws_credentials, export_aws_credentials
 
@@ -403,6 +406,27 @@ def apply_global_osam_mock():
     config_mod.fetch_csv_from_endpoint = fake_fetch
 
 
+@pytest.fixture(scope="function", name="mock_osam_credentials")
+def _mock_osam_credentials(apply_global_osam_mock):
+    """OSAM should return these obs credentials for the pytest user"""
+    response = responses.get(
+        url=os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
+        status=status.HTTP_200_OK,
+        json={
+            "access_key": os.environ["S3_ACCESSKEY"],
+            "secret_key": os.environ["S3_SECRETKEY"],
+            "endpoint": os.environ["S3_ENDPOINT"],
+            "region": os.environ["S3_REGION"],
+        },
+    )
+    yield response
+
+    # At the end of the test, check that each call to the osam server
+    # has been made using either an apikey or oauth2 cookie
+    for call in response.calls:
+        assert (APIKEY_HEADER in call.request.headers) or ("session" in call.request._cookies)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_database(
     client,
@@ -435,6 +459,16 @@ def setup_database(
         user id titi.
     """
 
+    from rs_server_common.authentication import authentication
+
+    old_get_s3_credentials = authentication.get_s3_credentials
+    authentication.get_s3_credentials = lambda *_: S3Credentials(
+        os.environ["S3_ACCESSKEY"],
+        os.environ["S3_SECRETKEY"],
+        os.environ["S3_ENDPOINT"],
+        os.environ["S3_REGION"],
+    )
+
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s1_l1)
@@ -447,3 +481,5 @@ def setup_database(
     add_feature(client, feature_toto_s2_l3_0)
     add_feature(client, feature_titi_s2_l1_0)
     add_feature(client, feature_pyteam_s1_l1_0)
+
+    authentication.get_s3_credentials = old_get_s3_credentials

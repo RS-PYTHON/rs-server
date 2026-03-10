@@ -370,7 +370,7 @@ def stop_bucket(init_buckets_module, client, feature_toto_s1_l1_0):
         f"/catalog/collections/toto:S1_L1/items/{feature_toto_s1_l1_0.id_}/download/may24C355000e4102500n.tif",
     )
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
+    assert response.json() == {"code": "KeyError", "description": "'S3_ACCESSKEY'"}
 
 
 #########
@@ -544,6 +544,7 @@ async def test_authorization_get_collections(
 @get_test_cases("GET one collection", AuthorizationInfo("toto", "S1_L1", "read"))
 async def test_authorization_get_one_collection(
     _init_authorization_test,
+    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
@@ -848,6 +849,7 @@ async def test_authorization_search(
 async def test_authorization_download(
     _init_authorization_test,
     _init_bucket_for_auth_download,
+    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
@@ -913,6 +915,7 @@ async def test_authorization_download(
 async def test_authorization_post_and_delete_one_item(
     _init_authorization_test,
     _init_bucket_for_auth_download,
+    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],
@@ -934,18 +937,6 @@ async def test_authorization_post_and_delete_one_item(
 
         # Upload dummy object before each post and delete
         _init_bucket_for_auth_download["upload_object"]()
-
-        # # OSAM should return these obs credentials for the pytest user
-        # responses.get(
-        #     url=os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
-        #     status=HTTP_200_OK,
-        #     json={
-        #         "access_key": os.environ["S3_ACCESSKEY"],
-        #         "secret_key": os.environ["S3_SECRETKEY"],
-        #         "endpoint": os.environ["S3_ENDPOINT"],
-        #         "region": os.environ["S3_REGION"],
-        #     },
-        # )
 
         # Create the item
         post_response = client.post(
@@ -991,6 +982,7 @@ async def test_authorization_post_and_delete_one_item(
 @get_test_cases("PUT one item", AuthorizationInfo("toto", "S1_L1", "write"))
 async def test_authorization_put_one_item(
     _init_authorization_test,
+    mock_osam_credentials,
     client,
     test_apikey: bool,
     requested_collections: list[AuthorizationInfo],

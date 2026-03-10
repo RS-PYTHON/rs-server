@@ -15,6 +15,7 @@
 """Module handling all operations on S3 bucket."""
 
 import os
+import traceback
 
 import botocore
 from fastapi import HTTPException
@@ -71,11 +72,8 @@ class S3Manager:
         """
         try:
             s3_handler = S3StorageHandler(s3_credentials)
-        except KeyError:
-            logger.warning("Failed to find s3 credentials when trying to create the s3 handler")
-            return None
         except RuntimeError:
-            logger.warning("Failed to create the s3 handler")
+            logger.warning(f"Failed to create the s3 handler: {traceback.format_exc()}")
             return None
 
         return s3_handler
