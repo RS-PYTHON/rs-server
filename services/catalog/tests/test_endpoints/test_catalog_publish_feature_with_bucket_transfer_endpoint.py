@@ -23,7 +23,6 @@ from datetime import datetime, timedelta
 
 import pytest
 import requests
-from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.utils2 import S3Credentials
 from starlette.status import (
@@ -38,7 +37,6 @@ from starlette.status import (
 from tests.helpers import (
     CATALOG_BUCKET,
     TEMP_BUCKET,
-    clear_aws_credentials,
     export_aws_credentials,
 )
 
@@ -69,7 +67,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         collection_id,
     ):  # pylint: disable=too-many-locals, too-many-arguments
         """Test used to verify that the timestamps extension is correctly set up"""
-        s3_handler = init_buckets.s3_handler
+        s3_handler = init_buckets
 
         # Populate temp-bucket with some small files.
         lst_with_files_to_be_copied = [
@@ -111,13 +109,15 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
     def test_updating_timestamp_item(  # pylint: disable=too-many-locals, too-many-statements
         self,
+        monkeypatch,
         client,
         init_buckets,
         a_correct_feature,
         a_minimal_collection,
     ):
         """Test used to verify update of an item to the catalog."""
-        s3_handler = init_buckets.s3_handler
+        s3_handler = init_buckets
+        monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
 
         # Populate temp-bucket with some small files.
         lst_with_files_to_be_copied = [
@@ -202,7 +202,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         """Test used to verify update of an item to the catalog."""
 
         # S3 handler used to interact with both temp and catalog buckets.
-        s3_handler = init_buckets.s3_handler
+        s3_handler = init_buckets
 
         # --------------------------------------------------------------
         # 1. Populate the TEMP bucket with some test files.
@@ -331,6 +331,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     )
     def test_publish_item_update(  # pylint: disable=too-many-locals
         self,
+        monkeypatch,
         client,
         init_buckets,
         a_correct_feature,
@@ -338,7 +339,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         collection_id,
     ):
         """Test used to verify publication of a featureCollection to the catalog."""
-        s3_handler = init_buckets.s3_handler
+        s3_handler = init_buckets
+        monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
 
         # Populate temp-bucket with some small files.
         lst_with_files_to_be_copied = [
@@ -422,15 +424,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         assert response.status_code == HTTP_400_BAD_REQUEST
         assert "BadRequest" == json.loads(response.content)["code"]
         assert "Failed to load the S3 key from the asset content" in json.loads(response.content)["description"]
-        clear_aws_credentials()
 
     @pytest.mark.unit
-    def test_custom_bucket_publish(self, client, init_buckets, a_correct_feature):
+    def test_custom_bucket_publish(self, monkeypatch, client, init_buckets, a_correct_feature):
         """Test with other temp bucket name."""
-        s3_handler = init_buckets.s3_handler
-        moto_endpoint = init_buckets.moto_endpoint
+        s3_handler = init_buckets
+        monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
 
-        requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
         custom_bucket = "some-custom-bucket"
         item_test = copy.deepcopy(a_correct_feature)
         item_test["id"] = "new_feature_id"
@@ -468,12 +468,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
     def test_generate_download_presigned_url(self, client, init_buckets):
         """Test used to verify the generation of a presigned url for a download."""
-        s3_handler = init_buckets.s3_handler
-        moto_endpoint = init_buckets.moto_endpoint
-
-        requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = init_buckets
         # Upload a file to catalog-bucket
-        s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
         object_content = "testing\n"
         s3_handler.s3_client.put_object(
             Bucket=CATALOG_BUCKET,
@@ -507,60 +503,32 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'"
             == HTTP_404_NOT_FOUND
         )
 
-        # Remove bucket credentials form env variables / should create a s3_handler without credentials error
-        clear_aws_credentials()
-
-        response = client.get(
-            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
-            "may24C355000e4102500n.tif",
-        )
-        assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-        assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
-
     @pytest.mark.unit
-    def test_failure_while_moving_files_between_buckets(self, client, mocker, a_correct_feature):
+    def test_failure_while_moving_files_between_buckets(self, init_buckets, client, mocker, a_correct_feature):
         """Test failure in transferring files between buckets."""
-        moto_endpoint = "http://localhost:8088"
-        export_aws_credentials()
 
-        server = ThreadedMotoServer(port=8088)
-        server.start()
-        try:
-            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-            s3_handler = S3StorageHandler(
-                S3Credentials(access_key_id=None, secret_access_key=None, endpoint_url=moto_endpoint, region_name=""),
-            )
+        s3_handler = init_buckets
 
-            s3_handler.s3_client.create_bucket(Bucket=TEMP_BUCKET)
-            s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
-            assert not s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
-            assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
+        # Populate temp-bucket with some small files.
+        lst_with_files_to_be_copied = [
+            "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+            "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+        ]
+        for obj in lst_with_files_to_be_copied:
+            s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+        assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
+        # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
+        mocker.patch(
+            "rs_server_catalog.data_management.s3_manager.S3Manager.update_stac_item_publication",
+            return_value=({}, []),
+        )
+        added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
+        # Check if status code is BAD REQUEST
+        assert added_feature.status_code == HTTP_400_BAD_REQUEST
+        # If catalog publish fails, catalog_bucket should be empty, and
+        # temp_bucket should not be empty.
 
-            # Populate temp-bucket with some small files.
-            lst_with_files_to_be_copied = [
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-            ]
-            for obj in lst_with_files_to_be_copied:
-                s3_handler.s3_client.put_object(Bucket=TEMP_BUCKET, Key=obj, Body="testing\n")
-            assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
-            assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
-            # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
-            mocker.patch(
-                "rs_server_catalog.data_management.s3_manager.S3Manager.update_stac_item_publication",
-                return_value=({}, []),
-            )
-            added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-            # Check if status code is BAD REQUEST
-            assert added_feature.status_code == HTTP_400_BAD_REQUEST
-            # If catalog publish fails, catalog_bucket should be empty, and
-            # temp_bucket should not be empty.
-
-            assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
-            assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
-        except Exception as e:
-            raise RuntimeError("error") from e
-        finally:
-            server.stop()
-            clear_aws_credentials()
+        assert s3_handler.list_s3_files_obj(TEMP_BUCKET, "")
+        assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")

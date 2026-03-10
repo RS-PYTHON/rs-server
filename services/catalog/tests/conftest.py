@@ -15,13 +15,15 @@
 """Common fixture for catalog service."""
 
 import os
-from collections import namedtuple
 from contextlib import contextmanager
 
-import requests
+import pytest_responses  # pylint: disable=unused-import # noqa: F401 # used to avoid adding @responses.activate
 import responses
-from moto.server import ThreadedMotoServer
+from _pytest.monkeypatch import (
+    MonkeyPatch,  # see: https://github.com/pytest-dev/pytest/issues/1872#issuecomment-375108891
+)
 from rs_server_common.authentication.apikey import APIKEY_HEADER
+from moto import mock_aws
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
@@ -29,7 +31,7 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 from rs_server_common.utils.utils2 import S3Credentials
 from starlette import status
 
-from tests.helpers import clear_aws_credentials, export_aws_credentials
+from tests.helpers import export_aws_credentials
 
 # Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.
@@ -125,8 +127,9 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
         # Ensure the catalog is empty by deleting all collections
         response = client.get("/catalog/collections")
         if response.status_code == 200:
-            for collection in response.json().get("collections", []):
-                client.delete(f"/catalog/collections/{collection['owner']}:{collection['id']}")
+            with _init_buckets():
+                for collection in response.json().get("collections", []):
+                    client.delete(f"/catalog/collections/{collection['owner']}:{collection['id']}")
         yield client  # Does NOT trigger setup_database!
 
 
@@ -135,51 +138,28 @@ def _init_buckets():
     """Initialize s3 moto server and create buckets"""
 
     # Create moto server and temp / catalog bucket
-    moto_endpoint = "http://localhost:8077"
     export_aws_credentials()
 
-    # Enable bucket transfer
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
-    server = ThreadedMotoServer(port=8077)
-    server.start()
 
-    # NOTE: this seems uncompatible with the pytest-responses package
-    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+    with mock_aws():
 
-    s3_handler = S3StorageHandler(
-        S3Credentials(access_key_id=None, secret_access_key=None, endpoint_url=moto_endpoint, region_name=""),
-    )
+        s3_handler = S3StorageHandler(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
 
-    for bucket in TEMP_BUCKET, CATALOG_BUCKET:
-        s3_handler.s3_client.create_bucket(Bucket=bucket)
-        assert not s3_handler.list_s3_files_obj(bucket, "")
+        for bucket in TEMP_BUCKET, CATALOG_BUCKET:
+            s3_handler.s3_client.create_bucket(Bucket=bucket)
+            assert not s3_handler.list_s3_files_obj(bucket, "")
 
-    # Return info
-    try:
-        yield namedtuple("InitBucketsInfo", ["s3_handler", "moto_endpoint", "server"])(
-            s3_handler,
-            moto_endpoint,
-            server,
-        )  # type: ignore[call-arg]
-    except GeneratorExit:
-        pass
-
-    # Clear bucket at the end of the scope (scope="function" or "module")
-    server.stop()
-    clear_aws_credentials()
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+        yield s3_handler
 
 
 @pytest.fixture(scope="function", name="init_buckets")
 def _init_buckets_function():
     """Fixture to call _init_buckets with scope=function"""
-    with _init_buckets() as result:
-        yield result
-
-
-@pytest.fixture(scope="module", name="init_buckets_module")
-def _init_buckets_module():
-    """Fixture to call _init_buckets with scope=module"""
     with _init_buckets() as result:
         yield result
 
