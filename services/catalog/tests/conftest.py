@@ -18,9 +18,6 @@ import os
 from contextlib import contextmanager
 
 import pytest_responses  # pylint: disable=unused-import # noqa: F401 # used to avoid adding @responses.activate
-from _pytest.monkeypatch import (
-    MonkeyPatch,  # see: https://github.com/pytest-dev/pytest/issues/1872#issuecomment-375108891
-)
 from moto import mock_aws
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.pytest.pytest_authentication_utils import (

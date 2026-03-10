@@ -23,14 +23,12 @@ from datetime import datetime, timedelta
 
 import pytest
 import requests
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from tests.helpers import (

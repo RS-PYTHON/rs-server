@@ -19,7 +19,6 @@
 import getpass
 import itertools
 import json
-import os
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -41,7 +40,6 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_CONTENT,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from .helpers import (  # pylint: disable=no-name-in-module
