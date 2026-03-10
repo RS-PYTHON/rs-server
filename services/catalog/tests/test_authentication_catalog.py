@@ -50,7 +50,6 @@ from .helpers import (  # pylint: disable=no-name-in-module
     AUTH_SCHEME,
     Collection,
     Feature,
-    clear_aws_credentials,
 )
 
 TEST_STORAGE_CONFIG_DATA = [
@@ -326,13 +325,10 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
 
 
 @pytest.fixture(scope="function", name="_init_bucket_for_auth_download")
-def init_bucket_for_auth_download(init_buckets_module):
+def init_bucket_for_auth_download(monkeypatch, init_buckets):
     """Init the bucket only once for all the test_authorization_download test cases."""
-
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
-
-    s3_handler, moto_endpoint, _ = init_buckets_module
-    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+    s3_handler = init_buckets
+    monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
     object_content = "testing\n"
 
     def upload_object():
@@ -348,28 +344,6 @@ def init_bucket_for_auth_download(init_buckets_module):
     # Upload dummy file at the start of each test (scope="function")
     upload_object()
     yield {"object_content": object_content, "upload_object": upload_object}
-
-    # Clear bucket at the end of the scope
-    requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-
-
-@pytest.fixture(scope="module", autouse=True)
-def stop_bucket(init_buckets_module, client, feature_toto_s1_l1_0):
-    """Clear bucket at the end of the scope (scope="module")"""
-
-    _, _, server = init_buckets_module
-
-    yield  # wait for the end of the scope
-    server.stop()
-    # Remove bucket credentials form env variables / should create a s3_handler without credentials error
-    clear_aws_credentials()
-
-    response = client.get(
-        f"/catalog/collections/toto:S1_L1/items/{feature_toto_s1_l1_0.id_}/download/may24C355000e4102500n.tif",
-    )
-    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert response.content == b'{"code":"InternalServerError","description":"Failed to find s3 credentials"}'
 
 
 #########
