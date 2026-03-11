@@ -31,7 +31,7 @@ from tests.helpers import (
 )
 
 USER = "lifecycleuser"
-TEMP_BUCKET_PATH = f"s3://{CATALOG_BUCKET}/"
+CATALOG_BUCKET_PATH = f"s3://{CATALOG_BUCKET}/"
 OLD_DATE: str = datetime(2000, 1, 1).strftime(ISO_8601_FORMAT)
 
 
@@ -77,7 +77,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
                 local_item["collection"] = col_name
                 local_item["assets"] = {
                     f"{col_name}.{item_id}.asset_{i}": {
-                        "href": f"{TEMP_BUCKET_PATH}{col_name}.{item_id}.asset_{i}",
+                        "href": f"{CATALOG_BUCKET_PATH}{col_name}.{item_id}.asset_{i}",
                         "roles": ["data"],
                     }
                     for i in range(3)
@@ -88,7 +88,7 @@ async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
                 for key in local_item["assets"].values():
                     s3_handler.s3_client.put_object(
                         Bucket=CATALOG_BUCKET,
-                        Key=key["href"].removeprefix(TEMP_BUCKET_PATH),
+                        Key=key["href"].removeprefix(CATALOG_BUCKET_PATH),
                         Body="testing\n",
                     )
                 assert s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
