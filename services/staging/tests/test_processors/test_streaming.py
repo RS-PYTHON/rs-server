@@ -71,6 +71,7 @@ class TestStreaming:
 
         assert (
             streaming_task(
+                request=mocker.Mock(),
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
@@ -81,27 +82,6 @@ class TestStreaming:
         # Ensure token was accessed
 
         mock_s3_handler.s3_streaming_from_http.assert_called_once()
-
-    def test_streaming_task_incorrect_env(self, mocker, config):
-        """Test an error when creating S3 handler due to missing env variables"""
-
-        # Patch environment to remove S3_ACCESSKEY
-        mocker.patch.dict(
-            os.environ,
-            {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
-        )
-        test_asset_info = AssetInfo(
-            product_url="https://example.com/product.zip",
-            s3_file="file.zip",
-            s3_bucket="bucket",
-        )
-
-        with pytest.raises(ValueError, match="Cannot create s3 connector object."):
-            streaming_task(
-                asset_info=test_asset_info,
-                config=config,
-                auth=TokenAuth("fake_token"),
-            )
 
     def test_streaming_task_runtime_error(self, mocker, config):
         """Test a runtime error during streaming"""
@@ -126,6 +106,7 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
+                request=mocker.Mock(),
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
@@ -157,6 +138,7 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
+                request=mocker.Mock(),
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),

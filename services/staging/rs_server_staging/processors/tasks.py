@@ -125,9 +125,6 @@ def streaming_task(  # pylint: disable=R0913, R0917
             raise ValueError(
                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
             ) from e
-        except KeyError as key_exc:
-            logger_dask.exception(f"KeyError exception in streaming_task for {s3_file}: {key_exc}")
-            raise ValueError(f"Cannot create s3 connector object. Reason: {key_exc}") from key_exc
         except RuntimeError as e:
             logger_dask.exception(f"RuntimeError exception in streaming_task for {s3_file} : {e}")
             raise ValueError(

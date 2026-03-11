@@ -542,23 +542,21 @@ class Staging(
         if not self.assets_info:
             self.logger.debug("Trying to remove file from bucket, but no asset info defined.")
             return
-        try:
-            # Use S3 object storage credentials of the logged user
-            s3_handler = S3StorageHandler(authentication.get_s3_credentials(self.request))
 
-            for s3_obj in self.assets_info:
-                try:
-                    s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
-                except RuntimeError as error:
-                    self.logger.warning(
-                        "Failed to delete from the bucket key s3://%s/%s : %s",
-                        s3_obj.s3_bucket,
-                        s3_obj.s3_file,
-                        error,
-                    )
-                    continue
-        except KeyError as exc:
-            self.logger.error("Cannot connect to s3 storage, %s", exc)
+        # Use S3 object storage credentials of the logged user
+        s3_handler = S3StorageHandler(authentication.get_s3_credentials(self.request))
+
+        for s3_obj in self.assets_info:
+            try:
+                s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
+            except RuntimeError as error:
+                self.logger.warning(
+                    "Failed to delete from the bucket key s3://%s/%s : %s",
+                    s3_obj.s3_bucket,
+                    s3_obj.s3_file,
+                    error,
+                )
+                continue
 
     def wait_for_dask_completion(self, client: Client):
         """Waits for all Dask tasks to finish before proceeding."""
