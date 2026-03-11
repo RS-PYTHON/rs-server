@@ -18,7 +18,7 @@ import asyncio
 import re
 from functools import lru_cache
 from typing import Any
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
 
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (
@@ -379,6 +379,13 @@ class CatalogResponseManager:
                 auth_roles,
                 user_login,
             )
+
+            # The self link shall be EXACTLY the same as the requested URL
+            # Remove query parameters
+            item = next((i for i in content["links"] if i.get("rel") == "self"), None)
+            if item:
+                item["href"] = urlunparse(urlparse(item["href"])._replace(query=""))
+
             content["collections"] = StacManager.update_links_for_all_collections(content["collections"])
 
         # If we are in cluster mode and the user_login is not authorized

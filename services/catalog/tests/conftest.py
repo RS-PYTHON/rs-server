@@ -159,8 +159,6 @@ def _init_buckets_function():
     """Fixture to call _init_buckets with scope=function"""
     with _init_buckets() as result:
         yield result
-
-
 @pytest.fixture(scope="session", name="toto_s1_l1")
 def toto_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("toto", "S1_L1")

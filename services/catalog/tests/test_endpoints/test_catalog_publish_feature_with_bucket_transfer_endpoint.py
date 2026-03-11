@@ -23,7 +23,6 @@ from datetime import datetime, timedelta
 
 import pytest
 import requests
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.utils2 import S3Credentials
 from starlette.status import (
     HTTP_200_OK,
@@ -31,7 +30,6 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from tests.helpers import (
@@ -506,7 +504,6 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'"
     @pytest.mark.unit
     def test_failure_while_moving_files_between_buckets(self, init_buckets, client, mocker, a_correct_feature):
         """Test failure in transferring files between buckets."""
-
         s3_handler = init_buckets
 
         # Populate temp-bucket with some small files.
