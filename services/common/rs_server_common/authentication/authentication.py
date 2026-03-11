@@ -16,7 +16,6 @@
 Authentication functions implementation.
 """
 
-import asyncio
 import os
 from contextlib import suppress
 from threading import Lock
@@ -251,6 +250,6 @@ def get_s3_credentials(request: Request) -> S3Credentials:
                 region_name=osam_credentials["region"],
             )
             return request.state.s3_credentials
-        except KeyError:
+        except KeyError as exc:
             # WARNING: print only the s3 credential keys in this error message, not the values !
-            raise KeyError(f"Invalid credentials returned by OSAM: {list(osam_credentials.keys())}")
+            raise KeyError(f"Invalid credentials returned by OSAM: {list(osam_credentials.keys())}") from exc

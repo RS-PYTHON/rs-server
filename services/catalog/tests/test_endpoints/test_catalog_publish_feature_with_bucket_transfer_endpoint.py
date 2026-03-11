@@ -23,7 +23,6 @@ from datetime import datetime, timedelta
 
 import pytest
 import requests
-from rs_server_common.utils.utils2 import S3Credentials
 from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,

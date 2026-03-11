@@ -16,14 +16,11 @@
 
 import os
 from contextlib import contextmanager
+from types import ModuleType
 
 import pytest_responses  # pylint: disable=unused-import # noqa: F401 # used to avoid adding @responses.activate
 import responses
-from _pytest.monkeypatch import (
-    MonkeyPatch,  # see: https://github.com/pytest-dev/pytest/issues/1872#issuecomment-375108891
-)
 from moto import mock_aws
-from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
@@ -49,6 +46,7 @@ from importlib import reload
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from rs_server_catalog.data_management.s3_manager import S3Manager
 from rs_server_common import settings as common_settings
 
 from .helpers import (
@@ -128,8 +126,9 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
         response = client.get("/catalog/collections")
         if response.status_code == 200:
             with _init_buckets():
-                for collection in response.json().get("collections", []):
-                    client.delete(f"/catalog/collections/{collection['owner']}:{collection['id']}")
+                with _with_mock_osam_credentials():
+                    for collection in response.json().get("collections", []):
+                        client.delete(f"/catalog/collections/{collection['owner']}:{collection['id']}")
         yield client  # Does NOT trigger setup_database!
 
 
@@ -159,6 +158,22 @@ def _init_buckets_function():
     """Fixture to call _init_buckets with scope=function"""
     with _init_buckets() as result:
         yield result
+
+
+@pytest.fixture(scope="function", name="s3_manager")
+def _s3_manager():
+    """Return a S3Manager instance from the AWS credentials"""
+    export_aws_credentials()
+    yield S3Manager(
+        S3Credentials(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        ),
+    )
+
+
 @pytest.fixture(scope="session", name="toto_s1_l1")
 def toto_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("toto", "S1_L1")
@@ -346,15 +361,12 @@ def temporal_filters_test_data_fixture(client):
     """Fixture to load test data for advanced temporal filters tests from file into catalog,
     and to delete it afterwards.
     """
-
     # We need to mock the osam credentials before and after the yield, else it's not working,
     # I don't know why, maybe because it interferes with the mock_osam_credentials fixture.
     with _with_mock_osam_credentials():
         test_data_file = "temporal_filters_test_data.json"
         owners_collections_list = add_features_from_file(client, test_data_file)
-
     yield
-
     with _with_mock_osam_credentials():
         delete_collections(client, owners_collections_list)
 
@@ -364,10 +376,13 @@ def expiration_delays_test_data_fixture(client):
     """Fixture to load test data for checking if retention times are correctly retrieved from
     configuration.
     """
-    test_data_file = "expiration_delays_test_data.json"
-    owners_collections_list = add_features_from_file(client, test_data_file)
+    # Here also we need to mock the osam credentials before and after the yield
+    with _with_mock_osam_credentials():
+        test_data_file = "expiration_delays_test_data.json"
+        owners_collections_list = add_features_from_file(client, test_data_file)
     yield
-    delete_collections(client, owners_collections_list)
+    with _with_mock_osam_credentials():
+        delete_collections(client, owners_collections_list)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -388,12 +403,12 @@ def _apply_global_osam_mock():
     config_mod.fetch_csv_from_endpoint = fake_fetch
 
 
-def _mock_osam_credentials(rsps):
+def _mock_osam_credentials(rsps: ModuleType | responses.RequestsMock):
     """
     OSAM should return these obs credentials for the pytest user.
 
-    This mock is kind of a nightmare to configure: to work everywhere, depending on the cases,
-    this code should be run with 'rsps' being either:
+    This mock is complex to configure: to work everywhere, depending on the cases,
+    this code should be run with the 'rsps' arg being either:
 
       * The "responses" module. But for this to work from fixtures, we also need the "import pytest_responses"
       * Or a context manager initialized with: with "responses.RequestsMock() as rsps". Note that this one
@@ -415,7 +430,7 @@ def _mock_osam_credentials(rsps):
 @contextmanager
 def _with_mock_osam_credentials():
     """Call _mock_osam_credentials from a context manager"""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         yield _mock_osam_credentials(rsps)
 
 

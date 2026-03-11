@@ -26,6 +26,7 @@ from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
 )
 from rs_server_common.utils.pytest import pytest_common_tests
+from rs_server_common.utils.utils2 import S3Credentials
 
 
 class TestVerifyExistingItemFromCatalog:
@@ -152,10 +153,10 @@ class TestDeleteS3Files:
     """Class to group the test cases for delete_s3_files function"""
 
     @pytest.mark.asyncio
-    async def test_delete_s3_files_empty_list(self, mocker):
+    async def test_delete_s3_files_empty_list(self, mocker, s3_manager):
         """Test the behavior when the list of S3 files to be deleted is empty."""
         mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
-        result = await S3Manager().delete_s3_files([])
+        result = await s3_manager.delete_s3_files([])
 
         assert result is True
         mock_logger.info.assert_called_once_with("No files to be deleted from bucket")
@@ -166,7 +167,7 @@ class TestDeleteS3Files:
         mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
         mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler", return_value=None)
 
-        result = await S3Manager().delete_s3_files(["s3://bucket_name/path/to/file"])
+        result = await S3Manager(S3Credentials("", "", "", "")).delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is False
         mock_logger.error.assert_called_once_with("Failed to create the s3 handler when trying to delete the s3 files")
@@ -181,7 +182,7 @@ class TestDeleteS3Files:
         mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock()
         mock_get_s3_handler.return_value = mock_s3_handler
 
-        result = await S3Manager().delete_s3_files(["s3://bucket_name/path/to/file"])
+        result = await S3Manager(S3Credentials("", "", "", "")).delete_s3_files(["s3://bucket_name/path/to/file"])
 
         assert result is True
         mock_s3_handler.adelete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
@@ -197,7 +198,7 @@ class TestDeleteS3Files:
         mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Deletion failed"))
         mock_get_s3_handler.return_value = mock_s3_handler
         ftbd = "s3://bucket_name/path/to/file"
-        result = await S3Manager().delete_s3_files([ftbd])
+        result = await S3Manager(S3Credentials("", "", "", "")).delete_s3_files([ftbd])
 
         assert result is True  # Function should continue even if deletion fails
         mock_logger.exception.assert_called_once_with(
@@ -205,21 +206,20 @@ class TestDeleteS3Files:
         )
 
     @pytest.mark.asyncio
-    async def test_delete_s3_files_adelete_raises_runtime_error(self, mocker):
+    async def test_delete_s3_files_adelete_raises_runtime_error(self, mocker, s3_manager):
         """Cover the branch where adelete_keys_from_s3 raises RuntimeError."""
 
         # Prepare S3Manager with a mock s3_handler
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Test failure"))
 
-        manager = S3Manager()
-        manager.s3_handler = mock_s3_handler
+        s3_manager.s3_handler = mock_s3_handler
 
         files_to_delete = ["s3://bucket/file1.txt"]
 
         mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
 
-        result = await manager.delete_s3_files(files_to_delete)
+        result = await s3_manager.delete_s3_files(files_to_delete)
 
         assert result is True
         mock_logger.exception.assert_called_once()
@@ -309,35 +309,25 @@ class TestGetS3Handler:
         )
 
         mock_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3StorageHandler")
-        s3_handler = S3Manager().s3_handler
+        s3_handler = S3Manager(
+            S3Credentials(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            ),
+        ).s3_handler
 
         # Assertions
         assert s3_handler is not None
         mock_s3_handler.assert_called_once_with(
-            "fake_access_key",
-            "fake_secret_key",
-            "https://fake_endpoint",
-            "fake_region",
+            S3Credentials(
+                "fake_access_key",
+                "fake_secret_key",
+                "https://fake_endpoint",
+                "fake_region",
+            ),
         )
-
-    def test_s3_handler_missing_env_variables(self, mocker):
-        """Test that missing environment variables return None and print an error."""
-
-        # Spy calls to logger.warning(...)
-        spy_log_warning = mocker.spy(logger, "warning")
-
-        # Clear environment variables
-        mocker.patch.dict(os.environ, {}, clear=True)
-        # Call the function and capture output
-        s3_handler = S3Manager().s3_handler
-
-        # Check logger called
-        spy_log_warning.assert_called_once()
-        logged_message = spy_log_warning.call_args[0][0]
-
-        # Assertions
-        assert s3_handler is None
-        assert "Failed to find s3 credentials when trying to create the s3 handler" in str(logged_message)
 
     def test_s3_handler_creation_runtime_error(self, mocker):
         """Test that a RuntimeError during s3_handler creation returns None and prints an error."""
@@ -362,7 +352,14 @@ class TestGetS3Handler:
         )
 
         # Call the function and capture output
-        s3_handler = S3Manager().s3_handler
+        s3_handler = S3Manager(
+            S3Credentials(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            ),
+        ).s3_handler
 
         # Check logger called
         spy_log_warning.assert_called_once()

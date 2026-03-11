@@ -24,7 +24,6 @@ from typing import Any, Literal
 
 import pytest
 import requests
-import responses
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.app import app, must_be_authenticated
 from rs_server_common.authentication.apikey import APIKEY_HEADER
@@ -330,7 +329,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
         if test_apikey:
             assert APIKEY_HEADER in call.request.headers
         else:
-            assert "session" in call.request._cookies
+            assert "session" in call.request._cookies  # pylint: disable=protected-access
 
 
 @pytest.fixture(scope="function", name="_init_bucket_for_auth_download")

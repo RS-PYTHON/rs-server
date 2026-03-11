@@ -763,7 +763,6 @@ def test_put_files_to_s3(
     """
 
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     # create the test bucket
     server = ThreadedMotoServer()
