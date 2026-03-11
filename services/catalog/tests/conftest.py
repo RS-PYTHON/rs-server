@@ -141,10 +141,12 @@ def _init_buckets():
     # Create moto server and temp / catalog bucket
     with mock_aws():
         s3_handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
+            S3Credentials(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            ),
         )
         for bucket in TEMP_BUCKET, CATALOG_BUCKET:
             s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -346,10 +348,17 @@ def temporal_filters_test_data_fixture(client):
     """Fixture to load test data for advanced temporal filters tests from file into catalog,
     and to delete it afterwards.
     """
-    test_data_file = "temporal_filters_test_data.json"
-    owners_collections_list = add_features_from_file(client, test_data_file)
+
+    # We need to mock the osam credentials before and after the yield, else it's not working,
+    # I don't know why, maybe because it interferes with the mock_osam_credentials fixture.
+    with _with_mock_osam_credentials():
+        test_data_file = "temporal_filters_test_data.json"
+        owners_collections_list = add_features_from_file(client, test_data_file)
+
     yield
-    delete_collections(client, owners_collections_list)
+
+    with _with_mock_osam_credentials():
+        delete_collections(client, owners_collections_list)
 
 
 @pytest.fixture(scope="session", name="expiration_delays_test_data")
@@ -381,10 +390,19 @@ def _apply_global_osam_mock():
     config_mod.fetch_csv_from_endpoint = fake_fetch
 
 
-def __mock_osam_credentials():
-    """OSAM should return these obs credentials for the pytest user"""
+def _mock_osam_credentials(rsps):
+    """
+    OSAM should return these obs credentials for the pytest user.
+
+    This mock is kind of a nightmare to configure: to work everywhere, depending on the cases,
+    this code should be run with 'rsps' being either:
+
+      * The "responses" module. But for this to work from fixtures, we also need the "import pytest_responses"
+      * Or a context manager initialized with: with "responses.RequestsMock() as rsps". Note that this one
+        does not always work when used from fixtures.
+    """
     export_aws_credentials()
-    return responses.get(
+    return rsps.get(
         url=os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
         status=status.HTTP_200_OK,
         json={
@@ -396,15 +414,22 @@ def __mock_osam_credentials():
     )
 
 
+@contextmanager
+def _with_mock_osam_credentials():
+    """Call _mock_osam_credentials from a context manager"""
+    with responses.RequestsMock() as rsps:
+        yield _mock_osam_credentials(rsps)
+
+
+# NOTE: I don't know why but it's not working with scope="session". It will work in some tests but not others.
 @pytest.fixture(scope="function", name="mock_osam_credentials", autouse=True)
-def mock_osam_credentials_fixture(_apply_global_osam_mock):
-    """Fixture to mock OSAM credentials, run automatically before each pytest."""
-    yield __mock_osam_credentials()
+def _fixture_mock_osam_credentials(_apply_global_osam_mock):
+    """Call _mock_osam_credentials from a fixture, run automatically before each pytest."""
+    yield _mock_osam_credentials(responses)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_database(
-    _apply_global_osam_mock,
     client,
     toto_s1_l1,
     toto_s2_l3,
@@ -434,17 +459,17 @@ def setup_database(
         feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
         user id titi.
     """
-    __mock_osam_credentials()
+    with _with_mock_osam_credentials():
 
-    add_collection(client, toto_s1_l1)
-    add_collection(client, toto_s2_l3)
-    add_collection(client, titi_s1_l1)
-    add_collection(client, titi_s2_l1)
-    add_collection(client, darius_s1_l2)
-    add_collection(client, pyteam_s1_l1)
-    add_collection(client, unset_user_s2_l2)
-    add_feature(client, feature_toto_s1_l1_0)
-    add_feature(client, feature_toto_s1_l1_1)
-    add_feature(client, feature_toto_s2_l3_0)
-    add_feature(client, feature_titi_s2_l1_0)
-    add_feature(client, feature_pyteam_s1_l1_0)
+        add_collection(client, toto_s1_l1)
+        add_collection(client, toto_s2_l3)
+        add_collection(client, titi_s1_l1)
+        add_collection(client, titi_s2_l1)
+        add_collection(client, darius_s1_l2)
+        add_collection(client, pyteam_s1_l1)
+        add_collection(client, unset_user_s2_l2)
+        add_feature(client, feature_toto_s1_l1_0)
+        add_feature(client, feature_toto_s1_l1_1)
+        add_feature(client, feature_toto_s2_l3_0)
+        add_feature(client, feature_titi_s2_l1_0)
+        add_feature(client, feature_pyteam_s1_l1_0)
