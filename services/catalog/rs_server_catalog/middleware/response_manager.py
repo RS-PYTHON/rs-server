@@ -400,6 +400,17 @@ class CatalogResponseManager:
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = adapt_object_links(content, self.request_ids["owner_id"])
+
+            # Self-links shall match the requested URL, even in implicit mode (owner not specified)
+            if request.url.path.replace(":", "_") != request.scope["path"] and isinstance(content, dict):
+                self_link = next((l for l in (content.get("links") or []) if l.get("rel") == "self"), None)
+                if self_link:
+                    parsed = urlparse(self_link["href"])
+                    if m := re.match(CATALOG_COLLECTIONS + r"/.+?:(?P<collection_id>.*)", parsed.path):
+                        self_link["href"] = parsed._replace(
+                            path=f"{CATALOG_COLLECTIONS}/{m.group('collection_id')}"
+                        ).geturl()
+
         elif (
             "/items" in request.scope["path"] and not self.request_ids["item_id"]
         ):  # /catalog/owner_id/collections/collection_id/items
