@@ -27,7 +27,7 @@ import fastapi
 class TestCatalogPublishFeature:
     """Class used to group tests that publish a feature"""
 
-    def test_create_new_minimal_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_create_new_minimal_feature(self, init_buckets, client, a_minimal_collection, a_correct_feature):
         """Test that a feature is correctly published into catalogDB
         ENDPOINT: POST /catalog/collections/{user:collection}/items
         ENDPOINT: GET /catalog/collections/{user:collection}/items
@@ -80,7 +80,7 @@ class TestCatalogPublishFeature:
             == fastapi.status.HTTP_200_OK
         )
 
-    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_update_with_a_correct_feature(self, init_buckets, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
@@ -118,6 +118,7 @@ class TestCatalogPublishFeature:
 
     def test_update_timestamp_feature(  # pylint: disable=too-many-locals
         self,
+        init_buckets,
         client,
         a_minimal_collection,
         a_correct_feature,
@@ -169,6 +170,7 @@ class TestCatalogPublishFeature:
 
     def test_update_timestamp_feature_with_no_publish_and_no_expires(  # pylint: disable=too-many-locals
         self,
+        init_buckets,
         client,
         a_minimal_collection,
         a_correct_feature,
@@ -229,6 +231,7 @@ class TestCatalogPublishFeature:
 
     def test_update_timestamp_feature_fails_with_unfound_item(
         self,
+        init_buckets,
         client,
         a_minimal_collection,
         a_correct_feature,
@@ -308,7 +311,7 @@ class TestCatalogPublishFeature:
             "description": f"Collection {non_existing_collection} does not exist.",
         }
 
-    def test_update_with_an_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_update_with_an_incorrect_feature(self, init_buckets, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
@@ -336,7 +339,7 @@ class TestCatalogPublishFeature:
         )
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
-    def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_delete_a_correct_feature(self, init_buckets, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: DELETE: /catalog/collections/{user:collection}/items/{featureID}
         """
