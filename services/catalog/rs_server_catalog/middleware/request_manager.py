@@ -236,8 +236,7 @@ class CatalogRequestManager:
         try:
             await self.client.get_collection(collection_id, request)
             return True
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Collection %s not found: %s", collection_id, e)
+        except Exception:  # pylint: disable=broad-exception-caught
             return False
 
     async def _get_item_from_collection(self, request: Request):
