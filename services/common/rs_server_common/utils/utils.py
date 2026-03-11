@@ -31,7 +31,8 @@ from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
-from shapely.geometry import shape
+from shapely.geometry import MultiPolygon, Polygon, mapping, shape
+from shapely.geometry.polygon import orient
 
 # pylint: disable=too-few-public-methods
 logger = Logging.default(__name__)
@@ -315,7 +316,7 @@ def odata_to_stac(
             feature_template["id"] = value
             continue
         if stac_key == "geometry" and value:
-            feature_template["geometry"] = value
+            feature_template["geometry"] = normalize_geojson_geometry_orientation(value)
             feature_template["bbox"] = shape(feature_template["geometry"]).bounds
             continue
         if stac_key in feature_template["assets"]["file"]:
@@ -331,6 +332,23 @@ def odata_to_stac(
         if not feature_template["collection"]:
             logger.warning(f"Unable to determine collection for {odata_dict}")
     return feature_template
+
+
+def normalize_geojson_geometry_orientation(geometry: dict[str, Any]) -> dict[str, Any]:
+    """Normalize Polygon/MultiPolygon rings to RFC7946 right-hand-rule orientation."""
+    shapely_geometry = shape(geometry)
+
+    if isinstance(shapely_geometry, Polygon):
+        # RFC7946 expects exterior rings CCW and interior rings CW.
+        return mapping(orient(shapely_geometry, sign=1.0))
+
+    if isinstance(shapely_geometry, MultiPolygon):
+        # Apply the same ring orientation rule to each polygon component independently.
+        normalized = MultiPolygon([orient(polygon, sign=1.0) for polygon in shapely_geometry.geoms])
+        return mapping(normalized)
+
+    # Leave non-polygon geometries unchanged.
+    return geometry
 
 
 def check_and_fix_timerange(item: dict):
