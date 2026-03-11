@@ -56,9 +56,10 @@ def check_assets(s3_handler, item: dict, exist: bool):
             assert not objects, f"{s3_file!r} should have been removed"
 
 
-async def test_data_lifecycle_once(client, init_buckets, a_correct_feature):
+async def test_data_lifecycle_once(monkeypatch, client, init_buckets, a_correct_feature):
     """Test the data lifecycle when it is run once"""
-    s3_handler = init_buckets.s3_handler
+    s3_handler = init_buckets
+    monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
     try:
         # Order item by collection and id
         expired_items: dict[tuple[str, str], dict] = {}
