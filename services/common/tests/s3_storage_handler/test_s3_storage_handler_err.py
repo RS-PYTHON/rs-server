@@ -50,7 +50,7 @@ def test_client_exception_while_checking_access_handling():
     """Test handling of client exceptions while checking access."""
 
     export_aws_credentials()
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -83,12 +83,12 @@ def test_get_keys_from_s3_download_fail(mocker):
     Test the get_keys_from_s3  method of the S3StorageHandler class in case of a download failure.
     """
 
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
-    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    requests.post("http://localhost:5001/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -148,12 +148,12 @@ def test_put_files_to_s3_upload_fail(mocker):
     Test the get_keys_from_s3  method of the S3StorageHandler class in case of an upload failure.
     """
 
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
-    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    requests.post("http://localhost:5001/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -197,12 +197,12 @@ def test_transfer_from_s3_to_s3_fail(mocker):
     """
     bucket_src = "bucket_src"
     bucket_dst = "bucket_dst"
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
-    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    requests.post("http://localhost:5001/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -267,12 +267,12 @@ def test_delete_key_from_s3_fail(mocker):
         AssertionError: If the `RuntimeError` is not raised as expected or if the exception message does not
         match the expected value.
     """
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
-    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    requests.post("http://localhost:5001/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -349,12 +349,12 @@ def test_s3_streaming_upload_fail(mocker):
 
         AssertionError: If any part of the test fails.
     """
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     stream_url = "http://127.0.0.1:6000/file"
     auth = HTTPBasicAuth("user", "pass")
 
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
 
     s3_handler = S3StorageHandler(
@@ -418,9 +418,9 @@ def test_s3_streaming_upload_fail(mocker):
 
 def test_check_s3_key_on_bucket_forbidden(mocker):
     """Test case for forbidden access to S3 bucket."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
 
     s3_handler = S3StorageHandler(
@@ -450,9 +450,9 @@ def test_check_s3_key_on_bucket_forbidden(mocker):
 
 def test_check_s3_key_on_bucket_not_found(mocker):
     """Test case for S3 key not found."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
 
     s3_handler = S3StorageHandler(
@@ -468,6 +468,13 @@ def test_check_s3_key_on_bucket_not_found(mocker):
     mock_logger = mocker.patch.object(s3_handler, "logger")
     with Stubber(s3_handler.s3_client) as boto_mocker:
         boto_mocker.add_client_error("head_object", service_message="Not Found", service_error_code=S3_ERR_NOT_FOUND)
+        boto_mocker.add_response(
+            "list_objects_v2",
+            {
+                "IsTruncated": False,
+                "KeyCount": 0,
+            },
+        )
 
         # Call the function
         result, _ = s3_handler.check_s3_key_on_bucket(bucket, s3_key)
@@ -479,9 +486,9 @@ def test_check_s3_key_on_bucket_not_found(mocker):
 
 def test_check_s3_key_on_bucket_unchecked_client_error(mocker):
     """Test case for S3 key not found."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     # Test with a running s3 server
-    server = ThreadedMotoServer()
+    server = ThreadedMotoServer(port=5001)
     server.start()
 
     s3_handler = S3StorageHandler(
@@ -501,6 +508,13 @@ def test_check_s3_key_on_bucket_unchecked_client_error(mocker):
             service_message="Not Found",
             service_error_code="UNCHECKED_CLIENT_ERROR",
         )
+        boto_mocker.add_response(
+            "list_objects_v2",
+            {
+                "IsTruncated": False,
+                "KeyCount": 0,
+            },
+        )
 
         # Call the function
         with pytest.raises(RuntimeError, match=f"Exception when checking the access to {bucket} bucket"):
@@ -512,7 +526,7 @@ def test_check_s3_key_on_bucket_unchecked_client_error(mocker):
 
 def test_check_s3_key_on_bucket_connection_error(mocker):
     """Test case for connection error when accessing S3 bucket."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -527,7 +541,7 @@ def test_check_s3_key_on_bucket_connection_error(mocker):
     mocker.patch.object(
         s3_handler.s3_client,
         "head_object",
-        side_effect=EndpointConnectionError(endpoint_url="http://localhost:5000"),
+        side_effect=EndpointConnectionError(endpoint_url="http://localhost:5001"),
     )
 
     # Expect the real exception that the function will propagate
@@ -540,8 +554,8 @@ def test_check_s3_key_on_bucket_connection_error(mocker):
 
 def test_check_s3_key_on_bucket_general_exception(mocker):
     """Test case for general exception during S3 bucket access."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
-    server = ThreadedMotoServer()
+    secrets = {"s3endpoint": "http://localhost:5001", "accesskey": None, "secretkey": None, "region": ""}
+    server = ThreadedMotoServer(port=5001)
     server.start()
 
     s3_handler = S3StorageHandler(
