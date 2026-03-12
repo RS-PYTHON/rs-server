@@ -384,27 +384,3 @@ class TestCatalogPublishFeature:
         """
         response = client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-
-    # def test_publish_a_feature_with_correct_asset(self):
-    #     pass
-
-    # def test_publish_a_feature_with_incorrect_asset_href_path_not_found(self):
-    #     pass
-
-    # def test_publish_a_feature_with_incorrect_asset_href_path_incorrect_item_id(self):
-    #     pass
-
-    # def test_publish_a_feature_with_incorrect_asset_href_path_incorrect_collection_id(self):
-    #     pass
-
-    # def test_publish_a_feature_with_incorrect_asset_bucket_privileges(self):
-    #     pass
-
-    # def test_modify_feature_with_incorrect_asset_href_path_not_found(self):
-    #     pass
-
-    # def test_modify_feature_with_incorrect_asset_href_path_incorrect_item_id(self):
-    #     pass
-
-    # def test_modify_feature_with_incorrect_asset_href_path_incorrect_collection_id(self):
-    #     pass
