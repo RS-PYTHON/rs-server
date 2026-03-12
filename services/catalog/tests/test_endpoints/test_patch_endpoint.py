@@ -185,7 +185,12 @@ def test_patch_collection(client):
     # assert response_content["updated"] > updated_timestamp # Check that "updated" date changed and is newer
 
 
-def test_patch_feature(client, a_minimal_collection, a_correct_feature):  # pylint: disable=unused-argument
+def test_patch_feature(
+    init_buckets,
+    client,
+    a_minimal_collection,
+    a_correct_feature,
+):  # pylint: disable=unused-argument
     """
     Test endpoint PATCH /catalog/collections/owner:collection_id/items/item_id.
 
