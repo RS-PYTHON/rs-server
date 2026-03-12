@@ -408,7 +408,7 @@ def _mock_osam_credentials(rsps: ModuleType | responses.RequestsMock):
     OSAM should return these obs credentials for the pytest user.
 
     This mock is complex to configure: to work everywhere, depending on the cases,
-    this code should be run with the 'rsps' arg being either:
+    this code should be run with the 'rsps' parameter being either:
 
       * The "responses" module. But for this to work from fixtures, we also need the "import pytest_responses"
       * Or a context manager initialized with: with "responses.RequestsMock() as rsps". Note that this one
