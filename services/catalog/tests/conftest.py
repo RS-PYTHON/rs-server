@@ -140,10 +140,10 @@ def _init_buckets():
             os.environ["S3_REGION"],
         )
 
-    s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
-    assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
+        s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
+        assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
-    yield s3_handler
+        yield s3_handler
 
 
 @pytest.fixture(scope="function", name="init_buckets")
