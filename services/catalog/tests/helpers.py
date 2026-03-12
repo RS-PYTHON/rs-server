@@ -23,6 +23,9 @@ from typing import Any
 
 import httpx
 import yaml
+from _pytest.monkeypatch import (
+    MonkeyPatch,  # see: https://github.com/pytest-dev/pytest/issues/1872#issuecomment-375108891
+)
 from fastapi.testclient import TestClient
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     OAUTH2_AUTHORIZATION_ENDPOINT,
@@ -112,18 +115,15 @@ def export_aws_credentials():
     Raises:
         None
     """
+    monkeypatch = MonkeyPatch()
+
     with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
-        os.environ.update(s3_config["s3"])
-        os.environ.update(s3_config["boto"])
+        for key, value in (s3_config["s3"] | s3_config["boto"]).items():
+            monkeypatch.setenv(key, value)
 
-
-def clear_aws_credentials():
-    """Clear AWS credentials from environment variables."""
-    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
-            os.environ.pop(env_var, None)
+    # We need this because we use a custom S3 endpoint
+    monkeypatch.setenv("MOTO_S3_CUSTOM_ENDPOINTS", os.environ["S3_ENDPOINT"])
 
 
 @dataclass

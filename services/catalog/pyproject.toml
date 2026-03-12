@@ -76,6 +76,7 @@ flask = "^3.1.1" # for moto
 flask-cors = "^6.0.1" # for moto
 sqlalchemy-utils = "^0.42.0"
 psycopg2 = "^2.9.11"
+pytest-responses = "^0.5.1"
 
 
 [tool.black]

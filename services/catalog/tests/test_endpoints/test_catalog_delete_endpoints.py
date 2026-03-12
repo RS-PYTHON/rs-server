@@ -92,7 +92,7 @@ class TestCatalogDeleteEndpoints:
         # To be changed with 405 not allowed after UAC
         assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
-    def test_delete_non_empty_collection(self, client, a_minimal_collection, a_correct_feature):
+    def test_delete_non_empty_collection(self, init_buckets, client, a_minimal_collection, a_correct_feature):
         """
         Test that a collection than contain features can be successfully deleted.
         """
