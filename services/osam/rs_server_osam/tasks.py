@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any
 
+from cachetools import TTLCache, cached
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
@@ -40,6 +41,12 @@ from rs_server_osam.utils.tools import (
     match_roles,
     parse_role,
 )
+
+# Cache size for the /storage/account/credentials endpoint
+OSAM_CREDENTIALS_CACHE_SIZE = float(os.environ.get("OSAM_CREDENTIALS_CACHE_SIZE", 1024))
+
+# Cache TTL (time to live) for the /storage/account/credentials endpoint
+OSAM_CREDENTIALS_CACHE_TTL = float(os.environ.get("OSAM_CREDENTIALS_CACHE_TTL", 7200))  # 2 hours
 
 # Maximum number of parallel calls to the keycloak and obs apis
 MAX_THREAD_COUNT = 5
@@ -279,25 +286,26 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             )
 
 
-def get_user_s3_credentials(user: str) -> dict:
+@cached(cache=TTLCache(maxsize=OSAM_CREDENTIALS_CACHE_SIZE, ttl=OSAM_CREDENTIALS_CACHE_TTL))
+def get_user_s3_credentials(kc_user: str) -> dict:
     """
     Retrieves the S3 access and secret keys for a given user.
 
     Args:
-        user (str): The username for whom to retrieve S3 credentials.
+        kc_user (str): The Keycloak username for whom to retrieve S3 credentials.
 
     Returns:
         dict: A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region'
         for the user's S3 storage.
     """
     try:
-        obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
+        obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(kc_user)
 
         if not obs_user:
-            raise RuntimeError(f"No s3 credentials associated with {user}")
+            raise RuntimeError(f"No s3 credentials associated with {kc_user}")
 
         if not (access_key := get_ovh_handler().get_user_s3_access_key(obs_user)):
-            raise RuntimeError(f"Error reading user {user} from OVH.")
+            raise RuntimeError(f"Error reading user {kc_user} from OVH.")
 
         secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
         return {
@@ -310,7 +318,13 @@ def get_user_s3_credentials(user: str) -> dict:
         }
 
     except Exception as exc:  # pylint: disable = broad-exception-caught
-        raise RuntimeError(f"Error while getting s3 credentials for OVH user id {obs_user}") from exc
+        try:
+            obs_user_info = f" / OVH user id: {obs_user!r}"
+        except NameError:
+            obs_user_info = ""
+        raise RuntimeError(
+            f"Error while getting s3 credentials for Keycloak user id: {kc_user!r}{obs_user_info}",
+        ) from exc
 
 
 def apply_user_access_policy(user, current_rights):
