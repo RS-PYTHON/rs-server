@@ -645,9 +645,7 @@ class S3StorageHandler:
                     self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
                     raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
 
-                self.logger.exception(
-                    f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}"
-                )
+                self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
                 raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
         except Exception:
             self.logger.exception(f"General exception when trying to access key s3://{bucket}/{s3_key}")
