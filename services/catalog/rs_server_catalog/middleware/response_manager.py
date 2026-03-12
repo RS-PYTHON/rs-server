@@ -402,13 +402,17 @@ class CatalogResponseManager:
             content = adapt_object_links(content, self.request_ids["owner_id"])
 
             # Self-links shall match the requested URL, even in implicit mode (owner not specified)
-            if request.url.path.replace(":", "_") != request.scope["path"] and isinstance(content, dict):
-                self_link = next((l for l in (content.get("links") or []) if l.get("rel") == "self"), None)
+            if (
+                request.url.path.replace(":", "_") != request.scope["path"]
+                and isinstance(content, dict)
+                and not common_settings.CLUSTER_MODE
+            ):
+                self_link = next((s for s in (content.get("links") or []) if s.get("rel") == "self"), None)
                 if self_link:
                     parsed = urlparse(self_link["href"])
                     if m := re.match(CATALOG_COLLECTIONS + r"/.+?:(?P<collection_id>.*)", parsed.path):
                         self_link["href"] = parsed._replace(
-                            path=f"{CATALOG_COLLECTIONS}/{m.group('collection_id')}"
+                            path=f"{CATALOG_COLLECTIONS}/{m.group('collection_id')}",
                         ).geturl()
 
         elif (
