@@ -82,7 +82,7 @@ class S3Manager:
             content (dict): Files to delete
             s3_handler (S3StorageHandler): S3 handler to use. If None given, will do nothing
         """
-        if self.is_catalog_local_mode:
+        if self.is_catalog_local_mode or (not hasattr(content, "get")):
             return
         for asset in content.get("assets", {}):
             # Retrieve bucket name from config using what's in content
