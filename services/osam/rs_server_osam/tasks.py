@@ -42,11 +42,11 @@ from rs_server_osam.utils.tools import (
     parse_role,
 )
 
-# Cache size for the /storage/account/credentials endpoint
-OSAM_CREDENTIALS_CACHE_SIZE = float(os.environ.get("OSAM_CREDENTIALS_CACHE_SIZE", 1024))
+# Cache size (number of cached Keycloak usernames) for the /storage/account/credentials endpoint
+OSAM_CREDENTIALS_CACHE_SIZE = int(os.environ.get("OSAM_CREDENTIALS_CACHE_SIZE", 1024))
 
-# Cache TTL (time to live) for the /storage/account/credentials endpoint
-OSAM_CREDENTIALS_CACHE_TTL = float(os.environ.get("OSAM_CREDENTIALS_CACHE_TTL", 7200))  # 2 hours
+# Cache TTL (time to live) in seconds for the /storage/account/credentials endpoint
+OSAM_CREDENTIALS_CACHE_TTL = int(os.environ.get("OSAM_CREDENTIALS_CACHE_TTL", 7200))  # 2 hours
 
 # Maximum number of parallel calls to the keycloak and obs apis
 MAX_THREAD_COUNT = 5
