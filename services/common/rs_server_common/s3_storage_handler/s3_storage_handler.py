@@ -627,14 +627,27 @@ class S3StorageHandler:
                 error_code = error.response["Error"]["Code"]
                 # Handle "not found" cases (AWS S3 / moto / MinIO variations)
                 if error_code in ("404", "NoSuchKey", "NotFound", S3_ERR_NOT_FOUND):
+
+                    # Check if it is actually a "directory" prefix
+                    response = self.s3_client.list_objects_v2(
+                        Bucket=bucket,
+                        Prefix=s3_key.rstrip("/") + "/",
+                        MaxKeys=1,
+                    )
+
+                    if "Contents" in response:
+                        return True, size  # directory exists
+
                     self.logger.exception(f"The key s3://{bucket}/{s3_key} does not exist!")
                     return False, size
                 # Access denied
                 if error_code == S3_ERR_FORBIDDEN_ACCESS:
                     self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
                     raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
-                # Other client errors
-                self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
+
+                self.logger.exception(
+                    f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}"
+                )
                 raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
         except Exception:
             self.logger.exception(f"General exception when trying to access key s3://{bucket}/{s3_key}")
