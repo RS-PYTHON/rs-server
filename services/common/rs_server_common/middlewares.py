@@ -18,7 +18,6 @@ import json
 import traceback
 from collections.abc import Callable
 from http import HTTPStatus
-from threading import Lock
 from typing import Any, ParamSpec, TypedDict
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -116,10 +115,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
             # Login and redirect to the calling endpoint.
             except LoginAndRedirect:
                 return await oauth2.login(request)
-
-        # Else (in local mode) we'll just need this lock to calculate the S3 credentials
-        else:
-            request.state.s3_credentials_lock = Lock()
 
         # Call the next middleware
         return await call_next(request)

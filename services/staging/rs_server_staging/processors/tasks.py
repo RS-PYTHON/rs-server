@@ -18,8 +18,6 @@ import logging
 import os
 from urllib.parse import urlparse
 
-from requests import Request
-from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication_to_external import (
     S3ExternalAuthenticationConfig,
     ServiceNotFound,
@@ -35,6 +33,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Credentials
 from rs_server_staging.utils.asset_info import (
     AssetInfo,
     IncompleteAssetError,
@@ -46,10 +45,10 @@ logger = Logging.default(__name__)
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
-    request: Request,
     asset_info: AssetInfo,
     config: StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig,
     auth: str,
+    s3_credentials: S3Credentials,
 ):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
@@ -60,12 +59,14 @@ def streaming_task(  # pylint: disable=R0913, R0917
     environment variables for credentials.
 
     Args:
+
         asset_info (AssetInfo): Object containing the essential informations about the product
             to download, such as its URL, the destination bucket name and the destination path/key
             in the S3 bucket where the file will be uploaded.
         config (StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig): Authentification
             configuration containing the list of trusted domains
         auth: The station token. This has to be refreshed from the caller
+        s3_credentials: S3 object storage credentials
     Returns:
         str: The S3 file path where the file was uploaded.
 
@@ -95,7 +96,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
         try:
             # Use S3 object storage credentials of the logged user
             logger_dask.debug(f"{s3_file}: Creating the s3_handler")
-            s3_handler = S3StorageHandler(authentication.get_s3_credentials(request))
+            s3_handler = S3StorageHandler(s3_credentials)
             if "/NOMINAL" in asset_info.product_url:
                 s3_handler.s3_streaming_from_ftp(product_url, bucket, s3_file)
             elif not auth:

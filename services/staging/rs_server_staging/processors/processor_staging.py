@@ -630,6 +630,9 @@ class Staging(
                 refresh_token.unsubscribe(self.logger)
             return
 
+        # Get the S3 object storage credentials for the logged user
+        s3_credentials = authentication.get_s3_credentials(self.request)
+
         # prevent submitting more tasks than necessary.
         # this can occur when the number of tasks that can run in parallel
         # exceeds the actual number of tasks intended for submission.
@@ -642,10 +645,10 @@ class Staging(
                 initial_batch_tasks = {
                     client.submit(
                         streaming_task,
-                        self.request,
                         next(data_iter),
                         None,
                         None,
+                        s3_credentials,
                     )
                     for _ in range(max_parallel_tasks)
                 }
@@ -659,10 +662,10 @@ class Staging(
                 initial_batch_tasks = {
                     client.submit(
                         streaming_task,
-                        self.request,
                         next(data_iter),
                         refresh_token.config,
                         access_token,
+                        s3_credentials,
                     )
                     for _ in range(max_parallel_tasks)
                 }
@@ -693,10 +696,10 @@ class Staging(
                         tasks.add(
                             client.submit(
                                 streaming_task,
-                                self.request,
                                 new_task,
                                 None,
                                 None,
+                                s3_credentials,
                             ),
                         )
                     else:
@@ -708,10 +711,10 @@ class Staging(
                         tasks.add(
                             client.submit(
                                 streaming_task,
-                                self.request,
                                 new_task,
                                 refresh_token.config,
                                 access_token,
+                                s3_credentials,
                             ),
                         )
 
