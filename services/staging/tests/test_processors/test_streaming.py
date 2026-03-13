@@ -23,6 +23,7 @@ from rs_server_common.authentication.authentication_to_external import (
     S3ExternalAuthenticationConfig,
 )
 from rs_server_common.authentication.token_auth import TokenAuth
+from rs_server_common.utils.utils2 import S3Credentials
 from rs_server_staging.processors.processor_staging import Staging
 from rs_server_staging.processors.tasks import (
     create_asset_info_with_s3_auth,
@@ -51,16 +52,7 @@ class TestStreaming:
     ):
         """Test successful streaming task execution"""
 
-        # Mock environment variables
-        mocker.patch.dict(
-            os.environ,
-            {
-                "S3_ACCESSKEY": "fake_access_key",
-                "S3_SECRETKEY": "fake_secret_key",
-                "S3_ENDPOINT": "fake_endpoint",
-                "S3_REGION": "fake_region",
-            },
-        )
+        mock_s3_credentials = S3Credentials("fake_access_key", "fake_secret_key", "fake_endpoint", "fake_region")
         s3_key = "s3_path/file.zip"
         test_asset_info = AssetInfo(product_url="https://example.com/product.zip", s3_file=s3_key, s3_bucket="bucket")
 
@@ -74,6 +66,7 @@ class TestStreaming:
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
+                s3_credentials=mock_s3_credentials,
             )
             == s3_key
         )
@@ -82,39 +75,10 @@ class TestStreaming:
 
         mock_s3_handler.s3_streaming_from_http.assert_called_once()
 
-    def test_streaming_task_incorrect_env(self, mocker, config):
-        """Test an error when creating S3 handler due to missing env variables"""
-
-        # Patch environment to remove S3_ACCESSKEY
-        mocker.patch.dict(
-            os.environ,
-            {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
-        )
-        test_asset_info = AssetInfo(
-            product_url="https://example.com/product.zip",
-            s3_file="file.zip",
-            s3_bucket="bucket",
-        )
-
-        with pytest.raises(ValueError, match="Cannot create s3 connector object."):
-            streaming_task(
-                asset_info=test_asset_info,
-                config=config,
-                auth=TokenAuth("fake_token"),
-            )
-
     def test_streaming_task_runtime_error(self, mocker, config):
         """Test a runtime error during streaming"""
 
-        mocker.patch.dict(
-            os.environ,
-            {
-                "S3_ACCESSKEY": "fake_access_key",
-                "S3_SECRETKEY": "fake_secret_key",
-                "S3_ENDPOINT": "fake_endpoint",
-                "S3_REGION": "fake_region",
-            },
-        )
+        mock_s3_credentials = S3Credentials("fake_access_key", "fake_secret_key", "fake_endpoint", "fake_region")
         test_asset_info = AssetInfo("https://example.com/product.zip", "file.zip", "bucket")
         # Mock the s3 handler
         mock_s3_handler = mocker.Mock()
@@ -129,6 +93,7 @@ class TestStreaming:
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
+                s3_credentials=mock_s3_credentials,
             )
 
     def test_streaming_task_connection_retry(self, mocker, config):
@@ -137,14 +102,11 @@ class TestStreaming:
         mocker.patch.dict(
             os.environ,
             {
-                "S3_ACCESSKEY": "fake_access_key",
-                "S3_SECRETKEY": "fake_secret_key",
-                "S3_ENDPOINT": "fake_endpoint",
-                "S3_REGION": "fake_region",
                 "S3_RETRY_TIMEOUT": "1",
                 "S3_MAX_RETRIES": str(s3_max_retries_env_var),
             },
         )
+        mock_s3_credentials = S3Credentials("fake_access_key", "fake_secret_key", "fake_endpoint", "fake_region")
         test_asset_info = AssetInfo("https://example.com/product.zip", "file.zip", "bucket")
 
         # Mock streaming upload to fail multiple times
@@ -160,6 +122,7 @@ class TestStreaming:
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
+                s3_credentials=mock_s3_credentials,
             )
 
         # Ensure retries happened
@@ -310,8 +273,9 @@ class TestPrepareStreaming:
         assert result == expected_assets_info
 
         # Assert that asset hrefs are updated correctly
-        assert feature.assets["asset1"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset1"
-        assert feature.assets["asset2"].href == f"s3://rtmpop/staging_user/{catalog_collection}/{feature.id}/asset2"
+        bucket = "rspython-ops-catalog-all-production"
+        assert feature.assets["asset1"].href == f"s3://{bucket}/staging_user/{catalog_collection}/{feature.id}/asset1"
+        assert feature.assets["asset2"].href == f"s3://{bucket}/staging_user/{catalog_collection}/{feature.id}/asset2"
 
     def test_prepare_streaming_tasks_with_s3_asset_all_valid(self, mocker):
         """Test prepare_streaming_tasks when all assets are valid and one asset needs to be staged from external s3."""

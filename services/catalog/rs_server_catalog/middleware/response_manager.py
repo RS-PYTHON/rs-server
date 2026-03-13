@@ -43,6 +43,7 @@ from rs_server_catalog.utils import (
     headers_minus_content_length,
 )
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import read_streaming_response
 from stac_fastapi.api.models import GeoJSONResponse
@@ -102,20 +103,17 @@ class CatalogResponseManager:
     """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
     Each type of Response is managed in one of the functions."""
 
-    def __init__(
-        self,
-        client: CoreCrudClient,
-        request_ids: dict[Any, Any],
-        s3_files_to_be_deleted: list[str] | None = None,
-    ):
+    def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
         self.request_ids = request_ids
-        self.s3_files_to_be_deleted = s3_files_to_be_deleted or []
 
     @lru_cache
-    def s3_manager(self):
-        """Creates a cached instance of S3Manager for this class instance (self)."""
-        return S3Manager()
+    def s3_manager(self, request: Request):
+        """
+        Creates a cached instance of S3Manager for this class instance (self).
+        Use S3 object storage credentials of the logged user.
+        """
+        return S3Manager(authentication.get_s3_credentials(request))
 
     async def manage_responses(
         self,
@@ -140,7 +138,7 @@ class CatalogResponseManager:
             # Read the body
             response_content = await read_streaming_response(streaming_response)
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
-            await asyncio.to_thread(self.s3_manager().clear_catalog_bucket, response_content)
+            await asyncio.to_thread(self.s3_manager(request).clear_catalog_bucket, response_content)
 
             # GET: '/catalog/queryables' when no collections in the catalog
             if (
@@ -276,7 +274,11 @@ class CatalogResponseManager:
         content = await read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
-            content, code = await asyncio.to_thread(self.s3_manager().generate_presigned_url, content, request.url.path)
+            content, code = await asyncio.to_thread(
+                self.s3_manager(request).generate_presigned_url,
+                content,
+                request.url.path,
+            )
             if code == HTTP_302_FOUND:
                 return RedirectResponse(url=content, status_code=code)
             return JSONResponse(content, code, headers_minus_content_length(response))
@@ -444,9 +446,11 @@ class CatalogResponseManager:
             if request.scope["path"].startswith(
                 f"{CATALOG_COLLECTIONS}/{user}_{self.request_ids['collection_ids'][0]}/items",
             ):
+                if response_content.get("geometry") == DEFAULT_GEOM:
+                    response_content["geometry"] = None
+                if response_content.get("bbox") == DEFAULT_BBOX:
+                    response_content["bbox"] = None
                 response_content = mask_internal_default_geometry_and_bbox(response_content)
-            await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
-            self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
@@ -470,7 +474,4 @@ class CatalogResponseManager:
         response_content = await read_streaming_response(response)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
-        # delete the s3 files as well
-        await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
-        self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))

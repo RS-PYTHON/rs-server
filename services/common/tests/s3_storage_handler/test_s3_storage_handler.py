@@ -39,6 +39,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Credentials
 
 # TODO: use fixture instead ? + set environment variables in monkeypatch
 from .helpers import (  # pylint: disable=no-name-in-module
@@ -81,15 +82,9 @@ def test_get_s3_client_and_disconnect(endpoint: str):
     """
     server = ThreadedMotoServer()
     server.start()
-    secrets = {"s3endpoint": endpoint, "accesskey": "", "secretkey": "", "region": "sbg"}
     server.stop()
     if endpoint == "http://localhost:5000":
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
         assert s3_handler
         s3_handler.disconnect_s3()
         assert s3_handler.s3_client is None
@@ -97,12 +92,7 @@ def test_get_s3_client_and_disconnect(endpoint: str):
         assert s3_handler.s3_client is None
     else:
         with pytest.raises(Exception):
-            S3StorageHandler(
-                secrets["accesskey"],
-                secrets["secretkey"],
-                secrets["s3endpoint"],
-                secrets["region"],
-            )
+            S3StorageHandler(S3Credentials(None, None, endpoint, ""))
 
 
 @pytest.mark.unit
@@ -163,10 +153,12 @@ def test_wait_timeout():
     """Test the wait_timeout method of the S3StorageHandler class."""
 
     s3_handler = S3StorageHandler(
-        None,
-        None,
-        "http://localhost:5000",
-        None,
+        S3Credentials(
+            None,
+            None,
+            "http://localhost:5000",
+            None,
+        ),
     )
     start_p = datetime.now()
     s3_handler.wait_timeout(1)
@@ -178,10 +170,12 @@ def test_timeout(mocker):
     """Test the wait_timeout method of the S3StorageHandler class."""
 
     s3_handler = S3StorageHandler(
-        None,
-        None,
-        "http://localhost:5000",
-        None,
+        S3Credentials(
+            None,
+            None,
+            "http://localhost:5000",
+            None,
+        ),
     )
     res = mocker.patch("time.sleep", side_effect=None)
     s3_handler.wait_timeout(1)
@@ -193,10 +187,12 @@ def test_check_file_overwriting():
     """Test the check_file_overwriting method of the S3StorageHandler class."""
 
     s3_handler = S3StorageHandler(
-        None,
-        None,
-        "http://localhost:5000",
-        None,
+        S3Credentials(
+            None,
+            None,
+            "http://localhost:5000",
+            None,
+        ),
     )
     _, tmp_path = tempfile.mkstemp()
     assert not s3_handler.check_file_overwriting(tmp_path, False)
@@ -248,7 +244,6 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     - AssertionError: If the number of files returned by S3StorageHandler.list_s3_files_obj does not match nb_of_files.
     """
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = Logging.default(__name__)
 
     # create the test bucket
@@ -256,12 +251,7 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     server.start()
     try:
         requests.post(endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
 
         with pytest.raises(Exception):
             s3_handler.check_bucket_access(bucket)
@@ -300,18 +290,12 @@ def test_check_bucket_access(endpoint: str, bucket: str):
     - AssertionError: If the result of S3StorageHandler.check_bucket_access does not match the expected result.
     """
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     server = ThreadedMotoServer()
     server.start()
     try:
         requests.post(endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
 
         if bucket == "test-bucket":
             # create the test-bucket storage only when needed
@@ -395,19 +379,13 @@ def test_files_to_be_downloaded(
     """
 
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = Logging.default(__name__)
 
     server = ThreadedMotoServer()
     server.start()
     try:
         requests.post(endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
 
         if bucket == "test-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -551,7 +529,6 @@ def test_get_keys_from_s3(
     - AssertionError: If the result of the Prefect workflow does not match expected_res.
     """
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     short_s3_storage_handler_test_nb_of_files = 3
     logger = Logging.default(__name__)
@@ -561,12 +538,7 @@ def test_get_keys_from_s3(
     server.start()
     try:
         requests.post(endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
 
         if bucket == "test-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -681,18 +653,12 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
 
     """
     export_aws_credentials()
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     logger = Logging.default(__name__)
 
     server = ThreadedMotoServer()
     server.start()
     try:
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5000", ""))
     finally:
         server.stop()
 
@@ -797,19 +763,13 @@ def test_put_files_to_s3(
     """
 
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
     try:
         requests.post(endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
         if bucket == "test-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket)
         # end of create
@@ -913,19 +873,13 @@ def test_transfer_from_s3_to_s3(
     """
 
     export_aws_credentials()
-    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     # create the test bucket
     try:
         server = ThreadedMotoServer()
         server.start()
         requests.post(endpoint + "/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, endpoint, ""))
         if bucket_src == "source-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket_src)
             for obj in lst_with_files_to_be_copied:
@@ -976,19 +930,13 @@ async def test_delete_key_from_s3(mocker, single_file: bool):
         AssertionError: If any part of the file deletion process fails or raises an unexpected exception.
     """
     export_aws_credentials()
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
     server = ThreadedMotoServer()
     server.start()
     try:
         requests.post("http://localhost:5000/moto-api/reset", timeout=5)
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5000", ""))
 
         # Path the max number of items that can be deleted by the boto3 delete_objects function
         max_delete_files = 10
@@ -1072,18 +1020,12 @@ async def test_delete_key_from_s3(mocker, single_file: bool):
 @pytest.mark.unit
 def test_check_s3_key_on_bucket_success(mocker):
     """Test case for successful key check in S3 bucket."""
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     # create the test bucket
     # Test with a running s3 server
     server = ThreadedMotoServer()
     server.start()
     requests.post("http://localhost:5000/moto-api/reset", timeout=5)
-    s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
-    )
+    s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5000", ""))
 
     # prepare a bucket for tests
     bucket = "some_s3"
@@ -1219,10 +1161,12 @@ def streaming_setup_external_s3():
     external_server.start()
 
     external_s3_handler = S3StorageHandler(
-        source_secrets["accesskey"],
-        source_secrets["secretkey"],
-        source_secrets["s3endpoint"],
-        source_secrets["region"],
+        S3Credentials(
+            source_secrets["accesskey"],
+            source_secrets["secretkey"],
+            source_secrets["s3endpoint"],
+            source_secrets["region"],
+        ),
     )
     bucket = "sourcebucket"
     external_s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -1239,10 +1183,12 @@ def streaming_setup_s3_handler_and_bucket(secrets):
     server.start()
 
     s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
+        S3Credentials(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        ),
     )
     bucket = "s3-bucket-streaming"
     s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -1294,10 +1240,12 @@ def handler(mocker):
     secrets, _, _, _ = streaming_setup_test_env()
 
     h = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
+        S3Credentials(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        ),
     )
 
     # Replace real AWS client and logger with mocks
@@ -1337,7 +1285,9 @@ def test_env_missing(monkeypatch, mocker):
 
     # Create handler
     secrets, _, _, _ = streaming_setup_test_env()
-    handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+    handler = S3StorageHandler(
+        S3Credentials(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"]),
+    )
     handler.s3_client = mocker.MagicMock()
     handler.logger = mocker.MagicMock()
 

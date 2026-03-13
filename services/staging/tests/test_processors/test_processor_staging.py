@@ -499,27 +499,6 @@ class TestStagingDeleteFromBucket:
         # Assert that delete_key_from_s3 was never called since there are no assets
         mock_s3_handler.delete_key_from_s3.assert_not_called()
 
-    def test_delete_files_from_bucket_failed_to_create_s3_handler(self, mocker, staging_instance: Staging):
-        """Test a failure in creating s3 storage handler."""
-        # Mock the environment variables but leave one out to trigger KeyError
-        mocker.patch.dict(
-            os.environ,
-            {
-                "S3_ACCESSKEY": "fake_access_key",
-                "S3_SECRETKEY": "fake_secret_key",
-                "S3_ENDPOINT": "fake_endpoint",
-                # "S3_REGION" is missing to trigger KeyError
-            },
-        )
-        # Mock assets_info
-        staging_instance.assets_info = [AssetInfo("fake_asset_href", "fake_s3_path", "fake_bucket")]
-        # Mock the logger to check if the error is logged
-        mock_logger = mocker.patch.object(staging_instance, "logger")
-        # Call the method and expect it to handle KeyError
-        staging_instance.delete_files_from_bucket()
-        # Assert that the error was logged
-        mock_logger.error.assert_called_once_with("Cannot connect to s3 storage, %s", mocker.ANY)
-
     def test_delete_files_from_bucket_fail_while_in_progress(self, mocker, staging_instance: Staging):
         """Test a runtime error while using s3_handler.delete_key_from_s3, should produce a logger error,
         nothing else?
