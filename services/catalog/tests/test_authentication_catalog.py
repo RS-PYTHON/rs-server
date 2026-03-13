@@ -26,6 +26,7 @@ import pytest
 import requests
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.app import app, must_be_authenticated
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
@@ -277,6 +278,7 @@ def get_test_cases(  # pylint: disable=too-many-branches
 async def init_authorization_test(
     mocker,
     httpx_mock: HTTPXMock,
+    mock_osam_credentials,
     client,
     test_apikey: bool,
     test_oauth2: bool,
@@ -309,7 +311,7 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
     )
 
     # Init mockers for test
-    await init_authentication_test(
+    yield await init_authentication_test(
         mocker,
         httpx_mock,
         client,
@@ -320,6 +322,14 @@ Should this succeed ? {"Yes" if should_succeed else "No"}""",
         user_login=user_login,
         **(init_test_params or {}),
     )
+
+    # At the end of the test, check that each call to the osam server
+    # has been made using either an apikey or oauth2 cookie
+    for call in mock_osam_credentials.calls:
+        if test_apikey:
+            assert APIKEY_HEADER in call.request.headers
+        else:
+            assert "session" in call.request._cookies  # pylint: disable=protected-access
 
 
 @pytest.fixture(scope="function", name="_init_bucket_for_auth_download")

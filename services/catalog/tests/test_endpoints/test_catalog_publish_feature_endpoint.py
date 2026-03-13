@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Endpoint tests for publishing feature in catalog without beucket transfer"""
+"""Endpoint tests for publishing feature in catalog"""
 
 # pylint: disable=unused-argument
 
@@ -24,8 +24,8 @@ from unittest.mock import patch
 import fastapi
 
 
-class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
-    """Class used to group tests that publish a collection and move assets between buckets."""
+class TestCatalogPublishFeature:
+    """Class used to group tests that publish a feature"""
 
     def test_create_new_minimal_feature(self, init_buckets, client, a_minimal_collection, a_correct_feature):
         """Test that a feature is correctly published into catalogDB
