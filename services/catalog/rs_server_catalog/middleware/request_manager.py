@@ -45,6 +45,7 @@ from rs_server_catalog.utils import (
     extract_owner_name_from_text_filter,
 )
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
 from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient
@@ -221,9 +222,12 @@ class CatalogRequestManager:
         self.request_ids = request_ids
 
     @lru_cache
-    def s3_manager(self):
-        """Creates a cached instance of S3Manager for this class instance (self)."""
-        return S3Manager()
+    def s3_manager(self, request: Request):
+        """
+        Creates a cached instance of S3Manager for this class instance (self).
+        Use S3 object storage credentials of the logged user.
+        """
+        return S3Manager(authentication.get_s3_credentials(request))
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
         """Update request body (better find the function that updates the body maybe?)"""
@@ -395,7 +399,12 @@ field is not permitted also."
 
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
-                content = self.s3_manager().update_stac_item_publication(content, request, self.request_ids, item)
+                content = self.s3_manager(request).update_stac_item_publication(
+                    content,
+                    request,
+                    self.request_ids,
+                    item,
+                )
                 logger.debug(
                     "Checking if all item assets are available in S3 before allowing the publication of the item",
                 )
@@ -405,7 +414,7 @@ field is not permitted also."
                 # Keep ESA behavior (accept null geometry+bbox) while ensuring pgstac persistence compatibility.
                 content = enforce_pgstac_defaults_for_null_geometry(content)
 
-                if not self.s3_manager().check_if_item_can_be_published(content):
+                if not self.s3_manager(request).check_if_item_can_be_published(content):
                     logger.debug("The item cannot be published because some of its assets are not yet available in S3")
                     raise HTTPException(
                         status_code=HTTP_400_BAD_REQUEST,

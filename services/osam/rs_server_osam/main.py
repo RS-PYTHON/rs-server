@@ -70,7 +70,7 @@ from starlette.status import (
 
 LOCK = threading.Lock()
 
-# The default synchronization time of the keycloak users with the ovh users (twice per day)
+# The default synchronization time in seconds of the keycloak users with the ovh users (twice per day)
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
 # Default timeout of the synchronization logic (2 minutes)
 DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))

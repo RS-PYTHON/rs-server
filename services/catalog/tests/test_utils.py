@@ -26,6 +26,7 @@ from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
 )
 from rs_server_common.utils.pytest import pytest_common_tests
+from rs_server_common.utils.utils2 import S3Credentials
 
 
 class TestVerifyExistingItemFromCatalog:
@@ -232,35 +233,25 @@ class TestGetS3Handler:
         )
 
         mock_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3StorageHandler")
-        s3_handler = S3Manager().s3_handler
+        s3_handler = S3Manager(
+            S3Credentials(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            ),
+        ).s3_handler
 
         # Assertions
         assert s3_handler is not None
         mock_s3_handler.assert_called_once_with(
-            "fake_access_key",
-            "fake_secret_key",
-            "https://fake_endpoint",
-            "fake_region",
+            S3Credentials(
+                "fake_access_key",
+                "fake_secret_key",
+                "https://fake_endpoint",
+                "fake_region",
+            ),
         )
-
-    def test_s3_handler_missing_env_variables(self, mocker):
-        """Test that missing environment variables return None and print an error."""
-
-        # Spy calls to logger.warning(...)
-        spy_log_warning = mocker.spy(logger, "warning")
-
-        # Clear environment variables
-        mocker.patch.dict(os.environ, {}, clear=True)
-        # Call the function and capture output
-        s3_handler = S3Manager().s3_handler
-
-        # Check logger called
-        spy_log_warning.assert_called_once()
-        logged_message = spy_log_warning.call_args[0][0]
-
-        # Assertions
-        assert s3_handler is None
-        assert "Failed to find s3 credentials when trying to create the s3 handler" in str(logged_message)
 
     def test_s3_handler_creation_runtime_error(self, mocker):
         """Test that a RuntimeError during s3_handler creation returns None and prints an error."""
@@ -285,7 +276,14 @@ class TestGetS3Handler:
         )
 
         # Call the function and capture output
-        s3_handler = S3Manager().s3_handler
+        s3_handler = S3Manager(
+            S3Credentials(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            ),
+        ).s3_handler
 
         # Check logger called
         spy_log_warning.assert_called_once()
@@ -296,7 +294,7 @@ class TestGetS3Handler:
         assert "Failed to create the s3 handler" in str(logged_message)
         mock_s3_handler.assert_called_once()
 
-    def test_check_if_item_can_be_published_success(self, mocker):
+    def test_check_if_item_can_be_published_success(self, mocker, s3_manager):
         """
         Test that an item with multiple assets and valid S3 keys can be published successfully.
 
@@ -317,7 +315,6 @@ class TestGetS3Handler:
             },
         }
 
-        s3_manager = S3Manager()
         s3_manager.is_catalog_local_mode = False
         # Mock the check_s3_key method to return (True, size) for both assets
         mocker.patch.object(
@@ -328,7 +325,7 @@ class TestGetS3Handler:
         # Make sure that item can be published successfully
         assert s3_manager.check_if_item_can_be_published(content) is True
 
-    def test_check_if_item_can_be_published_href_failure(self):
+    def test_check_if_item_can_be_published_href_failure(self, s3_manager):
         """
         Test that an item with assets having invalid or empty S3 hrefs cannot be published.
 
@@ -347,12 +344,11 @@ class TestGetS3Handler:
             },
         }
 
-        s3_manager = S3Manager()
         s3_manager.is_catalog_local_mode = False
         # Make sure that item can't be published successfully
         assert s3_manager.check_if_item_can_be_published(content) is False
 
-    def test_check_if_item_can_be_published_bucket_failure(self):
+    def test_check_if_item_can_be_published_bucket_failure(self, s3_manager):
         """
         Test that an item with assets stored in disallowed S3 buckets cannot be published.
 
@@ -371,12 +367,11 @@ class TestGetS3Handler:
             },
         }
 
-        s3_manager = S3Manager()
         s3_manager.is_catalog_local_mode = False
         # Make sure that item can't be published
         assert s3_manager.check_if_item_can_be_published(content) is False
 
-    def test_check_if_item_can_be_published_item_not_found_on_bucket(self, mocker):
+    def test_check_if_item_can_be_published_item_not_found_on_bucket(self, mocker, s3_manager):
         """
         Test that an item cannot be published if at least one asset is not found on S3.
 
@@ -396,7 +391,6 @@ class TestGetS3Handler:
             },
         }
 
-        s3_manager = S3Manager()
         s3_manager.is_catalog_local_mode = False
         # Mock the check_s3_key method to return False for one asset, meaning not found on bucket.
         mocker.patch.object(
@@ -407,7 +401,7 @@ class TestGetS3Handler:
         # Make sure that item can't be published
         assert s3_manager.check_if_item_can_be_published(content) is False
 
-    def test_check_if_item_can_be_published_exception(self, mocker):
+    def test_check_if_item_can_be_published_exception(self, mocker, s3_manager):
         """
         Test that an item cannot be published if `check_s3_key` raises an HTTP exception.
 
@@ -427,7 +421,6 @@ class TestGetS3Handler:
             },
         }
 
-        s3_manager = S3Manager()
         s3_manager.is_catalog_local_mode = False
         # Mock the check_s3_key method to return a http exception.
         mocker.patch.object(
