@@ -47,7 +47,6 @@ from rs_server_common import settings as common_settings
 from .helpers import (
     CATALOG_BUCKET,
     RESOURCES_FOLDER,
-    TEMP_BUCKET,
     Collection,
     Feature,
     a_collection,
@@ -141,9 +140,8 @@ def _init_buckets():
             os.environ["S3_REGION"],
         )
 
-        for bucket in TEMP_BUCKET, CATALOG_BUCKET:
-            s3_handler.s3_client.create_bucket(Bucket=bucket)
-            assert not s3_handler.list_s3_files_obj(bucket, "")
+        s3_handler.s3_client.create_bucket(Bucket=CATALOG_BUCKET)
+        assert not s3_handler.list_s3_files_obj(CATALOG_BUCKET, "")
 
         yield s3_handler
 
@@ -246,19 +244,20 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
 @pytest.fixture(scope="session", name="a_correct_feature")
 def a_correct_feature_fixture() -> dict:
     """This fixture returns a correct feature."""
+    bucket = "s3://rspython-ops-catalog-all-production"
     return {
         "collection": "S1_L2",
         "assets": {
             "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "href": f"{bucket}/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
                 "roles": ["data"],
             },
             "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "href": f"{bucket}/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
                 "roles": ["data"],
             },
             "S1SIWOCN_20220412T054447_0024_S139_T902.nc": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+                "href": f"{bucket}/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
                 "roles": ["data"],
             },
         },
@@ -302,19 +301,20 @@ def a_correct_feature_fixture() -> dict:
 @pytest.fixture(scope="session", name="a_incorrect_feature")
 def a_incorrect_feature_fixture() -> dict:
     """This fixture return a feature without geometry and properties."""
+    bucket = "s3://rspython-ops-catalog-all-production"
     return {
         "collection": "S1_L2",
         "assets": {
             "S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T717.zarr.zip",
+                "href": f"{bucket}/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T717.zarr.zip",
                 "roles": ["data"],
             },
             "S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T420.cog.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T420.cog.zip",
+                "href": f"{bucket}/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T420.cog.zip",
                 "roles": ["data"],
             },
             "S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T902.nc": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T902.nc",
+                "href": f"{bucket}/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T902.nc",
                 "roles": ["data"],
             },
         },

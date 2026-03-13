@@ -102,15 +102,9 @@ class CatalogResponseManager:
     """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
     Each type of Response is managed in one of the functions."""
 
-    def __init__(
-        self,
-        client: CoreCrudClient,
-        request_ids: dict[Any, Any],
-        s3_files_to_be_deleted: list[str] | None = None,
-    ):
+    def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
         self.request_ids = request_ids
-        self.s3_files_to_be_deleted = s3_files_to_be_deleted or []
 
     @lru_cache
     def s3_manager(self):
@@ -444,9 +438,11 @@ class CatalogResponseManager:
             if request.scope["path"].startswith(
                 f"{CATALOG_COLLECTIONS}/{user}_{self.request_ids['collection_ids'][0]}/items",
             ):
+                if response_content.get("geometry") == DEFAULT_GEOM:
+                    response_content["geometry"] = None
+                if response_content.get("bbox") == DEFAULT_BBOX:
+                    response_content["bbox"] = None
                 response_content = mask_internal_default_geometry_and_bbox(response_content)
-            await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
-            self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
@@ -470,7 +466,4 @@ class CatalogResponseManager:
         response_content = await read_streaming_response(response)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
-        # delete the s3 files as well
-        await self.s3_manager().delete_s3_files(self.s3_files_to_be_deleted)
-        self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))
