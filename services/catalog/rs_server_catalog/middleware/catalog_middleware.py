@@ -152,9 +152,5 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
 
         response = await call_next(request)
 
-        response_manager = CatalogResponseManager(
-            request_manager.client,
-            request_manager.request_ids,
-            request_manager.s3_files_to_be_deleted,
-        )
+        response_manager = CatalogResponseManager(request_manager.client, request_manager.request_ids)
         return await response_manager.manage_responses(request, cast(StreamingResponse, response))

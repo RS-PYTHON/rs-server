@@ -178,9 +178,7 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature, staging_u
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
         assets_info.append(asset_info)
-        # update the s3 path, this will be checked in the rs-server-catalog in the
-        # publishing phase
-        asset_content.href = f"s3://rtmpop/{s3_obj_path}"
+        asset_content.href = f"s3://{s3_bucket_name}/{s3_obj_path}"
         feature.assets[asset_name] = asset_content
     return assets_info
 

@@ -19,19 +19,11 @@ import traceback
 
 import botocore
 from fastapi import HTTPException
-from rs_server_catalog.data_management.stac_manager import StacManager
-from rs_server_catalog.utils import (
-    ALTERNATE_STRING,
-    get_temp_bucket_name,
-    verify_existing_item_from_catalog,
-)
+from rs_server_catalog.utils import verify_existing_item_from_catalog
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_bucket_name_from_config,
 )
-from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    S3StorageHandler,
-    TransferFromS3ToS3Config,
-)
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
 from starlette.requests import Request
@@ -146,10 +138,11 @@ class S3Manager:
         try:
             s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
             if not s3_key_exists:
-                raise HTTPException(
-                    detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
-                    status_code=HTTP_400_BAD_REQUEST,
-                )
+                return False, -1
+                # raise HTTPException(
+                #     detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
+                #     status_code=HTTP_400_BAD_REQUEST,
+                # )
             return True, size
         except RuntimeError as rte:
             raise HTTPException(
@@ -157,77 +150,14 @@ class S3Manager:
                 status_code=HTTP_400_BAD_REQUEST,
             ) from rte
 
-    def s3_bucket_handling(self, bucket_name: str, files_s3_key: list[str], item: dict, request: Request) -> list:
-        """Handle the transfer and deletion of files in S3 buckets.
-
-        Args:
-            bucket_name (str): Name of the S3 bucket to transfer files to
-            files_s3_key (list[str]): List of S3 keys for the files to be transfered.
-            item (dict): The catalog item from which all the remaining assets should be deleted.
-            request (Request): The request object, used to determine the request method.
-
-        Returns:
-            list: List of files to be deleted after a successful transfer
-
-        Raises:
-            HTTPException: If there are errors during the S3 transfer or deletion process.
-        """
-        if self.is_catalog_local_mode or not files_s3_key:
-            logger.debug(f"s3_bucket_handling: nothing to do: {self.s3_handler} | {files_s3_key}")
-            return []
-
-        try:
-            s3_files_to_be_deleted = []
-            # get the temporary bucket name, there should be one only in the set
-            temp_bucket_name = get_temp_bucket_name(files_s3_key)
-            # now, remove the s3://temp_bucket_name for each s3_key
-            for idx, s3_key in enumerate(files_s3_key):
-                # build the list with files to be deleted from the temporary bucket
-                s3_files_to_be_deleted.append(s3_key)
-                files_s3_key[idx] = s3_key.replace(f"s3://{temp_bucket_name}", "")
-
-            err_message = f"Failed to transfer file(s) from '{temp_bucket_name}' bucket to \
-'{bucket_name}' catalog bucket!"
-            config = TransferFromS3ToS3Config(
-                files_s3_key,
-                temp_bucket_name,
-                bucket_name,
-                copy_only=True,
-                max_retries=3,
-            )
-
-            failed_files = self.s3_handler.transfer_from_s3_to_s3(config)
-
-            if failed_files:
-                s3_files_to_be_deleted.clear()
-                raise HTTPException(
-                    detail=f"{err_message} {failed_files}",
-                    status_code=HTTP_400_BAD_REQUEST,
-                )
-            # For a PUT request, all new assets are transferred (as described above).
-            # Any asset that already exists in the catalog from a previous POST request
-            # but is not included in the current request will be deleted.
-            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
-            if item and request.method == "PUT":
-                for asset in item["assets"]:
-                    s3_files_to_be_deleted.append(item["assets"][asset]["href"])
-            return s3_files_to_be_deleted
-        except KeyError as kerr:
-            raise HTTPException(
-                detail=f"{err_message} Failed to find S3 credentials.",
-                status_code=HTTP_400_BAD_REQUEST,
-            ) from kerr
-        except RuntimeError as rte:
-            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
-
     def update_stac_item_publication(  # pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
         self,
         content: dict,
         request: Request,
         request_ids: dict,
         item: dict,
-    ) -> tuple[dict, list]:
-        """Update the JSON body of a feature push to the catalog.
+    ) -> dict:
+        """Update the JSON body of a feature with new stac extensions and owner information.
 
         Args:
             content (dict): The content to update.
@@ -239,9 +169,7 @@ class S3Manager:
             dict: The updated content.
             list: List of files to delete from the S3 bucket
 
-        Raises:
-            HTTPException: If there are errors in processing the request, such as missing collection name,
-                        invalid S3 bucket, or failed file transfers.
+
         """
         collection_ids = request_ids.get("collection_ids", [])
         user = request_ids.get("owner_id")
@@ -254,80 +182,6 @@ class S3Manager:
         collection_id = collection_ids[0]
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
-        item_eopf_type = content["properties"].get("eopf:type", "*")
-        bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
-
-        files_s3_key = []
-        # 1 - update assets href
-        for asset in content["assets"]:
-            s3_filename, alternate_field = StacManager.get_s3_filename_from_asset(content["assets"][asset])
-            if alternate_field:
-                if not item:
-                    # the asset should be already in the catalog from a previous POST/PUT request
-                    raise HTTPException(
-                        detail=(f"The item that contains asset '{asset}' does not exist in the catalog but it should "),
-                        status_code=HTTP_400_BAD_REQUEST,
-                    )
-            # else:
-            # if alternate_key is missing, it indicates the request originates from the staging process.
-            # In this case, the file should not be deleted from the temp bucket — it's already stored in the
-            # final catalog bucket, so no action is needed.
-
-            logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
-            fid = s3_filename.rsplit("/", maxsplit=1)[-1]
-            if fid != asset:
-                raise HTTPException(
-                    detail=(
-                        f"Invalid structure for the asset '{asset}'. The name of the asset "
-                        f"should be the filename, that is {fid} "
-                    ),
-                    status_code=HTTP_400_BAD_REQUEST,
-                )
-            # 2 - update alternate href to define catalog s3 bucket
-            try:
-                old_bucket_arr = s3_filename.split("/")
-                old_bucket = old_bucket_arr[2]
-                old_bucket_arr[2] = bucket_name
-                s3_key = "/".join(old_bucket_arr)
-                # Check if the S3 key exists
-                s3_key_exists, _ = self.check_s3_key(item, asset, s3_key)
-                if not s3_key_exists:
-                    # update the S3 path to use the catalog bucket
-                    # add also the file:size and file:local_path fields
-                    content["assets"][asset].update({"href": s3_key, "file:local_path": "/".join(old_bucket_arr[-2:])})
-                    # update the 'href' key with the download link and create the alternate field
-                    https_link = f"https://{request.url.netloc}/catalog/\
-collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asset}"
-                    content["assets"][asset].update({ALTERNATE_STRING: {"https": {"href": https_link}}})
-
-                    # copy the key only if it isn't already in the final catalog bucket
-                    # (don't do anything if in local mode)
-                    if not self.is_catalog_local_mode:
-                        s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(
-                            bucket_name,
-                            "/".join(old_bucket_arr[3:]),
-                        )
-                        if not s3_key_exists:
-                            files_s3_key.append(s3_filename)
-                            if "file:size" not in content["assets"][asset]:
-                                _, size = self.s3_handler.check_s3_key_on_bucket(
-                                    old_bucket,
-                                    "/".join(old_bucket_arr[3:]),
-                                )
-                        if "file:size" not in content["assets"][asset] and size != -1:
-                            content["assets"][asset]["file:size"] = size
-                        logger.debug(f"file:size = {size}")
-
-                elif request.method == "PUT":
-                    # remove the asset from the item, all assets that remain shall
-                    # be deleted from the catalog s3 bucket later on
-                    item["assets"].pop(asset)
-            except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
-                raise HTTPException(
-                    detail=f"Failed to handle the s3 level. Reason: {exc}",
-                    status_code=HTTP_400_BAD_REQUEST,
-                ) from exc
-
         # 3 - include new stac extensions if not present
         for new_stac_extension in [
             "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
@@ -337,38 +191,11 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
             if new_stac_extension not in content["stac_extensions"]:
                 content["stac_extensions"].append(new_stac_extension)
 
-        # 4 - bucket handling
-        s3_files_to_be_deleted = self.s3_bucket_handling(bucket_name, files_s3_key, item, request)
-
         # 5 - add owner data
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
         logger.debug(f"The updated item for user: {user} ended")
-        return content, s3_files_to_be_deleted
-
-    async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
-        """Used to clear specific files from temporary bucket or from catalog bucket.
-
-        Args:
-            s3_files_to_be_deleted (list[str]): list of files to delete from the S3 bucket
-
-        Returns:
-            bool: True is deletion was successful, False otherwise
-        """
-        if not s3_files_to_be_deleted:
-            logger.info("No files to be deleted from bucket")
-            return True
-        if not self.s3_handler:
-            logger.error("Failed to create the s3 handler when trying to delete the s3 files")
-            return False
-
-        try:
-            await self.s3_handler.adelete_keys_from_s3(s3_files_to_be_deleted)
-        except RuntimeError as rte:
-            logger.exception(
-                f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
-            )
-        return True
+        return content
 
     def generate_presigned_url(self, content: dict, path: str) -> tuple[str, int]:
         """This function is used to generate a time-limited download url
@@ -392,14 +219,7 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         item_eopf_type = content["properties"].get("eopf:type", "*")
         bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
         try:
-            s3_path = (
-                content["assets"][asset_id]["href"]
-                .replace(
-                    f"s3://{bucket_name}",
-                    "",
-                )
-                .lstrip("/")
-            )
+            s3_path = content["assets"][asset_id]["href"].removeprefix(f"s3://{bucket_name}/")
         except KeyError:
             return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
@@ -416,3 +236,49 @@ collections/{user}:{collection_id}/items/{request_ids['item_id']}/download/{asse
         except botocore.exceptions.ClientError:
             return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
         return response, HTTP_302_FOUND
+
+    def check_if_item_can_be_published(self, content: dict) -> bool:
+        """
+        Check if all assets of a given catalog item exist on S3 and are valid for publishing.
+
+        Iterates through each asset in the `content["assets"]` dictionary and verifies
+        the presence of the S3 key (or folder/prefix) using `check_s3_key`. Logs the
+        results and any errors encountered. Returns True only if all assets exist;
+        returns False if at least one asset is missing or cannot be verified.
+
+        Args:
+            content (dict): A catalog item dictionary containing asset information
+                            under the "assets" key.
+
+        Returns:
+            bool: True if all assets exist on S3 and can be published, False otherwise.
+
+        Notes:
+            - Handles exceptions raised by `check_s3_key` and logs errors without stopping iteration.
+            - For folder/prefix assets, the size returned is ignored (-1), but existence is still validated.
+        """
+        # (don't do anything if in local mode)
+        if self.is_catalog_local_mode:
+            return True
+
+        collection_id = content.get("collection")
+        item_eopf_type = content["properties"].get("eopf:type", "*")
+        user = content["properties"].get("owner", "*")
+        bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
+        exist_list = []
+        for asset_name, asset_info in content.get("assets", {}).items():
+            exists = False
+            if s3_key := asset_info.get("href"):
+                if bucket_name not in s3_key:
+                    logger.error(
+                        f"Asset: {asset_name}, The s3 key {s3_key} should contain the bucket name {bucket_name}",
+                    )
+                    exist_list.append(False)
+                    continue
+                try:
+                    exists, size = self.check_s3_key(content, asset_name, s3_key)
+                    logger.info(f"Asset: {asset_name}, Found on bucket: {exists}, Size: {size}")
+                except HTTPException as e:
+                    logger.error(f"Asset: {asset_name}, Error: {e.detail}")
+            exist_list.append(exists)
+        return all(exist_list)
