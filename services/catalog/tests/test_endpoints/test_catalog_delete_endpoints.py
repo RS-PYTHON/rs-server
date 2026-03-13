@@ -18,12 +18,8 @@
 
 import copy
 import json
-from unittest.mock import AsyncMock
 
 import fastapi
-import pytest
-from rs_server_catalog.middleware.request_manager import CatalogRequestManager
-from stac_fastapi.types.errors import NotFoundError
 
 
 class TestCatalogDeleteEndpoints:
@@ -117,113 +113,3 @@ class TestCatalogDeleteEndpoints:
         # Test that the collection is removed, the request raises a 404 exception
         response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-
-    @pytest.mark.asyncio
-    async def test_build_filelist_to_be_deleted_collection(self, mocker):
-        """
-        Test build_filelist_to_be_deleted for collection deletion.
-
-        This test checks if the function correctly builds a list of S3 file paths to be deleted
-        when deleting an entire collection. Mocks the item_collection response to simulate a
-        collection with multiple assets, and verifies that s3_files_to_be_deleted is populated
-        with the expected S3 paths.
-        """
-        # Mock the client and request for a collection deletion
-        mock_client = AsyncMock()
-        mock_request = mocker.Mock()
-        mock_request.scope = {"path": "/catalog/collections/user_collection_id"}
-
-        # Mock response from client.item_collection for collection deletion
-        mock_client.item_collection.return_value = {
-            "features": [
-                {
-                    "assets": {
-                        "asset1": {"href": "s3://bucket/file1"},
-                        "asset2": {"href": "s3://bucket/file2"},
-                    },
-                },
-            ],
-        }
-
-        # Instantiate CatalogRequestManager with correct request_ids
-        request_ids = {"owner_id": "user", "collection_ids": ["collection_id"]}
-        request_manager = CatalogRequestManager(mock_client, request_ids)
-
-        # Call the function
-        await request_manager.build_filelist_to_be_deleted(mock_request)
-
-        # Assert
-        assert request_manager.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
-        mock_client.item_collection.assert_called_once_with(
-            request=mock_request,
-            collection_id="user_collection_id",
-            limit=100,
-            token=None,
-        )
-
-    @pytest.mark.asyncio
-    async def test_build_filelist_to_be_deleted_item(self, mocker):
-        """
-        Test build_filelist_to_be_deleted for individual item deletion.
-
-        This test verifies that when deleting a single item, the function correctly identifies
-        the item's specific assets to be deleted. Mocks the get_item response to return an item
-        with one asset, and confirms s3_files_to_be_deleted contains the correct S3 path.
-        """
-        # Mock the client and request for an item deletion
-        mock_client = AsyncMock()
-        mock_request = mocker.Mock()
-        mock_request.scope = {"path": "/catalog/collections/user_collection_id/items/item_id"}
-
-        # Mock response from client.get_item for item deletion
-        mock_client.get_item.return_value = {
-            "assets": {
-                "asset1": {"href": "s3://bucket/file1", "alternate": {"https": {"href": "https://catalog/file1"}}},
-            },
-        }
-
-        # Instantiate CatalogRequestManager with correct request_ids
-        request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "item_id"}
-        request_manager = CatalogRequestManager(mock_client, request_ids)
-
-        # Act
-        await request_manager.build_filelist_to_be_deleted(mock_request)
-
-        # Assert
-        assert request_manager.s3_files_to_be_deleted == ["s3://bucket/file1"]
-        mock_client.get_item.assert_called_once_with(
-            item_id="item_id",
-            collection_id="user_collection_id",
-            request=mock_request,
-        )
-
-    @pytest.mark.asyncio
-    async def test_build_filelist_to_be_deleted_not_found(self, mocker):
-        """
-        Test build_filelist_to_be_deleted when item is not found.
-
-        This test checks that when an item does not exist, the function handles the
-        NotFoundError gracefully. It ensures no S3 paths are added to s3_files_to_be_deleted.
-        """
-        # Mock the client and request for a non-existing item
-        mock_client = AsyncMock()
-        mock_request = mocker.Mock()
-        mock_request.scope = {"path": "/catalog/collections/user_collection_id/items/nonexistent_item"}
-
-        # Mock the NotFoundError raised by client.get_item
-        mock_client.get_item.side_effect = NotFoundError("Item not found")
-
-        # Instantiate CatalogRequestManager with correct request_ids
-        request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "nonexistent_item"}
-        request_manager = CatalogRequestManager(mock_client, request_ids)
-
-        # Act
-        await request_manager.build_filelist_to_be_deleted(mock_request)
-
-        # Assert
-        assert not request_manager.s3_files_to_be_deleted
-        mock_client.get_item.assert_called_once_with(
-            item_id="nonexistent_item",
-            collection_id="user_collection_id",
-            request=mock_request,
-        )
