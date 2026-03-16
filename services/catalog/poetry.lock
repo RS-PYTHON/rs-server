@@ -917,14 +917,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.10.1"
+version = "3.10.2"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main", "dev"]
 files = [
-    {file = "eodag-3.10.1-py3-none-any.whl", hash = "sha256:82f1ca8878bd44b36013c83ddb8bec8bc7535bfbc6af787fb1cad605b2452ffe"},
-    {file = "eodag-3.10.1.tar.gz", hash = "sha256:8bda8316835bea676086ff3d289f3c6eb4e4c206d9fe91ce43889ca08028f4b6"},
+    {file = "eodag-3.10.2-py3-none-any.whl", hash = "sha256:4ee8e7a03f66a39539a62c4ec83a5c8b7f3c68d0d35da6b9f74c6188344e848e"},
+    {file = "eodag-3.10.2.tar.gz", hash = "sha256:f5657e6182157aa90aa56e0a7c497a94e757880247e4eb35a02fafdf267d12c6"},
 ]
 
 [package.dependencies]
@@ -934,7 +934,7 @@ botocore = "*"
 click = "*"
 geojson = "*"
 importlib_metadata = ">=5.0"
-jsonpath-ng = "*"
+jsonpath-ng = "<1.8.0"
 lxml = "*"
 orjson = "*"
 pydantic = ">=2.1.0,<2.10.0 || >2.10.0"
@@ -3290,7 +3290,7 @@ boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 cachetools = ">=7.0.1"
 cachetools_async = ">=0.0.5"
-eodag = "==v3.10.1"
+eodag = "==v3.10.2"
 fastapi = "==0.135.1"
 filelock = ">=3.20.3"
 geojson-pydantic = "2.1.0"
