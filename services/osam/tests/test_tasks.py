@@ -335,7 +335,7 @@ def test_build_users_data_map(mocker):
 )
 def test_build_s3_rights(user_info, expected):
     """Test build s3 rights"""
-    assert build_s3_rights(user_info) == expected
+    assert build_s3_rights("testuser", user_info) == expected
 
 
 @pytest.mark.parametrize(

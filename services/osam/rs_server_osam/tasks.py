@@ -37,6 +37,7 @@ from rs_server_osam.utils.tools import (
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
     get_keycloak_user_from_description,
+    load_configmap_data,
     match_roles,
     parse_role,
 )
@@ -335,7 +336,7 @@ def apply_user_access_policy(user, current_rights):
 
 
 @traced_function()
-def build_s3_rights(user_info):  # pylint: disable=too-many-locals
+def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     """
     Builds the S3 access rights structure for a user based on their Keycloak roles.
 
@@ -370,10 +371,19 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
         elif op == "download":
             download_roles.append((owner, collection))
 
-    # Step 2-3: Match against configmap
+    # Step 2: Match against configmap
     read_set = match_roles(read_roles)
     write_set = match_roles(write_roles)
     download_set = match_roles(download_roles)
+    # add the default roles with * for owner, collection and product type, if there is a
+    # bucket defined in the configmap. these roles will be assigned to the current
+    # user account on ovh when the  /storage/account/{user}/update endpoint is called
+    for cfg_owner, cfg_collection, product_type, _, bucket in load_configmap_data():
+        if cfg_owner == "*" and cfg_collection == "*" and product_type == "*" and bucket:
+            logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
+            read_set.add(bucket.strip() + "/*/*/")
+            write_set.add(bucket.strip() + "/*/*/")
+            download_set.add(bucket.strip() + "/*/*/")
 
     # Step 3: Merge access
     read_only = read_set - download_set - write_set
@@ -394,7 +404,7 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
 @traced_function()
 def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     """
-    Constructs the final user S3 access policy document for ovhbased on the provided access rights.
+    Constructs the final user S3 access policy document for ovh based on the provided access rights.
 
     This function takes access permissions derived from a user's Keycloak roles and configmap and builds
     a structured S3 access policy document. The policy includes separate blocks for read,
