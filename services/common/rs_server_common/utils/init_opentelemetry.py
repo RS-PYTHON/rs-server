@@ -196,13 +196,16 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
         otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
 
     if app:
-        FastAPIInstrumentor.instrument_app(
-            app,
-            tracer_provider=otel_tracer,
-            server_request_hook=fastapi_hook,
-            client_request_hook=fastapi_hook,
-            client_response_hook=fastapi_hook,
-        )
+        if trace_headers() or trace_body():
+            FastAPIInstrumentor.instrument_app(
+                app,
+                tracer_provider=otel_tracer,
+                server_request_hook=fastapi_hook,
+                client_request_hook=fastapi_hook,
+                client_response_hook=fastapi_hook,
+            )
+        else:
+            FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
         # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
 
     # Instrument all the dependencies under opentelemetry.instrumentation.*
@@ -248,13 +251,13 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
                 # logger.debug(f"OpenTelemetry instrumentation of {name!r}")
 
                 # Handle specific hooks
-                if _class == RequestsInstrumentor:
+                if _class == RequestsInstrumentor and (trace_headers() or trace_body()):
                     _class_instance.instrument(
                         tracer_provider=otel_tracer,
                         request_hook=requests_hook,
                         response_hook=requests_hook,
                     )
-                elif _class == FastAPIInstrumentor:
+                elif _class == FastAPIInstrumentor and (trace_headers() or trace_body()):
                     _class_instance.instrument(
                         tracer_provider=otel_tracer,
                         server_request_hook=fastapi_hook,
