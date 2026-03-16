@@ -1606,7 +1606,7 @@ class TestFeatureCollectionOdataStacMapping:
             #    "T_DISJOINT(start_datetime, '2025-04-01T00:00:00Z')"
             #    "&sortby=-properties.created&limit=1",
             #    "http://127.0.0.1:5000/Products?$filter="
-            #    "not (ContentDate/Start lte 2025-04-02T00:00:00.000Z and ContentDate/End gte 2025-04-01T00:00:00.000Z)"
+            #    "not (ContentDate/Start le 2025-04-02T00:00:00.000Z and ContentDate/End ge 2025-04-01T00:00:00.000Z)"
             #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
             #    status.HTTP_200_OK,
             # ),
@@ -1616,7 +1616,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "T_INTERSECTS(start_datetime, '2025-04-01T00:00:00Z')"
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(ContentDate/Start lte 2025-04-01T00:00:00.000Z and ContentDate/Start gte 2025-04-01T00:00:00.000Z)"
+                "(ContentDate/Start le 2025-04-01T00:00:00.000Z and ContentDate/Start ge 2025-04-01T00:00:00.000Z)"
                 "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
