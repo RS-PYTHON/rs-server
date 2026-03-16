@@ -112,8 +112,8 @@ def requests_hook(span: Span, request: requests.PreparedRequest, response: reque
     if not (span and span.is_recording()):
         return
 
-    # Copy the http.url attribute into _url so it appears at the
-    # top in the grafana UI, it's more readable
+    # Copy this attribute by adding a '_' prefix to the name,
+    # so it appears at the top in the grafana UI, it's more readable
     span.set_attribute("_url", span.attributes.get("http.url"))
 
     if trace_headers():
@@ -142,9 +142,9 @@ def fastapi_hook(span: Span, scope: dict[str, Any], message=None):
     if not (span and span.is_recording()):
         return
 
-    # Copy the http.url attribute into _url so it appears at the
-    # top in the grafana UI, it's more readable
-    span.set_attribute("_url", span.attributes.get("http.url"))
+    # Copy this attribute by adding a '_' prefix to the name,
+    # so it appears at the top in the grafana UI, it's more readable
+    span.set_attribute("_path", scope.get("path"))
 
     if trace_headers():
         span.set_attribute("http.scope.headers", parse_data(scope.get("headers")))
