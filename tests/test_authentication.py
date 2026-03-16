@@ -290,6 +290,9 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             oauth2_attributes,
         )
 
+    # Mock every subfunctions called by the endpoints that take too much time
+    mocker.patch("rs_server_common.stac_api_common.MockPgstac.fetchval", return_value=None)
+
     # Check that we don't need authentication for the /health endpoints.
     # NOTE: they are implemented by the HealthMiddleware
     for path in ["/health", "/_mgmt/health", "/ping", "/_mgmt/ping"]:
@@ -547,6 +550,9 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
                 user_info["iam_roles"],
                 {},
             )
+
+    # Mock every subfunctions called by the endpoints that take too much time
+    mocker.patch("rs_server_common.stac_api_common.MockPgstac.fetchval", return_value=None)
 
     def client_request(station_endpoint: str):
         """Request endpoint."""

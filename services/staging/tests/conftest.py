@@ -485,7 +485,7 @@ def dask_client(mocker, cluster):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def apply_global_osam_mock():
+def _apply_global_osam_mock():
     """
     Mocks the osam endpoint call to fetch the S3 storage configuration used in
     s3_storage_config module.

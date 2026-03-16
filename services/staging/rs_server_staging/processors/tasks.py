@@ -33,6 +33,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Credentials
 from rs_server_staging.utils.asset_info import (
     AssetInfo,
     IncompleteAssetError,
@@ -47,6 +48,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
     asset_info: AssetInfo,
     config: StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig,
     auth: str,
+    s3_credentials: S3Credentials,
 ):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
@@ -57,12 +59,14 @@ def streaming_task(  # pylint: disable=R0913, R0917
     environment variables for credentials.
 
     Args:
+
         asset_info (AssetInfo): Object containing the essential informations about the product
             to download, such as its URL, the destination bucket name and the destination path/key
             in the S3 bucket where the file will be uploaded.
         config (StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig): Authentification
             configuration containing the list of trusted domains
         auth: The station token. This has to be refreshed from the caller
+        s3_credentials: S3 object storage credentials
     Returns:
         str: The S3 file path where the file was uploaded.
 
@@ -90,13 +94,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
     attempt = 0
     while attempt < max_retries:
         try:
+            # Use S3 object storage credentials of the logged user
             logger_dask.debug(f"{s3_file}: Creating the s3_handler")
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
+            s3_handler = S3StorageHandler(s3_credentials)
             if "/NOMINAL" in asset_info.product_url:
                 s3_handler.s3_streaming_from_ftp(product_url, bucket, s3_file)
             elif not auth:
@@ -126,9 +126,6 @@ def streaming_task(  # pylint: disable=R0913, R0917
             raise ValueError(
                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
             ) from e
-        except KeyError as key_exc:
-            logger_dask.exception(f"KeyError exception in streaming_task for {s3_file}: {key_exc}")
-            raise ValueError(f"Cannot create s3 connector object. Reason: {key_exc}") from key_exc
         except RuntimeError as e:
             logger_dask.exception(f"RuntimeError exception in streaming_task for {s3_file} : {e}")
             raise ValueError(
@@ -181,9 +178,7 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature, staging_u
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
         assets_info.append(asset_info)
-        # update the s3 path, this will be checked in the rs-server-catalog in the
-        # publishing phase
-        asset_content.href = f"s3://rtmpop/{s3_obj_path}"
+        asset_content.href = f"s3://{s3_bucket_name}/{s3_obj_path}"
         feature.assets[asset_name] = asset_content
     return assets_info
 

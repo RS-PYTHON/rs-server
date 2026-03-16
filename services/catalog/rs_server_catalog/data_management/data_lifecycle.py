@@ -31,6 +31,7 @@ from rs_server_catalog.utils import ISO_8601_FORMAT
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Credentials
 from stac_fastapi.extensions.third_party import bulk_transactions
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient
@@ -221,7 +222,15 @@ class DataLifecycle:
         for bucket_name, bucket_keys in bucket_info.items():
             bucket_files.extend([f"s3://{bucket_name}/{key}" for key in bucket_keys])
 
-        await S3StorageHandler().adelete_keys_from_s3(bucket_files)
+        # We use the administrator bucket credentials that are saved as env vars
+        await S3StorageHandler(
+            S3Credentials(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            ),
+        ).adelete_keys_from_s3(bucket_files)
         self.logger.debug("Finished deleting s3 keys")
 
     def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):

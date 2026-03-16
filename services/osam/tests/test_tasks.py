@@ -836,16 +836,26 @@ def test_get_user_s3_credentials(
 
     mock_get_ovh_handler.return_value = mock_ovh_instance
 
-    # Nominal case
-    if obs_user_present and access_key_present and (not raise_exception):
-        result = get_user_s3_credentials(user)
-        assert result == expected_result
+    nominal_case = obs_user_present and access_key_present and (not raise_exception)
 
     # Error cases
-    else:
+    if not nominal_case:
         with pytest.raises(RuntimeError) as e_info:
             get_user_s3_credentials(user)
         assert expected_result == str(e_info.value.__cause__)
+        return
+
+    # Nominal case
+    result = get_user_s3_credentials(user)
+    assert result == expected_result
+
+    # This function called internally by get_user_s3_credentials has been called once
+    assert mock_keycloak_instance.get_obs_user_from_keycloak_username.call_count == 1
+
+    # If we call the function a second time, the call count is still one, because of the cache
+    result = get_user_s3_credentials(user)
+    assert result == expected_result
+    assert mock_keycloak_instance.get_obs_user_from_keycloak_username.call_count == 1
 
 
 @pytest.mark.parametrize(

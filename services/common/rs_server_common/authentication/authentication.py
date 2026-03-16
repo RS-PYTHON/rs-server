@@ -17,18 +17,25 @@ Authentication functions implementation.
 """
 
 import os
+from contextlib import suppress
 from typing import Annotated, Literal
 
 import jwt
+import requests
 from cachetools import TTLCache
 from cachetools_async import cached
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
-from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
+from rs_server_common.authentication.apikey import (
+    APIKEY_AUTH_HEADER,
+    APIKEY_HEADER,
+    apikey_security,
+)
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_common.utils.utils2 import AuthInfo, S3Credentials, read_response_error
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import HTTPConnection
 
 logger = Logging.default(__name__)
 
@@ -186,3 +193,54 @@ def auth_validation(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Missing authorization role {requested_role!r} for user {user_login!r} with roles: {auth_roles}",
         )
+
+
+def get_s3_credentials(request: Request) -> S3Credentials:
+    """
+    Return the S3 object storage credentials for the logged user.
+    These credentials are returned by the OSAM service.
+    """
+    # Try to return the S3 credentials already calculated for this request (and thus for this logged user)
+    with suppress(AttributeError):
+        return request.state.s3_credentials
+
+    # Else we're calculating it.
+    # We create a new HTTP request to OSAM to retrieve the S3 credentials of the user.
+    # The user is already logged in, this is why he's able to call the current request.
+    # The current request contains the user credentials in its api key and/or oauth2 cookie.
+    # So we copy the api key and oauth2 cookie to the new request so the user will also be authenticated in osam.
+    osam_request = requests.Session()
+
+    # Copy the api key from the request headers
+    apikey_value = request.headers.get(APIKEY_HEADER)
+
+    # Copy the "session" cookie from the request, as in starlette/middleware/sessions.py::__call__
+    connection = HTTPConnection(request.scope)
+    if session_cookie := connection.cookies.get("session"):
+        osam_request.cookies.set("session", session_cookie)
+
+    # Send request to osam and check result.
+    # NOTE: the results are cached on the osam server-side for every user, so it's calculated only once.
+    osam_response = osam_request.get(
+        os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
+        headers={APIKEY_HEADER: apikey_value} if apikey_value else {},
+    )
+    if not osam_response.ok:
+        raise HTTPException(
+            osam_response.status_code,
+            f"Failed to get user credentials from OSAM: {read_response_error(osam_response)}",
+        )
+
+    # Read result from osam
+    osam_credentials = osam_response.json()
+    try:
+        request.state.s3_credentials = S3Credentials(
+            access_key_id=osam_credentials["access_key"],
+            secret_access_key=osam_credentials["secret_key"],
+            endpoint_url=osam_credentials["endpoint"],
+            region_name=osam_credentials["region"],
+        )
+        return request.state.s3_credentials
+    except KeyError as exc:
+        # WARNING: print only the s3 credential keys in this error message, not the values !
+        raise KeyError(f"Invalid credentials returned by OSAM: {list(osam_credentials.keys())}") from exc

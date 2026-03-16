@@ -41,6 +41,7 @@ from pygeoapi.process.manager.postgresql import (
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
@@ -534,34 +535,26 @@ class Staging(
             - The `self.assets_info` attribute is expected to be a list of asset information,
             with each entry containing details for deletion.
             - The `self.catalog_bucket` is expected to be already set from init
-            - The S3 credentials (access key, secret key, endpoint, and region) are fetched
-            from environment variables: `S3_ACCESSKEY`, `S3_SECRETKEY`, `S3_ENDPOINT`,
-            and `S3_REGION`.
+            - The S3 credentials (access key, secret key, endpoint, and region) are fetched from OSAM.
         """
         if not self.assets_info:
             self.logger.debug("Trying to remove file from bucket, but no asset info defined.")
             return
-        try:
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
 
-            for s3_obj in self.assets_info:
-                try:
-                    s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
-                except RuntimeError as error:
-                    self.logger.warning(
-                        "Failed to delete from the bucket key s3://%s/%s : %s",
-                        s3_obj.s3_bucket,
-                        s3_obj.s3_file,
-                        error,
-                    )
-                    continue
-        except KeyError as exc:
-            self.logger.error("Cannot connect to s3 storage, %s", exc)
+        # Use S3 object storage credentials of the logged user
+        s3_handler = S3StorageHandler(authentication.get_s3_credentials(self.request))
+
+        for s3_obj in self.assets_info:
+            try:
+                s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
+            except RuntimeError as error:
+                self.logger.warning(
+                    "Failed to delete from the bucket key s3://%s/%s : %s",
+                    s3_obj.s3_bucket,
+                    s3_obj.s3_file,
+                    error,
+                )
+                continue
 
     def wait_for_dask_completion(self, client: Client):
         """Waits for all Dask tasks to finish before proceeding."""
@@ -635,6 +628,9 @@ class Staging(
                 refresh_token.unsubscribe(self.logger)
             return
 
+        # Get the S3 object storage credentials for the logged user
+        s3_credentials = authentication.get_s3_credentials(self.request)
+
         # prevent submitting more tasks than necessary.
         # this can occur when the number of tasks that can run in parallel
         # exceeds the actual number of tasks intended for submission.
@@ -650,6 +646,7 @@ class Staging(
                         next(data_iter),
                         None,
                         None,
+                        s3_credentials,
                     )
                     for _ in range(max_parallel_tasks)
                 }
@@ -666,6 +663,7 @@ class Staging(
                         next(data_iter),
                         refresh_token.config,
                         access_token,
+                        s3_credentials,
                     )
                     for _ in range(max_parallel_tasks)
                 }
@@ -699,6 +697,7 @@ class Staging(
                                 new_task,
                                 None,
                                 None,
+                                s3_credentials,
                             ),
                         )
                     else:
@@ -713,6 +712,7 @@ class Staging(
                                 new_task,
                                 refresh_token.config,
                                 access_token,
+                                s3_credentials,
                             ),
                         )
 
@@ -886,15 +886,14 @@ class Staging(
         # Forward logging from dask workers to the caller
         client.forward_logging()
 
-        def set_dask_env(host_env: dict, extra_keys: None):
+        def set_dask_env(host_env: dict, env_var_names: list[str]):
             """Pass environment variables to the dask workers."""
-            required_keys = ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION", "USE_SSL"]
-            for name in required_keys + extra_keys:  # type: ignore
+            for name in ["USE_SSL"] + env_var_names:
                 os.environ[name] = host_env[name]
 
-        pattern = re.compile(r".*_(HOST|PORT|USER|PASS|CLIENT_CRT|CLIENT_KEY|CA_CRT)$")
-        extra_keys = [key for key in os.environ if pattern.fullmatch(key)]
-        client.run(set_dask_env, os.environ, extra_keys)
+        env_var_pattern = re.compile(r".*_(HOST|PORT|USER|PASS|CLIENT_CRT|CLIENT_KEY|CA_CRT)$")
+        env_var_names = [key for key in os.environ if env_var_pattern.fullmatch(key)]
+        client.run(set_dask_env, os.environ, env_var_names)
 
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
