@@ -29,7 +29,8 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 PYTHON_VERSION=3.13.12
 PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
-DASK_GATEWAY_TAG=2024.1.0
+DASK_TAG_STAGING=2026.1.2
+DASK_GATEWAY_TAG=2025.4.0
 PREFECT_TAG=3.6.20
 PREFECT_AWS_TAG=0.7.5
 JUPYTER_HUB_VERSION=5.4.3
@@ -39,12 +40,13 @@ JUPYTER_HUB_VERSION=5.4.3
 PYTHON_VERSION_OLD=3.13.11
 PYTHON_VERSION_DPR_OLD=3.11.7
 DASK_TAG_OLD=2024.5.2
+DASK_TAG_STAGING_OLD=2024.5.2
 DASK_GATEWAY_TAG_OLD=2024.1.0
 PREFECT_TAG_OLD=3.6.12
 PREFECT_AWS_TAG_OLD=0.7.4
 JUPYTER_HUB_VERSION_OLD=5.4.3
 
-all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_AWS_TAG JUPYTER_HUB_VERSION) # var names
+all_variables=(PYTHON_VERSION PYTHON_VERSION_DPR DASK_TAG DASK_TAG_STAGING DASK_GATEWAY_TAG PREFECT_TAG PREFECT_AWS_TAG JUPYTER_HUB_VERSION) # var names
 
 #
 # Bash scripts, dockerfiles and github action workflows to update,
@@ -64,9 +66,10 @@ _realpath(){
 # [ghcr.io/rs-python/python]
 # [ghcr.io/rs-python/prefecthq/prefect]
 all_files+=($(_realpath rs-workflow-env/docker/base/build-base-images.sh)) # + re-run with --push
-all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.dask))
 all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.jupyter))
 all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.python))
+# We don't add rs-workflow-env/docker/base/Dockerfile.dask.k8s and rs-workflow-env/docker/base/Dockerfile.dask.local
+# because the vraiable inside have a "xxx" placeholder value that we don't want to replace.
 
 # [local mode] [cluster mode] [ci/cd]
 # + run rs-server ci/cd
