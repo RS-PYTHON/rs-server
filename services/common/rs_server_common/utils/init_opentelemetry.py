@@ -20,9 +20,11 @@ import os
 import pkgutil
 import sys
 from collections.abc import Iterator
+from typing import Any
 
 import fastapi
 import opentelemetry.instrumentation
+import requests
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
@@ -78,46 +80,82 @@ def parse_data(data) -> str:
     except Exception:  # pylint: disable=broad-exception-caught # nosec
         pass
 
-    # If we have a dict, try to format it as json
+    # If we have a dict
     if isinstance(data, dict):
+
+        # Decode bytes
+        data = {
+            key.decode("utf-8") if isinstance(key, bytes) else key: (
+                value.decode("utf-8") if isinstance(value, bytes) else value
+            )
+            for key, value in data.items()
+        }
+
+        # Convert to strings
+        data = {str(key): str(value) for key, value in data.items()}
+
+        # Apply json formatting
         data = json.dumps(data, indent=2)
 
     return data or ""
 
 
-def request_hook(span, request):
+def requests_hook(span: Span, request: requests.PreparedRequest, response: requests.Response | None = None):
     """
-    HTTP requests intrumentation
+    Callback function invoked by RequestsInstrumentor. It implements the hooks:
+
+      - request_hook: invoked right after a span is created.
+      - response_hook: invoked right before the span has finished processing a response.
+
+    See: https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/requests/requests.html
     """
-    if not span:
+    if not (span and span.is_recording()):
         return
 
-    # Copy the http.url attribute into _url so it appears at the
-    # top in the grafana UI, it's more readable
-    span.set_attribute("_url", span.attributes.get("http.url"))
+    # Copy this attribute by adding a '_' prefix to the name,
+    # so it appears at the top in the grafana UI, it's more readable
+    span.set_attribute("_url", span.attributes.get("http.url"))  # type: ignore
 
     if trace_headers():
         span.set_attribute("http.request.headers", parse_data(request.headers))
+        if response:
+            span.set_attribute("http.response.headers", parse_data(response.headers))
 
     if trace_body():
         span.set_attribute("http.request.body", parse_data(request.body))
+        if response:
+            span.set_attribute("http.response.content", parse_data(response.content))
 
 
-def response_hook(span, request, response):  # pylint: disable=W0613
+def fastapi_hook(span: Span, scope: dict[str, Any], message=None):
     """
-    HTTP responses intrumentation
+    Callback function invoked by FastAPIInstrumentor. It implements the hooks:
+
+      - server_request_hook: called with the server span and ASGI scope object for every incoming request.
+      - client_request_hook: called with the internal span, and ASGI scope and event which are sent as dictionaries
+                             for when the method receive is called.
+      - client_response_hook: called with the internal span, and ASGI scope and event which are sent as dictionaries
+                              for when the method send is called.
+
+    See: https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/fastapi/fastapi.html
     """
-    if not span:
+    if not (span and span.is_recording()):
         return
 
+    # Copy this attribute by adding a '_' prefix to the name,
+    # so it appears at the top in the grafana UI, it's more readable
+    span.set_attribute("_path", str(scope.get("path")))
+
     if trace_headers():
-        span.set_attribute("http.response.headers", parse_data(response.headers))
+        span.set_attribute("http.scope.headers", parse_data(scope.get("headers")))
+        if message:
+            span.set_attribute("http.message.headers", parse_data(message.get("headers")))
 
-    if trace_body():
-        span.set_attribute("http.response.content", parse_data(response.content))
+    if trace_body() and message:
+        span.set_attribute("http.message.body", parse_data(message.get("body")))
 
 
-def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
+def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):  # pylint: disable=too-many-branches
     """
     Init instrumentation of OpenTelemetry traces.
 
@@ -158,7 +196,16 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
         otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
 
     if app:
-        FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
+        if trace_headers() or trace_body():
+            FastAPIInstrumentor.instrument_app(
+                app,
+                tracer_provider=otel_tracer,
+                server_request_hook=fastapi_hook,
+                client_request_hook=fastapi_hook,
+                client_response_hook=fastapi_hook,
+            )
+        else:
+            FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
         # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
 
     # Instrument all the dependencies under opentelemetry.instrumentation.*
@@ -197,18 +244,30 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
             # If the "instrument" method exists, call it
             _instrument = getattr(_class, "instrument", None)
             if callable(_instrument):
-
                 _class_instance = _class()
+                if _class_instance.is_instrumented_by_opentelemetry:
+                    continue
+                # name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
+                # logger.debug(f"OpenTelemetry instrumentation of {name!r}")
+
+                # Handle specific hooks
                 if _class == RequestsInstrumentor and (trace_headers() or trace_body()):
                     _class_instance.instrument(
                         tracer_provider=otel_tracer,
-                        request_hook=request_hook,
-                        response_hook=response_hook,
+                        request_hook=requests_hook,
+                        response_hook=requests_hook,
                     )
-                elif not _class_instance.is_instrumented_by_opentelemetry:
+                elif _class == FastAPIInstrumentor and (trace_headers() or trace_body()):
+                    _class_instance.instrument(
+                        tracer_provider=otel_tracer,
+                        server_request_hook=fastapi_hook,
+                        client_request_hook=fastapi_hook,
+                        client_response_hook=fastapi_hook,
+                    )
+
+                # General case (no hooks)
+                else:
                     _class_instance.instrument(tracer_provider=otel_tracer)
-                # name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
-                # logger.debug(f"OpenTelemetry instrumentation of {name!r}")
 
 
 @_agnosticcontextmanager
