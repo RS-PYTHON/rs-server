@@ -90,6 +90,13 @@ collections:
     title: "L2A tile products"
     description: "Sentinel-2B Level-2A Tile"
 
+  - id: S2B_L2_MSI_L2A
+    station: s2b
+    query:
+      productType: MSI_L2A_DS
+    title: "L2A tile products"
+    description: "Sentinel-2B Level-2A Tile"
+
   - id: IW_SLC__1S
     station: s1a
     query:
