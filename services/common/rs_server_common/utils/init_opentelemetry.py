@@ -114,7 +114,7 @@ def requests_hook(span: Span, request: requests.PreparedRequest, response: reque
 
     # Copy this attribute by adding a '_' prefix to the name,
     # so it appears at the top in the grafana UI, it's more readable
-    span.set_attribute("_url", span.attributes.get("http.url"))
+    span.set_attribute("_url", span.attributes.get("http.url"))  # type: ignore
 
     if trace_headers():
         span.set_attribute("http.request.headers", parse_data(request.headers))
@@ -144,7 +144,7 @@ def fastapi_hook(span: Span, scope: dict[str, Any], message=None):
 
     # Copy this attribute by adding a '_' prefix to the name,
     # so it appears at the top in the grafana UI, it's more readable
-    span.set_attribute("_path", scope.get("path"))
+    span.set_attribute("_path", str(scope.get("path")))
 
     if trace_headers():
         span.set_attribute("http.scope.headers", parse_data(scope.get("headers")))
@@ -155,7 +155,7 @@ def fastapi_hook(span: Span, scope: dict[str, Any], message=None):
         span.set_attribute("http.message.body", parse_data(message.get("body")))
 
 
-def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
+def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):  # pylint: disable=too-many-branches
     """
     Init instrumentation of OpenTelemetry traces.
 
