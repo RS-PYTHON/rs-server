@@ -69,7 +69,7 @@ def test_get_user_rights_user_exists(mocker):
     )
 
     assert __get_user_rights(user) == {"final": "policy"}
-    mock_build.assert_called_once_with(mock_user_data)
+    mock_build.assert_called_once_with(user, mock_user_data)
     mock_update.assert_called_once_with({"rights": "mock-rights"})
 
 

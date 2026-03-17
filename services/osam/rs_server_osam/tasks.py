@@ -38,7 +38,6 @@ from rs_server_osam.utils.tools import (
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
     get_keycloak_user_from_description,
-    load_configmap_data,
     match_roles,
     parse_role,
 )
@@ -367,6 +366,17 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
               - "read_download": List of read+download access paths.
               - "write_download": List of write+download access paths.
     """
+    # Step 0 : Add the default roles rs_catalog_<username>:*_read,
+    # rs_catalog_<username>:*_write and rs_catalog_<username>:*_download. These roles will
+    # be assigned to the current user account on ovh when
+    # the /storage/account/{user}/update endpoint is called (story 912).
+    role_prefix = f"rs_catalog_{user}:*"
+    new_roles = {f"{role_prefix}_read", f"{role_prefix}_write", f"{role_prefix}_download"}
+
+    # convert to set -> union -> and convert back to list
+    current = set(user_info["keycloak_roles"])
+    user_info["keycloak_roles"] = list(current | new_roles)
+
     # maybe we should use the user id instead of the username ?
     # Step 1: Parse roles
     read_roles = []
@@ -389,15 +399,6 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     read_set = match_roles(read_roles)
     write_set = match_roles(write_roles)
     download_set = match_roles(download_roles)
-    # add the default roles with * for owner, collection and product type, if there is a
-    # bucket defined in the configmap. these roles will be assigned to the current
-    # user account on ovh when the  /storage/account/{user}/update endpoint is called
-    for cfg_owner, cfg_collection, product_type, _, bucket in load_configmap_data():
-        if cfg_owner == "*" and cfg_collection == "*" and product_type == "*" and bucket:
-            logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
-            read_set.add(bucket.strip() + "/*/*/")
-            write_set.add(bucket.strip() + "/*/*/")
-            download_set.add(bucket.strip() + "/*/*/")
 
     # Step 3: Merge access
     read_only = read_set - download_set - write_set

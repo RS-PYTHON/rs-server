@@ -234,9 +234,10 @@ def test_build_users_data_map(mocker):
 
 
 @pytest.mark.parametrize(
-    "user_info, expected",
+    "user, user_info, expected",
     [
         (
+            "paul",
             {"keycloak_roles": ["rs_catalog_paul:s1-l1_read"]},
             {
                 "read": sorted(
@@ -246,61 +247,118 @@ def test_build_users_data_map(mocker):
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
-                "read_download": [],
-                "write_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/paul/*/",
+                        "rspython-ops-catalog-paul/paul/*/",
+                        "rspython-ops-catalog/paul/*/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/paul/*/",
+                        "rspython-ops-catalog-paul/paul/*/",
+                        "rspython-ops-catalog/paul/*/",
+                    ],
+                ),
             },
         ),
         (
+            "copernicus",
             {"keycloak_roles": ["rs_catalog_copernicus:s1-aux_download"]},
             {
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/copernicus/s1-aux/",
-                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
                         "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
+                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/s1-aux/",
                     ],
                 ),
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
+                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*/",
+                    ],
+                ),
             },
         ),
         (
+            "emilie",
             {"keycloak_roles": ["rs_catalog_emilie:s1-aux_download"]},
             {
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/emilie/s1-aux/",
+                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
+                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/emilie/s1-aux/",
                     ],
                 ),
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog/emilie/*/",
+                    ],
+                ),
             },
         ),
         (
+            "emilie",
             {"keycloak_roles": ["rs_catalog_emilie:*_download"]},
             {
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/emilie/*/",
                         "rspython-ops-catalog-default-s1-l1/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog/emilie/*/",
+                    ],
+                ),
             },
         ),
         (
+            "copernicus",
             {"keycloak_roles": ["rs_catalog_copernicus:s1-l1_write"]},
             {
                 "read": [],
-                "read_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
+                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*/",
+                    ],
+                ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/copernicus/s1-l1/",
+                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
+                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
                         "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
+                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
                         "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
+                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/s1-l1/",
                     ],
                 ),
             },
@@ -309,33 +367,55 @@ def test_build_users_data_map(mocker):
         # Also, as per priority list, if a user have permission to write_download in rspython-ops-catalog/paul/s1-l1/
         # it also have read, read_download permission, even if not mentioned in that list.
         (
+            "paul",
             {"keycloak_roles": ["rs_catalog_paul:s1-l1_write"]},
             {
                 "read": [],
-                "read_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/paul/*/",
+                        "rspython-ops-catalog-paul/paul/*/",
+                        "rspython-ops-catalog/paul/*/",
+                    ],
+                ),
                 "write_download": sorted(
                     [
+                        "rspython-ops-catalog-default-s1-l1/paul/*/",
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog-paul/paul/*/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/paul/*/",
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
             },
         ),
-        # Testcase when the roles from the keycloak are not compliant
+        # Testcase when the roles from the keycloak are not compliant.
+        # Note: the injected rs_catalog_testuser:*_read/write/download roles still produce paths.
         (
+            "testuser",
             {"keycloak_roles": ["rsnotcompliant"]},
             {
                 "read": [],
-                "read_download": [],
-                "write_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/testuser/*/",
+                        "rspython-ops-catalog/testuser/*/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/testuser/*/",
+                        "rspython-ops-catalog/testuser/*/",
+                    ],
+                ),
             },
         ),
     ],
 )
-def test_build_s3_rights(user_info, expected):
+def test_build_s3_rights(user, user_info, expected):
     """Test build s3 rights"""
-    assert build_s3_rights("testuser", user_info) == expected
+    assert build_s3_rights(user, user_info) == expected
 
 
 @pytest.mark.parametrize(
