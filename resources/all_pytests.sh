@@ -38,7 +38,6 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 
     # Go to the parent dir = project dir
     proj_dir=$(dirname "$toml")
-    proj_rel_dir=${proj_dir#"$ROOT_DIR/"}
 
     # Test if the 'tests' directory exists
     tests_dir="$proj_dir/tests"
@@ -75,11 +74,11 @@ $(cd "$proj_dir" && poetry run which python) -m pytest $tests_dir \
 --durations=0 \
 --durations-min=0.05 \
 --error-for-skips \
---cov=$proj_rel_dir \
+--cov=$ROOT_DIR \
+--cov-append \
 --cov-report=term \
 --cov-report=xml:$ROOT_DIR/cov-report.xml \
 --junit-xml=$ROOT_DIR/junit-xml-report-${junit}.xml \
---cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
         (set -x; $cmd) # run command
