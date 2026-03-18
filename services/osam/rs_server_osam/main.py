@@ -274,7 +274,7 @@ def __get_user_rights(user):
     if user not in app.extra["users_info"]:
         return None
     logger.debug(f"Building the rights for user {user}")
-    s3_rights = build_s3_rights(app.extra["users_info"][user])
+    s3_rights = build_s3_rights(user, app.extra["users_info"][user])
     return update_s3_rights_lists(s3_rights)
 
 

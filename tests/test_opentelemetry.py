@@ -16,6 +16,7 @@
 
 import requests
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -38,7 +39,9 @@ async def test_opentelemetry(mocker, monkeypatch):
     app = FastAPI()
     init_opentelemetry.init_traces(app, "pytest")
 
-    # Run a dummy http request to be instrumented by opentelemetry
+    # Run a dummy endpoint and http request to be instrumented by opentelemetry
+    with TestClient(app) as client:
+        client.get("")
     try:
         requests.get("https://dummy", timeout=1)
     except RequestsConnectionError:
