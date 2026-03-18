@@ -232,8 +232,8 @@ collections:
         - 82.82
     temporal:
       interval:
-      - - '2026-01-01T00:00:00.459000Z'
-        - '2026-06-30T23:59:59.767000Z'
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
