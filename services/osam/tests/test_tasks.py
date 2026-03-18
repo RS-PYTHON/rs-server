@@ -249,16 +249,12 @@ def test_build_users_data_map(mocker):
                 ),
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/paul/*/",
-                        "rspython-ops-catalog-paul/paul/*/",
-                        "rspython-ops-catalog/paul/*/",
+                        "rspython-ops-catalog/paul/*",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/paul/*/",
-                        "rspython-ops-catalog-paul/paul/*/",
-                        "rspython-ops-catalog/paul/*/",
+                        "rspython-ops-catalog/paul/*",
                     ],
                 ),
             },
@@ -270,23 +266,15 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
                         "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
-                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
                         "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
-                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
-                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
-                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*",
                         "rspython-ops-catalog/copernicus/s1-aux/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
-                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
-                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
-                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
-                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*",
                     ],
                 ),
             },
@@ -298,18 +286,14 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
-                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
-                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/emilie/*",
                         "rspython-ops-catalog/emilie/s1-aux/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
-                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/emilie/*",
                     ],
                 ),
             },
@@ -323,14 +307,13 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-default-s1-l1/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog/emilie/*",
                         "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
-                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/emilie/*",
                     ],
                 ),
             },
@@ -342,22 +325,14 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
-                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
-                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
-                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
-                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/*/",
-                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/*/",
-                        "rspython-ops-catalog-copernicus-s1-l1/copernicus/*/",
                         "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
-                        "rspython-ops-catalog-default-s1-l1/copernicus/*/",
                         "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
-                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/*",
                         "rspython-ops-catalog/copernicus/s1-l1/",
                     ],
                 ),
@@ -373,18 +348,54 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/paul/*/",
-                        "rspython-ops-catalog-paul/paul/*/",
-                        "rspython-ops-catalog/paul/*/",
+                        "rspython-ops-catalog/paul/*",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/paul/*/",
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
-                        "rspython-ops-catalog-paul/paul/*/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
-                        "rspython-ops-catalog/paul/*/",
+                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/s1-l1/",
+                    ],
+                ),
+            },
+        ),
+        (
+            "paul",
+            {
+                "keycloak_roles": [
+                    "rs_catalog_*:s1-l1_read",
+                    "rs_catalog_paul:s1-l1_write",
+                    "rs_catalog_paul:s1-l1_download",
+                    "rs_catalog_emilie:*_download",
+                ],
+            },
+            {
+                "read": sorted(
+                    [
+                        "rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
+                        "rspython-ops-catalog-default-s1-l1/*/s1-l1/",
+                        "rspython-ops-catalog-paul/*/s1-l1/",
+                        "rspython-ops-catalog/*/s1-l1/",
+                    ],
+                ),
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/s1-l1/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/paul/*",
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
@@ -399,14 +410,12 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/testuser/*/",
-                        "rspython-ops-catalog/testuser/*/",
+                        "rspython-ops-catalog/testuser/*",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog-default-s1-l1/testuser/*/",
-                        "rspython-ops-catalog/testuser/*/",
+                        "rspython-ops-catalog/testuser/*",
                     ],
                 ),
             },
