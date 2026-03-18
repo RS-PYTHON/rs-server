@@ -350,6 +350,44 @@ def apply_user_access_policy(user, current_rights):
     }
 
 
+def add_default_bucket_access(
+    bucket: str,
+    user: str,
+    read_set: set[str],
+    write_set: set[str],
+    download_set: set[str],
+) -> None:
+    """
+    Adds a default wildcard access path for a user within a specific S3 bucket.
+
+    This function constructs a standardized path of the form:
+
+        <bucket>/<user>/*/
+
+    and ensures that it is present in the provided access control sets
+    (read, write, and download). The path is added only if it does not
+    already exist in each respective set.
+
+    Args:
+        bucket (str): The S3 bucket name.
+        user (str): The user identifier used to scope access within the bucket.
+        read_set (set[str]): Set of paths with read permissions.
+        write_set (set[str]): Set of paths with write permissions.
+        download_set (set[str]): Set of paths with download permissions.
+
+    Returns:
+        None
+    """
+    path = os.path.join(bucket.strip(), user, "*") + "/"
+
+    if path not in read_set:
+        read_set.add(path)
+    if path not in write_set:
+        write_set.add(path)
+    if path not in download_set:
+        download_set.add(path)
+
+
 @traced_function()
 def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     """
@@ -393,12 +431,9 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     # bucket defined in the configmap. these roles will be assigned to the current
     # user account on ovh when the  /storage/account/{user}/update endpoint is called
     for cfg_owner, cfg_collection, product_type, _, bucket in load_configmap_data():
-        if cfg_owner == WILDCARD_CHAR and cfg_collection == WILDCARD_CHAR and product_type == WILDCARD_CHAR and bucket:
+        if cfg_owner == WILDCARD_CHAR and cfg_collection == WILDCARD_CHAR and product_type == WILDCARD_CHAR:
             logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
-            path = os.path.join(bucket.strip(), user.strip(), WILDCARD_CHAR) + "/"
-            read_set.add(path)
-            write_set.add(path)
-            download_set.add(path)
+            add_default_bucket_access(bucket, user, read_set, write_set, download_set)
 
     # Step 3: Merge access
     read_only = read_set - download_set - write_set

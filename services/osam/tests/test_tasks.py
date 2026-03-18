@@ -22,6 +22,7 @@ from ovh.exceptions import BadParametersError
 
 # pylint: disable = unused-argument,no-name-in-module
 from rs_server_osam.tasks import (
+    add_default_bucket_access,
     apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
@@ -1018,3 +1019,63 @@ def test_apply_user_access_policy(
 
     result = apply_user_access_policy(user, access_policy)
     assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "bucket, user, initial_read, initial_write, initial_download, expected_read, expected_write, expected_download",
+    [
+        # Standard case: empty initial sets
+        (
+            "my-bucket",
+            "alice",
+            set(),
+            set(),
+            set(),
+            {"my-bucket/alice/*/"},
+            {"my-bucket/alice/*/"},
+            {"my-bucket/alice/*/"},
+        ),
+        # Case with existing paths: only add missing ones
+        (
+            "my-bucket",
+            "bob",
+            {"other-path/"},
+            {"my-bucket/bob/*/"},  # Already exists in write
+            set(),
+            {"other-path/", "my-bucket/bob/*/"},
+            {"my-bucket/bob/*/"},
+            {"my-bucket/bob/*/"},
+        ),
+        # Case with spaces in bucket name: verify strip()
+        (
+            "  spaced-bucket  ",
+            "charlie",
+            set(),
+            set(),
+            set(),
+            {"spaced-bucket/charlie/*/"},
+            {"spaced-bucket/charlie/*/"},
+            {"spaced-bucket/charlie/*/"},
+        ),
+    ],
+)
+def test_add_default_bucket_access(
+    bucket,
+    user,
+    initial_read,
+    initial_write,
+    initial_download,
+    expected_read,
+    expected_write,
+    expected_download,
+):
+    """Unit tests for add_default_bucket_access"""
+    read_set = initial_read.copy()
+    write_set = initial_write.copy()
+    download_set = initial_download.copy()
+
+    add_default_bucket_access(bucket, user, read_set, write_set, download_set)
+
+    assert read_set == expected_read
+    assert write_set == expected_write
+    assert download_set == expected_download
