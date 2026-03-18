@@ -297,7 +297,7 @@ class Staging(
 
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            asyncio.create_task(self.process_rspy_features(catalog_collection))
+            _ = asyncio.create_task(self.process_rspy_features(catalog_collection))
         else:
             loop.run_until_complete(self.process_rspy_features(catalog_collection))
 
@@ -444,7 +444,7 @@ class Staging(
         search_url = f"{self.catalog_url}/catalog/search"
 
         try:
-            response = requests.get(
+            response = await common_settings.http_client().get(
                 search_url,
                 headers=self.auth_headers,
                 params=filter_object,

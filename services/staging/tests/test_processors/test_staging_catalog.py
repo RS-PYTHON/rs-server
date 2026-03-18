@@ -15,6 +15,7 @@
 
 """Test module for Staging processor with catalog."""
 
+import httpx
 import pytest
 import requests
 from pygeoapi.util import JobStatus
@@ -55,7 +56,8 @@ class TestStagingCatalog:
         mock_response = mocker.Mock()
         mock_response.json.return_value = {"type": "FeatureCollection", "features": []}  # Mocking the JSON response
         mock_response.raise_for_status = mocker.Mock()  # Mock raise_for_status to do nothing
-        mocker.patch("requests.get", return_value=mock_response)
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        mocked_get = mocker.patch("httpx.AsyncClient.get", return_value=mock_response)
         mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
         # Call the method under test
         result = await self._call_check_catalog(staging_instance, staging_inputs)
@@ -71,7 +73,7 @@ class TestStagingCatalog:
             "limit": "2",
         }
         # Assert that requests.get was called with the correct parameters
-        requests.get.assert_called_once_with(  # type: ignore
+        mocked_get.assert_called_once_with(  # type: ignore
             f"{staging_instance.catalog_url}/catalog/search",
             headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
             params=expected_filter_object,
@@ -138,7 +140,8 @@ class TestStagingCatalog:
         mock_response.json.return_value = {"type": "FeatureCollection", "features": []}  # Mocking the JSON response
         mock_response.raise_for_status = mocker.Mock()  # Mock raise_for_status to do nothing
         mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution", return_value=None)
-        mocker.patch("requests.get", return_value=mock_response)
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        mocker.patch("httpx.AsyncClient.get", return_value=mock_response)
         err_msg = "RE test msg"
         mocker.patch.object(
             staging_instance,
