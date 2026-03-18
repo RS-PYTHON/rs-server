@@ -249,12 +249,12 @@ def test_build_users_data_map(mocker):
                 ),
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/*/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/*/",
                     ],
                 ),
             },
@@ -268,13 +268,13 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
                         "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
-                        "rspython-ops-catalog/copernicus/*",
+                        "rspython-ops-catalog/copernicus/*/",
                         "rspython-ops-catalog/copernicus/s1-aux/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/copernicus/*",
+                        "rspython-ops-catalog/copernicus/*/",
                     ],
                 ),
             },
@@ -287,13 +287,13 @@ def test_build_users_data_map(mocker):
                 "read_download": sorted(
                     [
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
-                        "rspython-ops-catalog/emilie/*",
+                        "rspython-ops-catalog/emilie/*/",
                         "rspython-ops-catalog/emilie/s1-aux/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/emilie/*",
+                        "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
             },
@@ -307,13 +307,12 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-default-s1-l1/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                        "rspython-ops-catalog/emilie/*",
                         "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/emilie/*",
+                        "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
             },
@@ -325,14 +324,14 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/copernicus/*",
+                        "rspython-ops-catalog/copernicus/*/",
                     ],
                 ),
                 "write_download": sorted(
                     [
                         "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
                         "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
-                        "rspython-ops-catalog/copernicus/*",
+                        "rspython-ops-catalog/copernicus/*/",
                         "rspython-ops-catalog/copernicus/s1-l1/",
                     ],
                 ),
@@ -348,14 +347,14 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/*/",
                     ],
                 ),
                 "write_download": sorted(
                     [
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
-                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/*/",
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
@@ -387,7 +386,7 @@ def test_build_users_data_map(mocker):
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
                         "rspython-ops-catalog/emilie/*/",
-                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/*/",
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
@@ -395,7 +394,7 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
-                        "rspython-ops-catalog/paul/*",
+                        "rspython-ops-catalog/paul/*/",
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
@@ -410,12 +409,12 @@ def test_build_users_data_map(mocker):
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/testuser/*",
+                        "rspython-ops-catalog/testuser/*/",
                     ],
                 ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/testuser/*",
+                        "rspython-ops-catalog/testuser/*/",
                     ],
                 ),
             },
@@ -447,19 +446,19 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -490,19 +489,19 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -533,19 +532,19 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -585,19 +584,19 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -612,7 +611,7 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
-                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",

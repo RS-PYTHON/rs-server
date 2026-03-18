@@ -395,9 +395,10 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     for cfg_owner, cfg_collection, product_type, _, bucket in load_configmap_data():
         if cfg_owner == WILDCARD_CHAR and cfg_collection == WILDCARD_CHAR and product_type == WILDCARD_CHAR and bucket:
             logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
-            read_set.add(os.path.join(bucket.strip(), user, WILDCARD_CHAR))
-            write_set.add(os.path.join(bucket.strip(), user, WILDCARD_CHAR))
-            download_set.add(os.path.join(bucket.strip(), user, WILDCARD_CHAR))
+            path = os.path.join(bucket.strip(), user.strip(), WILDCARD_CHAR) + "/"
+            read_set.add(path)
+            write_set.add(path)
+            download_set.add(path)
 
     # Step 3: Merge access
     read_only = read_set - download_set - write_set
@@ -462,10 +463,7 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                 logger.warning(f"Wrong obs policy access found: {access}")
                 continue
             bucket = f"arn:aws:s3:::{parts[0]}"
-            owner_collection = f"{parts[1]}/{parts[2]}/*"
-            # ovh does not like */*/* format, so use */*
-            if owner_collection == "*/*/*":
-                owner_collection = "*/*"
+            owner_collection = f"{parts[1]}/{parts[2]}"
             # check in the current statements
             found_in_template_bucket = False
             for stmt in statements:
