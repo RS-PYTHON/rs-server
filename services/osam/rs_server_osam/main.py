@@ -70,7 +70,7 @@ from starlette.status import (
 
 LOCK = threading.Lock()
 
-# The default synchronization time of the keycloak users with the ovh users (twice per day)
+# The default synchronization time in seconds of the keycloak users with the ovh users (twice per day)
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 43200))
 # Default timeout of the synchronization logic (2 minutes)
 DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT = int(os.environ.get("DEFAULT_OSAM_SYNC_LOGIC_TIMEOUT_ENDPOINT", 120))
@@ -274,7 +274,7 @@ def __get_user_rights(user):
     if user not in app.extra["users_info"]:
         return None
     logger.debug(f"Building the rights for user {user}")
-    s3_rights = build_s3_rights(app.extra["users_info"][user])
+    s3_rights = build_s3_rights(user, app.extra["users_info"][user])
     return update_s3_rights_lists(s3_rights)
 
 
@@ -503,4 +503,4 @@ HandleExceptionsMiddleware.disable_default_exception_handler(app)
 app.add_middleware(HealthMiddleware)
 
 app.router.lifespan_context = app_lifespan  # type: ignore
-init_opentelemetry.init_traces(app, "osam.service")
+init_opentelemetry.init_traces(app, "rs.server.osam")

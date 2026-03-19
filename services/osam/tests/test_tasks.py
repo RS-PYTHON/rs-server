@@ -22,6 +22,7 @@ from ovh.exceptions import BadParametersError
 
 # pylint: disable = unused-argument,no-name-in-module
 from rs_server_osam.tasks import (
+    add_default_bucket_access,
     apply_user_access_policy,
     build_s3_rights,
     build_users_data_map,
@@ -234,9 +235,10 @@ def test_build_users_data_map(mocker):
 
 
 @pytest.mark.parametrize(
-    "user_info, expected",
+    "user, user_info, expected",
     [
         (
+            "paul",
             {"keycloak_roles": ["rs_catalog_paul:s1-l1_read"]},
             {
                 "read": sorted(
@@ -246,61 +248,92 @@ def test_build_users_data_map(mocker):
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
-                "read_download": [],
-                "write_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/paul/*/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/paul/*/",
+                    ],
+                ),
             },
         ),
         (
+            "copernicus",
             {"keycloak_roles": ["rs_catalog_copernicus:s1-aux_download"]},
             {
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/copernicus/s1-aux/",
-                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
                         "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
+                        "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
+                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/s1-aux/",
                     ],
                 ),
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/copernicus/*/",
+                    ],
+                ),
             },
         ),
         (
+            "emilie",
             {"keycloak_roles": ["rs_catalog_emilie:s1-aux_download"]},
             {
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/emilie/s1-aux/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
+                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/emilie/s1-aux/",
                     ],
                 ),
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/emilie/*/",
+                    ],
+                ),
             },
         ),
         (
+            "emilie",
             {"keycloak_roles": ["rs_catalog_emilie:*_download"]},
             {
                 "read": [],
                 "read_download": sorted(
                     [
-                        "rspython-ops-catalog/emilie/*/",
                         "rspython-ops-catalog-default-s1-l1/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
-                "write_download": [],
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/emilie/*/",
+                    ],
+                ),
             },
         ),
         (
+            "copernicus",
             {"keycloak_roles": ["rs_catalog_copernicus:s1-l1_write"]},
             {
                 "read": [],
-                "read_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/copernicus/*/",
+                    ],
+                ),
                 "write_download": sorted(
                     [
-                        "rspython-ops-catalog/copernicus/s1-l1/",
                         "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
                         "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
+                        "rspython-ops-catalog/copernicus/*/",
+                        "rspython-ops-catalog/copernicus/s1-l1/",
                     ],
                 ),
             },
@@ -309,33 +342,89 @@ def test_build_users_data_map(mocker):
         # Also, as per priority list, if a user have permission to write_download in rspython-ops-catalog/paul/s1-l1/
         # it also have read, read_download permission, even if not mentioned in that list.
         (
+            "paul",
             {"keycloak_roles": ["rs_catalog_paul:s1-l1_write"]},
             {
                 "read": [],
-                "read_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/paul/*/",
+                    ],
+                ),
                 "write_download": sorted(
                     [
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/paul/*/",
                         "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
             },
         ),
-        # Testcase when the roles from the keycloak are not compliant
         (
+            "paul",
+            {
+                "keycloak_roles": [
+                    "rs_catalog_*:s1-l1_read",
+                    "rs_catalog_paul:s1-l1_write",
+                    "rs_catalog_paul:s1-l1_download",
+                    "rs_catalog_emilie:*_download",
+                ],
+            },
+            {
+                "read": sorted(
+                    [
+                        "rspython-ops-catalog-copernicus-s1-l1/*/s1-l1/",
+                        "rspython-ops-catalog-default-s1-l1/*/s1-l1/",
+                        "rspython-ops-catalog-paul/*/s1-l1/",
+                        "rspython-ops-catalog/*/s1-l1/",
+                    ],
+                ),
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/emilie/*/",
+                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
+                        "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/emilie/*/",
+                        "rspython-ops-catalog/paul/*/",
+                        "rspython-ops-catalog/paul/s1-l1/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
+                        "rspython-ops-catalog-paul/paul/s1-l1/",
+                        "rspython-ops-catalog/paul/*/",
+                        "rspython-ops-catalog/paul/s1-l1/",
+                    ],
+                ),
+            },
+        ),
+        # Testcase when the roles from the keycloak are not compliant.
+        # Note: the injected rs_catalog_testuser:*_read/write/download roles still produce paths.
+        (
+            "testuser",
             {"keycloak_roles": ["rsnotcompliant"]},
             {
                 "read": [],
-                "read_download": [],
-                "write_download": [],
+                "read_download": sorted(
+                    [
+                        "rspython-ops-catalog/testuser/*/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/testuser/*/",
+                    ],
+                ),
             },
         ),
     ],
 )
-def test_build_s3_rights(user_info, expected):
+def test_build_s3_rights(user, user_info, expected):
     """Test build s3 rights"""
-    assert build_s3_rights(user_info) == expected
+    assert build_s3_rights(user, user_info) == expected
 
 
 @pytest.mark.parametrize(
@@ -358,19 +447,19 @@ def test_build_s3_rights(user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -401,19 +490,19 @@ def test_build_s3_rights(user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -444,19 +533,19 @@ def test_build_s3_rights(user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -496,19 +585,19 @@ def test_build_s3_rights(user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
                     },
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -523,7 +612,7 @@ def test_build_s3_rights(user_info, expected):
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
-                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -836,16 +925,26 @@ def test_get_user_s3_credentials(
 
     mock_get_ovh_handler.return_value = mock_ovh_instance
 
-    # Nominal case
-    if obs_user_present and access_key_present and (not raise_exception):
-        result = get_user_s3_credentials(user)
-        assert result == expected_result
+    nominal_case = obs_user_present and access_key_present and (not raise_exception)
 
     # Error cases
-    else:
+    if not nominal_case:
         with pytest.raises(RuntimeError) as e_info:
             get_user_s3_credentials(user)
         assert expected_result == str(e_info.value.__cause__)
+        return
+
+    # Nominal case
+    result = get_user_s3_credentials(user)
+    assert result == expected_result
+
+    # This function called internally by get_user_s3_credentials has been called once
+    assert mock_keycloak_instance.get_obs_user_from_keycloak_username.call_count == 1
+
+    # If we call the function a second time, the call count is still one, because of the cache
+    result = get_user_s3_credentials(user)
+    assert result == expected_result
+    assert mock_keycloak_instance.get_obs_user_from_keycloak_username.call_count == 1
 
 
 @pytest.mark.parametrize(
@@ -920,3 +1019,63 @@ def test_apply_user_access_policy(
 
     result = apply_user_access_policy(user, access_policy)
     assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "bucket, user, initial_read, initial_write, initial_download, expected_read, expected_write, expected_download",
+    [
+        # Standard case: empty initial sets
+        (
+            "my-bucket",
+            "alice",
+            set(),
+            set(),
+            set(),
+            {"my-bucket/alice/*/"},
+            {"my-bucket/alice/*/"},
+            {"my-bucket/alice/*/"},
+        ),
+        # Case with existing paths: only add missing ones
+        (
+            "my-bucket",
+            "bob",
+            {"other-path/"},
+            {"my-bucket/bob/*/"},  # Already exists in write
+            set(),
+            {"other-path/", "my-bucket/bob/*/"},
+            {"my-bucket/bob/*/"},
+            {"my-bucket/bob/*/"},
+        ),
+        # Case with spaces in bucket name: verify strip()
+        (
+            "  spaced-bucket  ",
+            "charlie",
+            set(),
+            set(),
+            set(),
+            {"spaced-bucket/charlie/*/"},
+            {"spaced-bucket/charlie/*/"},
+            {"spaced-bucket/charlie/*/"},
+        ),
+    ],
+)
+def test_add_default_bucket_access(
+    bucket,
+    user,
+    initial_read,
+    initial_write,
+    initial_download,
+    expected_read,
+    expected_write,
+    expected_download,
+):
+    """Unit tests for add_default_bucket_access"""
+    read_set = initial_read.copy()
+    write_set = initial_write.copy()
+    download_set = initial_download.copy()
+
+    add_default_bucket_access(bucket, user, read_set, write_set, download_set)
+
+    assert read_set == expected_read
+    assert write_set == expected_write
+    assert download_set == expected_download

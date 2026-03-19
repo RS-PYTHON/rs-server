@@ -286,6 +286,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["station_token_list"] = []
     fastapi_app.extra["station_token_list_lock"] = threading.Lock()
 
+    # Init objects for dependency injection
     common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
     # Yield control back to the application (this is where the app will run)
@@ -296,6 +297,10 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     if common_settings.LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
+
+    # Close objects for dependency injection
+    await common_settings.del_http_client()
+
     logger.info("Application gracefully stopped...")
 
 

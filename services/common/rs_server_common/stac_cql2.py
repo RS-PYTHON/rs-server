@@ -104,7 +104,7 @@ def parse_interval(interval: str) -> timedelta:
     raise ValueError(f"Invalid interval format: {interval}")
 
 
-def temporal_op_query(op: str, args: list[dict], temporal_mapping: dict[str, str], is_cadip: bool = False) -> str:
+def temporal_op_query(op: str, args: list[dict], temporal_mapping: dict[str, str]) -> str:
     """temporal operation query"""
     if op.lower() not in temporal_operations:
         raise ValueError(f"Invalid temporal operator: {op}")
@@ -119,10 +119,8 @@ def temporal_op_query(op: str, args: list[dict], temporal_mapping: dict[str, str
         .replace("lh", temporal_mapping[props[1 if len(props) > 1 else 0]["property"]])
         .replace("rl", strftime_millis(rrange[0]))
         .replace("rh", strftime_millis(rrange[1]))
-        # Note: lte and gte are currently not supported in Cadip stations, so we use lt and gt instead
-        # Whenever this gets fixed, remove the two ifs below and the "is_cadip" input
-        .replace("<=", "lte" if not is_cadip else "lt")
-        .replace(">=", "gte" if not is_cadip else "gt")
+        .replace("<=", "le")
+        .replace(">=", "ge")
         .replace("=", "eq")
         .replace("<", "lt")
         .replace(">", "gt")

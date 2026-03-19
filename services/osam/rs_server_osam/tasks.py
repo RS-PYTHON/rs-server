@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any
 
+from cachetools import TTLCache, cached
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
@@ -37,9 +38,16 @@ from rs_server_osam.utils.tools import (
     LIST_CHECK_OVH_DESCRIPTION,
     create_description_from_template,
     get_keycloak_user_from_description,
+    load_configmap_data,
     match_roles,
     parse_role,
 )
+
+# Cache size (number of cached Keycloak usernames) for the /storage/account/credentials endpoint
+OSAM_CREDENTIALS_CACHE_SIZE = int(os.environ.get("OSAM_CREDENTIALS_CACHE_SIZE", 1024))
+
+# Cache TTL (time to live) in seconds for the /storage/account/credentials endpoint
+OSAM_CREDENTIALS_CACHE_TTL = int(os.environ.get("OSAM_CREDENTIALS_CACHE_TTL", 7200))  # 2 hours
 
 # Maximum number of parallel calls to the keycloak and obs apis
 MAX_THREAD_COUNT = 5
@@ -51,6 +59,7 @@ STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST = "write_download"
 
 # Templates for s3 access rights final lists
 S3_ACCESS_RIGHTS_TEMPLATE = {"Version": "%date%", "Statement": list[dict[str, Sequence[str]]]}
+WILDCARD_CHAR = "*"
 
 BLOCK_LIST_BUCKETS = {
     "Effect": "Allow",
@@ -279,25 +288,26 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
             )
 
 
-def get_user_s3_credentials(user: str) -> dict:
+@cached(cache=TTLCache(maxsize=OSAM_CREDENTIALS_CACHE_SIZE, ttl=OSAM_CREDENTIALS_CACHE_TTL))
+def get_user_s3_credentials(kc_user: str) -> dict:
     """
     Retrieves the S3 access and secret keys for a given user.
 
     Args:
-        user (str): The username for whom to retrieve S3 credentials.
+        kc_user (str): The Keycloak username for whom to retrieve S3 credentials.
 
     Returns:
         dict: A dictionary containing 'access_key', 'secret_key', 'endpoint', 'region'
         for the user's S3 storage.
     """
     try:
-        obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
+        obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(kc_user)
 
         if not obs_user:
-            raise RuntimeError(f"No s3 credentials associated with {user}")
+            raise RuntimeError(f"No s3 credentials associated with {kc_user}")
 
         if not (access_key := get_ovh_handler().get_user_s3_access_key(obs_user)):
-            raise RuntimeError(f"Error reading user {user} from OVH.")
+            raise RuntimeError(f"Error reading user {kc_user} from OVH.")
 
         secret_key = get_ovh_handler().get_user_s3_secret_key(obs_user, access_key)
         return {
@@ -310,7 +320,13 @@ def get_user_s3_credentials(user: str) -> dict:
         }
 
     except Exception as exc:  # pylint: disable = broad-exception-caught
-        raise RuntimeError(f"Error while getting s3 credentials for OVH user id {obs_user}") from exc
+        try:
+            obs_user_info = f" / OVH user id: {obs_user!r}"
+        except NameError:
+            obs_user_info = ""
+        raise RuntimeError(
+            f"Error while getting s3 credentials for Keycloak user id: {kc_user!r}{obs_user_info}",
+        ) from exc
 
 
 def apply_user_access_policy(user, current_rights):
@@ -334,8 +350,46 @@ def apply_user_access_policy(user, current_rights):
     }
 
 
+def add_default_bucket_access(
+    bucket: str,
+    user: str,
+    read_set: set[str],
+    write_set: set[str],
+    download_set: set[str],
+) -> None:
+    """
+    Adds a default wildcard access path for a user within a specific S3 bucket.
+
+    This function constructs a standardized path of the form:
+
+        <bucket>/<user>/*/
+
+    and ensures that it is present in the provided access control sets
+    (read, write, and download). The path is added only if it does not
+    already exist in each respective set.
+
+    Args:
+        bucket (str): The S3 bucket name.
+        user (str): The user identifier used to scope access within the bucket.
+        read_set (set[str]): Set of paths with read permissions.
+        write_set (set[str]): Set of paths with write permissions.
+        download_set (set[str]): Set of paths with download permissions.
+
+    Returns:
+        None
+    """
+    path = os.path.join(bucket.strip(), user, "*") + "/"
+
+    if path not in read_set:
+        read_set.add(path)
+    if path not in write_set:
+        write_set.add(path)
+    if path not in download_set:
+        download_set.add(path)
+
+
 @traced_function()
-def build_s3_rights(user_info):  # pylint: disable=too-many-locals
+def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     """
     Builds the S3 access rights structure for a user based on their Keycloak roles.
 
@@ -352,7 +406,6 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
               - "read_download": List of read+download access paths.
               - "write_download": List of write+download access paths.
     """
-    # maybe we should use the user id instead of the username ?
     # Step 1: Parse roles
     read_roles = []
     write_roles = []
@@ -370,10 +423,17 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
         elif op == "download":
             download_roles.append((owner, collection))
 
-    # Step 2-3: Match against configmap
+    # Step 2: Match against configmap
     read_set = match_roles(read_roles)
     write_set = match_roles(write_roles)
     download_set = match_roles(download_roles)
+    # add the default roles with * for owner, collection and product type, if there is a
+    # bucket defined in the configmap. these roles will be assigned to the current
+    # user account on ovh when the  /storage/account/{user}/update endpoint is called
+    for cfg_owner, cfg_collection, product_type, _, bucket in load_configmap_data():
+        if cfg_owner == WILDCARD_CHAR and cfg_collection == WILDCARD_CHAR and product_type == WILDCARD_CHAR:
+            logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
+            add_default_bucket_access(bucket, user, read_set, write_set, download_set)
 
     # Step 3: Merge access
     read_only = read_set - download_set - write_set
@@ -394,7 +454,7 @@ def build_s3_rights(user_info):  # pylint: disable=too-many-locals
 @traced_function()
 def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     """
-    Constructs the final user S3 access policy document for ovhbased on the provided access rights.
+    Constructs the final user S3 access policy document for ovh based on the provided access rights.
 
     This function takes access permissions derived from a user's Keycloak roles and configmap and builds
     a structured S3 access policy document. The policy includes separate blocks for read,
@@ -438,10 +498,7 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                 logger.warning(f"Wrong obs policy access found: {access}")
                 continue
             bucket = f"arn:aws:s3:::{parts[0]}"
-            owner_collection = f"{parts[1]}/{parts[2]}/*"
-            # ovh does not like */*/* format, so use */*
-            if owner_collection == "*/*/*":
-                owner_collection = "*/*"
+            owner_collection = f"{parts[1]}/{parts[2]}"
             # check in the current statements
             found_in_template_bucket = False
             for stmt in statements:

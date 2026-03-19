@@ -34,6 +34,7 @@ import botocore.exceptions
 import requests
 from rs_server_common.ftp_handler.ftp_handler import FTPClient
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Credentials
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -163,31 +164,22 @@ class S3StorageHandler:
     WARNING: THIS CLASS IS NOT THREAD-SAFE because of the connect_s3 and disconnect_s3 methods.
 
     Attributes:
-        access_key_id (str): The access key ID for S3 authentication.
-        secret_access_key (str): The secret access key for S3 authentication.
-        endpoint_url (str): The endpoint URL for the S3 service.
-        region_name (str): The region name.
+        s3_credentials (S3Credentials): S3 credentials
         s3_client (boto3.client): The s3 client to interact with the s3 storage
     """
 
-    def __init__(self, access_key_id=None, secret_access_key=None, endpoint_url=None, region_name=None):
+    def __init__(self, s3_credentials: S3Credentials):
         """Initialize the S3StorageHandler instance.
 
         Args:
-            access_key_id (str): The access key ID for S3 authentication.
-            secret_access_key (str): The secret access key for S3 authentication.
-            endpoint_url (str): The endpoint URL for the S3 service.
-            region_name (str): The region name.
+            s3_credentials (S3Credentials): S3 credentials
 
         Raises:
             RuntimeError: If the connection to the S3 storage cannot be established.
         """
         self.logger = Logging.default(__name__)
 
-        self.access_key_id = access_key_id or os.environ.get("S3_ACCESSKEY", "")
-        self.secret_access_key = secret_access_key or os.environ.get("S3_SECRETKEY", "")
-        self.endpoint_url = endpoint_url or os.environ.get("S3_ENDPOINT", "")
-        self.region_name = region_name or os.environ.get("S3_REGION", "")
+        self.s3_credentials = s3_credentials
         self.s3_client: boto3.client = None
         self.connect_s3()
         # Suppress botocore debug messages
@@ -198,12 +190,6 @@ class S3StorageHandler:
 
     def __get_s3_client(self):
         """Retrieve or create an S3 client instance.
-
-        Args:
-            access_key_id (str): The access key ID for S3 authentication.
-            secret_access_key (str): The secret access key for S3 authentication.
-            endpoint_url (str): The endpoint URL for the S3 service.
-            region_name (str): The region name.
 
         Returns:
             client (boto3): An S3 client instance.
@@ -221,10 +207,10 @@ class S3StorageHandler:
         try:
             return boto3.client(
                 "s3",
-                aws_access_key_id=self.access_key_id,
-                aws_secret_access_key=self.secret_access_key,
-                endpoint_url=self.endpoint_url,
-                region_name=self.region_name,
+                aws_access_key_id=self.s3_credentials.access_key_id,
+                aws_secret_access_key=self.s3_credentials.secret_access_key,
+                endpoint_url=self.s3_credentials.endpoint_url,
+                region_name=self.s3_credentials.region_name,
                 config=client_config,
             )
 
