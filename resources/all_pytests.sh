@@ -38,7 +38,6 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 
     # Go to the parent dir = project dir
     proj_dir=$(dirname "$toml")
-    proj_rel_dir=${proj_dir#"$ROOT_DIR/"}
 
     # Test if the 'tests' directory exists
     tests_dir="$proj_dir/tests"
@@ -75,11 +74,11 @@ $(cd "$proj_dir" && poetry run which python) -m pytest $tests_dir \
 --durations=0 \
 --durations-min=0.05 \
 --error-for-skips \
---cov=$proj_rel_dir \
+--cov=$ROOT_DIR \
+--cov-append \
 --cov-report=term \
 --cov-report=xml:$ROOT_DIR/cov-report.xml \
 --junit-xml=$ROOT_DIR/junit-xml-report-${junit}.xml \
---cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
         (set -x; $cmd) # run command
@@ -97,8 +96,27 @@ else
     touch "$ROOT_DIR/junit-xml-report.xml" # Create an empty file to avoid SonarCloud error
 fi
 
-# Fix absolute paths in coverage report
+# There is sometimes a random bug in pytest cov with --cov-append.
+# The last tested project is malformed in the report file.
+# Use this workaround to run pytest on a dummy empty dir. This reformats the report file.
+dummy="/tmp/empty-pytest"
+mkdir -p $dummy
+# Use the last project configuration
+cmd="\
+$(cd $proj_dir && poetry run which python) -m pytest $dummy \
+--cov=$dummy \
+--cov-append \
+--cov-report=term \
+--cov-report=xml:$ROOT_DIR/cov-report.xml \
+"
+(set -x; $cmd || true) # run command, ignore the error message that says no tests exist
+
+# If the coverage report file exists
 if [[ -f "$ROOT_DIR/cov-report.xml" ]]; then
+    # Remove the line with the dummy empty dir
+    sed -i  "/empty-pytest/d" "$ROOT_DIR/cov-report.xml"
+
+    # Fix absolute paths
     sed -i "s|$ROOT_DIR/||g" "$ROOT_DIR/cov-report.xml"
 else
     echo "No coverage report generated"

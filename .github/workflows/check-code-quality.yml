@@ -293,7 +293,6 @@ jobs:
       - name: Get directory names
         id: dir_names
         run: |
-          echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
           echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
         shell: bash
 
@@ -309,15 +308,22 @@ jobs:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
+          #
+          # "sonar.coverage.exclusions" excludes some files from the test coverage metrics but those files are still
+          # analyzed: other metrics, duplications, coding rules...
+          #
+          # "sonar.exclusions" completely excludes some files from the analysis: those files don't appear at all
+          # in SonarQube.
+          #
           projectBaseDir: .
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
+            -Dsonar.sources=./services
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.exclusions=tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
             -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
+            -Dsonar.exclusions=tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}

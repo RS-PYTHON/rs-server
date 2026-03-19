@@ -503,4 +503,4 @@ HandleExceptionsMiddleware.disable_default_exception_handler(app)
 app.add_middleware(HealthMiddleware)
 
 app.router.lifespan_context = app_lifespan  # type: ignore
-init_opentelemetry.init_traces(app, "osam.service")
+init_opentelemetry.init_traces(app, "rs.server.osam")
