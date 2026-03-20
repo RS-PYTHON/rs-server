@@ -404,15 +404,19 @@ class CatalogResponseManager:
             content = adapt_object_links(content, self.request_ids["owner_id"])
 
             # Self-links shall match the requested URL, even in implicit mode (owner not specified)
+            # Example of implicit path: /catalog/collections/SENTINEL-2
+            # The owner id deduced from the caller's identity
             if (
                 request.url.path.replace(":", "_") != request.scope["path"]
                 and isinstance(content, dict)
-                and not common_settings.CLUSTER_MODE
             ):
+                # Find a link object with {"rel": "self"} inside the "links" list
                 self_link = next((s for s in (content.get("links") or []) if s.get("rel") == "self"), None)
                 if self_link:
                     parsed = urlparse(self_link["href"])
+                    # Extract collection_id from paths like "/catalog/collections/owner_id:collection_id"
                     if m := re.match(CATALOG_COLLECTIONS + r"/.+?:(?P<collection_id>.*)", parsed.path):
+                        # Set the new self link path without owner_id -> "/catalog/collections/collection_id"
                         self_link["href"] = parsed._replace(
                             path=f"{CATALOG_COLLECTIONS}/{m.group('collection_id')}",
                         ).geturl()
