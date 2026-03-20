@@ -406,10 +406,7 @@ class CatalogResponseManager:
             # Self-links shall match the requested URL, even in implicit mode (owner not specified)
             # Example of implicit path: /catalog/collections/SENTINEL-2
             # The owner id deduced from the caller's identity
-            if (
-                request.url.path.replace(":", "_") != request.scope["path"]
-                and isinstance(content, dict)
-            ):
+            if request.url.path.replace(":", "_") != request.scope["path"] and isinstance(content, dict):
                 # Find a link object with {"rel": "self"} inside the "links" list
                 self_link = next((s for s in (content.get("links") or []) if s.get("rel") == "self"), None)
                 if self_link:
