@@ -116,7 +116,15 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
         if row[0:3] == [owner, "*", eopf_type]:
             settings3 = (row[3], row[4])
         if row[0:3] == ["*", "*", "*"]:
-            settings4 = (row[3], row[4])
+            if settings4 is None:
+                settings4 = (row[3], row[4])
+            # else:
+            # TODO: the following error is currently not raised until we decide how to handle
+            # multiple default configurations (e.g. take the first one, or raise an error), but it
+            # should be kept in mind that having multiple default configurations is not expected and should be avoided.
+            #   raise S3StorageConfigurationError(
+            #         "Multiple default configurations found in the configuration table, expected only one.",
+            #   )
     return settings1 or settings2 or settings3 or settings4
 
 
