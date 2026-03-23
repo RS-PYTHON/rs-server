@@ -317,7 +317,7 @@ def odata_to_stac(
             feature_template["id"] = value
             continue
         if stac_key == "geometry" and value:
-            feature_template["geometry"] = normalize_geojson_geometry_orientation(value)
+            feature_template["geometry"] = repair_and_orient_geojson_geometry(value)
             feature_template["bbox"] = shape(feature_template["geometry"]).bounds
             continue
         if stac_key in feature_template["assets"]["file"]:
@@ -335,8 +335,8 @@ def odata_to_stac(
     return feature_template
 
 
-def normalize_geojson_geometry_orientation(geometry: dict[str, Any]) -> dict[str, Any]:
-    """Normalize Polygon/MultiPolygon rings to RFC7946 right-hand-rule orientation."""
+def repair_and_orient_geojson_geometry(geometry: dict[str, Any]) -> dict[str, Any]:
+    """Repair invalid polygonal GeoJSON if needed and enforce RFC7946 ring orientation."""
     shapely_geometry = shape(geometry)
     polygonal_geometry = extract_polygonal_geometry(shapely_geometry)
 
