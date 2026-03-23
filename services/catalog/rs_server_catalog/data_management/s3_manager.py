@@ -261,20 +261,10 @@ class S3Manager:
         if self.is_catalog_local_mode:
             return True
 
-        collection_id = content.get("collection")
-        item_eopf_type = content["properties"].get("eopf:type", "*")
-        user = content["properties"].get("owner", "*")
-        bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
         exist_list = []
         for asset_name, asset_info in content.get("assets", {}).items():
             exists = False
             if s3_key := asset_info.get("href"):
-                if bucket_name not in s3_key:
-                    logger.error(
-                        f"Asset: {asset_name}, The s3 key {s3_key} should contain the bucket name {bucket_name}",
-                    )
-                    exist_list.append(False)
-                    continue
                 try:
                     exists, size = self.check_s3_key(content, asset_name, s3_key)
                     logger.info(f"Asset: {asset_name}, Found on bucket: {exists}, Size: {size}")
