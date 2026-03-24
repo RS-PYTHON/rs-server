@@ -320,7 +320,7 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.organization=rs-python
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.sources=./services
+            -Dsonar.sources=.
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
             -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
             -Dsonar.exclusions=tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
@@ -337,7 +337,7 @@ jobs:
         run: sleep 5
 
       - name: Report quality gate result in the pull request comment
-        uses: phwt/sonarqube-quality-gate-action@v1
+        uses: tschlegel/sonarqube-quality-gate-action@main
         id: quality-gate-result
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
