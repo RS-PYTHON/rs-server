@@ -21,6 +21,14 @@
 
 import pytest
 import requests
+import responses
+
+
+@pytest.fixture(autouse=True)
+def moto_passthru():
+    """Ensure responses allows calls to local Moto servers."""
+    responses.add_passthru("http://localhost:5000")
+    responses.add_passthru("http://localhost:5001")
 
 
 # Mock Response Class
