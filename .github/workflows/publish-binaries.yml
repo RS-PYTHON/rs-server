@@ -94,23 +94,6 @@ jobs:
   # Build wheels #
   ################
 
-  complete-whl:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    name: "complete wheel"
-#    outputs:
-#      version_name: ${{ steps.build-wheel.outputs.version_name }}
-#      package_name: ${{ steps.build-wheel.outputs.package_name }}
-    continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # so that Dunamai produce the correct version
-#      - id: build-wheel
-#        uses: ./.github/actions/build-wheel
-#        with:
-#          package_directory: .
-
   services-common-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest

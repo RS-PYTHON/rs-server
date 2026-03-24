@@ -38,16 +38,17 @@ runs:
 
     - uses: ./.github/actions/poetry-install
 
-    - run: |
-        set -x
-        cd ${{ inputs.package_directory }}
-        poetry build
-      shell: bash
-
-    # Run 'poetry dynamic-versioning' to find the version name, sed the result
+    # Run 'poetry dynamic-versioning' from the root folder to find the version name, sed the result
     - name: Find version name
       id: version_name
       run: "echo version_name=$(poetry dynamic-versioning |& sed -n 's|Version: ||p') >> $GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Build wheel and sdist
+      run: |
+        set -x
+        cd ${{ inputs.package_directory }}
+        poetry build
       shell: bash
 
     # Note: the wheel file is built in package_directory/dist

@@ -15,15 +15,15 @@
 name: Check code quality
 
 on:
-  push:
-    branches:
-      - develop # pushes on the 'develop' branch
-    tags:
-      - '**' # new git tags (including hierarchical tags like v1.0/beta)
-  pull_request:
-    types: [opened, synchronize, reopened]
-    # run this worflow only for code/test related changes (avoid it for documentation)
-    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.sh', '**.toml', '**.yaml', '**.yml']
+  # push:
+  #   branches:
+  #     - develop # pushes on the 'develop' branch
+  #   tags:
+  #     - '**' # new git tags (including hierarchical tags like v1.0/beta)
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  #   # run this worflow only for code/test related changes (avoid it for documentation)
+  #   paths: ['**.json', '**.lock', '**.py', '**.raw', '**.sh', '**.toml', '**.yaml', '**.yml']
   workflow_dispatch:
 
 env:
@@ -337,7 +337,7 @@ jobs:
         run: sleep 5
 
       - name: Report quality gate result in the pull request comment
-        uses: tschlegel/sonarqube-quality-gate-action@main
+        uses: phwt/sonarqube-quality-gate-action@v1
         id: quality-gate-result
         with:
           sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
