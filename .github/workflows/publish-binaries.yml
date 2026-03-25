@@ -16,8 +16,8 @@ name: Publish wheels and Docker images
 
 # Run workflow only for ...
 on:
-  pull_request: # pull requests
-    types: [opened, synchronize, reopened]
+  # pull_request: # pull requests
+  #   types: [opened, synchronize, reopened]
   push:
     branches:
       - develop # pushes on the 'develop' branch
