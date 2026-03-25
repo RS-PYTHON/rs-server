@@ -153,7 +153,6 @@ if [[ " $@ " == *" --run-services "* ]]; then
     run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
     run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
     run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health"
-    run_local_service "../edrs" "rs_server_edrs.fastapi.edrs_app:app" 8006 "health"
     run_local_service "../osam" "rs_server_osam.main:app" 7001 "_mgmt/ping"
 
     # Use pgstac database
