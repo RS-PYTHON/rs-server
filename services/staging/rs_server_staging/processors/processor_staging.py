@@ -831,32 +831,25 @@ class Staging(
                 clusters = sorted(gateway.list_clusters(), key=lambda cluster: cluster.start_time, reverse=True)
                 self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY_ADDRESS']!r}: {clusters}")
 
-                # In local mode, get the first cluster from the gateway.
+                # Get the identifier of the cluster whose name matches the cluster_name variable.
+                # Protection for the case when this cluster does not exist.
                 cluster_id = None
-                if common_settings.LOCAL_MODE:
-                    if clusters:
-                        cluster_id = clusters[0].name
+                self.logger.info(f"Requested cluster name: {cluster_name}")
 
-                # In cluster mode, get the identifier of the cluster whose name is equal to the cluster_name variable.
-                # Protection for the case when this cluster does not exit
-                else:
-                    self.logger.info(f"my cluster name: {cluster_name}")
+                for cluster in clusters:
+                    self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
 
-                    for cluster in clusters:
-                        self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
-
-                        is_equal = cluster.options.get("cluster_name") == cluster_name
-                        self.logger.info(f"Is equal: {is_equal}")
-
-                    cluster_id = next(
-                        (
-                            cluster.name
-                            for cluster in clusters
-                            if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
-                        ),
-                        None,
-                    )
-                    self.logger.info(f"Cluster id vaut: {cluster_id}")
+                    is_equal = cluster.options.get("cluster_name") == cluster_name
+                    self.logger.info(f"Is equal: {is_equal}")
+                cluster_id = next(
+                    (
+                        cluster.name
+                        for cluster in clusters
+                        if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
+                    ),
+                    None,
+                )
+                self.logger.info(f"Selected cluster id: {cluster_id}")
 
                 if not cluster_id:
                     raise IndexError(f"Dask cluster with 'cluster_name'={cluster_name!r} was not found.")
