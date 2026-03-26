@@ -302,8 +302,12 @@ def test_apply_external_ids_multiple_values():
     ],
 )
 def test_repair_and_orient_geojson_geometry_keeps_non_polygon_geometry_unchanged(geometry):
-    """Leaves non-polygon geometries unchanged."""
-    assert repair_and_orient_geojson_geometry(geometry) == geometry
+    """Leaves non-polygon geometries unchanged apart from GeoJSON normalization."""
+    if geometry["type"] == "Point":
+        expected = {"type": "Point", "coordinates": (1.0, 2.0)}
+    else:
+        expected = {"type": "LineString", "coordinates": ((1.0, 2.0), (3.0, 4.0))}
+    assert repair_and_orient_geojson_geometry(geometry) == expected
 
 
 def test_repair_and_orient_geojson_geometry_keeps_geometry_collection_with_polygon_and_line():
