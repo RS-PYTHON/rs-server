@@ -306,21 +306,27 @@ def test_repair_and_orient_geojson_geometry_keeps_non_polygon_geometry_unchanged
     assert repair_and_orient_geojson_geometry(geometry) == geometry
 
 
-def test_repair_and_orient_geojson_geometry_extracts_polygon_from_geometry_collection():
-    """Repairs an invalid polygon and keeps only the polygonal part returned by make_valid."""
+def test_repair_and_orient_geojson_geometry_keeps_geometry_collection_with_polygon_and_line():
+    """Repairs an invalid polygon and keeps the full mixed GeometryCollection returned by make_valid."""
     geometry = {
         "type": "Polygon",
         "coordinates": [[(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (1.0, 1.0), (2.0, 2.0), (0.0, 2.0), (0.0, 0.0)]],
     }
 
     assert repair_and_orient_geojson_geometry(geometry) == {
-        "type": "Polygon",
-        "coordinates": (((2.0, 0.0), (2.0, 2.0), (0.0, 2.0), (0.0, 0.0), (2.0, 0.0)),),
+        "type": "GeometryCollection",
+        "geometries": [
+            {
+                "type": "Polygon",
+                "coordinates": (((2.0, 0.0), (0.0, 0.0), (0.0, 2.0), (2.0, 2.0), (2.0, 0.0)),),
+            },
+            {"type": "LineString", "coordinates": ((2.0, 2.0), (1.0, 1.0))},
+        ],
     }
 
 
-def test_repair_and_orient_geojson_geometry_extracts_multipolygon_from_geometry_collection():
-    """Repairs an invalid polygon and keeps only the multipolygonal part returned by make_valid."""
+def test_repair_and_orient_geojson_geometry_keeps_geometry_collection_with_multipolygon_and_line():
+    """Repairs an invalid polygon and keeps the full mixed GeometryCollection returned by make_valid."""
     geometry = {
         "type": "Polygon",
         "coordinates": [
@@ -341,19 +347,28 @@ def test_repair_and_orient_geojson_geometry_extracts_multipolygon_from_geometry_
     }
 
     assert repair_and_orient_geojson_geometry(geometry) == {
-        "type": "MultiPolygon",
-        "coordinates": [
-            (((2.0, 4.0), (0.0, 4.0), (0.0, 0.0), (4.0, 0.0), (4.0, 2.0), (2.0, 2.0), (2.0, 4.0)),),
-            (((2.0, 5.0), (2.0, 4.0), (4.0, 4.0), (4.0, 2.0), (5.0, 2.0), (5.0, 5.0), (2.0, 5.0)),),
+        "type": "GeometryCollection",
+        "geometries": [
+            {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    (((2.0, 4.0), (2.0, 2.0), (4.0, 2.0), (4.0, 0.0), (0.0, 0.0), (0.0, 4.0), (2.0, 4.0)),),
+                    (((2.0, 5.0), (5.0, 5.0), (5.0, 2.0), (4.0, 2.0), (4.0, 4.0), (2.0, 4.0), (2.0, 5.0)),),
+                ],
+            },
+            {"type": "LineString", "coordinates": ((0.0, 0.0), (2.0, 2.0))},
         ],
     }
 
 
-def test_repair_and_orient_geojson_geometry_keeps_original_when_make_valid_has_no_polygonal_output():
-    """Keeps the original geometry when make_valid does not produce polygonal output."""
+def test_repair_and_orient_geojson_geometry_returns_non_polygonal_make_valid_output():
+    """Returns non-polygonal make_valid output unchanged."""
     geometry = {
         "type": "Polygon",
         "coordinates": [[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (1.0, 0.0), (0.0, 0.0), (0.0, 0.0)]],
     }
 
-    assert repair_and_orient_geojson_geometry(geometry) == geometry
+    assert repair_and_orient_geojson_geometry(geometry) == {
+        "type": "MultiLineString",
+        "coordinates": (((0.0, 0.0), (1.0, 0.0)), ((1.0, 0.0), (2.0, 0.0))),
+    }

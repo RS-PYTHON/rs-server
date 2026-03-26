@@ -32,7 +32,7 @@ from eodag import EOProduct
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 from shapely import make_valid
-from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, mapping, shape
+from shapely.geometry import MultiPolygon, Polygon, mapping, shape
 from shapely.geometry.polygon import orient
 
 # pylint: disable=too-few-public-methods
@@ -336,58 +336,22 @@ def odata_to_stac(
 
 
 def repair_and_orient_geojson_geometry(geometry: dict[str, Any]) -> dict[str, Any]:
-    """Repair invalid polygonal GeoJSON if needed and enforce RFC7946 ring orientation."""
+    """Repair invalid GeoJSON if needed and enforce RFC7946 ring orientation on polygonal results."""
     shapely_geometry = shape(geometry)
-    polygonal_geometry = extract_polygonal_geometry(shapely_geometry)
+    if not shapely_geometry.is_valid:
+        shapely_geometry = make_valid(shapely_geometry)
 
-    # Leave non-polygon geometries unchanged.
-    if polygonal_geometry is None:
-        return geometry
-
-    # Try to repair invalid polygonal inputs before enforcing ring orientation.
-    # make_valid may return mixed geometry collections, so keep only polygonal output.
-    if not polygonal_geometry.is_valid:
-        fixed_geometry = extract_polygonal_geometry(make_valid(polygonal_geometry))
-        if fixed_geometry is None:
-            return geometry
-        polygonal_geometry = fixed_geometry
-
-    if isinstance(polygonal_geometry, Polygon):
-        # RFC7946 expects exterior rings CCW and interior rings CW.
-        return mapping(orient(polygonal_geometry, sign=1.0))
-
-    if isinstance(polygonal_geometry, MultiPolygon):
-        # Apply the same ring orientation rule to each polygon component independently.
-        normalized = MultiPolygon([orient(polygon, sign=1.0) for polygon in polygonal_geometry.geoms])
-        return mapping(normalized)
-
-    return geometry
-
-
-def extract_polygonal_geometry(shapely_geometry: Any) -> Polygon | MultiPolygon | None:
-    """Return a Polygon/MultiPolygon geometry or polygonal members extracted from a GeometryCollection."""
     if isinstance(shapely_geometry, Polygon):
-        return shapely_geometry
+        # RFC7946 expects exterior rings CCW and interior rings CW.
+        return mapping(orient(shapely_geometry, sign=1.0))
 
     if isinstance(shapely_geometry, MultiPolygon):
-        return shapely_geometry
+        # Apply the same ring orientation rule to each polygon component independently.
+        normalized = MultiPolygon([orient(polygon, sign=1.0) for polygon in shapely_geometry.geoms])
+        return mapping(normalized)
 
-    # make_valid can return mixed geometry collections, but downstream code expects polygonal geometry only.
-    if isinstance(shapely_geometry, GeometryCollection):
-        polygons: list[Polygon] = []
-        for geom in shapely_geometry.geoms:
-            # Preserve only polygonal members so downstream STAC/Catalog geometry handling stays compatible.
-            polygonal = extract_polygonal_geometry(geom)
-            if isinstance(polygonal, Polygon):
-                polygons.append(polygonal)
-            elif isinstance(polygonal, MultiPolygon):
-                polygons.extend(polygonal.geoms)
-        if not polygons:
-            return None
-        # Collapse to Polygon when there is a single polygonal member, otherwise return a MultiPolygon.
-        return polygons[0] if len(polygons) == 1 else MultiPolygon(polygons)
-
-    return None
+    # If make_valid returns another valid geometry type, keep it unchanged.
+    return mapping(shapely_geometry)
 
 
 def check_and_fix_timerange(item: dict):
