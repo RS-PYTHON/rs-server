@@ -21,6 +21,9 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import pytest
+from fastapi import Request
+from rs_server_catalog.app import app
+from rs_server_catalog.app import lifecycle as lifecycle_app
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
 from rs_server_catalog.data_management.timestamps_extension import ISO_8601_FORMAT
 
@@ -60,6 +63,7 @@ async def test_data_lifecycle_once(monkeypatch, client, init_buckets, a_correct_
     """Test the data lifecycle when it is run once"""
     s3_handler = init_buckets
     monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
+
     try:
         # Order item by collection and id
         expired_items: dict[tuple[str, str], dict] = {}
@@ -120,6 +124,10 @@ async def test_data_lifecycle_once(monkeypatch, client, init_buckets, a_correct_
                 check_assets(s3_handler, stac_item, exist=True)
 
         # Trigger the data lifecyle
+        @app.router.get("/data/lifecycle", include_in_schema=False)
+        async def data_lifecycle(request: Request):
+            await lifecycle_app.periodic_once(request)
+
         client.get("/data/lifecycle").raise_for_status()
 
         # For each expired item

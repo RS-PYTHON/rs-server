@@ -21,7 +21,7 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
-from fastapi import Depends, FastAPI, Request, Security
+from fastapi import Depends, FastAPI, Security
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
@@ -38,7 +38,6 @@ from rs_server_common.middlewares import (
     insert_middleware_after,
     insert_middleware_at,
 )
-from rs_server_common.settings import env_bool
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.app import api
@@ -167,14 +166,6 @@ app.router.lifespan_context = lifespan
 
 # Configure OpenTelemetry
 init_opentelemetry.init_traces(app, "rs.server.catalog")
-
-# In local mode only or from the pytests, add an endpoint to manual trigger the data lifecycle management (for testing)
-if common_settings.LOCAL_MODE or env_bool("FROM_PYTEST", default=False):
-
-    @app.router.get("/data/lifecycle", include_in_schema=False)
-    async def data_lifecycle(request: Request):
-        """Trigger the data lifecycle management"""
-        await lifecycle.periodic_once(request)
 
 
 # In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)
