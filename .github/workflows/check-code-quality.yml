@@ -140,7 +140,6 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    # permissions: write-all
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
