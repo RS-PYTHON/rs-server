@@ -24,6 +24,50 @@ Changed
 
 None
 
+[1.0a8] - Sprint 34 - 2026-03-25
+================================
+
+## Added
+
+- RSPY-618: Perform basic geometry checks when adding/updating items in the catalog
+- RSPY-780: STAC summaries for CADIP/AUXIP/PRIP collections
+- RSPY-876: [CI/CD] Move JupyterHub image from rs-infra-core to rs-workflow-env
+- RSPY-900: Decouple and update Dask versions
+- RSPY-922: Remove copying data step from catalog
+- RSPY-928: Use end-user credentials in staging
+- RSPY-931: Use end-user credentials in catalog
+- RSPY-937: Manage "final_product" parameter from task table
+- RSPY-939: Change CQL2 filtering lte/gte operators to le/ge
+- RSPY-947: Accept * as product type for the parameter generated_product_to_collection_identifier
+- RSPY-952: Instrument FastAPI server requests/responses
+- RSPY-958: Fill the Mockup Section for rs-client & rs-server
+- RSPY-959: Fill the Mockup Section for 'browse product' & 'virtual environment'
+- RSPY-960: Fill the Mockup Section for 'swagger' & 'quick start'
+- RSPY-961: Fill the Mockup Section for 'How to guides'
+- RSPY-962: Enhance information related to flow processing
+- RSPY-963: Sprint 34 corrections of issues
+- RSPY-981: Remove EDRS
+- RSPY-989: [DPR Processing] Processing should be resilient to sporadic unavailability of rs-server-adgs
+
+## Fixed
+
+- RSPY-464: STAC validation: Invalid collection self-link in implicit mode (2 pts)
+- RSPY-691: Security configuration still present in rs-infra-core (2pts)
+- RSPY-867: Recovery Configuration for rs-server-catalog-db ( 2 pts )
+- RSPY-878: [Sonar] Code coverage not detected (random error) [2 pts]
+- RSPY-895: [RS-SERVER-EDRS] No certificate found by rs-server-edrs pod ( 0 points )
+- RSPY-940: [rs-dpr-service] No AUX data return by search request ( 1 pt)
+- RSPY-941: catalog_flow.py::publish should accept only items as Item instances (2 pts)
+- RSPY-943: [DPR Processing] Prefect Flow processing failed despite no error seen in processing log (2 pts)
+- RSPY-946: Incorrect error handling and incorrect payload output generated ( 3 pts)
+- RSPY-948: [DPR Processing] Failed to create asset for HKTM/GP Product ( 3 pts )
+- RSPY-950: STAC validation: Invalid collection self-link for /collections ( 2 pts )
+- RSPY-953: Slow catalog request make the probes unresponsive and the pod restarts (3 pts)
+- RSPY-956: cluster_instance should be optional when requesting task table ( 2 pts )
+- RSPY-980: [DPR Processing] Prefect Flow processing failed with following error "'FlowInputProduct' object has no attribute 'items'" ( 0 points)
+- RSPY-982: STAC Browser - PRIP temporal search returns no results (2 pts)
+- RSPY-990: RS-DPR-Service dask module is not reloaded in existing dask worker (2 pts)
+
 [1.0a7] - Sprint 33 - 2026-02-25
 ================================
 
