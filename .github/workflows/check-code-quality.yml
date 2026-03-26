@@ -89,176 +89,176 @@ jobs:
           log: debug
           mode: check
 
-#   check-linting:
-#     runs-on: ubuntu-latest
-#     name: Check linting (pylint, flake8)
-#     needs: changes
-#     if: ${{ needs.changes.outputs.code == 'true' }}
-#     steps:
-#       - uses: actions/checkout@v6
-#       - uses: ./.github/actions/poetry-install
-#         with:
-#           rm-plugin-dir: true
+  check-linting:
+    runs-on: ubuntu-latest
+    name: Check linting (pylint, flake8)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
 
-#       - name: Run pylint
-#         if: always() # even if previous steps returned a non-zero exit code
-#         run: |
-#           set -x
-#           poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
+      - name: Run pylint
+        if: always() # even if previous steps returned a non-zero exit code
+        run: |
+          set -x
+          poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
 
-#       - name: Run flake8
-#         if: always()
-#         run: |
-#           set -x
-#           poetry run flake8 . || true # run next line even if fails
-#           poetry run flake8 . --output-file ./flake8-report.txt
+      - name: Run flake8
+        if: always()
+        run: |
+          set -x
+          poetry run flake8 . || true # run next line even if fails
+          poetry run flake8 . --output-file ./flake8-report.txt
 
-#       - name: Save reports
-#         uses: actions/upload-artifact@v7
-#         if: always()
-#         with:
-#           name: check-linting
-#           path: |
-#             ./flake8-report.txt
-#             ./pylint-report.txt
-#           retention-days: 1
+      - name: Save reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: check-linting
+          path: |
+            ./flake8-report.txt
+            ./pylint-report.txt
+          retention-days: 1
 
-#   check-typing:
-#     runs-on: ubuntu-latest
-#     name: Check typing (mypy)
-#     needs: changes
-#     if: ${{ needs.changes.outputs.code == 'true' }}
-#     steps:
-#       - uses: actions/checkout@v6
-#       - uses: ./.github/actions/poetry-install
-#         with:
-#           rm-plugin-dir: true
-#       - name: Run mypy
-#         run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
-#         shell: bash
+  check-typing:
+    runs-on: ubuntu-latest
+    name: Check typing (mypy)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
+      - name: Run mypy
+        run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
+        shell: bash
 
-#   check-security:
-#     runs-on: ubuntu-latest
-#     name: Check security (bandit, safety, trivy)
-#     permissions: write-all
-#     steps:
-#       - uses: actions/checkout@v6
-#       - uses: ./.github/actions/poetry-install
-#         with:
-#           rm-plugin-dir: true
+  check-security:
+    runs-on: ubuntu-latest
+    name: Check security (bandit, safety, trivy)
+    # permissions: write-all
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
 
-#       - id: bandit
-#         name: Run bandit
-#         if: always() # even if previous steps returned a non-zero exit code
-#         run: |
-#           set -x
-#           poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
-#           poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
-#         shell: bash
+      - id: bandit
+        name: Run bandit
+        if: always() # even if previous steps returned a non-zero exit code
+        run: |
+          set -x
+          poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
+          poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
+        shell: bash
 
-#       - id: safety
-#         name: Run safety
-#         if: always() && github.actor != 'dependabot[bot]' # dependabot does not have access to secrets
-#         run: |
-#           set -x
-#           poetry run safety --key ${{ secrets.SAFETY_API_KEY }} scan --detailed-output
-#         shell: bash
+      - id: safety
+        name: Run safety
+        if: always() && github.actor != 'dependabot[bot]' # dependabot does not have access to secrets
+        run: |
+          set -x
+          poetry run safety --key ${{ secrets.SAFETY_API_KEY }} scan --detailed-output
+        shell: bash
 
-#       - name: Run Trivy vulnerability scanner
-#         if: always()
-#         uses: aquasecurity/trivy-action@master
-#         env:
-#           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-#         with:
-#           scan-type: fs
-#           ignore-unfixed: true
-#           format: sarif
-#           output: trivy-results-fs.sarif
-#           exit-code: 1
-#           #severity: 'CRITICAL'
+      - name: Run Trivy vulnerability scanner
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results-fs.sarif
+          exit-code: 1
+          #severity: 'CRITICAL'
 
-#       - name: Save reports as artifacts
-#         if: always()
-#         uses: actions/upload-artifact@v7
-#         with:
-#           name: check-security
-#           path: |
-#             ./bandit-report.json
-#             ./trivy-results-fs.sarif
-#           retention-days: 1
+      - name: Save reports as artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-security
+          path: |
+            ./bandit-report.json
+            ./trivy-results-fs.sarif
+          retention-days: 1
 
-#       - name: Upload Trivy scan results to GitHub Security tab
-#         if: always()
-#         uses: github/codeql-action/upload-sarif@v4
-#         with:
-#           sarif_file: trivy-results-fs.sarif
-#           category: git repository
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results-fs.sarif
+          category: git repository
 
-#       - name: "Display link to Trivy results"
-#         if: always()
-#         run: |
+      - name: "Display link to Trivy results"
+        if: always()
+        run: |
 
-#           set -x
+          set -x
 
-#           # If this is not a pull request, the query is "is:open+branch:branch_name"
-#           if [[ "${{ github.ref_name }}" != *merge* ]]; then
-#             query="is:open+branch:${{ github.ref_name }}"
+          # If this is not a pull request, the query is "is:open+branch:branch_name"
+          if [[ "${{ github.ref_name }}" != *merge* ]]; then
+            query="is:open+branch:${{ github.ref_name }}"
 
-#           # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
-#           else
-#             query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
-#           fi
+          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+          else
+            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+          fi
 
-#           echo "Trivy scan results:" \
-#           "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
-#           >> $GITHUB_STEP_SUMMARY
-#         shell: bash
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
+          >> $GITHUB_STEP_SUMMARY
+        shell: bash
 
-#   run-all-pytests:
-#     runs-on: ubuntu-latest
-#     name: Run pytest # pytest unit and integration tests
-#     needs: [setup]
+  run-all-pytests:
+    runs-on: ubuntu-latest
+    name: Run pytest # pytest unit and integration tests
+    needs: [setup]
 
-#     # Only for this job: try to install and run different python versions.
-#     # All other jobs only use the env PYTHON_VERSION that is set above in this file.
-#     strategy:
-#       matrix:
-#         # python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15.0a2 ]
-#         python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}" ]
-#         include:
-#           - experimental: false
-# #          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
-# #            experimental: true
-# #          - python-version: 3.14
-# #            experimental: true
-# #          - python-version: 3.15.0a2
-# #            experimental: true
-#     continue-on-error: ${{ matrix.experimental }}
+    # Only for this job: try to install and run different python versions.
+    # All other jobs only use the env PYTHON_VERSION that is set above in this file.
+    strategy:
+      matrix:
+        # python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}", 3.13t, 3.14, 3.15.0a2 ]
+        python-version: ["${{ needs.setup.outputs.PYTHON_VERSION }}" ]
+        include:
+          - experimental: false
+#          - python-version: 3.13t # free-threaded mode, with the global interpreter lock (GIL) disabled
+#            experimental: true
+#          - python-version: 3.14
+#            experimental: true
+#          - python-version: 3.15.0a2
+#            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
 
-#     steps:
-#       - uses: actions/checkout@v6
-#       - uses: ./.github/actions/poetry-install
-#         with:
-#           python-version: ${{ matrix.python-version }}
-#       - name: Run pytest
-#         run: ./resources/all_pytests.sh --install
-#         shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/poetry-install
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run pytest
+        run: ./resources/all_pytests.sh --install
+        shell: bash
 
-#       - name: Display code coverage summary in this console
-#         uses: irongut/CodeCoverageSummary@v1.3.0
-#         with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
-#           filename: ./cov-report.xml
+      - name: Display code coverage summary in this console
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
+          filename: ./cov-report.xml
 
-#       - name: Save reports
-#         uses: actions/upload-artifact@v7
-#         if: ${{ matrix.python-version == env.PYTHON_VERSION }}
-#         with:
-#           name: run-all-pytests
-#           path: |
-#             .coverage
-#             ./cov-report.xml
-#             ./junit-xml-report.xml
-#           retention-days: 1
+      - name: Save reports
+        uses: actions/upload-artifact@v7
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
+        with:
+          name: run-all-pytests
+          path: |
+            .coverage
+            ./cov-report.xml
+            ./junit-xml-report.xml
+          retention-days: 1
 
   generate-quality-report:
     runs-on: ubuntu-latest
