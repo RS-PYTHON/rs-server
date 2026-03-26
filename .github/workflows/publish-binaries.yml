@@ -47,12 +47,15 @@ jobs:
     steps:
       - id: set-env
         name: "Set environment"
+        env:
+          # Save this expression in an env var to avoid script injection
+          SOURCE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
           set -x
 
           # Get the current branch name (or source branch for a pull request)
           if [[ ${{ github.event_name }} == pull_request ]]; then
-            branch_name=${{ github.event.pull_request.head.ref }}
+            branch_name="$SOURCE_BRANCH_NAME"
           else
             branch_name=${{ github.ref_name }}
           fi
