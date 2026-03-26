@@ -184,30 +184,6 @@ external_data_sources:
       token_url: http://127.0.0.1:5008/oauth2/token
       authorization: Basic test
 
-  # EDRS mock stations
-  pedc:
-    service:
-      name: edrs
-      url: mockup-station-edrs-headless.processing.svc.cluster.local
-      port: 21
-    domain: mockup-station-edrs-headless.processing.svc.cluster.local
-    authentication:
-      auth_type: ftp
-      ca_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
-      client_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
-      client_key: "-----BEGIN RSA PRIVATE KEY-----\nMIID...\n-----END RSA PRIVATE KEY-----"
-  bedc:
-    service:
-      name: edrs
-      url: mockup-station-edrs-headless.processing.svc.cluster.local
-      port: 21
-    domain: mockup-station-edrs-headless.processing.svc.cluster.local
-    authentication:
-      auth_type: ftp
-      ca_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
-      client_crt: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
-      client_key: "-----BEGIN RSA PRIVATE KEY-----\nMIID...\n-----END RSA PRIVATE KEY-----"
-
   # External S3 for tests
   s3test:
     service:

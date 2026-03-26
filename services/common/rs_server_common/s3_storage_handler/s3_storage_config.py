@@ -17,6 +17,9 @@
 import os
 
 import requests
+from rs_server_common.utils.logging import Logging
+
+logger = Logging.default(__name__)
 
 
 class S3StorageConfigurationError(Exception):
@@ -115,17 +118,20 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
             settings2 = (row[3], row[4])
         if row[0:3] == [owner, "*", eopf_type]:
             settings3 = (row[3], row[4])
-        if row[0:3] == ["*", "*", "*"] and settings4 is None:
-            settings4 = (row[3], row[4])
-        # The following error is currently not raised until we decide how to handle
-        # multiple default configurations (e.g. take the first one, or raise an error), but it
-        # should be kept in mind that having multiple default configurations is not expected and should be avoided.
-        # if row[0:3] == ["*", "*", "*"]:
-        #     if settings4 is not None:
-        #         raise S3StorageConfigurationError(
-        #              "Multiple default configurations found in the configuration table, expected only one.",
-        #        )
-        #     settings4 = (row[3], row[4])
+        # Having multiple default configurations is not expected and should be avoided.
+        # However, since the default configuration is the last fallback, we can still use it even
+        # if multiple entries are found, and just log a warning instead of raising an error.
+        if row[0:3] == ["*", "*", "*"]:
+            if settings4 is None:
+                settings4 = (row[3], row[4])
+            else:
+                logger.warning(
+                    "Multiple default configurations found in the configuration map "
+                    "(rs-catalog-staging-configmap), expected only one. Using the first "
+                    "one found, but please check your configuration table to avoid unexpected behaviors."
+                    "There should be only one entry with the three first columns set to '*'",
+                )
+
     return settings1 or settings2 or settings3 or settings4
 
 

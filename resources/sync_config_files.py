@@ -55,7 +55,6 @@ class Stations:  # pylint: disable=too-few-public-methods
         self.value: str = ""
         self.adgs: bool = False
         self.cadip: bool = False
-        self.edrs: bool = False
         self.lta: bool = False
         self.prip: bool = False
 
@@ -66,9 +65,6 @@ class Stations:  # pylint: disable=too-few-public-methods
             self.value = station
         elif any(station.startswith(s) for s in ("cadip", "ins", "mps", "mti", "nsg", "sgs")):
             self.cadip = True
-            self.value = station
-        elif any(station == s for s in ("pedc", "bedc")):
-            self.edrs = True
             self.value = station
         elif any(station == s for s in ("lta",)):
             self.lta = True
@@ -111,14 +107,6 @@ def recursive_update(old, new):
         else:
             old[key] = value
     return old
-
-
-def strip_edrs_placeholders(value: str) -> str:
-    """Remove quotes around EDRS placeholders in literal strings."""
-    for placeholder in ("URL", "PORT", "USER", "PASS"):
-        for quote in ("'", '"'):
-            value = value.replace(f"{quote}{{{placeholder}}}{quote}", f"{{{placeholder}}}")
-    return value
 
 
 class LiteralStr(str):
@@ -302,20 +290,6 @@ def create_from_template(
     # Specific post-processing for files that must keep literal block style
     def post_process(file_path: Path, content: dict):
         """Apply file-specific tweaks after template rendering."""
-        if file_path.name == "edrs_stations.yaml" and isinstance(content, dict) and "stations" in content:
-            stations_yaml = yaml.dump(content["stations"], default_flow_style=False, sort_keys=False)
-            stations_yaml = strip_edrs_placeholders(stations_yaml)
-            lines = stations_yaml.splitlines()
-            formatted_lines = []
-            first_station = True
-            for station_line in lines:
-                is_station_key = station_line and (station_line.lstrip() == station_line) and station_line.endswith(":")
-                if is_station_key:
-                    if not first_station:
-                        formatted_lines.append("")
-                    first_station = False
-                formatted_lines.append(station_line)
-            content["stations"] = LiteralStr("\n".join(formatted_lines) + "\n")
         if file_path.name == "rs-server.yaml" and isinstance(content, dict):
             # Avoid inheriting OAuth2 fields for non-OAuth auth types in generated configs.
             sources = content.get("external_data_sources")
@@ -385,18 +359,6 @@ def get_structure(file_contents: dict | None) -> Any:
     return extract_structure(file_contents)
 
 
-def should_skip_demo_edrs_update(config_path: Path, input_path: Path) -> bool:
-    """Return True when existing and input configs share the same structure."""
-    try:
-        with open(config_path, encoding="utf-8") as opened:
-            existing_config = yaml.safe_load(opened)
-        with open(input_path, encoding="utf-8") as opened:
-            input_config = yaml.safe_load(opened)
-        return get_structure(existing_config) == get_structure(input_config)
-    except Exception:  # pylint: disable=broad-exception-caught
-        return False
-
-
 def update_demo_values(parent_key: str, config: dict, station: Stations | None = None):
     """
     Recursive function to update values from the config file.
@@ -424,8 +386,6 @@ def update_demo_values(parent_key: str, config: dict, station: Stations | None =
             return re.sub(REGEX_DOMAIN, "adgs-station", re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value))
         if station.cadip:
             return re.sub(REGEX_DOMAIN, "cadip-station", re.sub(REGEX_URL, r"\g<1>cadip-station:5000", value))
-        if station.edrs:
-            return re.sub(REGEX_DOMAIN, "edrs-station", re.sub(REGEX_URL, r"\g<1>edrs-station:5000", value))
         if station.lta:
             return re.sub(REGEX_DOMAIN, "lta-station", re.sub(REGEX_URL, r"\g<1>lta-station:5000", value))
         if station.prip:
@@ -470,11 +430,6 @@ def copy_to_demo(input_path_relative: str):
     # Copy the file, keep the same name
     input_path = rs_server_dir / input_path_relative
     config_path = rs_demo_dir / "local-mode/config" / input_path.name
-    if input_path.name == "edrs_stations.yaml" and config_path.is_file():
-        # Same structure: keep local credentials untouched.
-        if should_skip_demo_edrs_update(config_path, input_path):
-            logger.info(f"Skip update: '{config_path!s}' (same structure)")
-            return
     logger.info(f"Update: '{config_path!s}'")
     shutil.copyfile(input_path, config_path)
 
@@ -486,17 +441,6 @@ def copy_to_demo(input_path_relative: str):
         file = yaml.safe_load(opened)
 
     update_demo_values("", file)
-
-    if (
-        input_path.name == "edrs_stations.yaml"
-        and isinstance(file, dict)
-        and isinstance(file.get("stations"), str)
-        and "\n" in file["stations"]
-    ):
-        stations_value = strip_edrs_placeholders(file["stations"])
-        if not stations_value.endswith("\n"):
-            stations_value += "\n"
-        file["stations"] = LiteralStr(stations_value)
 
     # Write the modified output file
     with open(config_path, "w", encoding="utf-8") as opened:
@@ -598,8 +542,6 @@ def read_helm_or_infra(yaml_contents: str, yaml_as_string: bool) -> list[dict]:
         for output_config in output_configs:
             data = output_config.get("data", {})
             for key, value in data.items():
-                if key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}":
-                    continue
                 if isinstance(value, str):
                     data[key] = yaml.safe_load(value)
 
@@ -626,28 +568,23 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
     # Unparse yaml contents into literal strings (indented with |)
     if yaml_as_string:
 
-        def format_config_value(config_key: str, config_value: Any) -> Any:
+        def format_config_value(config_value: Any) -> Any:
             """Format configmap values that embed yaml."""
             if isinstance(config_value, dict):
-                if config_key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}" and "stations" in config_value:
-                    config_value["stations"] = LiteralStr("\n")
                 stations_value = config_value.get("stations")
                 if isinstance(stations_value, str) and "\n" in stations_value:
-                    stations_value = strip_edrs_placeholders(stations_value)
                     if not stations_value.endswith("\n"):
                         stations_value += "\n"
                     config_value["stations"] = LiteralStr(stations_value)
                 return LiteralStr(yaml.dump(config_value, default_flow_style=False, sort_keys=False, width=witdh))
             if isinstance(config_value, str) and "\n" in config_value:
-                if config_key == f"{DCB_OPEN} .Values.app.edrsStations {DCB_CLOSE}":
-                    config_value = re.sub(r"stations: \|\n\s*\n", "stations: |\n", config_value, count=1)
                 return LiteralStr(config_value if config_value.endswith("\n") else config_value + "\n")
             return config_value
 
         for output_config in output_configs:
             data = output_config.get("data", {})
             for key, value in data.items():
-                data[key] = format_config_value(key, value)
+                data[key] = format_config_value(value)
 
     # Write the configuration file as a multidoc file (with docs separated by '---')
     yaml_contents = yaml.dump_all(output_configs, default_flow_style=False, sort_keys=False, width=witdh)
@@ -660,16 +597,6 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
     suffix = r":(\s*null)?"  # yaml parsing added ': null' after the tag
     yaml_contents = re.sub(re.compile(REGEX_RANGE_START + suffix), r"\g<1>", yaml_contents)
     yaml_contents = re.sub(re.compile(REGEX_RANGE_END + suffix), r"\g<1>", yaml_contents)
-
-    # Normalize edrsStations literal block to avoid "|2+" formatting
-    yaml_contents = re.sub(
-        re.compile(
-            r"(^\s*\{\{\s*\.Values\.app\.edrsStations\s*\}\}: \|\n\s+stations: )\|\d\+",
-            re.MULTILINE,
-        ),
-        r"\1|",
-        yaml_contents,
-    )
 
     return yaml_contents
 
@@ -749,12 +676,6 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
                 updated_value = re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-station-cadip-{station.value}.processing.svc.cluster.local:8080",
-                    input_value,
-                )
-            elif station.edrs:
-                updated_value = re.sub(
-                    REGEX_URL,
-                    rf"\g<1>mockup-station-{station.value}.processing.svc.cluster.local:21",
                     input_value,
                 )
             elif station.lta:
@@ -863,8 +784,6 @@ if __name__ == "__main__":
             "services/cadip/config/cadip_ws_config.template.yaml",
             "services/cadip/config/cadip_ws_config.template_session.yaml",
         ],
-        ["services/edrs/config/edrs_search_config.template.yaml"],
-        ["services/edrs/config/edrs_stations.template.yaml"],
         ["services/prip/config/prip_search_config.template.yaml"],
         ["services/prip/config/prip_ws_config.template.yaml"],
     ):
@@ -876,8 +795,6 @@ if __name__ == "__main__":
         "services/adgs/config/adgs_ws_config.yaml",
         "services/cadip/config/cadip_ws_config.yaml",
         "services/prip/config/prip_ws_config.yaml",
-        "services/edrs/config/edrs_search_config.yaml",
-        "services/edrs/config/edrs_stations.yaml",
     ):
         copy_to_demo(config_path_relative)
 
@@ -941,19 +858,6 @@ if __name__ == "__main__":
             ),
         ],
         rs_helm_dir / "charts/rs-server-adgs/config/adgs_search_config.yaml",
-        ignore_existing_file=True,
-    )
-
-    copy_to_helm_or_infra(
-        [
-            HelmOrInfraParams(
-                "services/edrs/config/edrs_search_config.yaml",
-                [],
-                [],
-                0,
-            ),
-        ],
-        rs_helm_dir / "charts/rs-server-edrs/config/edrs_search_config.yaml",
         ignore_existing_file=True,
     )
 

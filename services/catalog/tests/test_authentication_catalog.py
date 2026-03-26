@@ -556,7 +556,16 @@ async def test_authorization_get_one_collection(
             json_response.pop("created")
             json_response.pop("updated")
 
-            assert json_response == Collection(owner, collection_id).as_returned(cluster_mode=True)
+            expected = Collection(owner, collection_id).as_returned(cluster_mode=True)
+
+            # Fix self link to match new behavior (implicit owner support when owner is missing)
+            if owner_in_url == "":
+                for link in expected.get("links", []):
+                    if link.get("rel") == "self":
+                        link["href"] = link["href"].replace(f"{owner}:", "")
+
+            assert json_response == expected
+
         else:
             assert response.status_code == HTTP_401_UNAUTHORIZED
 

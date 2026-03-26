@@ -179,23 +179,6 @@ jobs:
         with:
           package_directory: services/cadip
 
-  services-edrs-whl:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    name: "'services/edrs' wheel"
-    outputs:
-      version_name: ${{ steps.build-wheel.outputs.version_name }}
-      package_name: ${{ steps.build-wheel.outputs.package_name }}
-    continue-on-error: false
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # so that Dunamai produce the correct version
-      - id: build-wheel
-        uses: ./.github/actions/build-wheel
-        with:
-          package_directory: services/edrs
-
   services-staging-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -281,7 +264,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "Publish wheels and sdists"
-    needs: [services-common-whl, services-adgs-whl, services-prip-whl, services-cadip-whl, services-edrs-whl, services-staging-whl, services-catalog-whl, services-frontend-whl, services-osam-whl]
+    needs: [services-common-whl, services-adgs-whl, services-prip-whl, services-cadip-whl, services-staging-whl, services-catalog-whl, services-frontend-whl, services-osam-whl]
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -436,53 +419,6 @@ jobs:
           build_context_path: ./build_context_path
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }}
-          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
-
-  services-edrs-img:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    name: "'services/edrs' Docker image"
-    needs: [set-env, services-common-whl, services-edrs-whl]
-    permissions: write-all
-    outputs:
-      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
-    steps:
-      - uses: actions/checkout@v6
-
-      # Download .whl files into a local dir
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./build_context_path
-
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ needs.services-edrs-whl.outputs.package_name }}
-          path: ./build_context_path
-
-      - name: Copy Dockerfile requirements
-        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
-        shell: bash
-
-      - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
-        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
-        shell: bash
-
-      - id: publish-docker
-        uses: ./.github/actions/publish-docker
-        with:
-          dockerfile: ./services/edrs/.github/Dockerfile
-          build_context_path: ./build_context_path
-          image_suffix: -edrs
-          version_name: ${{ needs.services-edrs-whl.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -750,7 +686,6 @@ jobs:
       - services-adgs-img
       - services-prip-img
       - services-cadip-img
-      - services-edrs-img
       - services-catalog-img
       - services-frontend-img
       - services-staging-img
