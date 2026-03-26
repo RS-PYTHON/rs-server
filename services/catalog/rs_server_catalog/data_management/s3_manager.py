@@ -280,5 +280,7 @@ class S3Manager:
                     logger.info(f"Asset: {asset_name}, Found on bucket: {exists}, Size: {size}")
                 except HTTPException as e:
                     logger.error(f"Asset: {asset_name}, Error: {e.detail}")
+            else:
+                logger.error(f"Asset: {asset_name}, No href key found for this asset")
             exist_list.append(exists)
         return all(exist_list)

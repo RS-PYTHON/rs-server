@@ -145,7 +145,7 @@ async def authenticate(
 
 
 def auth_validation(
-    station_type: Literal["auxip", "cadip", "edrs", "prip", "lta"],
+    station_type: Literal["auxip", "cadip", "prip", "lta"],
     access_type: Literal["landing_page", "read", "execute", "staging_download", "dismiss"],
     request: Request,
     station: str = "",
@@ -158,7 +158,7 @@ def auth_validation(
         station_type: either auxip, cadip, ...
         access_type: either landing_page, read, ...
         request: HTTP request
-        station: specific adgs station (adgs or adgs2) or cadip station (ins, mps, ...) or edrs, prip or lta station
+        station: specific adgs station (adgs or adgs2) or cadip station (ins, mps, ...) or prip or lta station
         staging_process: specific case for the staging
 
     Raises:

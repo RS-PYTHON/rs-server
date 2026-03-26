@@ -1025,8 +1025,8 @@ class Staging(
                 self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             else:
                 if domain == "FTP" and not LOCAL_MODE:
-                    self.logger.info("Staging from EDRS-Station FTP server, no token retrieval needed")
-                    # On FTP and cluster mode, check api key roles for EDRS staging
+                    self.logger.info("Staging from FTP server, no token retrieval needed")
+                    # On FTP and cluster mode, check api key roles for FTP staging
                     from rs_server_common.authentication.authentication import (  # pylint: disable=C0415
                         auth_validation,
                     )

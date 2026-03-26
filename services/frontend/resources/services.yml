@@ -35,7 +35,6 @@ info:
     <a href="#/ADGS%20stations" target="_blank">ADGS stations</a> /
     <a href="#/CADIP%20stations" target="_blank">CADIP stations</a> /
     <a href="#/PRIP%20stations" target="_blank">PRIP stations</a> /
-    <a href="#/EDRS%20stations" target="_blank">EDRS stations</a> /
     <a href="#/OSAM%20service" target="_blank">OSAM service</a> /
     <a href="#/Catalog" target="_blank">Catalog</a> /
     <a href="#/Staging%20service" target="_blank">Staging service</a> /
@@ -47,7 +46,6 @@ info:
     <a href="${STAC_BROWSER_URL_ADGS}" target="_blank">ADGS</a> /
     <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
     <a href="${STAC_BROWSER_URL_PRIP}" target="_blank">PRIP</a> /
-    <a href="${STAC_BROWSER_URL_EDRS}" target="_blank">EDRS</a> /
     <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
 
     ---
@@ -67,11 +65,6 @@ services:
     change_tags:
       "": PRIP stations
       Filter Extension: PRIP (Filter Extension)
-  edrs:
-    openapi_url: http://localhost:8006/edrs/api
-    change_tags:
-      "": EDRS stations
-      Filter Extension: EDRS (Filter Extension)
   osam:
     openapi_url: http://localhost:7001/openapi.json
     change_tags:

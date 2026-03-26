@@ -276,56 +276,6 @@ external_data_sources:
       client_id: client_id
       client_secret: client_secret
       authorization: Basic test
-  pedc:
-    domain: mockup-station-edrs-headless.processing.svc.cluster.local
-    service:
-      name: edrs
-      url: mockup-station-edrs-headless.processing.svc.cluster.local
-      port: 21
-    authentication:
-      auth_type: ftp
-      username: test
-      password: test
-      ca_crt: '-----BEGIN CERTIFICATE-----
-
-        MIID...
-
-        -----END CERTIFICATE-----'
-      client_crt: '-----BEGIN CERTIFICATE-----
-
-        MIID...
-
-        -----END CERTIFICATE-----'
-      client_key: '-----BEGIN RSA PRIVATE KEY-----
-
-        MIID...
-
-        -----END RSA PRIVATE KEY-----'
-  bedc:
-    domain: mockup-station-edrs-headless.processing.svc.cluster.local
-    service:
-      name: edrs
-      url: mockup-station-edrs-headless.processing.svc.cluster.local
-      port: 21
-    authentication:
-      auth_type: ftp
-      username: test
-      password: test
-      ca_crt: '-----BEGIN CERTIFICATE-----
-
-        MIID...
-
-        -----END CERTIFICATE-----'
-      client_crt: '-----BEGIN CERTIFICATE-----
-
-        MIID...
-
-        -----END CERTIFICATE-----'
-      client_key: '-----BEGIN RSA PRIVATE KEY-----
-
-        MIID...
-
-        -----END RSA PRIVATE KEY-----'
   s3test:
     domain: s3.gra.io.cloud.ovh.net
     service:
