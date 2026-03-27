@@ -158,9 +158,11 @@ jobs:
       - id: safety
         name: Run safety
         if: always() && github.actor != 'dependabot[bot]' # dependabot does not have access to secrets
+        env:
+            SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
         run: |
           set -x
-          poetry run safety --key ${{ secrets.SAFETY_API_KEY }} scan --detailed-output
+          poetry run safety --key $SAFETY_API_KEY scan --detailed-output
         shell: bash
 
       - name: Run Trivy vulnerability scanner
@@ -188,7 +190,7 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@b8bb9f28b8d3f992092362369c57161b755dea45 # v4
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results-fs.sarif
           category: git repository
@@ -303,11 +305,7 @@ jobs:
       - name: Run SonarCloud Scanner
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7
         with:
-          # See doc:
-          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
-          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
-          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
-          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
+          # See doc: https://docs.sonarsource.com/sonarqube-cloud
           #
           # "sonar.coverage.exclusions" excludes some files from the test coverage metrics but those files are still
           # analyzed: other metrics, duplications, coding rules...
@@ -360,6 +358,6 @@ jobs:
 
       - if: always()
         run: >
-          echo "SonarQube report:
+          echo "SonarCloud report:
           https://sonarcloud.io/dashboard?id=${{ env.SONAR_PROJECT_KEY }}&branch=${{ github.ref_name }}"
           >> $GITHUB_STEP_SUMMARY

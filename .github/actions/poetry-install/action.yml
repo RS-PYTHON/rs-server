@@ -44,13 +44,16 @@ runs:
       with:
         version: 2.3.2
 
-    - run: |
+    - env:
+        INPUTS_PYTHON_VERSION: ${{ inputs.python-version }}
+        INPUTS_OPTIONS: ${{ inputs.options }}
+      run: |
         set -x
 
         # Regenerate the poetry.lock file for non-standard python versions
-        [[ "${{ inputs.python-version }}" != "${{ env.PYTHON_VERSION }}" ]] && poetry lock --regenerate
+        [[ "$INPUTS_PYTHON_VERSION" != "${{ env.PYTHON_VERSION }}" ]] && poetry lock --regenerate
 
-        poetry install ${{ inputs.options }} # don't use quotes around options
+        poetry install $INPUTS_OPTIONS # don't use quotes around options
         poetry -q run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
       working-directory: ${{ inputs.working-directory }}
       shell: bash
