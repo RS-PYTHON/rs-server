@@ -706,7 +706,7 @@ jobs:
           cd rs-demo
 
           # Run the rs-demo local mode using the newly created docker images
-          ls /fail && ./test-rs-demo.sh
+          ./test-rs-demo.sh
         shell: bash
 
   ###########################
@@ -722,7 +722,7 @@ jobs:
     steps:
       - run: |
           set -x
-          ls /fail && curl -L \
+          curl -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.TRIGGER_WORKFLOWS }}" \

@@ -262,10 +262,10 @@ jobs:
   generate-quality-report:
     runs-on: ubuntu-latest
     name: Quality report (sonarqube)
-    needs: [changes] #, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
+    needs: [changes, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
     if: ${{ needs.changes.outputs.code == 'true' }}
     permissions:
-      pull-requests: write # for: phwt/sonarqube-quality-gate-action@v1
+      pull-requests: write # for: phwt/sonarqube-quality-gate-action
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: RS-PYTHON_rs-server
@@ -274,21 +274,21 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Full history for SCM and branch analysis
-      # - name: Download linting reports
-      #   uses: actions/download-artifact@v8
-      #   with:
-      #     name:
-      #       check-linting
-      # - name: Download vulnerability reports
-      #   uses: actions/download-artifact@v8
-      #   with:
-      #     name:
-      #       check-security
-      # - name: Download pytest reports
-      #   uses: actions/download-artifact@v8
-      #   with:
-      #     name:
-      #       run-all-pytests
+      - name: Download linting reports
+        uses: actions/download-artifact@v8
+        with:
+          name:
+            check-linting
+      - name: Download vulnerability reports
+        uses: actions/download-artifact@v8
+        with:
+          name:
+            check-security
+      - name: Download pytest reports
+        uses: actions/download-artifact@v8
+        with:
+          name:
+            run-all-pytests
 
       - name: Get directory names
         id: dir_names
@@ -296,9 +296,9 @@ jobs:
           echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
         shell: bash
 
-      # - name: Normalize coverage paths for SonarCloud
-      #   run: |
-      #     sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
+      - name: Normalize coverage paths for SonarCloud
+        run: |
+          sed -i 's|<source>[^<]*</source>|<source>.</source>|g' ./cov-report.xml
 
       - name: Run SonarCloud Scanner
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7
@@ -327,12 +327,11 @@ jobs:
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-
-          # -Dsonar.python.pylint.reportPaths=./pylint-report.txt
-          # -Dsonar.python.flake8.reportPaths=./flake8-report.txt
-          # -Dsonar.python.bandit.reportPaths=./bandit-report.json
-          # -Dsonar.python.coverage.reportPaths=./cov-report.xml
-          # -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
+            -Dsonar.python.pylint.reportPaths=./pylint-report.txt
+            -Dsonar.python.flake8.reportPaths=./flake8-report.txt
+            -Dsonar.python.bandit.reportPaths=./bandit-report.json
+            -Dsonar.python.coverage.reportPaths=./cov-report.xml
+            -Dsonar.python.xunit.reportPath=./junit-xml-report.xml
 
       - name: Wait for quality gate result
         run: sleep 5
