@@ -63,6 +63,7 @@ from rs_server_common.utils.utils import (
     find_product_type,
     map_stac_platform,
     odata_to_stac,
+    repair_and_orient_geojson_geometry,
     run_in_threads,
     validate_inputs_format,
 )
@@ -918,8 +919,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if not geo_cls:
                     raise TypeError(f"Unsupported geometry type: {type(reworked_geometry)}")
 
-                # Convert Shapely to GeoJSON Pydantic
-                feature.geometry = geo_cls.parse_obj(mapping(reworked_geometry))  # type: ignore
+                # Re-apply orientation after antimeridian rework because the split can yield MultiPolygons.
+                normalized_geometry = repair_and_orient_geojson_geometry(mapping(reworked_geometry))
+                feature.geometry = geo_cls.parse_obj(normalized_geometry)  # type: ignore
 
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
