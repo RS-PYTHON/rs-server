@@ -14,10 +14,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Known issues regarding product types:
+# https://gitlab.eopf.copernicus.eu/cpm/adf-auxiliary-data-file/-/issues/43
+# https://gitlab.eopf.copernicus.eu/cpm/eopf-cpm/-/issues/1021
+# https://gitlab.eopf.copernicus.eu/L0/l0/-/issues/143
+
 types:
 
   - productType: S00__ADF_MSLPC
     legacyType: SR_2_CP(?:0[06]|12|18)AX
+
+  - productType: S00_ADF_ECMWA
+    mission: S3
+    legacyType: AX___MA[12]_AX
+
+  - productType: S00_ADF_ECMWF
+    mission: S1
+    legacyType: S1__AUX_WND
+
+  - productType: S00_ADF_ECMWF
+    mission: S2
+    legacyType: AUX_ECMWFD
+
+  - productType: S00_ADF_ECMWF
+    mission: S3
+    legacyType: AX___MF[12]_AX
+
+  - productType: S00_ADF_GETAS
+    mission: S3
+    legacyType: AX___DEM_AX
+
+  - productType: S00_ADF_IERSB
+    mission: S3
+    legacyType: AX___BB2_AX
+
+  - productType: S00_ADF_IERSB
+    mission: S2
+    legacyType: AUX_UT1UTC_
+
+  - productType: S00_ADF_WATER
+    mission: S3
+    legacyType: AX___(LW|OO|CL|TR)M_AX
+
+  - productType: S00_ADF_WATER
+    mission: S3
+    legacyType: SR___LSM_AX
+
+  - productType: S00_ADF_WATER
+    mission: S3
+    legacyType: SR_2_(SURF|MLM_)AX
 
   - productType: S01SSMGRD
     mission: S1
