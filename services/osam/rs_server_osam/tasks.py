@@ -70,13 +70,19 @@ BLOCK_LIST_BUCKETS = {
 
 BLOCK_LIST_READ_TEMPLATE = {
     "Effect": "Allow",
-    "Action": ["s3:GetBucketLocation"],
+    "Action": ["s3:GetBucketLocation", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
 BLOCK_LIST_READ_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
-    "Action": ["s3:GetObject"],
+    "Action": [
+        "s3:GetObject",
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:ListMultipartUploadParts",
+        "s3:ListBucketMultipartUploads",
+    ],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
@@ -86,6 +92,11 @@ BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE = {
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:ListMultipartUploadParts",
+        "s3:ListBucketMultipartUploads",
+        "s3:AbortMultipartUpload",
+        "s3:GetBucketLocation",
     ],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
