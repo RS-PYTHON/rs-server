@@ -47,12 +47,14 @@ jobs:
     steps:
       - id: set-env
         name: "Set environment"
+        env:
+          SOURCE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
           set -x
 
           # Get the current branch name (or source branch for a pull request)
           if [[ ${{ github.event_name }} == pull_request ]]; then
-            branch_name=${{ github.event.pull_request.head.ref }}
+            branch_name="$SOURCE_BRANCH_NAME"
           else
             branch_name=${{ github.ref_name }}
           fi
@@ -93,23 +95,6 @@ jobs:
   ################
   # Build wheels #
   ################
-
-  complete-whl:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    name: "complete wheel"
-#    outputs:
-#      version_name: ${{ steps.build-wheel.outputs.version_name }}
-#      package_name: ${{ steps.build-wheel.outputs.package_name }}
-    continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # so that Dunamai produce the correct version
-#      - id: build-wheel
-#        uses: ./.github/actions/build-wheel
-#        with:
-#          package_directory: .
 
   services-common-whl:
     if: github.actor != 'dependabot[bot]'
@@ -274,7 +259,7 @@ jobs:
           merge-multiple: true
           path: ./dist
       - name: Publish wheel and sdist packages
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         with:
           skip-existing: true
@@ -290,7 +275,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/adgs' Docker image"
     needs: [set-env, services-common-whl, services-adgs-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -314,7 +300,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -337,7 +323,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/prip' Docker image"
     needs: [set-env, services-common-whl, services-prip-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -361,7 +348,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -384,7 +371,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/cadip' Docker image"
     needs: [set-env, services-common-whl, services-cadip-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -408,7 +396,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -431,7 +419,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/catalog' Docker image"
     needs: [set-env, services-common-whl, services-catalog-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -454,7 +443,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -477,7 +466,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/frontend' Docker image"
     needs: [set-env, services-frontend-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -500,7 +490,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -523,7 +513,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/staging' Docker image"
     needs: [set-env, services-common-whl, services-staging-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -547,7 +538,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -570,7 +561,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "'services/osam' Docker image"
     needs: [set-env, services-common-whl, services-osam-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -594,7 +586,7 @@ jobs:
         shell: bash
 
       - name: Copy debug mode dependencies
-        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
@@ -617,7 +609,8 @@ jobs:
     runs-on: ubuntu-latest
     name: "Dask staging Docker image"
     needs: [set-env, services-common-whl, services-staging-whl]
-    permissions: write-all
+    permissions:
+      packages: write # needed for 'docker push'
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
@@ -693,7 +686,7 @@ jobs:
       - dask-staging-local-img
     steps:
       - name: Log into Docker registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
@@ -727,13 +720,16 @@ jobs:
     runs-on: ubuntu-latest
     name: "Trigger rs-infra-core workflow"
     steps:
-      - run: |
+      - env:
+          TRIGGER_WORKFLOWS: ${{ secrets.TRIGGER_WORKFLOWS }}
+        run: |
           set -x
           curl -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.TRIGGER_WORKFLOWS }}" \
+            -H "Authorization: Bearer $TRIGGER_WORKFLOWS" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
+            --proto "=https" \
             https://api.github.com/repos/RS-PYTHON/rs-infra-core/actions/workflows/publish-image.yml/dispatches \
             -d '{"ref":"develop","inputs":{"docker_tag":"latest"}}'
         shell: bash
