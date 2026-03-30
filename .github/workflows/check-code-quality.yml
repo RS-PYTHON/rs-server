@@ -140,6 +140,8 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
+    permissions:
+      security-events: write # needed for github/codeql-action/upload-sarif
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/poetry-install
