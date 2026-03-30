@@ -469,7 +469,7 @@ async def execute_process(
 
 # Endpoint to get the status of a job by job_id
 @router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
-async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
+async def get_job_status_endpoint(request: Request, job_id=Annotated[str, Path(..., title="The ID of the job")]):
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
@@ -497,7 +497,7 @@ async def get_jobs_endpoint(request: Request):
 
 
 @router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
-async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
+async def delete_job_endpoint(request: Request, job_id=Annotated[str, Path(..., title="The ID of the job to delete")]):
     """Deletes a specific job from the database."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
@@ -518,7 +518,10 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
     "/jobs/{job_id}/results",
     dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
 )
-async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
+async def get_specific_job_result_endpoint(
+    request: Request,
+    job_id=Annotated[str, Path(..., title="The ID of the job")],
+):
     """Get result from a specific job."""
     try:
         # Query the database to find the job by job_id
