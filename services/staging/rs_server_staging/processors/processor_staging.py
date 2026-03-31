@@ -835,12 +835,13 @@ class Staging(
                 # Protection for the case when this cluster does not exist.
                 cluster_id = None
                 self.logger.info(f"Requested cluster name: {cluster_name}")
+                cluster_names = [
+                    cluster.options.get("cluster_name") for cluster in clusters if isinstance(cluster.options, dict)
+                ]
 
-                for cluster in clusters:
-                    self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
-
-                    is_equal = cluster.options.get("cluster_name") == cluster_name
-                    self.logger.info(f"Is equal: {is_equal}")
+                self.logger.info(
+                    f"Available cluster names: {cluster_names}",
+                )
                 cluster_id = next(
                     (
                         cluster.name
