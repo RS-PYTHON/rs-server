@@ -153,15 +153,16 @@ runs:
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
       env:
         TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+        TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
       with:
-        version: v0.69.1
+        version: v0.69.3
         image-ref: ${{ env.docker_image }}
         format: sarif
         output: trivy-results-docker.sarif
         exit-code: 0
         limit-severities-for-sarif: true
         severity: HIGH,CRITICAL
-        #timeout: '30m'
+        timeout: 30m
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v4
