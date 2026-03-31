@@ -172,6 +172,7 @@ jobs:
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
         with:
           version: v0.69.3
           scan-type: fs
@@ -323,7 +324,7 @@ jobs:
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=.
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
+            -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**,resources/sync_config_files.py
             -Dsonar.exclusions=tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
