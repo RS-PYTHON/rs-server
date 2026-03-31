@@ -323,7 +323,7 @@ jobs:
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.sources=.
             -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-            -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**
+            -Dsonar.coverage.exclusions=tests,tests/**,**/tests/**,resources/sync_config_files.py
             -Dsonar.exclusions=tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
