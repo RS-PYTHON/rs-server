@@ -155,7 +155,7 @@ runs:
         TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
         TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
       with:
-        version: v0.69.1
+        version: v0.69.3
         image-ref: ${{ env.docker_image }}
         format: sarif
         output: trivy-results-docker.sarif
