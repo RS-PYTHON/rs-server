@@ -50,7 +50,7 @@ runs:
 
     - run: |
         set -x
-        cd $PACKAGE_DIRECTORY
+        cd ${{ env.PACKAGE_DIRECTORY }}
         poetry build
       shell: bash
 
@@ -63,23 +63,23 @@ runs:
     # Note: the wheel file is built in package_directory/dist
     - name: Find wheel filename
       id: package_name
-      run: echo package_name=$(basename ${PACKAGE_DIRECTORY}/dist/*.whl) >> "$GITHUB_OUTPUT"
+      run: echo package_name=$(basename ${{ env.PACKAGE_DIRECTORY }}/dist/*.whl) >> "$GITHUB_OUTPUT"
       shell: bash
 
     # Note: the sdist file is built in package_directory/dist
     - name: Find sdist filename
       id: sdist_name
-      run: echo sdist_name=$(basename ${PACKAGE_DIRECTORY}/dist/*.tar.gz) >> "$GITHUB_OUTPUT"
+      run: echo sdist_name=$(basename ${{ env.PACKAGE_DIRECTORY }}/dist/*.tar.gz) >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Save wheel package as artifact
       uses: actions/upload-artifact@v5
       with:
         name: ${{ steps.package_name.outputs.package_name }}
-        path: ${PACKAGE_DIRECTORY}/dist/${{ steps.package_name.outputs.package_name }}
+        path: ${{ env.PACKAGE_DIRECTORY }}/dist/${{ steps.package_name.outputs.package_name }}
 
     - name: Save sdist as artifact
       uses: actions/upload-artifact@v5
       with:
         name: ${{ steps.sdist_name.outputs.sdist_name }}
-        path: ${PACKAGE_DIRECTORY}/dist/${{ steps.sdist_name.outputs.sdist_name }}
+        path: ${{ env.PACKAGE_DIRECTORY }}/dist/${{ steps.sdist_name.outputs.sdist_name }}
