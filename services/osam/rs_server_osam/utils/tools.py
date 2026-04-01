@@ -23,6 +23,9 @@ from functools import lru_cache
 
 from rs_server_common.utils.logging import Logging
 
+# disable 'Cannot access instance-only attribute' issue
+# mypy: disable-error-code="misc"
+
 CSV_PATH_ENV_VAR = "BUCKET_CONFIG_FILE_PATH"
 DEFAULT_CSV_PATH = "/app/conf/expiration_bucket.csv"
 
