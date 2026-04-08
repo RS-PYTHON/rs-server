@@ -26,6 +26,7 @@ from rs_server_catalog.app import app
 from rs_server_catalog.app import lifecycle as lifecycle_app
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
 from rs_server_catalog.data_management.timestamps_extension import ISO_8601_FORMAT
+from rs_server_catalog.middleware import catalog_middleware
 
 from tests.helpers import (
     CATALOG_BUCKET,
@@ -64,6 +65,15 @@ async def test_data_lifecycle_once(monkeypatch, client, init_buckets, a_correct_
     s3_handler = init_buckets
     monkeypatch.setenv("RSPY_LOCAL_CATALOG_MODE", "0")  # Enable bucket transfer
 
+    original_reroute_url = catalog_middleware.reroute_url
+
+    def reroute_url_for_test(request, ids_dict):  # pylint: disable = inconsistent-return-statements
+        """Let the temporary lifecycle endpoint bypass catalog rerouting during this test."""
+        if request.url.path == "/data/lifecycle":
+            return
+        return original_reroute_url(request, ids_dict)
+
+    monkeypatch.setattr(catalog_middleware, "reroute_url", reroute_url_for_test)
     try:
         # Order item by collection and id
         expired_items: dict[tuple[str, str], dict] = {}
