@@ -100,8 +100,12 @@ class S3StorageConfigurationSingleton:
         # Check if file path and fingerprint are identical to skip reloading the file if it hasn't changed
         current_fingerprint = cls.get_file_fingerprint(config_file_path)
         if cls.config_file_path == config_file_path and cls.last_fingerprint == current_fingerprint:
+            logger.debug(
+                f"Config file '{config_file_path}' has not changed "
+                f"since last load, skipping reload. The data is: {cls.bucket_configuration_csv}",
+            )
             return
-
+        logger.debug("Loading bucket expiration config file into singleton variable...")
         data = []
         try:
             with open(config_file_path, newline="", encoding="utf-8") as csvfile:
@@ -114,6 +118,9 @@ class S3StorageConfigurationSingleton:
         cls.config_file_path = config_file_path
         cls.last_fingerprint = current_fingerprint
         cls.bucket_configuration_csv = data
+        logger.debug(
+            f"Config file '{config_file_path}' loaded successfully. " f"The data is: {cls.bucket_configuration_csv}",
+        )
 
     @classmethod
     def get_file_fingerprint(cls, config_file_path: str) -> tuple:
