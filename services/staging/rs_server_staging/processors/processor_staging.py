@@ -883,7 +883,8 @@ class Staging(
         def set_dask_env(host_env: dict, env_var_names: list[str]):
             """Pass environment variables to the dask workers."""
             for name in ["USE_SSL"] + env_var_names:
-                os.environ[name] = host_env[name]
+                if name in host_env:
+                    os.environ[name] = host_env[name]
 
         env_var_pattern = re.compile(r".*_(HOST|PORT|USER|PASS|CLIENT_CRT|CLIENT_KEY|CA_CRT)$")
         env_var_names = [key for key in os.environ if env_var_pattern.fullmatch(key)]
