@@ -49,14 +49,14 @@ def test_singleton_initial_state_and_single_file_load():
     # Initial state
     assert singleton.config_file_path == ""
     assert not singleton.bucket_configuration_csv
-    assert singleton.last_config_file_modification_date == 0
+    assert singleton.last_fingerprint == (0, 0, 0)
 
     # Load real test file
     singleton.get_s3_bucket_configuration(S3_EXPIRATION_BUCKET_CSV_FILE)
 
     assert singleton.config_file_path == S3_EXPIRATION_BUCKET_CSV_FILE
     assert len(singleton.bucket_configuration_csv) == 8
-    assert singleton.last_config_file_modification_date > 0
+    assert singleton.last_fingerprint != (0, 0, 0)
 
 
 def test_singleton_rejects_switching_config_file():
@@ -83,13 +83,30 @@ def test_singleton_new_with_config_file_path():
     # verify the file was actually loaded
     assert singleton.bucket_configuration_csv
     assert singleton.config_file_path == test_csv
-    assert singleton.last_config_file_modification_date > 0
+    assert singleton.last_fingerprint != (0, 0, 0)
     assert len(singleton.bucket_configuration_csv) >= 1  # at least header or data
 
     # verify it's still a singleton
     singleton2 = S3StorageConfigurationSingleton()  # no path
     assert singleton is singleton2
     assert singleton2.config_file_path == test_csv  # still loaded
+
+
+def test_get_file_fingerprint():
+    """Test get_file_fingerprint returns correct tuple for existing and non-existing files."""
+    singleton = S3StorageConfigurationSingleton()
+
+    # Existing file
+    fingerprint = singleton.get_file_fingerprint(S3_EXPIRATION_BUCKET_CSV_FILE)
+    assert isinstance(fingerprint, tuple)
+    assert len(fingerprint) == 3
+    assert all(isinstance(x, (int, float)) for x in fingerprint)
+    assert fingerprint != (0, 0, 0)
+
+    # Non-existing file
+    fake_path = "/fake/path/none.csv"
+    fingerprint_none = singleton.get_file_fingerprint(fake_path)
+    assert fingerprint_none == (0, 0, 0)
 
 
 def test_load_csv_file_into_variable_file_not_found():
