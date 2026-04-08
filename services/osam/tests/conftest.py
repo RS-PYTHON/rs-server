@@ -93,7 +93,6 @@ NEW_OVH_USER_WHEN_CREATING = {
 def clear_caches():
     """Clear caches at the end of each test"""
     yield
-    rs_server_osam.utils.tools.load_configmap_data.cache_clear()
     rs_server_osam.tasks.get_user_s3_credentials.cache_clear()
 
 

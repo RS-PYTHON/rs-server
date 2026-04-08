@@ -19,7 +19,6 @@ import logging
 import os
 import threading
 from fnmatch import fnmatch
-from functools import lru_cache
 
 from rs_server_common.utils.logging import Logging
 
@@ -150,7 +149,6 @@ class S3StorageConfigurationSingleton:
         return cls.bucket_configuration_csv
 
 
-@lru_cache
 def load_configmap_data():
     """Loads the configmap data from the CSV file specified in the environment variable or default path.
 
