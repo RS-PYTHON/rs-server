@@ -48,8 +48,24 @@ logger.setLevel(logging.DEBUG)
 
 
 class S3StorageConfigurationSingleton:
-    """Singleton to keep the content of the config file in memory, to avoid excessive I/O operations on the file.
-    NOTE: We use always the same config file which is bucket_expiration.csv mounted as a configmap.
+    """
+    Singleton class designed to cache the contents of the S3 storage configuration CSV file in memory.
+
+    This avoids redundant and potentially expensive I/O operations when accessing bucket expiration
+    and access rules. The configuration is typically loaded from a file ('/app/conf/bucket_expiration.csv')
+    provided from a kubernetes configmap.
+
+    The singleton tracks the state of the configuration file using a 'fingerprint' to detect changes
+    without re-reading the entire file if it hasn't been modified.
+
+    Attributes:
+        instance: The single instance of this class.
+        file_lock: A threading lock to ensure thread-safe access to the configuration.
+        bucket_configuration_csv (list[list]): The parsed content of the CSV file.
+        config_file_path (str): The path to the currently loaded configuration file.
+        last_fingerprint (tuple): A tuple containing (inode, mtime, size) of the configuration file
+                                  used to detect updates. Thus, even if the file is a symlink, the
+                                  fingerprint will be updated if the target file changes.
     """
 
     def __new__(cls, config_file_path: str = ""):
