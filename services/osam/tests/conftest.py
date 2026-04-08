@@ -184,7 +184,7 @@ def reset_s3_singleton():
         ("file_lock", threading.Lock()),
         ("bucket_configuration_csv", []),
         ("config_file_path", ""),
-        ("last_config_file_modification_date", 0),
+        ("last_fingerprint", (0, 0, 0)),
     ]:
         setattr(S3StorageConfigurationSingleton, attr, value)
 
