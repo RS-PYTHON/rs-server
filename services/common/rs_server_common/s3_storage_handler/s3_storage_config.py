@@ -126,10 +126,10 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
                 settings4 = (row[3], row[4])
             else:
                 logger.warning(
-                    "Multiple default configurations found in the configuration map "
-                    "(rs-catalog-staging-configmap), expected only one. Using the first "
-                    "one found, but please check your configuration table to avoid unexpected behaviors."
-                    "There should be only one entry with the three first columns set to '*'",
+                    "Multiple default configurations were found in the configuration map "
+                    "(rs-catalog-staging-configmap), while only one is expected. The first "
+                    f"one found ({row[4]})will be used, but please review your configmap to prevent "
+                    "unexpected behaviors. Only a single entry should have the first three columns set to '*'",
                 )
 
     return settings1 or settings2 or settings3 or settings4
