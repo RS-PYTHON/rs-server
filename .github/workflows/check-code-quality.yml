@@ -84,7 +84,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
       - name: check License Header
-        uses: apache/skywalking-eyes/header@8c96ee223558797cdd9eba82c0919258e1cf2dad # main
+        uses: apache/skywalking-eyes/header@98a5d1362e26852204382ca749ed66631f15a95d # main
         with:
           log: debug
           mode: check
