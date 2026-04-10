@@ -19,7 +19,6 @@ import logging
 import os
 import threading
 from fnmatch import fnmatch
-from functools import lru_cache
 
 from rs_server_common.utils.logging import Logging
 
@@ -48,8 +47,24 @@ logger.setLevel(logging.DEBUG)
 
 
 class S3StorageConfigurationSingleton:
-    """Singleton to keep the content of the config file in memory, to avoid excessive I/O operations on the file.
-    NOTE: We use always the same config file which is bucket_expiration.csv mounted as a configmap.
+    """
+    Singleton class designed to cache the contents of the S3 storage configuration CSV file in memory.
+
+    This avoids redundant and potentially expensive I/O operations when accessing bucket expiration
+    and access rules. The configuration is typically loaded from a file ('/app/conf/bucket_expiration.csv')
+    provided from a kubernetes configmap.
+
+    The singleton tracks the state of the configuration file using a 'fingerprint' to detect changes
+    without re-reading the entire file if it hasn't been modified.
+
+    Attributes:
+        instance: The single instance of this class.
+        file_lock: A threading lock to ensure thread-safe access to the configuration.
+        bucket_configuration_csv (list[list]): The parsed content of the CSV file.
+        config_file_path (str): The path to the currently loaded configuration file.
+        last_fingerprint (tuple): A tuple containing (inode, mtime, size) of the configuration file
+                                  used to detect updates. Thus, even if the file is a symlink, the
+                                  fingerprint will be updated if the target file changes.
     """
 
     def __new__(cls, config_file_path: str = ""):
@@ -58,7 +73,7 @@ class S3StorageConfigurationSingleton:
             cls.file_lock = threading.Lock()
             cls.bucket_configuration_csv: list[list] = []
             cls.config_file_path: str = ""
-            cls.last_config_file_modification_date: float = 0
+            cls.last_fingerprint: tuple = (0, 0, 0)
             if config_file_path:
                 cls.load_csv_file_into_variable(config_file_path)
         return cls.instance
@@ -82,13 +97,15 @@ class S3StorageConfigurationSingleton:
         if cls.config_file_path and (cls.config_file_path != config_file_path):
             raise RuntimeError("S3StorageConfigurationSingleton can only manage one config file at a time.")
 
-        if (
-            cls.config_file_path == config_file_path
-            and cls.last_config_file_modification_date
-            == cls.get_last_modification_date_of_config_file(config_file_path)
-        ):
+        # Check if file path and fingerprint are identical to skip reloading the file if it hasn't changed
+        current_fingerprint = cls.get_file_fingerprint(config_file_path)
+        if cls.config_file_path == config_file_path and cls.last_fingerprint == current_fingerprint:
+            logger.debug(
+                f"Config file '{config_file_path}' has not changed "
+                f"since last load, skipping reload. The data is: {cls.bucket_configuration_csv}",
+            )
             return
-
+        logger.debug("Loading bucket expiration config file into singleton variable...")
         data = []
         try:
             with open(config_file_path, newline="", encoding="utf-8") as csvfile:
@@ -99,23 +116,30 @@ class S3StorageConfigurationSingleton:
             raise RuntimeError(f"Error reading bucket expiration csv file {config_file_path}: {exc}") from exc
 
         cls.config_file_path = config_file_path
-        cls.last_config_file_modification_date = cls.get_last_modification_date_of_config_file(config_file_path)
+        cls.last_fingerprint = current_fingerprint
         cls.bucket_configuration_csv = data
+        logger.debug(
+            f"Config file '{config_file_path}' loaded successfully. " f"The data is: {cls.bucket_configuration_csv}",
+        )
 
     @classmethod
-    def get_last_modification_date_of_config_file(cls, config_file_path: str) -> float:
+    def get_file_fingerprint(cls, config_file_path: str) -> tuple:
         """
-        Returns last modification time for given file.
+        Returns a fingerprint (inode, mtime, size) for the given file.
+        Using os.stat follows the symlink to the actual data file.
 
         Args:
             config_file_path (str): Path to the config file.
 
         Returns:
-            str: Last time the file was modificated.
+            tuple: (inode, mtime, size)
         """
         with cls.file_lock:
-            last_modification_time = os.path.getmtime(config_file_path)
-        return last_modification_time
+            try:
+                stat_info = os.stat(config_file_path)
+                return (stat_info.st_ino, stat_info.st_mtime, stat_info.st_size)
+            except FileNotFoundError:
+                return (0, 0, 0)
 
     @classmethod
     def get_s3_bucket_configuration(cls, config_file_path: str) -> list[list]:
@@ -132,7 +156,6 @@ class S3StorageConfigurationSingleton:
         return cls.bucket_configuration_csv
 
 
-@lru_cache
 def load_configmap_data():
     """Loads the configmap data from the CSV file specified in the environment variable or default path.
 
