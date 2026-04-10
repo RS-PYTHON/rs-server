@@ -115,6 +115,26 @@ def test_get_settings_with_correct_inputs(_mock_os_env, _mock_get_success):
         == "rspython-ops-catalog-all-production"
     )
 
+    # Inputs 4
+    owner_name = ""
+    collection_name = ""
+    eopf_type = ""
+    assert s3_storage_config.get_expiration_delay_from_config(owner_name, collection_name, eopf_type) == 30
+    assert (
+        s3_storage_config.get_bucket_name_from_config(owner_name, collection_name, eopf_type)
+        == "rspython-ops-catalog-all-production"
+    )
+
+    # Inputs 5
+    owner_name = None
+    collection_name = None
+    eopf_type = None
+    assert s3_storage_config.get_expiration_delay_from_config(owner_name, collection_name, eopf_type) == 30
+    assert (
+        s3_storage_config.get_bucket_name_from_config(owner_name, collection_name, eopf_type)
+        == "rspython-ops-catalog-all-production"
+    )
+
 
 def test_errors_when_osam_endpoint_fails(_mock_os_env):
     """Test of errors throwing for one specific failing case
