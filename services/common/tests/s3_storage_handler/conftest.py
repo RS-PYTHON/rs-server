@@ -91,6 +91,7 @@ def _mock_get_success(monkeypatch):
         return MockResponse(
             json_data=[
                 ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
+                ["copernicus", "*", "*", "30", "rspython-ops-catalog-copernicus-default"],
                 ["copernicus", "s1-l1", "*", "10", "rspython-ops-catalog-copernicus-s1-l1"],
                 ["copernicus", "s1-aux", "*", "40", "rspython-ops-catalog-copernicus-s1-aux"],
                 ["copernicus", "s1-aux", "orbsct", "7300", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
