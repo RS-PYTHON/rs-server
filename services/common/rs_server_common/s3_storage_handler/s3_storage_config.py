@@ -93,6 +93,7 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
         - Try to map the three parameters (owner, collection, eopf:type)
         - If previous step failed, try to map the two parameters (owner, collection)
         - If previous step failed, try to map the two parameters (owner, eopf:type)
+        - If previous step failed, try to map the "owner" parameter only
         - If previous step failed, use default configuration (STAR,STAR,STAR)
 
     Args:
@@ -108,7 +109,7 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
         S3StorageConfigurationError: If the CSV configuration table doesn't have the expected format
                                     (at least 5 columns)
     """
-    settings1 = settings2 = settings3 = settings4 = None
+    settings1 = settings2 = settings3 = settings4 = settings5 = None
     for row in config_table:
         if len(row) < 5:
             raise S3StorageConfigurationError(f"Expected 5 columns in configuration table, got {len(row)}.")
@@ -118,12 +119,14 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
             settings2 = (row[3], row[4])
         if row[0:3] == [owner, "*", eopf_type]:
             settings3 = (row[3], row[4])
+        if row[0:3] == [owner, "*", "*"]:
+            settings4 = (row[3], row[4])
         # Having multiple default configurations is not expected and should be avoided.
         # However, since the default configuration is the last fallback, we can still use it even
         # if multiple entries are found, and just log a warning instead of raising an error.
         if row[0:3] == ["*", "*", "*"]:
-            if settings4 is None:
-                settings4 = (row[3], row[4])
+            if settings5 is None:
+                settings5 = (row[3], row[4])
             else:
                 logger.warning(
                     "Multiple default configurations were found in the configuration map "
@@ -132,7 +135,7 @@ def get_settings_from_table(config_table: list[list], owner: str, collection: st
                     "unexpected behaviors. Only a single entry should have the first three columns set to '*'",
                 )
 
-    return settings1 or settings2 or settings3 or settings4
+    return settings1 or settings2 or settings3 or settings4 or settings5
 
 
 def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str) -> int:
