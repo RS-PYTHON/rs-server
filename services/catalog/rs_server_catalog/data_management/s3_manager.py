@@ -261,9 +261,9 @@ class S3Manager:
         if self.is_catalog_local_mode:
             return True
 
-        collection_id = content.get("collection")
-        item_eopf_type = content["properties"].get("eopf:type", "*")
         user = content["properties"].get("owner", "*")
+        collection_id = content.get("collection", "*").removeprefix(f"{user}_")
+        item_eopf_type = content["properties"].get("eopf:type", "*")
         bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
         exist_list = []
         for asset_name, asset_info in content.get("assets", {}).items():
