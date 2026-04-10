@@ -81,9 +81,9 @@ class S3Manager:
             return
         for asset in content.get("assets", {}):
             # Retrieve bucket name from config using what's in content
-            item_owner = content["properties"].get("owner", "")
-            item_collection = content.get("collection", "").removeprefix(f"{item_owner}_")
-            item_eopf_type = content["properties"].get("eopf:type", "")
+            item_owner = content["properties"].get("owner", "*")
+            item_collection = content.get("collection", "*").removeprefix(f"{item_owner}_")
+            item_eopf_type = content["properties"].get("eopf:type", "*")
             bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
             # For catalog bucket, data is already stored into href field (from an asset)
             file_key = content["assets"][asset]["href"]
@@ -214,9 +214,9 @@ class S3Manager:
         asset_id = path_splitted[-1]
         item_id = path_splitted[-3]
         # Retrieve bucket name from config using what's in content
-        item_owner = content["properties"].get("owner", "")
-        item_collection = content.get("collection", "").removeprefix(f"{item_owner}_")
-        item_eopf_type = content["properties"].get("eopf:type", "")
+        item_owner = content["properties"].get("owner", "*")
+        item_collection = content.get("collection", "*").removeprefix(f"{item_owner}_")
+        item_eopf_type = content["properties"].get("eopf:type", "*")
         bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
         try:
             s3_path = content["assets"][asset_id]["href"].removeprefix(f"s3://{bucket_name}/")
@@ -261,9 +261,9 @@ class S3Manager:
         if self.is_catalog_local_mode:
             return True
 
-        user = content["properties"].get("owner", "")
-        collection_id = content.get("collection", "").removeprefix(f"{user}_")
-        item_eopf_type = content["properties"].get("eopf:type", "")
+        user = content["properties"].get("owner", "*")
+        collection_id = content.get("collection", "*").removeprefix(f"{user}_")
+        item_eopf_type = content["properties"].get("eopf:type", "*")
         bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
         exist_list = []
         for asset_name, asset_info in content.get("assets", {}).items():

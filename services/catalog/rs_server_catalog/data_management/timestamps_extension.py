@@ -48,9 +48,9 @@ def set_timestamps_for_insertion(item: dict) -> dict:
         dict: The updated item.
     """
     item = set_updated_timestamp_to_now(item, is_item=True)
-    item_owner = item["properties"].get("owner", "")
-    item_collection = item.get("collection", "").removeprefix(f"{item_owner}_")
-    item_eopf_type = item["properties"].get("eopf:type", "")
+    item_owner = item["properties"].get("owner", "*")
+    item_collection = item.get("collection", "*").removeprefix(f"{item_owner}_")
+    item_eopf_type = item["properties"].get("eopf:type", "*")
     expiration_range = get_expiration_delay_from_config(item_owner, item_collection, item_eopf_type)
     expiration_date = datetime.datetime.now() + datetime.timedelta(days=expiration_range)
     item["properties"].setdefault("expires", expiration_date.strftime(ISO_8601_FORMAT))
