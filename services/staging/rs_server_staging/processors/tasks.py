@@ -152,7 +152,7 @@ def prepare_streaming_tasks(catalog_collection: str, feature: Feature, staging_u
     """
     # Get infos from feature to retrieve S3 bucket name from configuration
     owner = feature.properties.get("owner", staging_user)
-    eopf_type = feature.properties.get("eopf:type", "*")
+    eopf_type = feature.properties.get("eopf:type", "")
     s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
 
     assets_info: list[AssetInfo] = []
