@@ -152,6 +152,9 @@ class Staging(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
+        self.catalog_publish_timeout: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_TIMEOUT", "120"))
+        self.catalog_publish_max_retries: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_MAX_RETRIES", "3"))
+        self.catalog_publish_retry_delay: float = float(os.environ.get("RSPY_CATALOG_PUBLISH_RETRY_DELAY", "1"))
         self.staging_user: str = "staging_user"
         #################
         # Database section
@@ -1092,21 +1095,35 @@ class Staging(
         for asset in feature.assets.values():
             if hasattr(asset, "alternate"):
                 del asset.alternate  # type: ignore
-        try:
-            response = requests.post(
-                publish_url,
-                headers={
-                    **self.auth_headers,
-                    "Content-Type": "application/geo+json",
-                },
-                data=feature.model_dump_json(),
-                timeout=10,
-            )
-            response.raise_for_status()  # Raise an error for HTTP error responses
-            return True
-        except (RequestException, JSONDecodeError) as exc:
-            self.logger.error("Error while publishing items to rspy catalog %s", exc)
-            return False
+        for attempt in range(self.catalog_publish_max_retries + 1):
+            try:
+                response = requests.post(
+                    publish_url,
+                    headers={
+                        **self.auth_headers,
+                        "Content-Type": "application/geo+json",
+                    },
+                    data=feature.model_dump_json(),
+                    timeout=self.catalog_publish_timeout,
+                )
+                response.raise_for_status()  # Raise an error for HTTP error responses
+                return True
+            except requests.exceptions.Timeout as exc:
+                if attempt >= self.catalog_publish_max_retries:
+                    self.logger.error("Error while publishing items to rspy catalog %s", exc)
+                    return False
+                self.logger.warning(
+                    "Timeout while publishing items to rspy catalog. Retry %s/%s in %ss",
+                    attempt + 1,
+                    self.catalog_publish_max_retries,
+                    self.catalog_publish_retry_delay,
+                )
+                time.sleep(self.catalog_publish_retry_delay)
+            except (RequestException, JSONDecodeError) as exc:
+                self.logger.error("Error while publishing items to rspy catalog %s", exc)
+                return False
+
+        return False
 
     def unpublish_rspy_features(self, catalog_collection: str, feature_ids: list[str]):
         """Deletes specified features from the RSPy catalog by sending DELETE requests to the

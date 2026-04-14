@@ -16,6 +16,7 @@
 
 import os
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 
 import botocore
 from fastapi import HTTPException
@@ -35,6 +36,8 @@ from starlette.status import (
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
+# Max number of parallel threads when checking asset existence on S3 during publication
+PUBLISH_CHECK_MAX_WORKERS = int(os.environ.get("RSPY_S3_PUBLISH_CHECK_MAX_WORKERS", "6"))
 
 logger = Logging.default(__name__)
 
@@ -266,21 +269,46 @@ class S3Manager:
         item_eopf_type = content["properties"].get("eopf:type", "")
         bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
         exist_list = []
+        assets_to_check = []
+
+        # First do the cheap validations locally so we avoid scheduling S3 calls for
+        # assets that are already invalid from the STAC payload itself.
         for asset_name, asset_info in content.get("assets", {}).items():
-            exists = False
-            if s3_key := asset_info.get("href"):
-                if bucket_name not in s3_key:
-                    logger.error(
-                        f"Asset: {asset_name}, The s3 key {s3_key} should contain the bucket name {bucket_name}",
-                    )
-                    exist_list.append(False)
-                    continue
-                try:
-                    exists, size = self.check_s3_key(content, asset_name, s3_key)
-                    logger.info(f"Asset: {asset_name}, Found on bucket: {exists}, Size: {size}")
-                except HTTPException as e:
-                    logger.error(f"Asset: {asset_name}, Error: {e.detail}")
-            else:
+            if not (s3_key := asset_info.get("href")):
                 logger.error(f"Asset: {asset_name}, No href key found for this asset")
-            exist_list.append(exists)
+                exist_list.append(False)
+                continue
+
+            # We only allow publication from the bucket resolved from the item metadata.
+            # If the href points to a different bucket, we can reject it immediately.
+            if bucket_name not in s3_key:
+                logger.error(
+                    f"Asset: {asset_name}, The s3 key {s3_key} should contain the bucket name {bucket_name}",
+                )
+                exist_list.append(False)
+                continue
+
+            # Keep only the assets that require a real S3 existence check.
+            assets_to_check.append((asset_name, s3_key))
+
+        def _check_asset(asset: tuple[str, str]) -> bool:
+            # This helper runs inside the thread pool so each asset can be checked
+            # independently without blocking the whole publication flow.
+            asset_name, s3_key = asset
+            try:
+                exists, size = self.check_s3_key(content, asset_name, s3_key)
+                logger.info(f"Asset: {asset_name}, Found on bucket: {exists}, Size: {size}")
+                return exists
+            except HTTPException as e:
+                logger.error(f"Asset: {asset_name}, Error: {e.detail}")
+                return False
+
+        if assets_to_check:
+            # boto3 does not provide a generic bulk "exists" API for arbitrary keys,
+            # so the best low-risk optimization here is to fan out the checks in parallel.
+            # The number of workers is capped to avoid overwhelming the S3 endpoint.
+            max_workers = min(len(assets_to_check), max(1, PUBLISH_CHECK_MAX_WORKERS))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                exist_list.extend(executor.map(_check_asset, assets_to_check))
+
         return all(exist_list)

@@ -202,7 +202,7 @@ class TestStagingPublishCatalog:
             f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
             headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key", "Content-Type": "application/geo+json"},
             data=feature.model_dump_json(),
-            timeout=10,
+            timeout=staging_instance.catalog_publish_timeout,
         )
         feature.model_dump_json.assert_called()  # Ensure the feature JSON serialization was called
 
@@ -214,7 +214,6 @@ class TestStagingPublishCatalog:
 
         for possible_exception in [
             requests.exceptions.HTTPError,
-            requests.exceptions.Timeout,
             requests.exceptions.RequestException,
             requests.exceptions.ConnectionError,
         ]:
@@ -235,9 +234,55 @@ class TestStagingPublishCatalog:
                     "Content-Type": "application/geo+json",
                 },
                 data=feature.model_dump_json(),
-                timeout=10,
+                timeout=staging_instance.catalog_publish_timeout,
             )
             mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
+
+    def test_publish_rspy_feature_timeout_retry_success(self, mocker, staging_instance: Staging):
+        """Test that a timeout is retried before succeeding."""
+        feature = mocker.Mock()
+        feature.model_dump_json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'
+        feature.assets = {}
+
+        mock_response = mocker.Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_post = mocker.patch(
+            "requests.post",
+            side_effect=[requests.exceptions.Timeout("timeout"), mock_response],
+        )
+        mock_sleep = mocker.patch("time.sleep")
+        mock_logger = mocker.patch.object(staging_instance, "logger")
+
+        result = staging_instance.publish_rspy_feature("test_collection", feature)
+
+        assert result is True
+        assert mock_post.call_count == 2
+        mock_sleep.assert_called_once_with(staging_instance.catalog_publish_retry_delay)
+        mock_logger.warning.assert_called_once_with(
+            "Timeout while publishing items to rspy catalog. Retry %s/%s in %ss",
+            1,
+            staging_instance.catalog_publish_max_retries,
+            staging_instance.catalog_publish_retry_delay,
+        )
+        mock_logger.error.assert_not_called()
+
+    def test_publish_rspy_feature_timeout_retry_exhausted(self, mocker, staging_instance: Staging):
+        """Test that staging gives up after the configured number of timeout retries."""
+        feature = mocker.Mock()
+        feature.model_dump_json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'
+        feature.assets = {}
+
+        timeout_error = requests.exceptions.Timeout("HTTP Error occurred")
+        mock_post = mocker.patch("requests.post", side_effect=timeout_error)
+        mock_sleep = mocker.patch("time.sleep")
+        mock_logger = mocker.patch.object(staging_instance, "logger")
+
+        result = staging_instance.publish_rspy_feature("test_collection", feature)
+
+        assert result is False
+        assert mock_post.call_count == staging_instance.catalog_publish_max_retries + 1
+        assert mock_sleep.call_count == staging_instance.catalog_publish_max_retries
+        mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
 
     def test_repr(self, staging_instance: Staging):
         """Test repr method for coverage"""
