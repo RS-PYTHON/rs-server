@@ -701,7 +701,6 @@ jobs:
       - id: test-demos
         name: "Test rs-demo"
         env:
-          S3CFG_OVH_BUCKET: ${{ secrets.S3CFG_OVH_BUCKET }}
           BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
           DOCKER_TAG: ${{ needs.set-env.outputs.docker_tag }}
         run: |
