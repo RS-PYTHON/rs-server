@@ -64,13 +64,13 @@ runs:
 
     # Login to Docker Hub to increase pull quota from 100 to 200 per 6 hours
     - name: Log into Docker Hub
-      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
       with:
         username: ${{ inputs.dockerhub_username }}
         password: ${{ inputs.dockerhub_token }}
 
     - name: Log into GitHub Container Registry
-      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
       with:
         registry: ${{ env.DOCKER_REGISTRY }}
         username: ${{ github.actor }}
@@ -96,7 +96,7 @@ runs:
     # Extract metadata from Git reference and GitHub events
     - name: Extract Docker metadata
       id: meta
-      uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+      uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
       with:
         images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
 
@@ -139,7 +139,7 @@ runs:
 
     # Checkout code from the current branch and build Docker image.
     - name: Build Docker image
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
       with:
         context: ${{ inputs.build_context_path }}
         file: ${{ inputs.dockerfile }}
@@ -150,7 +150,7 @@ runs:
         build-args: ${{ inputs.build_args }}
 
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       env:
         TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
         TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
