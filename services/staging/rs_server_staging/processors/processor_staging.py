@@ -179,19 +179,12 @@ class Staging(
             if not items or "href" not in items or "value" in items:
                 return None
 
-            # Check if the given url is either the cadip or the
-            # auxip - we don't want to send our apikey to any url
-            if not any(href in data["items"]["href"] for href in self.server_url):
-                return self.log_job_execution(
-                    JobStatus.failed,
-                    0,
-                    "The domain name specified in the input link must correspond to an existing server",
-                )
-            response = requests.get(
-                items["href"],
-                headers=self.auth_headers,
-                timeout=5,
-            )
+            # Check if the given url is from us (cadip, auxip or prip)
+            # we don't want to send our apikey to any url
+            if any(href in items["href"] for href in self.server_url):
+                response = requests.get(items["href"], timeout=60, headers=self.auth_headers)
+            else:
+                response = requests.get(items["href"], timeout=60)
             response.raise_for_status()
             response_dict = response.json()
 
