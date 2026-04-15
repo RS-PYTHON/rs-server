@@ -97,9 +97,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
             # Use S3 object storage credentials of the logged user
             logger_dask.debug(f"{s3_file}: Creating the s3_handler")
             s3_handler = S3StorageHandler(s3_credentials)
-            if "/NOMINAL" in asset_info.product_url:
-                s3_handler.s3_streaming_from_ftp(product_url, bucket, s3_file)
-            elif not auth:
+            if not auth:
                 s3_handler.s3_streaming_from_s3(
                     product_url,
                     asset_info.external_s3_endpoint_url,
