@@ -96,7 +96,14 @@ sample_process_metadata_model = {
                             },
                         },
                         "links": [
-                            {"additionalProp1": "string", "additionalProp2": "string", "additionalProp3": "string"},
+                            {
+                                "rel": "enclosure",
+                                "href": "s3://eodata/Sentinel-1/SAR/IW_SLC__1S/2026/04/14/S1A_IW_SLC__1SDV_20260414T174721_20260414T174748_064079_08103D_4998.SAFE/",  # noqa: E501 # pylint: disable=line-too-long
+                                "type": "application/x-directory",
+                                "title": "S3 path to source directory",
+                                "auth:refs": ["s3"],
+                                "storage:refs": ["cdse-s3", "creodias-s3"],
+                            },
                         ],
                         "stac_extensions": ["string"],
                     },
