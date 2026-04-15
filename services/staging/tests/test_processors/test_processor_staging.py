@@ -391,18 +391,30 @@ class TestStaging:
 
         assert result is None
 
-    def test_resolve_items_from_link_invalid_domain(self, staging_instance: Staging):
-        """Return a failed log tuple when href domain does not match server_url."""
+    def test_resolve_items_from_link_external_domain(self, staging_instance: Staging, mocker):
+        """Ensure GET is called without headers when domain is not trusted."""
 
         staging_instance.server_url = ["allowed-domain.com"]
 
-        data = {"items": {"href": "https://some-random-domein.com/items"}}
+        response_mock = mocker.Mock()
+        response_mock.raise_for_status.return_value = None
+        response_mock.json.return_value = {
+            "type": "Feature",
+        }
+
+        get_mock = mocker.patch("requests.get", return_value=response_mock)
+
+        data = {"items": {"href": "https://some-random-domain.com/items"}}
 
         result = staging_instance._resolve_items_from_link(data)
 
-        # Check that the result indicates a failed job
-        assert isinstance(result, tuple)
-        assert result[1].get("failed") is not None
+        # Check call has been amde without headers
+        get_mock.assert_called_once_with(
+            "https://some-random-domain.com/items",
+            timeout=60,
+        )
+
+        assert result == response_mock.json.return_value
 
     def test_resolve_items_from_link_feature_success(self, staging_instance: Staging, mocker):
         """Resolve a valid Feature from link."""
