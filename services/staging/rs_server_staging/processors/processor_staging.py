@@ -154,7 +154,7 @@ class Staging(
         )  # get catalog href, loopback else
         self.catalog_publish_timeout: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_TIMEOUT", "120"))
         self.catalog_publish_max_retries: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_MAX_RETRIES", "3"))
-        self.catalog_publish_retry_delay: float = float(os.environ.get("RSPY_CATALOG_PUBLISH_RETRY_DELAY", "1"))
+        self.catalog_publish_retry_delay: float = float(os.environ.get("RSPY_CATALOG_PUBLISH_RETRY_DELAY", "30"))
         self.staging_user: str = "staging_user"
         #################
         # Database section
