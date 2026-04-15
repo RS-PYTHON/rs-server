@@ -151,8 +151,8 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):
             raise  # pylint: disable=misplaced-bare-raise
 
     async def dispatch(self, request: Request, call_next: Callable):
+        """Call next middleware, get and return response, handle errors"""
         try:
-            # Call next middleware, get and return response, handle errors
             response = await call_next(request)
             return await self.handle_errors(response)
 
@@ -271,7 +271,8 @@ class PaginationLinksMiddleware(BaseHTTPMiddleware):
         self,
         request: Request,
         call_next: Callable,
-    ):  # pylint: disable=too-many-branches,too-many-statements
+    ):
+        """Middleware main function"""
 
         # Only for /search in auxip, prip, cadip
         if request.url.path in ["/auxip/search", "/cadip/search", "/prip/search", "/catalog/search"]:

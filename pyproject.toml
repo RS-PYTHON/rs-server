@@ -150,15 +150,18 @@ extend-ignore = [
 [tool.pylint]
 max-line-length = 120
 disable = [
-    "logging-fstring-interpolation",  # Logging f-string interpolation
-    "R0917",  # Too many positional arguments
-    "E0401", # import-error
-    "R0902", # too-many-instance-attributes
-    "R0913",  # too-many-arguments
-    "too-many-locals",
+    "import-error",
+    "logging-fstring-interpolation",
     "not-context-manager",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
     "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
     "too-many-public-methods",
+    "too-many-statements",
 ]
 ignore-paths = '^docs/.*$'
 
