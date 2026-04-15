@@ -27,7 +27,7 @@ on:
 jobs:
   check-code-quality:
     name: _
-    uses: RS-PYTHON/actions/.github/workflows/reusable-check-quality.yml@feat-rspy995/run-sonar-from-project-root
+    uses: RS-PYTHON/actions/.github/workflows/reusable-check-quality.yml@develop
     with:
         caller-repository: ${{ github.repository }}
         caller-ref: ${{ github.ref }}
