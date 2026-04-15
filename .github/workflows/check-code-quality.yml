@@ -16,10 +16,8 @@ name: Check code quality
 
 on:
   push:
-    branches:
-      - develop # pushes on the 'develop' branch
-    tags:
-      - '**' # new git tags (including hierarchical tags like v1.0/beta)
+    branches: [develop, main] # pushes on the 'develop' or 'main' branches
+    tags: ['**'] # new git tags (including hierarchical tags like v1.0/beta)
   pull_request:
     types: [opened, synchronize, reopened]
     # run this worflow only for code/test related changes (avoid it for documentation)
@@ -34,6 +32,8 @@ jobs:
         caller-repository: ${{ github.repository }}
         caller-ref: ${{ github.ref }}
         caller-ref_name: ${{ github.ref_name }}
+        sonar-cov-exclusions: tests,tests/**,**/tests/**,resources/sync_config_files.py
+        sonar-exclusions: tests,tests/**,**/tests/**,services/common/rs_server_common/footprint_facility.py
     secrets:
       SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
