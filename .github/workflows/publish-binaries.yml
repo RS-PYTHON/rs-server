@@ -257,7 +257,7 @@ jobs:
           merge-multiple: true
           path: ./dist
       - name: Publish wheel and sdist packages
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         with:
           skip-existing: true
@@ -692,7 +692,7 @@ jobs:
       - dask-staging-local-img
     steps:
       - name: Log into Docker registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
