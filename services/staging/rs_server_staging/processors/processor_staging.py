@@ -1095,7 +1095,8 @@ class Staging(
         for asset in feature.assets.values():
             if hasattr(asset, "alternate"):
                 del asset.alternate  # type: ignore
-        for attempt in range(self.catalog_publish_max_retries + 1):
+        attempt = 0
+        while attempt <= self.catalog_publish_max_retries:
             try:
                 response = requests.post(
                     publish_url,
@@ -1119,6 +1120,7 @@ class Staging(
                     self.catalog_publish_retry_delay,
                 )
                 time.sleep(self.catalog_publish_retry_delay)
+                attempt += 1
             except (RequestException, JSONDecodeError) as exc:
                 self.logger.error("Error while publishing items to rspy catalog %s", exc)
                 return False
