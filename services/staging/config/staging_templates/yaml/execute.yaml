@@ -16,7 +16,7 @@ type: object
 properties:
   inputs:
     additionalProperties:
-      oneOf:
+      anyOf:
         - $ref: "inlineOrRefData.yaml"
         - type: array
           items:
