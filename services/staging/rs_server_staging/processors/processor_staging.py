@@ -981,11 +981,7 @@ class Staging(
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
         domains = list(
-            {
-                ("FTP" if "/NOMINAL" in asset.product_url else urlparse(asset.product_url).hostname)
-                for asset in self.assets_info
-                if asset.origin_service != "s3"
-            },
+            {(urlparse(asset.product_url).hostname) for asset in self.assets_info if asset.origin_service != "s3"},
         )
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
