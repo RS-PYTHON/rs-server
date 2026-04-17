@@ -19,10 +19,12 @@ import os
 from urllib.parse import urlparse
 
 from rs_server_common.authentication.authentication_to_external import (
-    S3ExternalAuthenticationConfig,
     ServiceNotFound,
-    StationExternalAuthenticationConfig,
     load_external_auth_config_by_domain,
+)
+from rs_server_common.authentication.external_authentication_config import (
+    ExternalAuthenticationConfig,
+    S3ExternalAuthenticationConfig,
 )
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_bucket_name_from_config,
@@ -46,8 +48,8 @@ logger = Logging.default(__name__)
 
 def streaming_task(  # pylint: disable=R0913, R0917
     asset_info: AssetInfo,
-    config: StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig,
-    auth: str,
+    config: ExternalAuthenticationConfig | None,
+    auth: str | None,
     s3_credentials: S3Credentials,
 ):
     """
@@ -63,9 +65,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
         asset_info (AssetInfo): Object containing the essential informations about the product
             to download, such as its URL, the destination bucket name and the destination path/key
             in the S3 bucket where the file will be uploaded.
-        config (StationExternalAuthenticationConfig | S3ExternalAuthenticationConfig): Authentification
-            configuration containing the list of trusted domains
-        auth: The station token. This has to be refreshed from the caller
+        config (ExternalAuthenticationConfig): Optional authentification configuration containing
+            the list of trusted domains
+        auth (str): Optional station token. This has to be refreshed from the caller
         s3_credentials: S3 object storage credentials
     Returns:
         str: The S3 file path where the file was uploaded.
@@ -108,7 +110,13 @@ def streaming_task(  # pylint: disable=R0913, R0917
                     asset_info.trusted_domains,
                 )
             else:
-                s3_handler.s3_streaming_from_http(product_url, config.trusted_domains, auth, bucket, s3_file)
+                s3_handler.s3_streaming_from_http(
+                    product_url,
+                    config.trusted_domains if config else [],
+                    auth,
+                    bucket,
+                    s3_file,
+                )
 
             s3_handler.disconnect_s3()
             break
