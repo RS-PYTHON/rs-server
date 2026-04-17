@@ -111,10 +111,13 @@ class InputModel(BaseModel):
     Attributes:
         collection (CollectionModel): The collection of metadata for the input.
         items (FeatureCollectionModel or link): A collection of features (or a link) related to the input.
+        asset_names (set[str]): An optional set to keep only selected asset names.
+                                If not provided, all assets are staged.
     """
 
     collection: str
     items: ItemsModel
+    asset_names: set[str] | None = None
 
 
 class OutputModel(BaseModel):

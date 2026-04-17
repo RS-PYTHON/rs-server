@@ -15,6 +15,7 @@
 """Representation of an asset for staging process"""
 
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -40,6 +41,13 @@ class AssetInfo:  # pylint: disable=too-many-instance-attributes
     external_s3_access_key: str = ""
     external_s3_secret_key: str = ""
     trusted_domains: list[str] | None = None
+
+    @property
+    def domain(self) -> str | None:
+        """Return the product URL hostname, or None for S3 assets."""
+        if self.origin_service == "s3":
+            return None
+        return urlparse(self.product_url).hostname
 
 
 class IncompleteAssetError(Exception):
