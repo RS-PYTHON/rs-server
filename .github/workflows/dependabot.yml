@@ -38,7 +38,7 @@ jobs:
 
       - name: Regenerate lock files
         run: |
-          for dir in services/adgs services/prip services/cadip services/edrs services/catalog services/frontend services/staging services/osam; do
+          for dir in services/adgs services/prip services/cadip services/catalog services/frontend services/staging services/osam; do
             cd $dir
             poetry lock
             cd -
@@ -46,6 +46,8 @@ jobs:
           poetry lock
 
       - name: Commit updated lock files
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           if git diff --quiet; then
             echo "No changes detected, skipping commit."
@@ -56,5 +58,5 @@ jobs:
           git add .
           git commit -m "chore: update dependent poetry.lock files" || echo "No changes to commit"
           git fetch origin
-          git rebase origin/${{ github.head_ref }} || exit 0
-          git push origin HEAD:${{ github.head_ref }}
+          git rebase origin/${GITHUB_HEAD_REF} || exit 0
+          git push origin HEAD:${GITHUB_HEAD_REF}

@@ -63,6 +63,7 @@ from rs_server_common.utils.utils import (
     find_product_type,
     map_stac_platform,
     odata_to_stac,
+    repair_and_orient_geojson_geometry,
     run_in_threads,
     validate_inputs_format,
 )
@@ -182,7 +183,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     auxip: bool = False
     cadip: bool = False
     prip: bool = False
-    edrs: bool = False
 
     # Current page
     page: int = 1
@@ -194,7 +194,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         self.auxip = self.service == "auxip"
         self.cadip = self.service == "cadip"
         self.prip = self.service == "prip"
-        self.edrs = self.service == "edrs"
 
     @classmethod
     @asynccontextmanager
@@ -245,11 +244,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         if self.prip:
             for queryable_name, queryable_data in get_prip_queryables().items():
-                queryables.update({queryable_name: QueryableField(**queryable_data)})
-            return queryables
-
-        if self.edrs:
-            for queryable_name, queryable_data in get_edrs_queryables().items():
                 queryables.update({queryable_name: QueryableField(**queryable_data)})
             return queryables
 
@@ -925,8 +919,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if not geo_cls:
                     raise TypeError(f"Unsupported geometry type: {type(reworked_geometry)}")
 
-                # Convert Shapely to GeoJSON Pydantic
-                feature.geometry = geo_cls.parse_obj(mapping(reworked_geometry))  # type: ignore
+                # Re-apply orientation after antimeridian rework because the split can yield MultiPolygons.
+                normalized_geometry = repair_and_orient_geojson_geometry(mapping(reworked_geometry))
+                feature.geometry = geo_cls.parse_obj(normalized_geometry)  # type: ignore
 
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
@@ -1164,13 +1159,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
 def build_summaries(service, query: dict) -> dict | None:
     """
-    Builds summaries for CADIP/EDRS/AUXIP/PRIP collections.
+    Builds summaries for CADIP/AUXIP/PRIP collections.
 
     Returns a dict:
-        - {"platform": [...]} for CADIP/EDRS
+        - {"platform": [...]} for CADIP
         - {"product:type": [...]} for AUXIP/PRIP
     """
-    if service in ["cadip", "edrs"]:
+    if service in ["cadip"]:
         satellites = query.get("Satellite")
         if not satellites:
             return None
@@ -1327,13 +1322,6 @@ def get_adgs_queryables() -> dict:
 def get_prip_queryables() -> dict:
     """Function used to read and interpret from prip_queryables.yaml"""
     with open(Path(__file__).parent.parent / "config" / "prip_queryables.yaml", encoding="utf-8") as cf:
-        return yaml.safe_load(cf)
-
-
-@lru_cache
-def get_edrs_queryables() -> dict:
-    """Function used to read and interpret from edrs_queryables.yaml"""
-    with open(Path(__file__).parent.parent / "config" / "edrs_queryables.yaml", encoding="utf-8") as cf:
         return yaml.safe_load(cf)
 
 

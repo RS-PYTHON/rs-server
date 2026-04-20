@@ -93,7 +93,6 @@ NEW_OVH_USER_WHEN_CREATING = {
 def clear_caches():
     """Clear caches at the end of each test"""
     yield
-    rs_server_osam.utils.tools.load_configmap_data.cache_clear()
     rs_server_osam.tasks.get_user_s3_credentials.cache_clear()
 
 
@@ -184,7 +183,7 @@ def reset_s3_singleton():
         ("file_lock", threading.Lock()),
         ("bucket_configuration_csv", []),
         ("config_file_path", ""),
-        ("last_config_file_modification_date", 0),
+        ("last_fingerprint", (0, 0, 0)),
     ]:
         setattr(S3StorageConfigurationSingleton, attr, value)
 

@@ -16,6 +16,7 @@
 from typing import Any
 
 from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
+from stac_pydantic.links import Links
 from stac_pydantic.shared import Asset  # Importing directly for clarity
 
 
@@ -40,8 +41,7 @@ class Feature(BaseModel):
         stac_version (str): The version of the STAC specification used.
         assets (Dict[str, Asset]): A dictionary of assets associated with the feature.
             Keys are asset names, and values are `Asset` objects.
-        links (Optional[List[Dict[str, str]]]): A list of link dictionaries, where each
-            dictionary represents a link related to the feature. Defaults to None.
+        links (Optional[Links]): A list of links related to the feature. Defaults to None.
         stac_extensions (List[str]): A list of STAC extension URIs used in this feature.
     """
 
@@ -52,7 +52,7 @@ class Feature(BaseModel):
     id: str
     stac_version: str
     assets: dict[str, Asset]
-    links: list[dict[str, str]] | None = None
+    links: Links | None = None
     stac_extensions: list[str]
 
 
@@ -111,10 +111,13 @@ class InputModel(BaseModel):
     Attributes:
         collection (CollectionModel): The collection of metadata for the input.
         items (FeatureCollectionModel or link): A collection of features (or a link) related to the input.
+        asset_names (set[str]): An optional set to keep only selected asset names.
+                                If not provided, all assets are staged.
     """
 
     collection: str
     items: ItemsModel
+    asset_names: set[str] | None = None
 
 
 class OutputModel(BaseModel):

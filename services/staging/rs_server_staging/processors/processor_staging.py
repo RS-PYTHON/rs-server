@@ -23,11 +23,11 @@ import time
 import uuid
 from datetime import datetime
 from json import JSONDecodeError, dumps
-from urllib.parse import urlparse
 
 import requests
 from dask.distributed import (
     Client,
+    Future,
     LocalCluster,
     as_completed,
 )
@@ -47,12 +47,16 @@ from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
     load_external_auth_config_by_domain,
 )
+from rs_server_common.authentication.external_authentication_config import (
+    ExternalAuthenticationConfig,
+)
 from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import S3Credentials
 from rs_server_staging.processors.authentication import (
     RefreshTokenData,
     update_station_token,
@@ -152,6 +156,9 @@ class Staging(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
+        self.catalog_publish_timeout: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_TIMEOUT", "120"))
+        self.catalog_publish_max_retries: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_MAX_RETRIES", "3"))
+        self.catalog_publish_retry_delay: float = float(os.environ.get("RSPY_CATALOG_PUBLISH_RETRY_DELAY", "30"))
         self.staging_user: str = "staging_user"
         #################
         # Database section
@@ -179,19 +186,12 @@ class Staging(
             if not items or "href" not in items or "value" in items:
                 return None
 
-            # Check if the given url is either the cadip or the
-            # auxip - we don't want to send our apikey to any url
-            if not any(href in data["items"]["href"] for href in self.server_url):
-                return self.log_job_execution(
-                    JobStatus.failed,
-                    0,
-                    "The domain name specified in the input link must correspond to an existing server",
-                )
-            response = requests.get(
-                items["href"],
-                headers=self.auth_headers,
-                timeout=5,
-            )
+            # Check if the given url is from us (cadip, auxip or prip)
+            # we don't want to send our apikey to any url
+            if any(href in items["href"] for href in self.server_url):
+                response = requests.get(items["href"], timeout=60, headers=self.auth_headers)
+            else:
+                response = requests.get(items["href"], timeout=60)
             response.raise_for_status()
             response_dict = response.json()
 
@@ -225,9 +225,18 @@ class Staging(
 
         return None
 
-    def _filter_features_with_assets(self, item_collection: FeatureCollectionModel) -> bool:
+    def _filter_features_with_assets(
+        self,
+        item_collection: FeatureCollectionModel,
+        asset_names: set[str] | None = None,
+    ) -> bool:
         """
-        Filter features without assets and validate the remaining collection.
+        Filter features without assets and optionally keep only selected asset names.
+
+        - If `asset_names` is None or empty, keep all features having at least one asset.
+        - If `asset_names` is provided, each feature keeps only assets whose key
+        is present in the set. Features with no remaining assets are removed.
+
         Returns False if processing should stop.
         """
         if not item_collection.features:
@@ -237,6 +246,10 @@ class Staging(
                 "Finished without processing any tasks",
             )
             return False
+
+        if asset_names:
+            for feature in item_collection.features:
+                feature.assets = {key: value for key, value in feature.assets.items() if key in asset_names}
 
         item_collection.features = [feature for feature in item_collection.features if feature.assets]
         if not item_collection.features:
@@ -283,7 +296,7 @@ class Staging(
 
         self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
 
-        if not self._filter_features_with_assets(item_collection):
+        if not self._filter_features_with_assets(item_collection, data.get("asset_names", None)):
             return self._get_execute_result()
 
         if not await self.check_catalog(catalog_collection, item_collection.features):
@@ -565,7 +578,7 @@ class Staging(
             time.sleep(1)
             timeout -= 1
 
-    def publish_processed_features(self, catalog_collection: str, refresh_token: RefreshTokenData) -> bool:
+    def publish_processed_features(self, catalog_collection: str, refresh_tokens: dict[str, RefreshTokenData]) -> bool:
         """Handles publishing features and cleanup in case of failure."""
         # Publish all the features once processed
         published_features_ids: list[str] = []
@@ -582,17 +595,44 @@ class Staging(
                 self.delete_files_from_bucket()
                 # delete the published items
                 self.unpublish_rspy_features(catalog_collection, published_features_ids)
-                refresh_token.unsubscribe(self.logger)
+                self.unsubscribe_refresh_tokens(refresh_tokens)
                 self.logger.error(f"The item {feature.id} couldn't be published in the catalog")
                 return False
             published_features_ids.append(feature.id)
         return True
 
+    def unsubscribe_refresh_tokens(self, refresh_tokens: dict[str, RefreshTokenData]):
+        """Unsubscribe all available refresh tokens."""
+        for refresh_token in refresh_tokens.values():
+            if refresh_token:
+                refresh_token.unsubscribe(self.logger)
+
+    def submit_dask_task(
+        self,
+        client: Client,
+        asset: AssetInfo,
+        refresh_tokens: dict[str, RefreshTokenData],
+        s3_credentials: S3Credentials,
+        try_token_refresh: bool = False,
+    ) -> Future:
+        """Refresh the access token if needed and submit the streaming task to Dask."""
+        refresh_token = refresh_tokens.get(asset.domain, None)
+        # refresh the token if needed
+        if refresh_token and try_token_refresh and not update_station_token(refresh_token, self.logger):
+            raise RuntimeError(f"Could not retrieve or refresh the token for {asset}")
+        return client.submit(
+            streaming_task,
+            asset,
+            refresh_token.config if refresh_token else None,
+            TokenAuth(refresh_token.get_access_token()) if refresh_token else None,
+            s3_credentials,
+        )
+
     def manage_dask_tasks(
         self,
         client: Client,
         catalog_collection: str,
-        refresh_token: RefreshTokenData,
+        refresh_tokens: dict[str, RefreshTokenData],
     ):  # pylint: disable=too-many-branches, too-many-statements
         """
         Manages Dask tasks for streaming data to the RS-Server.
@@ -610,7 +650,8 @@ class Staging(
         Args:
             client (Client): The Dask client managing task execution.
             catalog_collection (str): The catalog collection name for storing processed features.
-            refresh_token (RefreshTokenData): The authentication data, including the station access token.
+            refresh_tokens (dict[str, RefreshTokenData]): The authentication data per domain,
+            including the station access token.
 
         Raises:
             RuntimeError: If a failure occurs while submitting tasks, retrieving tokens,
@@ -624,8 +665,7 @@ class Staging(
                 None,
                 "Submitting task to dask cluster failed. Dask cluster client object is not created",
             )
-            if refresh_token:
-                refresh_token.unsubscribe(self.logger)
+            self.unsubscribe_refresh_tokens(refresh_tokens)
             return
 
         # Get the S3 object storage credentials for the logged user
@@ -639,39 +679,15 @@ class Staging(
         # convert to iterator for dynamic updates
         data_iter = iter(self.assets_info)
         try:
-            if not refresh_token:
-                initial_batch_tasks = {
-                    client.submit(
-                        streaming_task,
-                        next(data_iter),
-                        None,
-                        None,
-                        s3_credentials,
-                    )
-                    for _ in range(max_parallel_tasks)
-                }
-            else:
-                # if "access_token" not in refresh_token.token_dict will raise a KeyError and
-                # caught by Exception
-                # the access_token dictionary was refreshed just before starting
-                # this thread. no need to do it for the initial batch
-                access_token = TokenAuth(refresh_token.get_access_token())
-                # initial dataset
-                initial_batch_tasks = {
-                    client.submit(
-                        streaming_task,
-                        next(data_iter),
-                        refresh_token.config,
-                        access_token,
-                        s3_credentials,
-                    )
-                    for _ in range(max_parallel_tasks)
-                }
+            # initial dataset
+            initial_batch_tasks = {
+                self.submit_dask_task(client, next(data_iter), refresh_tokens, s3_credentials)
+                for _ in range(max_parallel_tasks)
+            }
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
             self.log_job_execution(JobStatus.failed, None, f"Submitting task to dask cluster failed. Reason: {e}")
-            if refresh_token:
-                refresh_token.unsubscribe(self.logger)
+            self.unsubscribe_refresh_tokens(refresh_tokens)
             return
         # counter to be used for percentage
         completed_tasks = 0
@@ -689,33 +705,7 @@ class Staging(
                 self.logger.debug("%s Task streaming completed", task.key)
                 # Submit a new task if available and no errors occurred
                 try:
-                    new_task = next(data_iter)
-                    if not refresh_token:
-                        tasks.add(
-                            client.submit(
-                                streaming_task,
-                                new_task,
-                                None,
-                                None,
-                                s3_credentials,
-                            ),
-                        )
-                    else:
-                        # refresh the token if needed
-                        if not update_station_token(refresh_token, self.logger):
-                            raise RuntimeError("Could not retrieve or refresh the station token")
-                        access_token = TokenAuth(refresh_token.get_access_token())
-                        # submit the task
-                        tasks.add(
-                            client.submit(
-                                streaming_task,
-                                new_task,
-                                refresh_token.config,
-                                access_token,
-                                s3_credentials,
-                            ),
-                        )
-
+                    tasks.add(self.submit_dask_task(client, next(data_iter), refresh_tokens, s3_credentials, True))
                 except StopIteration:
                     pass  # No more data to process
             except Exception as task_e:  # pylint: disable=broad-exception-caught
@@ -726,19 +716,17 @@ class Staging(
                 # Update status for the job
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
-                if refresh_token:
-                    refresh_token.unsubscribe(self.logger)
+                self.unsubscribe_refresh_tokens(refresh_tokens)
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
 
-        if not self.publish_processed_features(catalog_collection, refresh_token):
+        if not self.publish_processed_features(catalog_collection, refresh_tokens):
             return
 
         # Update status once all features are processed
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         # Update the subscribers for token refreshment
-        if refresh_token:
-            refresh_token.unsubscribe(self.logger)
+        self.unsubscribe_refresh_tokens(refresh_tokens)
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(
@@ -831,32 +819,26 @@ class Staging(
                 clusters = sorted(gateway.list_clusters(), key=lambda cluster: cluster.start_time, reverse=True)
                 self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY_ADDRESS']!r}: {clusters}")
 
-                # In local mode, get the first cluster from the gateway.
+                # Get the identifier of the cluster whose name matches the cluster_name variable.
+                # Protection for the case when this cluster does not exist.
                 cluster_id = None
-                if common_settings.LOCAL_MODE:
-                    if clusters:
-                        cluster_id = clusters[0].name
+                self.logger.info(f"Requested cluster name: {cluster_name}")
+                cluster_names = [
+                    cluster.options.get("cluster_name") for cluster in clusters if isinstance(cluster.options, dict)
+                ]
 
-                # In cluster mode, get the identifier of the cluster whose name is equal to the cluster_name variable.
-                # Protection for the case when this cluster does not exit
-                else:
-                    self.logger.info(f"my cluster name: {cluster_name}")
-
-                    for cluster in clusters:
-                        self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
-
-                        is_equal = cluster.options.get("cluster_name") == cluster_name
-                        self.logger.info(f"Is equal: {is_equal}")
-
-                    cluster_id = next(
-                        (
-                            cluster.name
-                            for cluster in clusters
-                            if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
-                        ),
-                        None,
-                    )
-                    self.logger.info(f"Cluster id vaut: {cluster_id}")
+                self.logger.info(
+                    f"Available cluster names: {cluster_names}",
+                )
+                cluster_id = next(
+                    (
+                        cluster.name
+                        for cluster in clusters
+                        if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
+                    ),
+                    None,
+                )
+                self.logger.info(f"Selected cluster id: {cluster_id}")
 
                 if not cluster_id:
                     raise IndexError(f"Dask cluster with 'cluster_name'={cluster_name!r} was not found.")
@@ -889,7 +871,8 @@ class Staging(
         def set_dask_env(host_env: dict, env_var_names: list[str]):
             """Pass environment variables to the dask workers."""
             for name in ["USE_SSL"] + env_var_names:
-                os.environ[name] = host_env[name]
+                if name in host_env:
+                    os.environ[name] = host_env[name]
 
         env_var_pattern = re.compile(r".*_(HOST|PORT|USER|PASS|CLIENT_CRT|CLIENT_KEY|CA_CRT)$")
         env_var_names = [key for key in os.environ if env_var_pattern.fullmatch(key)]
@@ -914,14 +897,15 @@ class Staging(
 
         return client
 
-    def get_refresh_token(self, domain) -> RefreshTokenData:
-        """Handles authentication token retrieval and refresh."""
+    def load_and_validate_external_auth_config(self, domain: str) -> ExternalAuthenticationConfig:
+        """Load the external auth config for this domain and validates the authorization
+        by checking if the user has the corresponding staging_download role."""
         try:
             external_auth_config = load_external_auth_config_by_domain(domain)
             if not external_auth_config:
                 raise HTTPException(
                     status_code=401,
-                    detail="Failed to retrieve the configuration for the station token.",
+                    detail=f"Failed to retrieve the configuration for the station token of domain {domain}.",
                 )
             if not LOCAL_MODE:
                 from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
@@ -934,11 +918,14 @@ class Staging(
                     request=self.request,
                     staging_process=True,
                 )
+            return external_auth_config
 
         except (ServiceNotFound, HTTPException) as e:
             self.logger.exception(f"{e}")
             raise RuntimeError(f"{e}") from e
 
+    def get_refresh_token(self, external_auth_config: ExternalAuthenticationConfig) -> RefreshTokenData:
+        """Handles authentication token retrieval and refresh."""
         # Find or create a token
         with self.station_token_list_lock:
             for refresh_token in self.station_token_list:
@@ -991,22 +978,14 @@ class Staging(
             self.logger.info("There are no assets to stage. Exiting....")
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
-        # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
+        # Step 2: Determine the domains and validate them
         domains = list(
-            {
-                ("FTP" if "/NOMINAL" in asset.product_url else urlparse(asset.product_url).hostname)
-                for asset in self.assets_info
-                if asset.origin_service != "s3"
-            },
+            {asset.domain for asset in self.assets_info if asset.origin_service != "s3"},
         )
         self.logger.info(f"Staging from domain(s) {domains}")
         if not domains:
             # If we got 0 domain, it means we only have assets from external s3 buckets
-            domain = "s3"
-        elif len(domains) > 1:
-            return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
-        else:
-            domain = domains[0]
+            domains = ["s3"]
 
         # Step 3: Connect to dask cluster BEFORE retrieving the token, because an unnecessary request would be sent
         # to the external station if the connection to the dask cluster fails
@@ -1016,17 +995,19 @@ class Staging(
             self.logger.error("Failed to start the staging process")
             return self.log_job_execution(JobStatus.failed, 0, str(run_time_error))
 
+        refresh_tokens: dict[str, RefreshTokenData] = {}
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
         try:
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
-            if domain not in ("s3", "FTP"):
-                refresh_token = self.get_refresh_token(domain)
-                self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
-            else:
-                if domain == "FTP" and not LOCAL_MODE:
-                    self.logger.info("Staging from EDRS-Station FTP server, no token retrieval needed")
-                    # On FTP and cluster mode, check api key roles for EDRS staging
+            for domain in domains:
+                if domain not in ("s3", "FTP"):
+                    external_auth_config = self.load_and_validate_external_auth_config(domain)
+                    if external_auth_config.auth_type:
+                        refresh_tokens[domain] = self.get_refresh_token(external_auth_config)
+                elif domain == "FTP" and not LOCAL_MODE:
+                    self.logger.info("Staging from FTP server, no token retrieval needed")
+                    # On FTP and cluster mode, check api key roles for FTP staging
                     from rs_server_common.authentication.authentication import (  # pylint: disable=C0415
                         auth_validation,
                     )
@@ -1041,10 +1022,11 @@ class Staging(
                             request=self.request,
                             staging_process=True,
                         )
-                refresh_token = None
         except RuntimeError as rte:
-            self.logger.error("Failed to start the staging process")
+            self.logger.error(f"Failed to start the staging process: {rte}")
             return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {rte}")
+
+        self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
 
         # Step 5: Manage dask tasks in a separate thread
         # starting a thread for managing the dask callbacks
@@ -1054,7 +1036,7 @@ class Staging(
                 self.manage_dask_tasks,
                 dask_client,
                 catalog_collection,
-                refresh_token,
+                refresh_tokens,
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_job_execution(JobStatus.failed, 0, f"Error from tasks monitoring thread: {e}")
@@ -1097,21 +1079,37 @@ class Staging(
         for asset in feature.assets.values():
             if hasattr(asset, "alternate"):
                 del asset.alternate  # type: ignore
-        try:
-            response = requests.post(
-                publish_url,
-                headers={
-                    **self.auth_headers,
-                    "Content-Type": "application/geo+json",
-                },
-                data=feature.model_dump_json(),
-                timeout=10,
-            )
-            response.raise_for_status()  # Raise an error for HTTP error responses
-            return True
-        except (RequestException, JSONDecodeError) as exc:
-            self.logger.error("Error while publishing items to rspy catalog %s", exc)
-            return False
+        attempt = 0
+        while attempt <= self.catalog_publish_max_retries:
+            try:
+                response = requests.post(
+                    publish_url,
+                    headers={
+                        **self.auth_headers,
+                        "Content-Type": "application/geo+json",
+                    },
+                    data=feature.model_dump_json(),
+                    timeout=self.catalog_publish_timeout,
+                )
+                response.raise_for_status()  # Raise an error for HTTP error responses
+                return True
+            except requests.exceptions.Timeout as exc:
+                if attempt >= self.catalog_publish_max_retries:
+                    self.logger.error("Error while publishing items to rspy catalog %s", exc)
+                    return False
+                self.logger.warning(
+                    "Timeout while publishing items to rspy catalog. Retry %s/%s in %ss",
+                    attempt + 1,
+                    self.catalog_publish_max_retries,
+                    self.catalog_publish_retry_delay,
+                )
+                time.sleep(self.catalog_publish_retry_delay)
+                attempt += 1
+            except (RequestException, JSONDecodeError) as exc:
+                self.logger.error("Error while publishing items to rspy catalog %s", exc)
+                return False
+
+        return False
 
     def unpublish_rspy_features(self, catalog_collection: str, feature_ids: list[str]):
         """Deletes specified features from the RSPy catalog by sending DELETE requests to the

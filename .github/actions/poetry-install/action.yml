@@ -40,17 +40,20 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - uses: snok/install-poetry@v1
+    - uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a
       with:
         version: 2.3.2
 
-    - run: |
+    - env:
+        INPUTS_PYTHON_VERSION: ${{ inputs.python-version }}
+        INPUTS_OPTIONS: ${{ inputs.options }}
+      run: |
         set -x
 
         # Regenerate the poetry.lock file for non-standard python versions
-        [[ "${{ inputs.python-version }}" != "${{ env.PYTHON_VERSION }}" ]] && poetry lock --regenerate
+        [[ "$INPUTS_PYTHON_VERSION" != "${{ env.PYTHON_VERSION }}" ]] && poetry lock --regenerate
 
-        poetry install ${{ inputs.options }} # don't use quotes around options
+        poetry install $INPUTS_OPTIONS # don't use quotes around options
         poetry -q run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
       working-directory: ${{ inputs.working-directory }}
       shell: bash

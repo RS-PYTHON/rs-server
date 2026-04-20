@@ -47,7 +47,6 @@ packages = [
     { include = "rs_server_common", from = "services/common"},
     { include = "rs_server_frontend", from = "services/frontend"},
     { include = "rs_server_staging", from = "services/staging"},
-    { include = "rs_server_edrs", from = "services/edrs" },
     { include = "rs_server_osam", from = "services/osam" },
 
     { include = "tests", format = "sdist" },
@@ -68,7 +67,6 @@ python = ">=3.13,<4"
 rs-server-adgs = {path = "services/adgs", develop = true}
 rs-server-prip = {path = "services/prip", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
-rs-server-edrs = {path = "services/edrs", develop = true}
 rs-server-catalog = {path = "services/catalog", develop = true}
 rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
@@ -102,7 +100,7 @@ httpx = "^0.28.1"
 sphinx = "^9.1.0"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.42.0"
-click = "8.3.1"
+click = "8.3.2"
 responses = "^0.26.0"
 
 [tool.poetry.requires-plugins]
@@ -152,15 +150,18 @@ extend-ignore = [
 [tool.pylint]
 max-line-length = 120
 disable = [
-    "logging-fstring-interpolation",  # Logging f-string interpolation
-    "R0917",  # Too many positional arguments
-    "E0401", # import-error
-    "R0902", # too-many-instance-attributes
-    "R0913",  # too-many-arguments
-    "too-many-locals",
+    "import-error",
+    "logging-fstring-interpolation",
     "not-context-manager",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
     "too-many-lines",
+    "too-many-locals",
+    "too-many-positional-arguments",
     "too-many-public-methods",
+    "too-many-statements",
 ]
 ignore-paths = '^docs/.*$'
 

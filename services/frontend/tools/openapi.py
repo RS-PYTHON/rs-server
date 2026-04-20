@@ -67,7 +67,7 @@ class ServiceConf:
         for service_name, service_json in conf_contents.items():
 
             # Init the conf instance
-            service_conf = ServiceConf(name=service_name, **service_json)
+            service_conf = ServiceConf(name=service_name, **service_json)  # type: ignore[call-arg]
             services[service_name] = service_conf
 
             # Read the openapi.json contents

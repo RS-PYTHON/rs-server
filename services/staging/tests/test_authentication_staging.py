@@ -15,7 +15,6 @@
 """Unit tests for the authentication."""
 
 import pytest
-from fastapi import HTTPException
 from pytest_httpx import HTTPXMock
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
@@ -137,27 +136,6 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals,
     mock_request.state.auth_roles = [role]
     await staging_instance.process_rspy_features(collection)
     assert not spy_log_job.call_args[0][2].startswith(error_auth)
-
-    # EDRS access test
-    station_id = "EDRS_STATION"
-    spy_log_job.reset_mock()
-    # Mock the error message
-    error_auth = f"Missing RS_PROCESSES_STAGING_DOWNLOAD_{station_id} authorization role"
-    mock_request.state.auth_roles = []
-    # Put an asset with an ftps:// URL to trigger the EDRS authentication
-    mocker.patch.object(
-        staging_instance,
-        "assets_info",
-        new=[AssetInfo(f"ftps://{station_id}/NOMINAL/some_asset", "fake_s3_file", "fake_bucket")],
-    )
-    mocker.patch("rs_server_staging.processors.processor_staging.prepare_streaming_tasks", return_value=[])
-    mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
-    mocker.patch.object(staging_instance, "request", new=mock_request)
-    with pytest.raises(HTTPException) as exc_info:
-        # This should raise an exception because of missing role
-        await staging_instance.process_rspy_features(collection)
-        # Check that the error message is correct
-        assert exc_info.value.detail == error_auth
 
     # Reset everything and test with the right role
     spy_log_job.reset_mock()

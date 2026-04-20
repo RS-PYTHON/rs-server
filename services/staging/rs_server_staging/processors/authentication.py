@@ -66,7 +66,7 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
         """
         return self.config.station_id
 
-    def subscribe(self, logger):
+    def subscribe(self, logger: logging.Logger):
         """
         Increments the subscriber count for token tracking.
 
@@ -79,7 +79,7 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             self.subscribers += 1
             logger.debug(f"Subscribe to {self.station_id()}. Number of subscribers : {self.subscribers}")
 
-    def unsubscribe(self, logger):
+    def unsubscribe(self, logger: logging.Logger):
         """
         Decrements the subscriber count when a subscription ends.
 
@@ -92,7 +92,7 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             self.subscribers -= 1
             logger.debug(f"Unsubscribe from station {self.station_id()}. Number of subscribers : {self.subscribers}")
 
-    def update_dict_token(self, new_dict_token, logger):
+    def update_dict_token(self, new_dict_token: dict, logger: logging.Logger):
         """
         Updates the authentication token dictionary with new token data.
 
@@ -102,7 +102,8 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             new_dict_token (dict): The new token data to store.
             logger (logging.Logger): Logger instance for logging token update events.
         """
-        logger.debug(f"Updating dictionary token with: {new_dict_token}")
+        # Log keys only, not the values of the credentials
+        logger.debug(f"Updating dictionary token with keys: {new_dict_token.keys()}")
         self.token_dict = new_dict_token.copy()
 
     def get_access_token(self):

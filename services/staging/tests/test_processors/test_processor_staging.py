@@ -391,18 +391,30 @@ class TestStaging:
 
         assert result is None
 
-    def test_resolve_items_from_link_invalid_domain(self, staging_instance: Staging):
-        """Return a failed log tuple when href domain does not match server_url."""
+    def test_resolve_items_from_link_external_domain(self, staging_instance: Staging, mocker):
+        """Ensure GET is called without headers when domain is not trusted."""
 
         staging_instance.server_url = ["allowed-domain.com"]
 
-        data = {"items": {"href": "https://some-random-domein.com/items"}}
+        response_mock = mocker.Mock()
+        response_mock.raise_for_status.return_value = None
+        response_mock.json.return_value = {
+            "type": "Feature",
+        }
+
+        get_mock = mocker.patch("requests.get", return_value=response_mock)
+
+        data = {"items": {"href": "https://some-random-domain.com/items"}}
 
         result = staging_instance._resolve_items_from_link(data)
 
-        # Check that the result indicates a failed job
-        assert isinstance(result, tuple)
-        assert result[1].get("failed") is not None
+        # Check call has been amde without headers
+        get_mock.assert_called_once_with(
+            "https://some-random-domain.com/items",
+            timeout=60,
+        )
+
+        assert result == response_mock.json.return_value
 
     def test_resolve_items_from_link_feature_success(self, staging_instance: Staging, mocker):
         """Resolve a valid Feature from link."""
@@ -626,23 +638,26 @@ class TestStagingMainExecution:
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect()
 
-    def test_manage_dask_tasks_succesfull(self, mocker, staging_instance: Staging, client):
+    def test_manage_dask_tasks_succesful(self, mocker, staging_instance: Staging, client):
         """Test to mock managing of successful tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
-        task1.result = mocker.Mock(return_value="simultated_filename_1")  # Simulate a successful task
+        task1.result = mocker.Mock(return_value="simulated_filename_1")  # Simulate a successful task
         task1.key = "task1"
 
         task2 = mocker.Mock()
-        task2.result = mocker.Mock(return_value="simultated_filename_2")  # Simulate another successful task
+        task2.result = mocker.Mock(return_value="simulated_filename_2")  # Simulate another successful task
         task2.key = "task2"
 
         # mock distributed as_completed
-        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=iter([task1, task2]))
+        mock_tasks = mocker.MagicMock()
+        mock_tasks.__iter__.return_value = iter([task1, task2])
+        mock_tasks.add = mocker.Mock()
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=mock_tasks)
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
 
-        staging_instance.manage_dask_tasks(client, "test_collection", staging_instance.station_token_list[0])
+        staging_instance.manage_dask_tasks(client, "test_collection", {"cadip": staging_instance.station_token_list[0]})
 
         # mock_log_job.assert_any_call(JobStatus.running, None, 'In progress')
         # Check that status was updated 3 times during execution, 1 time for each task, and 1 time with FINISH
@@ -659,11 +674,14 @@ class TestStagingMainExecution:
         task1.key = "task1"
         task2 = mocker.Mock()
         # Simulate another successful task
-        task2.result = mocker.Mock(return_value="simultated_filename_2")
+        task2.result = mocker.Mock(return_value="simulated_filename_2")
         task2.key = "task2"
 
         # Create mock for task, and distributed.as_completed func
-        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=iter([task1, task2]))
+        mock_tasks = mocker.MagicMock()
+        mock_tasks.__iter__.return_value = iter([task1, task2])
+        mock_tasks.add = mocker.Mock()
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=mock_tasks)
         # Create mock for handle_task_failure, publish_rspy_feature, delete_files_from_bucket, log_job_execution methods
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
@@ -674,7 +692,7 @@ class TestStagingMainExecution:
         # Set timeout to 1, thus the waiting logic for dask client call_stack will loop once only
         mocker.patch.dict("os.environ", {"RSPY_STAGING_TIMEOUT": "1"})
 
-        staging_instance.manage_dask_tasks(client, "test_collection", staging_instance.station_token_list[0])
+        staging_instance.manage_dask_tasks(client, "test_collection", {"cadip": staging_instance.station_token_list[0]})
 
         mock_delete_file_from_bucket.assert_called()  # Bucket removal called once
         # logger set status to failed
@@ -686,22 +704,25 @@ class TestStagingMainExecution:
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
-        task1.result = mocker.Mock(return_value="simultated_filename_1")  # Simulate a successful task
+        task1.result = mocker.Mock(return_value="simulated_filename_1")  # Simulate a successful task
         task1.key = "task1"
 
         task2 = mocker.Mock()
-        task2.result = mocker.Mock(return_value="simultated_filename_2")  # Simulate another successful task
+        task2.result = mocker.Mock(return_value="simulated_filename_2")  # Simulate another successful task
         task2.key = "task2"
 
         staging_instance.stream_list = [task1, task2]  # set streaming list
         # mock distributed as_completed
-        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=iter([task1, task2]))
+        mock_tasks = mocker.MagicMock()
+        mock_tasks.__iter__.return_value = iter([task1, task2])
+        mock_tasks.add = mocker.Mock()
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=mock_tasks)
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
 
         mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=False)
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
 
-        staging_instance.manage_dask_tasks(client, "test_collection", staging_instance.station_token_list[0])
+        staging_instance.manage_dask_tasks(client, "test_collection", {"cadip": staging_instance.station_token_list[0]})
 
         mock_log_job.assert_any_call(
             JobStatus.failed,
@@ -715,7 +736,7 @@ class TestStagingMainExecution:
         mock_logger = mocker.patch.object(staging_instance, "logger")
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
 
-        staging_instance.manage_dask_tasks(None, "test_collection", staging_instance.station_token_list[0])
+        staging_instance.manage_dask_tasks(None, "test_collection", {"cadip": staging_instance.station_token_list[0]})
         mock_logger.error.assert_called_once_with("The dask cluster client object is not created. Exiting")
         mock_log_job.assert_any_call(
             JobStatus.failed,
@@ -860,7 +881,7 @@ class TestStagingMainExecution:
         mock_manage_dask_tasks.assert_called_once_with(
             client,
             "test_collection",
-            staging_instance.station_token_list[0],
+            {"cadip": staging_instance.station_token_list[0]},
         )
 
         # Ensure the Dask client is closed after the tasks are processed
