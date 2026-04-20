@@ -91,31 +91,33 @@ jobs:
         shell: bash
 
   build-wheels:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
     name: "Build wheels"
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
     continue-on-error: false
     strategy:
       matrix:
-        package_directory:
-          - services/adgs
-          - services/cadip
-          - services/catalog
-          - services/common
-          - services/frontend
-          - services/osam
-          - services/prip
-          - services/staging
+        service: # all services must be under the services/ folder
+          - adgs
+          - cadip
+          - catalog
+          - common
+          - frontend
+          - osam
+          - prip
+          - staging
+    outputs:
+      ${{ matrix.service }}_version_name: ${{ steps.build-wheel.outputs.version_name }}
+      ${{ matrix.service }}_package_name: ${{ steps.build-wheel.outputs.package_name }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
 
-      # Specific steps for the frontend
-      - if: ${{ matrix.package_directory == 'services/frontend' }}
+      - if: ${{ matrix.service == 'frontend' }}
         uses: ./.github/actions/install-python
 
-      - if: ${{ matrix.package_directory == 'services/frontend' }}
+      - if: ${{ matrix.service == 'frontend' }}
         name: Generate the aggregated openapi.json/swagger
         run: |
           set -x
@@ -126,20 +128,12 @@ jobs:
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
-          package_directory: ${{ matrix.package_directory }}
+          package_directory: "services/${{ matrix.service }}"
 
-    # NOTE: all matrix steps will overwrite this value, but it's OK because it's always the same.
-    outputs:
-      version_name: ${{ steps.build-wheel.outputs.version_name }}
-
-  ###################
-  # Publish to PyPI #
-  ###################
-
-  publish-pypi:
+  publish-wheels-pypi:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    name: "Publish wheels and sdists"
+    name: "Publish wheels and sdists to PyPI"
     needs: [build-wheels]
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
@@ -156,6 +150,65 @@ jobs:
           skip-existing: true
           packages-dir: ./dist
           verbose: true
+
+  # publish-docker-images:
+  #   name: "Build and publish Docker images"
+  #   runs-on: ubuntu-latest
+  #   if: github.actor != 'dependabot[bot]'
+  #   needs: [set-env, build-wheels]
+  #   permissions:
+  #    security-events: write # needed for github/codeql-action/upload-sarif
+  #    packages: write # needed for 'docker push'
+  #   strategy:
+  #     matrix:
+  #       package_directory:
+  #         - services/adgs
+  #       #   - services/cadip
+  #       #   - services/catalog
+  #       #   - services/common
+  #       #   - services/frontend
+  #       #   - services/osam
+  #       #   - services/prip
+  #       #   - services/staging
+  #   steps:
+  #     - uses: actions/checkout@v6
+
+  #     # Download .whl files into a local dir
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v8
+  #       with:
+  #         name: ${{ needs.
+  #           #.outputs.package_name }}
+  #         path: ./build_context_path
+
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v8
+  #       with:
+  #         name: ${{ needs.services-adgs-whl.outputs.package_name }}
+  #         path: ./build_context_path
+
+  #     - name: Copy Dockerfile requirements
+  #       run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+  #       shell: bash
+
+  #     - name: Copy debug mode dependencies
+  #       if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
+  #       run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+  #       shell: bash
+
+  #     - id: publish-docker
+  #       uses: ./.github/actions/publish-docker
+  #       with:
+  #         dockerfile: ./services/adgs/.github/Dockerfile
+  #         build_context_path: ./build_context_path
+  #         image_suffix: -adgs
+  #         version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
+  #         dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+  #         dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+  #         branch_name: ${{ needs.set-env.outputs.branch_name }}
+  #         debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   #########################
   # Publish Docker images #
