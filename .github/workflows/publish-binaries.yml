@@ -75,9 +75,6 @@ jobs:
             exit 1
           fi
 
-          # Replace special characters by -
-          docker_tag=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$docker_tag")
-
           # Always use the debug mode except for new tags
           debug_mode=true
           if [[ ${{ github.ref_type }} == tag ]]; then
@@ -99,13 +96,13 @@ jobs:
       matrix:
         service: # all services must be under the services/ folder
           - adgs
-          - cadip
-          - catalog
-          - common
-          - frontend
-          - osam
-          - prip
-          - staging
+          # - cadip
+          # - catalog
+          # - common
+          # - frontend
+          # - osam
+          # - prip
+          # - staging
     outputs:
       version_name: ${{ steps.outputs.outputs.version_name }}
     steps:
@@ -124,27 +121,27 @@ jobs:
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
         shell: bash
 
-      - id: build-wheel
-        uses: ./.github/actions/build-wheel
-        with:
-          package_directory: "services/${{ matrix.service }}"
-
       # - id: build-wheel
-      #   run: |
-      #     set -x
-      #     touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-      #     touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-      #     echo "version_name=my-version_name" >> "$GITHUB_OUTPUT"
-      # - name: Save wheel package as artifact
-      #   uses: actions/upload-artifact@v5
+      #   uses: ./.github/actions/build-wheel
       #   with:
-      #     name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-      #     path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-      # - name: Save sdist as artifact
-      #   uses: actions/upload-artifact@v5
-      #   with:
-      #     name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-      #     path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+      #     package_directory: "services/${{ matrix.service }}"
+
+      - id: build-wheel
+        run: |
+          set -x
+          touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
+          touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+          echo "version_name=my-version_name" >> "$GITHUB_OUTPUT"
+      - name: Save wheel package as artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
+          path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
+      - name: Save sdist as artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+          path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
 
 
       - id: outputs
@@ -184,14 +181,14 @@ jobs:
       matrix:
         image:
           - adgs
-          - cadip
-          - catalog
-          - frontend
-          - osam
-          - prip
-          - staging
-          - staging-dask-k8s
-          - staging-dask-local
+          # - cadip
+          # - catalog
+          # - frontend
+          # - osam
+          # - prip
+          # - staging
+          # - staging-dask-k8s
+          # - staging-dask-local
 
         # Options specific to each image.
         # whl_pattern is a glob pattern to download the right binary wheels:
@@ -202,40 +199,43 @@ jobs:
             whl_pattern: "{rs_server_adgs-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/adgs/.github/Dockerfile
             image_suffix: rs-server-adgs
-          - image: cadip
-            whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/cadip/.github/Dockerfile
-            image_suffix: rs-server-cadip
-          - image: catalog
-            whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/catalog/.github/Dockerfile
-            image_suffix: rs-server-catalog
-          - image: frontend
-            whl_pattern: "rs_server_frontend-*.whl"
-            dockerfile: ./services/frontend/.github/Dockerfile
-            image_suffix: rs-server-frontend
-          - image: osam
-            whl_pattern: "{rs_server_osam-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/osam/.github/Dockerfile
-            image_suffix: rs-server-osam
-          - image: prip
-            whl_pattern: "{rs_server_prip-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/prip/.github/Dockerfile
-            image_suffix: rs-server-prip
-          - image: staging
-            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/staging/.github/Dockerfile
-            image_suffix: rs-server-staging
-          - image: staging-dask-k8s
-            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-            image_suffix: dask/staging/k8s
-            build_args: "BASE_IMAGE_TARGET=k8s"
-          - image: staging-dask-local
-            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-            dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-            image_suffix: dask/staging/local
-            build_args: "BASE_IMAGE_TARGET=local"
+
+
+            build_args: "REMOVE=ME"
+          # - image: cadip
+          #   whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/cadip/.github/Dockerfile
+          #   image_suffix: rs-server-cadip
+          # - image: catalog
+          #   whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/catalog/.github/Dockerfile
+          #   image_suffix: rs-server-catalog
+          # - image: frontend
+          #   whl_pattern: "rs_server_frontend-*.whl"
+          #   dockerfile: ./services/frontend/.github/Dockerfile
+          #   image_suffix: rs-server-frontend
+          # - image: osam
+          #   whl_pattern: "{rs_server_osam-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/osam/.github/Dockerfile
+          #   image_suffix: rs-server-osam
+          # - image: prip
+          #   whl_pattern: "{rs_server_prip-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/prip/.github/Dockerfile
+          #   image_suffix: rs-server-prip
+          # - image: staging
+          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/staging/.github/Dockerfile
+          #   image_suffix: rs-server-staging
+          # - image: staging-dask-k8s
+          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/staging/.github/Dockerfile.dask-staging
+          #   image_suffix: dask/staging/k8s
+          #   build_args: "BASE_IMAGE_TARGET=k8s"
+          # - image: staging-dask-local
+          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+          #   dockerfile: ./services/staging/.github/Dockerfile.dask-staging
+          #   image_suffix: dask/staging/local
+          #   build_args: "BASE_IMAGE_TARGET=local"
 
     steps:
       - uses: actions/checkout@v6
@@ -268,11 +268,11 @@ jobs:
           build_context_path: ./build_context_path
           image_basename: ${{ github.repository_owner }}/
           image_suffix: ${{ matrix.image_suffix }}
-          version_name: ${{ needs.build-wheels.outputs.version_name }}
+          image_tag1: ${{ needs.build-wheels.outputs.version_name }}
+          image_tag2: ${{ needs.set-env.outputs.docker_tag }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
           build_args: ${{ matrix.build_args }}
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}

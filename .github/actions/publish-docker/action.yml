@@ -28,9 +28,12 @@ inputs:
   image_suffix:
     description: Docker image name suffix e.g. _services-cadip
     required: true
-  version_name:
-    description: Version name e.g. 1.2.3a4.dev1a2b3c4d
+  image_tag1:
+    description: First Docker image tag
     required: true
+  image_tag2:
+    description: Second Docker image tag
+    required: false
   dockerhub_username:
     description: vars.DOCKERHUB_USERNAME
     required: true
@@ -40,9 +43,6 @@ inputs:
   github_token:
     description: secrets.GITHUB_TOKEN
     required: true
-  docker_tag:
-    description: Tag the docker image
-    required: false
   branch_name:
     description: Current git branch name
     required: true
@@ -55,8 +55,8 @@ inputs:
 
 outputs:
   docker_image:
-    description: Docker image name:tag
-    value: ${{ steps.docker_image.outputs.docker_image }}
+    description: Docker image name:tag1
+    value: ${{ steps.docker_image.outputs.docker_image1 }}
 
 runs:
   using: "composite"
@@ -76,21 +76,31 @@ runs:
         username: ${{ github.actor }}
         password: ${{ inputs.github_token }}
 
-    # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
+    # Replace special characters by - in the docker image tags
     - env:
-        VERSION_NAME: ${{ inputs.version_name }}
-      run: set -x; echo "docker_version_name=$(echo $VERSION_NAME | tr + .)" >> $GITHUB_ENV
-      shell: bash
-
-    # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<version> in lowercase
-    - id: docker_image
-      env:
-        DOCKER_IMAGE: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}"
+        IMAGE_TAG1: ${{ inputs.image_tag1 }}
+        IMAGE_TAG2: ${{ inputs.image_tag2 }}
       run: |
         set -x
-        docker_image=${DOCKER_IMAGE,,} # lowercase
-        echo docker_image=${docker_image} >> $GITHUB_ENV
-        echo docker_image=${docker_image} >> $GITHUB_OUTPUT
+        echo image_tag1=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_TAG1") >> $GITHUB_ENV
+        echo image_tag2=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_TAG2") >> $GITHUB_ENV
+      shell: bash
+
+    # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<tag1> in lowercase
+    - id: docker_image
+      env:
+        DOCKER_IMAGE1: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.image_tag1 }}"
+        DOCKER_IMAGE2: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.image_tag2 }}"
+      run: |
+        set -x
+
+        docker_image1=${DOCKER_IMAGE1,,} # lowercase
+        echo docker_image1=${docker_image1} >> $GITHUB_ENV
+        echo docker_image1=${docker_image1} >> $GITHUB_OUTPUT
+
+        [[ -n "${{ env.image_tag2 }}" ]] && docker_image2=${DOCKER_IMAGE2,,} # lowercase, only if image_tag2 is set
+        echo docker_image2=${docker_image2} >> $GITHUB_ENV
+        echo docker_image2=${docker_image2} >> $GITHUB_OUTPUT
       shell: bash
 
     # Extract metadata from Git reference and GitHub events
@@ -144,10 +154,10 @@ runs:
         context: ${{ inputs.build_context_path }}
         file: ${{ inputs.dockerfile }}
         load: true
-        tags: ${{ env.docker_image }}
+        tags: ${{ env.docker_image1 }},${{ env.docker_image2 }}
         labels: ${{ steps.meta.outputs.labels }}
         push: false # push after the security scans below
-        build_args: ${{ inputs.build_args }}
+        build-args: ${{ inputs.build_args }}
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
@@ -156,7 +166,7 @@ runs:
         TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
       with:
         version: v0.69.3
-        image-ref: ${{ env.docker_image }}
+        image-ref: ${{ env.docker_image1 }}
         format: sarif
         output: trivy-results-docker.sarif
         exit-code: 0
@@ -194,21 +204,13 @@ runs:
 
     - name: Push Docker image
       env:
-        DOCKER_IMAGE: ${{ env.docker_image }}
-      run: set -x; docker push ${DOCKER_IMAGE}
+        DOCKER_IMAGE1: ${{ env.docker_image1 }}
+      run: set -x; docker images; docker push ${DOCKER_IMAGE1}
       shell: bash
 
-    # Add a docker image tag and push it into the registry.
-    - name: Push Docker tag e.g. 'latest'
-      if: always()
+    - name: Push tagged Docker image
+      if: ${{ env.docker_image2 != '' }}
       env:
-        DOCKER_TAG: ${{ inputs.docker_tag }}
-        DOCKER_IMAGE: ${{ env.docker_image }}
-      run: | # use sed to replace the last :<tag> by :docker_tag
-        set -x
-        if [[ ${DOCKER_TAG}test != test ]]; then # if variable is defined and not empty
-          docker_image_tag=$(sed "s|\(:[^:]*\)|:${DOCKER_TAG}|g" <<< ${DOCKER_IMAGE})
-          docker tag ${DOCKER_IMAGE} ${docker_image_tag}
-          docker push ${docker_image_tag}
-        fi
+        DOCKER_IMAGE2: ${{ env.docker_image2 }}
+      run: set -x; docker images; docker push ${DOCKER_IMAGE2}
       shell: bash
