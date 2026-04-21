@@ -107,8 +107,7 @@ jobs:
           - prip
           - staging
     outputs:
-      ${{ matrix.service }}_version_name: ${{ steps.build-wheel.outputs.version_name }}
-      ${{ matrix.service }}_package_name: ${{ steps.build-wheel.outputs.package_name }}
+      version_name: ${{ steps.outputs.outputs.version_name }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -129,6 +128,11 @@ jobs:
         uses: ./.github/actions/build-wheel
         with:
           package_directory: "services/${{ matrix.service }}"
+
+      - id: outputs
+        # The version name should be the same for all services. Save it only once for any service.
+        if: ${{ matrix.service == 'adgs' }}
+        run: echo "version_name=${{ steps.build-wheel.outputs.version_name }}" >> "$GITHUB_OUTPUT"
 
   publish-wheels-pypi:
     if: github.actor != 'dependabot[bot]'
@@ -151,64 +155,85 @@ jobs:
           packages-dir: ./dist
           verbose: true
 
-  # publish-docker-images:
-  #   name: "Build and publish Docker images"
-  #   runs-on: ubuntu-latest
-  #   if: github.actor != 'dependabot[bot]'
-  #   needs: [set-env, build-wheels]
-  #   permissions:
-  #    security-events: write # needed for github/codeql-action/upload-sarif
-  #    packages: write # needed for 'docker push'
-  #   strategy:
-  #     matrix:
-  #       package_directory:
-  #         - services/adgs
-  #       #   - services/cadip
-  #       #   - services/catalog
-  #       #   - services/common
-  #       #   - services/frontend
-  #       #   - services/osam
-  #       #   - services/prip
-  #       #   - services/staging
-  #   steps:
-  #     - uses: actions/checkout@v6
+  publish-docker-images:
+    name: "Build and publish Docker images"
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    needs: [set-env, build-wheels]
+    permissions:
+     security-events: write # needed for github/codeql-action/upload-sarif
+     packages: write # needed for 'docker push'
+    strategy:
+      matrix:
+        image:
+          - adgs
+          - cadip
+          - catalog
+          - frontend
+          - osam
+          - prip
+          - staging
 
-  #     # Download .whl files into a local dir
-  #     - name: Download .whl dependencies
-  #       uses: actions/download-artifact@v8
-  #       with:
-  #         name: ${{ needs.
-  #           #.outputs.package_name }}
-  #         path: ./build_context_path
+        # Options specific to each image.exclude:
+        # whl_pattern is a glob pattern to download the right binary wheels:
+        # rs_server_adgs-<version>.whl, rs_server_cadip-<version>.whl, ...
+        include:
+          - image: adgs
+            whl_pattern: "{rs_server_adgs-*.whl,rs_server_common-*.whl}"
+          - image: cadip
+            whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
+          - image: catalog
+            whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
+          - image: frontend
+            whl_pattern: "{rs_server_frontend-*.whl,rs_server_common-*.whl}"
+          - image: osam
+            whl_pattern: "{rs_server_osam-*.whl,rs_server_common-*.whl}"
+          - image: prip
+            whl_pattern: "{rs_server_prip-*.whl,rs_server_common-*.whl}"
+          - image: staging
+            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+            build_args: [test_a, test_b]
 
-  #     - name: Download .whl dependencies
-  #       uses: actions/download-artifact@v8
-  #       with:
-  #         name: ${{ needs.services-adgs-whl.outputs.package_name }}
-  #         path: ./build_context_path
 
-  #     - name: Copy Dockerfile requirements
-  #       run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
-  #       shell: bash
+    steps:
+      - uses: actions/checkout@v6
 
-  #     - name: Copy debug mode dependencies
-  #       if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
-  #       run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
-  #       shell: bash
+      # Download .whl files into a local dir
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.whl_pattern }}
+          path: ./build_context_path
 
-  #     - id: publish-docker
-  #       uses: ./.github/actions/publish-docker
-  #       with:
-  #         dockerfile: ./services/adgs/.github/Dockerfile
-  #         build_context_path: ./build_context_path
-  #         image_suffix: -adgs
-  #         version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
-  #         dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-  #         dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-  #         docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-  #         branch_name: ${{ needs.set-env.outputs.branch_name }}
-  #         debug_mode: ${{ needs.set-env.outputs.debug_mode }}
+      - name: Test
+        run: |
+          set -x
+          ls ./build_context_path
+          echo "${{ matrix.build_args }}
+        shell: bash
+
+      - name: Copy Dockerfile requirements
+        run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+        shell: bash
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
+
+      # - id: publish-docker
+      #   uses: ./.github/actions/publish-docker
+      #   with:
+      #     dockerfile: ./services/adgs/.github/Dockerfile
+      #     build_context_path: ./build_context_path
+      #     image_suffix: -adgs
+      #     version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
+      #     dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+      #     dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+      #     branch_name: ${{ needs.set-env.outputs.branch_name }}
+      #     debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   #########################
   # Publish Docker images #
