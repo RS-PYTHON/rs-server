@@ -51,7 +51,9 @@ runs:
     # Run 'poetry dynamic-versioning' from the root folder to find the version name, sed the result
     - name: Find version name
       id: version_name
-      run: "echo version_name=$(poetry dynamic-versioning |& sed -n 's|Version: ||p') >> $GITHUB_OUTPUT"
+      run: |
+        set -x
+        echo "version_name=$(poetry dynamic-versioning |& sed -n 's|Version: ||p')" >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Build wheel and sdist
@@ -64,13 +66,13 @@ runs:
     # Note: the wheel file is built in package_directory/dist
     - name: Find wheel filename
       id: package_name
-      run: echo package_name=$(basename ${{ env.PACKAGE_DIRECTORY }}/dist/*.whl) >> "$GITHUB_OUTPUT"
+      run: set -x; echo package_name=$(basename ${{ env.PACKAGE_DIRECTORY }}/dist/*.whl) >> "$GITHUB_OUTPUT"
       shell: bash
 
     # Note: the sdist file is built in package_directory/dist
     - name: Find sdist filename
       id: sdist_name
-      run: echo sdist_name=$(basename ${{ env.PACKAGE_DIRECTORY }}/dist/*.tar.gz) >> "$GITHUB_OUTPUT"
+      run: set -x; echo sdist_name=$(basename ${{ env.PACKAGE_DIRECTORY }}/dist/*.tar.gz) >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Save wheel package as artifact

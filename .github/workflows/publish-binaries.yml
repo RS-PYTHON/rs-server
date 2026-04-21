@@ -134,7 +134,7 @@ jobs:
       #     set -x
       #     touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
       #     touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-      #     echo "version_name=my-version-name" >> "$GITHUB_OUTPUT"
+      #     echo "version_name=my-version_name" >> "$GITHUB_OUTPUT"
       # - name: Save wheel package as artifact
       #   uses: actions/upload-artifact@v5
       #   with:
@@ -229,12 +229,12 @@ jobs:
           - image: staging-dask-k8s
             whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-            image_suffix: /dask/staging/k8s
+            image_suffix: dask/staging/k8s
             build_args: "BASE_IMAGE_TARGET=k8s"
           - image: staging-dask-local
             whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-            image_suffix: /dask/staging/local
+            image_suffix: dask/staging/local
             build_args: "BASE_IMAGE_TARGET=local"
 
     steps:
@@ -266,7 +266,7 @@ jobs:
         with:
           dockerfile: ${{ matrix.dockerfile }}
           build_context_path: ./build_context_path
-          image_basename: ${{ github.repository_owner }}
+          image_basename: ${{ github.repository_owner }}/
           image_suffix: ${{ matrix.image_suffix }}
           version_name: ${{ needs.build-wheels.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}

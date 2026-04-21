@@ -77,7 +77,6 @@ runs:
         password: ${{ inputs.github_token }}
 
     # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
-    # Then we can use ${{ inputs.docker_version_name }}
     - env:
         VERSION_NAME: ${{ inputs.version_name }}
       run: set -x; echo "docker_version_name=$(echo $VERSION_NAME | tr + .)" >> $GITHUB_ENV
@@ -148,7 +147,7 @@ runs:
         tags: ${{ env.docker_image }}
         labels: ${{ steps.meta.outputs.labels }}
         push: false # push after the security scans below
-        build-args: ${{ inputs.build_args }}
+        build_args: ${{ inputs.build_args }}
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
