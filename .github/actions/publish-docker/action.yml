@@ -82,14 +82,16 @@ runs:
         username: ${{ github.actor }}
         password: ${{ inputs.github_token }}
 
-    # Replace special characters by - in the docker image tags
+    # Replace special characters by - in the docker image names and tags
     - env:
         IMAGE_TAG1: ${{ inputs.image_tag1 }}
         IMAGE_TAG2: ${{ inputs.image_tag2 }}
+        IMAGE_ARTIFACT: "${{ inputs.image_basename }}${{ inputs.image_suffix }}"
       run: |
         set -x
         echo image_tag1=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_TAG1") >> $GITHUB_ENV
         echo image_tag2=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_TAG2") >> $GITHUB_ENV
+        echo image_artifact=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_ARTIFACT") >> $GITHUB_ENV
       shell: bash
 
     # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<tag1> in lowercase
@@ -167,6 +169,18 @@ runs:
         labels: ${{ steps.meta.outputs.labels }}
         push: false # push after the security scans below
         build-args: ${{ inputs.build_args }}
+
+    - name: Save Docker image as tar
+      run: |
+        set -x
+        docker save ${{ env.docker_image1 }} ${{ env.docker_image2 }} > ./${{ env.image_artifact }}.image.tar
+      shell: bash
+
+    - name: Upload tar Docker image as artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.image_artifact }}.image.tar
+        path: ./${{ env.image_artifact }}.image.tar
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1

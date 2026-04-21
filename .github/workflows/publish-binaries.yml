@@ -30,6 +30,7 @@ on:
 env:
   PYTHON_VERSION: 3.13.12
   DOCKER_REGISTRY: ghcr.io
+  PUSH_AFTER_TESTING: main,latest,feat-rspy964-push-latest-after-tests
 
 jobs:
 
@@ -133,12 +134,12 @@ jobs:
           touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
           echo "version_name=my-version_name" >> "$GITHUB_OUTPUT"
       - name: Save wheel package as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
           path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
       - name: Save sdist as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
           path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
@@ -160,8 +161,8 @@ jobs:
       - name: Download dist dependencies
         uses: actions/download-artifact@v8
         with:
-          merge-multiple: true
           path: ./dist
+          merge-multiple: true
       - name: Publish wheel and sdist packages
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
         with:
@@ -246,6 +247,7 @@ jobs:
         with:
           pattern: ${{ matrix.whl_pattern }}
           path: ./build_context_path
+          merge-multiple: true
 
       # Copy the entrypoint script under the same dir
       - if: ${{ matrix.image == 'frontend' }}
@@ -276,11 +278,7 @@ jobs:
           build_args: ${{ matrix.build_args }}
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
-          dont_push: feat-rspy964-push-latest-after-tests
-
-  # ###########
-  # # TESTING #
-  # ###########
+          dont_push: ${{ env.PUSH_AFTER_TESTING }}
 
   # # Test rs-demo with the new Docker images
   # test-demo:
@@ -320,3 +318,30 @@ jobs:
   #         # Run the rs-demo local mode using the newly created docker images
   #         ./test-rs-demo.sh
   #       shell: bash
+
+  push-after-testing:
+    name: "Push Docker images after testing"
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    needs: publish-docker-images
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v8
+        with:
+          pattern: "*.image.tar"
+          path: ./images
+          merge-multiple: true
+      - name: Load image
+        run: |
+          set -x
+          docker images
+          for f in $(find ./images -name "*.image.tar"); do
+            docker load --input "$f" &
+          done
+          wait
+          docker images
+
+          for image in $(docker images --format {{.Repository}}:{{.Tag}} | grep -i "/${{ github.repository_owner }}/"); do
+            docker push "$image" &
+          done
+          wait
