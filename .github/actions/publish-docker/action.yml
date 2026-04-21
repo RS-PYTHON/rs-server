@@ -80,7 +80,7 @@ runs:
     # Then we can use ${{ inputs.docker_version_name }}
     - env:
         VERSION_NAME: ${{ inputs.version_name }}
-      run: echo "docker_version_name=$(echo $VERSION_NAME | tr + .)" >> $GITHUB_ENV
+      run: set -x; echo "docker_version_name=$(echo $VERSION_NAME | tr + .)" >> $GITHUB_ENV
       shell: bash
 
     # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<version> in lowercase
@@ -88,6 +88,7 @@ runs:
       env:
         DOCKER_IMAGE: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}"
       run: |
+        set -x
         docker_image=${DOCKER_IMAGE,,} # lowercase
         echo docker_image=${docker_image} >> $GITHUB_ENV
         echo docker_image=${docker_image} >> $GITHUB_OUTPUT
@@ -195,7 +196,7 @@ runs:
     - name: Push Docker image
       env:
         DOCKER_IMAGE: ${{ env.docker_image }}
-      run: docker push ${DOCKER_IMAGE}
+      run: set -x; docker push ${DOCKER_IMAGE}
       shell: bash
 
     # Add a docker image tag and push it into the registry.
