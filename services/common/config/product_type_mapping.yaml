@@ -97,6 +97,12 @@ types:
     processingLevel: OCN
     legacyType: SM_OCN__2S
 
+  - productType: S01SSMSLC
+    mission: S1
+    instrumentMode: SM
+    processingLevel: SLC
+    legacyType: S[1-6]_SLC__1[AS]
+
   - productType: S01SEWSLC
     mission: S1
     instrumentMode: EW
