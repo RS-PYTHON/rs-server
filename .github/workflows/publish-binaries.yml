@@ -276,6 +276,7 @@ jobs:
           build_args: ${{ matrix.build_args }}
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
+          dont_push: feat-rspy964-push-latest-after-tests
 
   # ###########
   # # TESTING #
