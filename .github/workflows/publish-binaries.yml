@@ -97,13 +97,13 @@ jobs:
       matrix:
         service: # all services must be under the services/ folder
           - adgs
-          # - cadip
-          # - catalog
-          # - common
+          - cadip
+          - catalog
+          - common
           # - frontend
           # - osam
           # - prip
-          # - staging
+          - staging
     outputs:
       version_name: ${{ steps.outputs.outputs.version_name }}
     steps:
@@ -122,27 +122,27 @@ jobs:
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
         shell: bash
 
-      # - id: build-wheel
-      #   uses: ./.github/actions/build-wheel
-      #   with:
-      #     package_directory: "services/${{ matrix.service }}"
-
       - id: build-wheel
-        run: |
-          set -x
-          touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-          touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-          echo "version_name=my-version_name" >> "$GITHUB_OUTPUT"
-      - name: Save wheel package as artifact
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/build-wheel
         with:
-          name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-          path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-      - name: Save sdist as artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-          path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+          package_directory: "services/${{ matrix.service }}"
+
+      # - id: build-wheel
+      #   run: |
+      #     set -x
+      #     touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
+      #     touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+      #     echo "version_name=my-version_name" >> "$GITHUB_OUTPUT"
+      # - name: Save wheel package as artifact
+      #   uses: actions/upload-artifact@v7
+      #   with:
+      #     name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
+      #     path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
+      # - name: Save sdist as artifact
+      #   uses: actions/upload-artifact@v7
+      #   with:
+      #     name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+      #     path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
 
 
       - id: outputs
@@ -182,13 +182,13 @@ jobs:
       matrix:
         image:
           - adgs
-          # - cadip
-          # - catalog
+          - cadip
+          - catalog
           # - frontend
           # - osam
           # - prip
           # - staging
-          # - staging-dask-k8s
+          - staging-dask-k8s
           # - staging-dask-local
 
         # Options specific to each image.
@@ -200,17 +200,14 @@ jobs:
             whl_pattern: "{rs_server_adgs-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/adgs/.github/Dockerfile
             image_suffix: rs-server-adgs
-
-
-            build_args: "REMOVE=ME"
-          # - image: cadip
-          #   whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/cadip/.github/Dockerfile
-          #   image_suffix: rs-server-cadip
-          # - image: catalog
-          #   whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/catalog/.github/Dockerfile
-          #   image_suffix: rs-server-catalog
+          - image: cadip
+            whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/cadip/.github/Dockerfile
+            image_suffix: rs-server-cadip
+          - image: catalog
+            whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/catalog/.github/Dockerfile
+            image_suffix: rs-server-catalog
           # - image: frontend
           #   whl_pattern: "rs_server_frontend-*.whl"
           #   dockerfile: ./services/frontend/.github/Dockerfile
@@ -227,11 +224,11 @@ jobs:
           #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
           #   dockerfile: ./services/staging/.github/Dockerfile
           #   image_suffix: rs-server-staging
-          # - image: staging-dask-k8s
-          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-          #   image_suffix: dask/staging/k8s
-          #   build_args: "BASE_IMAGE_TARGET=k8s"
+          - image: staging-dask-k8s
+            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/staging/.github/Dockerfile.dask-staging
+            image_suffix: dask/staging/k8s
+            build_args: "BASE_IMAGE_TARGET=k8s"
           # - image: staging-dask-local
           #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
           #   dockerfile: ./services/staging/.github/Dockerfile.dask-staging
@@ -280,68 +277,110 @@ jobs:
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
           dont_push: ${{ env.PUSH_AFTER_TESTING }}
 
-  # # Test rs-demo with the new Docker images
-  # test-demo:
-  #   if: github.actor != 'dependabot[bot]'
-  #   runs-on: ubuntu-latest
-  #   name: "Test rs-demo"
-  #   needs:
-  #     - set-env
-  #     - services-adgs-img
-  #     - services-prip-img
-  #     - services-cadip-img
-  #     - services-catalog-img
-  #     - services-frontend-img
-  #     - services-staging-img
-  #     - services-osam-img
-  #     - dask-staging-local-img
-  #   steps:
-  #     - name: Log into Docker registry
-  #      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
-  #       with:
-  #         registry: ${{ env.DOCKER_REGISTRY }}
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - id: test-demos
-  #       name: "Test rs-demo"
-  #       env:
-  #         BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
-  #         DOCKER_TAG: ${{ needs.set-env.outputs.docker_tag }}
-  #       run: |
-  #         set -x
-
-  #         # Clone the rs-demo repository
-  #         git clone https://github.com/RS-PYTHON/rs-demo.git
-  #         cd rs-demo
-
-  #         # Run the rs-demo local mode using the newly created docker images
-  #         ./test-rs-demo.sh
-  #       shell: bash
-
-  push-after-testing:
-    name: "Push Docker images after testing"
+  # Test rs-demo with the new Docker images
+  test-demo:
+    name: "Test rs-demo"
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    needs: publish-docker-images
+    needs: [set-env, publish-docker-images]
+    permissions:
+     packages: write # needed for 'docker push'
     steps:
-      - name: Download artifact
+      - name: Log into Docker registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download tar Docker images artifacts
         uses: actions/download-artifact@v8
         with:
           pattern: "*.image.tar"
           path: ./images
           merge-multiple: true
-      - name: Load image
+      - name: Load Docker images
         run: |
           set -x
           docker images
           for f in $(find ./images -name "*.image.tar"); do
-            docker load --input "$f" &
+            docker load --input "$f" & # do it in a subprocess
           done
-          wait
+          wait # wait for subprocesses to finish
           docker images
 
-          for image in $(docker images --format {{.Repository}}:{{.Tag}} | grep -i "/${{ github.repository_owner }}/"); do
-            docker push "$image" &
+          # Calculate the list of images we'll push after running the demos, if they succeed.
+          # Do this before running the demos, because the demos will pull other docker images
+          # that we don't want to push afterwards.
+          push_images=""
+          for tag in $(echo "${{ env.PUSH_AFTER_TESTING }}" | tr "," "\n"); do
+            echo A
+            push_images="${push_images} $(docker images --format {{.Repository}}:{{.Tag}} | grep -i "/${{ github.repository_owner }}/.*:${tag}" || true)"
+            echo B
           done
+          echo "C $push_images"
+          echo "push_images=$push_images" >> $GITHUB_ENV
+          echo D
+
+      # - name: Test rs-demo
+      #   env:
+      #     BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
+      #     DOCKER_TAG: ${{ needs.set-env.outputs.docker_tag }}
+      #   run: |
+      #     set -x
+
+      #     # Clone the rs-demo repository
+      #     git clone https://github.com/RS-PYTHON/rs-demo.git
+      #     cd rs-demo
+
+      #     # Run the rs-demo local mode using the newly created docker images
+      #     ./test-rs-demo.sh
+
+      - name: "Push Docker images after testing"
+        run: |
+          set -x
+          for image in $push_images; do
+            docker push $image & # do it in a subprocess
+          done
+          wait # wait for subprocesses to finish
+
+
+  test1:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    needs: [set-env, publish-docker-images]
+    steps:
+      - name: Log into Docker registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load Docker images
+        run: |
+          set -x
+          docker pull ghcr.io/rs-python/rs-server-catalog:feat-rspy964-push-latest-after-tests
+          docker pull ghcr.io/rs-python/dask/staging/k8s:feat-rspy964-push-latest-after-tests
+          docker pull ghcr.io/rs-python/rs-server-adgs:feat-rspy964-push-latest-after-tests
+          docker pull ghcr.io/rs-python/rs-server-cadip:feat-rspy964-push-latest-after-tests
+
+
+  test2:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    needs: [set-env, publish-docker-images]
+    steps:
+      - name: Log into Docker registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load Docker images
+        run: |
+          set -x
+          docker pull ghcr.io/rs-python/rs-server-catalog:feat-rspy964-push-latest-after-tests &
+          docker pull ghcr.io/rs-python/dask/staging/k8s:feat-rspy964-push-latest-after-tests &
+          docker pull ghcr.io/rs-python/rs-server-adgs:feat-rspy964-push-latest-after-tests &
+          docker pull ghcr.io/rs-python/rs-server-cadip:feat-rspy964-push-latest-after-tests &
           wait
