@@ -178,9 +178,6 @@ jobs:
     permissions:
      security-events: write # needed for github/codeql-action/upload-sarif
      packages: write # needed for 'docker push'
-    outputs:
-      adgs: ${{ steps.outputs.outputs.adgs }}
-      cadip: ${{ steps.outputs.outputs.cadip }}
     strategy:
       matrix:
         image:
@@ -282,11 +279,20 @@ jobs:
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
           dont_push: ${{ env.PUSH_AFTER_TESTING }}
 
-      - id: outputs
-        run: |
-          set -x
-          # ${{ steps.publish-docker.outputs.docker_image }}
-          echo "${{ matrix.image }}=${{ steps.publish-docker.outputs.docker_image }}" >> "$GITHUB_OUTPUT"
+      - uses: cloudposse/github-action-matrix-outputs-write@81ea135d4c4f90a5220bb38304380073c571dbb8
+        id: out
+        with:
+          matrix-step-name: ${{ github.job }}
+          matrix-key: ${{ matrix.image }}
+          outputs: |-
+            docker_image: ${{ steps.publish-docker.outputs.docker_image }}
+            docker_image2: ${{ steps.publish-docker.outputs.docker_image2 }}
+
+      # - id: outputs
+      #   run: |
+      #     set -x
+      #     # ${{ steps.publish-docker.outputs.docker_image }}
+      #     echo "${{ matrix.image }}=${{ steps.publish-docker.outputs.docker_image }}" >> "$GITHUB_OUTPUT"
 
   # Test rs-demo with the new Docker images
   test-demo:
@@ -318,17 +324,29 @@ jobs:
       #     # Run the rs-demo local mode using the newly created docker images
       #     ./test-rs-demo.sh
 
-      - name: "Push Docker images after testing"
-        run: |
+      # - name: "Push Docker images after testing"
+      #   run: |
+      #     set -x
+
+      #     echo A
+      #     echo ${{ needs.publish-docker-images.outputs.adgs }}
+      #     echo C
+      #     echo ${{ needs.publish-docker-images.outputs.cadip }}
+      #     echo B
+
+      #     # for image in $push_images; do
+      #     #   docker push $image & # do it in a subprocess
+      #     # done
+      #     # wait # wait for subprocesses to finish
+
+      - uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
+        id: read
+        with:
+            matrix-step-name: publish-docker-images
+      # outputs:
+      #   result: "${{ steps.read.outputs.result }}"
+
+      - run: |
           set -x
-
-          echo A
-          echo ${{ needs.publish-docker-images.outputs.adgs }}
-          echo C
-          echo ${{ needs.publish-docker-images.outputs.cadip }}
-          echo B
-
-          # for image in $push_images; do
-          #   docker push $image & # do it in a subprocess
-          # done
-          # wait # wait for subprocesses to finish
+          echo "${{ fromJson(steps.read.outputs.result) }}"
+          echo "${{ steps.read.outputs.result }}"
