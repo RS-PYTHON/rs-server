@@ -22,7 +22,6 @@ import json
 import os
 import re
 from copy import deepcopy
-from importlib import reload
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -365,86 +364,6 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
 
 
 @pytest.mark.unit
-def test_load_external_auth_config_by_station_service_file_not_found(
-    mocker,
-):
-    """
-    Test error handling when configuration file is not found.
-
-    This test simulates a `FileNotFoundError` and ensures that the correct HTTPException with a
-    status code of 500 is raised when the configuration file is missing.
-
-    Args:
-        mocker: Mocking framework.
-        station_id: The ID of the station being tested.
-
-    Assertions:
-        - HTTPException is raised with a status code of 500 and a relevant error message.
-    """
-    mocker.patch("builtins.open", side_effect=FileNotFoundError)
-    with pytest.raises(HTTPException) as excinfo:
-        reload(authentication_to_external)
-    assert excinfo.value.status_code == 500
-    assert "Error loading configuration" in excinfo.value.detail
-
-
-@pytest.mark.unit
-def test_load_external_auth_config_by_station_service_yaml_error(mocker):
-    """
-    Test error handling for invalid YAML format.
-
-    This test ensures that when a YAML file with invalid formatting is loaded, a `YAMLError` is raised,
-    and an appropriate HTTPException with a status code of 500 is returned. The logger should record an error.
-
-    Args:
-        mocker: Mocking framework.
-        station_id: The ID of the station being tested.
-
-    Assertions:
-        - HTTPException is raised with a status code of 500 and relevant error details.
-        - Logger error message is called once.
-    """
-
-    mocker.patch("builtins.open", mocker.mock_open(read_data="invalid: yaml: data"))
-    mocker.patch(
-        "yaml.safe_load",
-        side_effect=yaml.YAMLError,
-    )
-    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
-    with pytest.raises(HTTPException) as excinfo:
-        reload(authentication_to_external)
-    assert excinfo.value.status_code == 500
-    assert "Error loading configuration" in excinfo.value.detail
-    mock_logger.assert_called_once()
-
-
-@pytest.mark.unit
-def test_load_external_auth_config_by_station_service_unexpected_exception(mocker):
-    """
-    Test handling of an unexpected exception during configuration loading.
-
-    This test simulates an unexpected error (generic Exception) during the configuration loading process
-    and verifies that the correct HTTPException with status 500 and an appropriate error message is raised.
-    The logger should record the exception.
-
-    Args:
-        mocker: Mocking framework.
-        station_id: The ID of the station being tested.
-
-    Assertions:
-        - HTTPException is raised with status 500 and an appropriate error message.
-        - Logger logs the exception.
-    """
-    mocker.patch("builtins.open", side_effect=Exception("Unexpected error"))
-    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.exception")
-    with pytest.raises(HTTPException) as excinfo:
-        reload(authentication_to_external)
-    assert excinfo.value.status_code == 500
-    assert "An unexpected error occurred" in excinfo.value.detail
-    mock_logger.assert_called_once()
-
-
-@pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
 def test_load_external_auth_config_by_station_service_no_matching_service(mocker, station_id, get_external_auth_config):
     """
@@ -635,81 +554,6 @@ def test_load_s3_external_authentication_by_domain_config_valid(mocker, get_s3_e
         result.domain
         == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local"
     )
-
-
-@pytest.mark.unit
-def test_load_external_auth_config_by_domain_file_not_found(mocker):
-    """
-    Test error handling when configuration file is not found by domain.
-
-    This test simulates a `FileNotFoundError` when attempting to load a configuration file by domain.
-    It verifies that the correct HTTPException with a status code of 500 is raised.
-
-    Args:
-        mocker: Mocking framework.
-
-    Assertions:
-        - HTTPException is raised with a status code of 500 and a relevant error message.
-    """
-    mocker.patch("builtins.open", side_effect=FileNotFoundError)
-    with pytest.raises(HTTPException) as excinfo:
-        reload(authentication_to_external)
-    assert excinfo.value.status_code == 500
-    assert "Error loading configuration" in excinfo.value.detail
-
-
-@pytest.mark.unit
-def test_load_external_auth_config_by_domain_yaml_error(mocker):
-    """
-    Test error handling for invalid YAML format when loading by domain.
-
-    This test ensures that when a YAML file with invalid formatting is loaded by domain, a `YAMLError`
-    is raised, and an appropriate HTTPException with a status code of 500 is returned. The logger should
-    record an error.
-
-    Args:
-        mocker: Mocking framework.
-
-    Assertions:
-        - HTTPException is raised with a status code of 500 and relevant error details.
-        - Logger error message is called once.
-    """
-    mocker.patch("builtins.open", mocker.mock_open(read_data="invalid: yaml: data"))
-    mocker.patch(
-        "yaml.safe_load",
-        side_effect=yaml.YAMLError,
-    )
-    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
-    with pytest.raises(HTTPException) as excinfo:
-        reload(authentication_to_external)
-    assert excinfo.value.status_code == 500
-    assert "Error loading configuration" in excinfo.value.detail
-    mock_logger.assert_called_once()
-
-
-@pytest.mark.unit
-def test_load_external_auth_config_by_domain_unexpected_exception(mocker):
-    """
-    Test handling of an unexpected exception during configuration loading by domain.
-
-    This test simulates an unexpected error (generic Exception) during the configuration loading process
-    by domain and verifies that the correct HTTPException with status 500 and an appropriate error message
-    is raised. The logger should record the exception.
-
-    Args:
-        mocker: Mocking framework.
-
-    Assertions:
-        - HTTPException is raised with status 500 and an appropriate error message.
-        - Logger logs the exception.
-    """
-    mocker.patch("builtins.open", side_effect=Exception("Unexpected error"))
-    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.exception")
-    with pytest.raises(HTTPException) as excinfo:
-        reload(authentication_to_external)
-    assert excinfo.value.status_code == 500
-    assert "An unexpected error occurred" in excinfo.value.detail
-    mock_logger.assert_called_once()
 
 
 @pytest.mark.unit

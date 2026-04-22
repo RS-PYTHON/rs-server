@@ -42,20 +42,8 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
     """
     Read the rs-server configuration for authentication to extenal stations.
 
-    In local mode, we read an existing rs-server.yaml local file, either customized by the user
-    or released with the source code.
-
-    In cluster mode, we read the environment variables with the pattern:
-    RSPY__TOKEN__<service>__<station>__<section_name>__<rest_of_the_info_for_key>
-
     Returns:
         dict: A dictionary containing the configuration data
-
-    Raises:
-        HTTPException:
-            - If the configuration file cannot be found (`FileNotFoundError`).
-            - If there is an error in reading or parsing the YAML file (`yaml.YAMLError`).
-            - For any other unexpected errors that occur during the file reading process.
     """
     config_data: dict[str, Any] = {}
 
