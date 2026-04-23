@@ -24,6 +24,41 @@ Changed
 
 None
 
+[1.0a9] - Sprint 35 - 2026-04-22
+================================
+
+## Added
+
+- RSPY-688: Update to latest stable version of Keycloak
+- RSPY-912: Provide access to the playground bucket for any user
+- RSPY-972: Use the same S3 environment variables in local mode and cluster mode
+- RSPY-973: Remove the "/data/lifecycle" endpoint in local mode
+- RSPY-975: Have the same algorithm to choose staging dask cluster in local and cluster mode
+- RSPY-979: Return valid geojson geometries from PRIP/LTA
+- RSPY-987: Unzip AUX file (workaround for cpm issue 1043)
+- RSPY-995: SonarCloud Scanner should be run at the root of the projects
+- RSPY-997: Sprint 35 corrections of issues
+- RSPY-998: Run Sonar on all repositories
+- RSPY-1003: Add s3-l1-olci processor 1.4.0 to the DPR service
+- RSPY-1008: Have the same algorithm to choose DPR dask cluster in local and cluster mode
+- RSPY-1012: Catalog & Staging: Make the item publication more reliable
+- RSPY-1043: Create a new Dask image with only CPM
+
+## Fixed
+
+- RSPY-955: Missing actions for OBS write access rights ( 2 pts )
+- RSPY-970: Improve the ci/cds for the dask images (5pts)
+- RSPY-986: [DPR Processing] uncoherent behavior for HKTM/GP catalog ingestion ( 3 pts )
+- RSPY-988: [DPR Processing] Additional external satellite field not managed in tasktable ( 3 pts )
+- RSPY-1001: Solve dependency incompatibilities in rs-documentation (1pt)
+- RSPY-1011: OSAM S3StorageConfigurationSingleton class - removal or change of the implementation (2 pts)
+- RSPY-1021: Incorrect bucket resolution when publishing a STAC item session to rs‑catalog (2pt)
+- RSPY-1022: Extracted S3 AUX doesn't appear as input for S3_L0 processing
+- RSPY-1024: S3 OSF auxiliary product not well extracted (1pt)
+- RSPY-1027: Staging: Wrong check of invalid domain (1pt)
+- RSPY-1028: Wrong Pydantic validation in staging that forbids staging from CDSE (1pt)
+- RSPY-1029: Staging forbids downloading from multiple domains (1pt)
+
 [1.0a8] - Sprint 34 - 2026-03-25
 ================================
 
