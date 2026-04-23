@@ -52,9 +52,6 @@ inputs:
   build_args:
     description: List of build-time variables
     required: false
-  dont_push:
-    description: Don't push these Docker image tags, as a comma-separated list e.g. 'main,latest'
-    required: false
 
 outputs:
   docker_image:
@@ -99,19 +96,15 @@ runs:
       env:
         DOCKER_IMAGE1: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.image_tag1 }}"
         DOCKER_IMAGE2: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.image_tag2 }}"
-        DONT_PUSH: ${{ inputs.dont_push }}
       run: |
         set -x
-
         docker_image1=${DOCKER_IMAGE1,,} # lowercase
         echo "docker_image1=${docker_image1}" >> "$GITHUB_ENV"
         echo "docker_image1=${docker_image1}" >> "$GITHUB_OUTPUT"
-        [[ ",${DONT_PUSH}," =~ ",${image_tag1}," ]] && (echo dont_push1=true >> "$GITHUB_ENV")
 
         [[ -n "${{ env.image_tag2 }}" ]] && docker_image2=${DOCKER_IMAGE2,,} # lowercase, only if image_tag2 is set
         echo "docker_image2=${docker_image2}" >> "$GITHUB_ENV"
         echo "docker_image2=${docker_image2}" >> "$GITHUB_OUTPUT"
-        [[ ",${DONT_PUSH}," =~ ",${image_tag2}," ]] && (echo dont_push2=true >> "$GITHUB_ENV")
       shell: bash
 
     # Extract metadata from Git reference and GitHub events
@@ -213,16 +206,13 @@ runs:
           >> $GITHUB_STEP_SUMMARY
       shell: bash
 
-    - name: Push Docker image
-      if: ${{ env.dont_push1 != 'true' }}
+    - name: Push Docker images
       env:
         DOCKER_IMAGE1: ${{ env.docker_image1 }}
-      run: set -x; docker images; docker push ${DOCKER_IMAGE1}
-      shell: bash
-
-    - name: Push tagged Docker image
-      if: ${{ (env.docker_image2 != '') && (env.dont_push2 != 'true') }}
-      env:
         DOCKER_IMAGE2: ${{ env.docker_image2 }}
-      run: set -x; docker images; docker push ${DOCKER_IMAGE2}
+      run: |
+        set -x
+        docker images
+        docker push $DOCKER_IMAGE1
+        [[ -n $DOCKER_IMAGE2 ]] && docker push $DOCKER_IMAGE2
       shell: bash

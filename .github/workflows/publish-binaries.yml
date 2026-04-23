@@ -23,14 +23,14 @@ on:
     tags: ['**'] # new git tags (including hierarchical tags like v1.0/beta)
   workflow_dispatch: # manual trigger
     inputs:
-      docker_tag:
-        description: Tag the docker images as e.g. 'latest' or 'feat-rspy123'
+      docker_tag2:
+        description: Add this tag to the docker images as e.g. 'latest' or 'feat-rspy123'
         required: false
 
 env:
   PYTHON_VERSION: 3.13.12
   DOCKER_REGISTRY: ghcr.io
-  PUSH_AFTER_TESTING: latest,feat-rspy964-push-latest-after-tests
+  PUSH_TAG2_AFTER_TESTING: latest,feat-rspy964-push-latest-after-tests
 
 jobs:
 
@@ -39,9 +39,12 @@ jobs:
     name: "Set environment"
     if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
     runs-on: ubuntu-latest
+    needs: build-wheels
     outputs:
-      docker_tag: ${{ steps.set-env.outputs.docker_tag }}
       branch_name: ${{ steps.set-env.outputs.branch_name }}
+      docker_tag1: ${{ steps.set-env.outputs.docker_tag2 }}
+      docker_tag2: ${{ steps.set-env.outputs.docker_tag2 }}
+      push_tag2_after_testing: ${{ steps.set-env.outputs.push_tag2_after_testing }}
       debug_mode: ${{ steps.set-env.outputs.debug_mode }}
     steps:
       - id: set-env
@@ -58,23 +61,30 @@ jobs:
             branch_name=${{ github.ref_name }}
           fi
 
-          # Determine the docker tag to set to new docker images.
+          # NOTE: the first docker tag will always be the wheel version name, determined from the git commit id.
+          docker_tag1 = "${{ needs.build-wheels.outputs.version_name }}"
+
+          # Determine the second docker tag to add to new docker images.
+
           # For a pull request, use the branch name
           if [[ ${{ github.event_name }} == pull_request ]]; then
-            docker_tag="$branch_name"
+            docker_tag2="$branch_name"
 
           # For a push on develop or a tag, use the docker tag :latest
           elif [[ ${{ github.event_name }} == push ]]; then
-            docker_tag=latest
+            docker_tag2=latest
 
           # For a manual trigger, use the user-defined tag
           elif [[ ${{ github.event_name }} == workflow_dispatch ]]; then
-            docker_tag=${{ github.event.inputs.docker_tag }}
+            docker_tag2=${{ github.event.inputs.docker_tag2 }}
 
           else
             >&2 echo "Unknown trigger"
             exit 1
           fi
+
+          # Push this second docker tag only after testing ?
+          [[ ",${PUSH_TAG2_AFTER_TESTING}," =~ ",${docker_tag2}," ]] && push_tag2_after_testing=true
 
           # Always use the debug mode except for new tags
           debug_mode=true
@@ -84,7 +94,8 @@ jobs:
 
           # Save values
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
-          echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT
+          echo "docker_tag2=$docker_tag2" >> $GITHUB_OUTPUT
+          echo "push_tag2_after_testing=$push_tag2_after_testing" >> $GITHUB_OUTPUT
           echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
         shell: bash
 
@@ -269,15 +280,14 @@ jobs:
           build_context_path: ./build_context_path
           image_basename: ${{ github.repository_owner }}/
           image_suffix: ${{ matrix.image_suffix }}
-          image_tag1: ${{ needs.build-wheels.outputs.version_name }}
-          image_tag2: ${{ needs.set-env.outputs.docker_tag }}
+          image_tag1: ${{ needs.set-env.outputs.docker_tag1 }}
+          image_tag2: ${{ case(needs.set-env.outputs.push_tag2_after_testing == 'true', '', needs.set-env.outputs.docker_tag2) }} # set 2nd tag now or after testing ?
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           build_args: ${{ matrix.build_args }}
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
-          dont_push: ${{ env.PUSH_AFTER_TESTING }}
 
       - uses: cloudposse/github-action-matrix-outputs-write@81ea135d4c4f90a5220bb38304380073c571dbb8
         id: out
@@ -288,18 +298,12 @@ jobs:
             docker_image: ${{ steps.publish-docker.outputs.docker_image }}
             docker_image2: ${{ steps.publish-docker.outputs.docker_image2 }}
 
-      # - id: outputs
-      #   run: |
-      #     set -x
-      #     # ${{ steps.publish-docker.outputs.docker_image }}
-      #     echo "${{ matrix.image }}=${{ steps.publish-docker.outputs.docker_image }}" >> "$GITHUB_OUTPUT"
-
   # Test rs-demo with the new Docker images
   test-demo:
     name: "Test rs-demo"
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    needs: [set-env, publish-docker-images]
+    needs: [set-env, build-wheels, publish-docker-images]
     permissions:
      packages: write # needed for 'docker push'
     steps:
@@ -313,7 +317,7 @@ jobs:
       # - name: Test rs-demo
       #   env:
       #     BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
-      #     DOCKER_TAG: ${{ needs.set-env.outputs.docker_tag }}
+      #     DOCKER_TAG: ${{ needs.build-wheels.outputs.version_name--- }}
       #   run: |
       #     set -x
 
