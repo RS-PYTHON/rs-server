@@ -30,74 +30,8 @@ on:
 env:
   PYTHON_VERSION: 3.13.12
   DOCKER_REGISTRY: ghcr.io
-  PUSH_TAG2_AFTER_TESTING: latest,feat-rspy964-push-latest-after-tests
 
 jobs:
-
-  # Calculate variables for this workflow
-  set-env:
-    name: "Set environment"
-    if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
-    runs-on: ubuntu-latest
-    needs: build-wheels
-    outputs:
-      branch_name: ${{ steps.set-env.outputs.branch_name }}
-      docker_tag1: ${{ steps.set-env.outputs.docker_tag2 }}
-      docker_tag2: ${{ steps.set-env.outputs.docker_tag2 }}
-      push_tag2_after_testing: ${{ steps.set-env.outputs.push_tag2_after_testing }}
-      debug_mode: ${{ steps.set-env.outputs.debug_mode }}
-    steps:
-      - id: set-env
-        name: "Set environment"
-        env:
-          SOURCE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
-        run: |
-          set -x
-
-          # Get the current branch name (or source branch for a pull request)
-          if [[ ${{ github.event_name }} == pull_request ]]; then
-            branch_name="$SOURCE_BRANCH_NAME"
-          else
-            branch_name=${{ github.ref_name }}
-          fi
-
-          # NOTE: the first docker tag will always be the wheel version name, determined from the git commit id.
-          docker_tag1 = "${{ needs.build-wheels.outputs.version_name }}"
-
-          # Determine the second docker tag to add to new docker images.
-
-          # For a pull request, use the branch name
-          if [[ ${{ github.event_name }} == pull_request ]]; then
-            docker_tag2="$branch_name"
-
-          # For a push on develop or a tag, use the docker tag :latest
-          elif [[ ${{ github.event_name }} == push ]]; then
-            docker_tag2=latest
-
-          # For a manual trigger, use the user-defined tag
-          elif [[ ${{ github.event_name }} == workflow_dispatch ]]; then
-            docker_tag2=${{ github.event.inputs.docker_tag2 }}
-
-          else
-            >&2 echo "Unknown trigger"
-            exit 1
-          fi
-
-          # Push this second docker tag only after testing ?
-          [[ ",${PUSH_TAG2_AFTER_TESTING}," =~ ",${docker_tag2}," ]] && push_tag2_after_testing=true
-
-          # Always use the debug mode except for new tags
-          debug_mode=true
-          if [[ ${{ github.ref_type }} == tag ]]; then
-            debug_mode=false
-          fi
-
-          # Save values
-          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
-          echo "docker_tag2=$docker_tag2" >> $GITHUB_OUTPUT
-          echo "push_tag2_after_testing=$push_tag2_after_testing" >> $GITHUB_OUTPUT
-          echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
-        shell: bash
 
   build-wheels:
     name: "Build wheels"
@@ -161,25 +95,68 @@ jobs:
         if: ${{ matrix.service == 'adgs' }}
         run: echo "version_name=${{ steps.build-wheel.outputs.version_name }}" >> "$GITHUB_OUTPUT"
 
-  publish-wheels-pypi:
-    name: "Publish wheels and sdists to PyPI"
-    if: (github.actor != 'dependabot[bot]') && (github.event_name == 'push') && startsWith(github.ref, 'refs/tags')
+  set-env:
+    name: "Set environment"
+    if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
     runs-on: ubuntu-latest
-    needs: [build-wheels]
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    needs: build-wheels
+    outputs:
+      branch_name: ${{ steps.set-env.outputs.branch_name }}
+      debug_mode: ${{ steps.set-env.outputs.debug_mode }}
+      docker_tags: ${{ steps.set-env.outputs.docker_tags }} # separated by ,
+      docker_temp_tag: ${{ steps.set-env.outputs.docker_temp_tag }}
     steps:
-      - name: Download dist dependencies
-        uses: actions/download-artifact@v8
-        with:
-          path: ./dist
-          merge-multiple: true
-      - name: Publish wheel and sdist packages
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
-        with:
-          skip-existing: true
-          packages-dir: ./dist
-          verbose: true
+      - id: set-env
+        env:
+          SOURCE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -x
+
+          # Get the current branch name (or source branch for a pull request)
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            branch_name="$SOURCE_BRANCH_NAME"
+          else
+            branch_name=${{ github.ref_name }}
+          fi
+
+          # Always use the debug mode except for new tags
+          debug_mode=true
+          if [[ ${{ github.ref_type }} == tag ]]; then
+            debug_mode=false
+          fi
+
+          # The first docker tag is the wheel version name, calculated from the git commit id, e.g. x.y.postz.dev0
+          docker_tags="${{ needs.build-wheels.outputs.version_name }}"
+
+          # Calculate the second docker tag.
+          # For a pull request, use the branch name
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            docker_tags="${docker_tags},${branch_name}"
+
+          # For a push on develop or a tag, use the docker tag :latest
+          elif [[ ${{ github.event_name }} == push ]]; then
+            docker_tags="${docker_tags},latest"
+
+            # In this specific case, the image tags are sensitive (e.g. vx.y.z and latest)
+            # so we want to push them only after the tests have passed.
+            # In the meantime, we'll use a temporary unique docker tag = the ci/cd workflow run id.
+            docker_temp_tag="${{github.run_id}}"
+
+          # For a manual trigger, use the user-defined tag
+          elif [[ ${{ github.event_name }} == workflow_dispatch ]]; then
+            docker_tags="${docker_tags},${{ github.event.inputs.docker_tag2 }}"
+
+          else
+            >&2 echo "Unknown trigger"
+            exit 1
+          fi
+
+          # Save values
+          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+          echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
+          echo "docker_tags=$docker_tags" >> $GITHUB_OUTPUT
+          echo "docker_temp_tag=$docker_temp_tag" >> $GITHUB_OUTPUT
+        shell: bash
 
   publish-docker-images:
     name: "Build and publish Docker images"
@@ -189,6 +166,8 @@ jobs:
     permissions:
      security-events: write # needed for github/codeql-action/upload-sarif
      packages: write # needed for 'docker push'
+    outputs:
+      last_image_tag: ${{ steps.publish-docker.outputs.last_image_tag }} # same value for all images
     strategy:
       matrix:
         image:
@@ -280,8 +259,10 @@ jobs:
           build_context_path: ./build_context_path
           image_basename: ${{ github.repository_owner }}/
           image_suffix: ${{ matrix.image_suffix }}
-          image_tag1: ${{ needs.set-env.outputs.docker_tag1 }}
-          image_tag2: ${{ case(needs.set-env.outputs.push_tag2_after_testing == 'true', '', needs.set-env.outputs.docker_tag2) }} # set 2nd tag now or after testing ?
+          image_tags: ${{
+            case(needs.set-env.outputs.docker_temp_tag != '',
+            needs.set-env.outputs.docker_temp_tag,
+            needs.set-env.outputs.docker_tags) }} # pass the temp tag if defined, else the nominal tags
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -314,43 +295,49 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Test rs-demo
-      #   env:
-      #     BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
-      #     DOCKER_TAG: ${{ needs.build-wheels.outputs.version_name--- }}
-      #   run: |
-      #     set -x
+      - name: Test rs-demo
+        env:
+          BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
+          DOCKER_TAG: ${{ needs.publish-docker-images.outputs.last_image_tag }}
+        run: |
+          set -x
 
-      #     # Clone the rs-demo repository
-      #     git clone https://github.com/RS-PYTHON/rs-demo.git
-      #     cd rs-demo
+          # Clone the rs-demo repository
+          git clone https://github.com/RS-PYTHON/rs-demo.git
+          cd rs-demo
 
-      #     # Run the rs-demo local mode using the newly created docker images
-      #     ./test-rs-demo.sh
+          # Run the rs-demo local mode using the newly created docker images
+          # ./test-rs-demo.sh
 
-      # - name: "Push Docker images after testing"
-      #   run: |
-      #     set -x
-
-      #     echo A
-      #     echo ${{ needs.publish-docker-images.outputs.adgs }}
-      #     echo C
-      #     echo ${{ needs.publish-docker-images.outputs.cadip }}
-      #     echo B
-
-      #     # for image in $push_images; do
-      #     #   docker push $image & # do it in a subprocess
-      #     # done
-      #     # wait # wait for subprocesses to finish
-
-      - uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
-        id: read
+      # If we used a temp docker tag, and only if the tests succeeded, then
+      # we tag the images with the real tags and push them.
+      - id: read-matrix-outputs
+        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
+        uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
         with:
             matrix-step-name: publish-docker-images
-      # outputs:
-      #   result: "${{ steps.read.outputs.result }}"
-
-      - run: |
+      - name: Push Docker images after testing
+        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
+        run: |
           set -x
-          echo "${{ fromJson(steps.read.outputs.result) }}"
-          echo "${{ steps.read.outputs.result }}"
+          echo "${{ fromJson(steps.read-matrix-outputs.outputs.result) }}"
+          echo "${{ steps.read-matrix-outputs.outputs.result }}"
+  publish-wheels-pypi:
+    name: "Publish wheels and sdists to PyPI"
+    if: (github.actor != 'dependabot[bot]') && (github.event_name == 'push') && startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    needs: [test-demo] # only if the tests succeeded
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Download dist dependencies
+        uses: actions/download-artifact@v8
+        with:
+          path: ./dist
+          merge-multiple: true
+      - name: Publish wheel and sdist packages
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        with:
+          skip-existing: true
+          packages-dir: ./dist
+          verbose: true

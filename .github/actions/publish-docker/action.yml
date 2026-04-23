@@ -28,12 +28,9 @@ inputs:
   image_suffix:
     description: Docker image name suffix e.g. _services-cadip
     required: true
-  image_tag1:
-    description: First Docker image tag
+  image_tags:
+    description: Docker image tags, as a comma-separated list e.g. 'vx.y.z,latest'
     required: true
-  image_tag2:
-    description: Second Docker image tag
-    required: false
   dockerhub_username:
     description: vars.DOCKERHUB_USERNAME
     required: true
@@ -54,12 +51,12 @@ inputs:
     required: false
 
 outputs:
-  docker_image:
-    description: Docker image name:tag1
-    value: ${{ steps.docker_image.outputs.docker_image1 }}
-  docker_image2:
-    description: Docker image name:tag2
-    value: ${{ steps.docker_image.outputs.docker_image2 }}
+  docker_images:
+    description: Docker images, as a comma-separated list e.g. 'name:vx.y.z,name:latest'
+    value: ${{ steps.docker_images.outputs.all_docker_images }}
+  last_image_tag:
+    description: Last Docker image tag used in images
+    value: ${{ steps.docker_images.outputs.last_image_tag }}
 
 runs:
   using: "composite"
@@ -79,140 +76,160 @@ runs:
         username: ${{ github.actor }}
         password: ${{ inputs.github_token }}
 
-    # Replace special characters by - in the docker image names and tags
-    - env:
-        IMAGE_TAG1: ${{ inputs.image_tag1 }}
-        IMAGE_TAG2: ${{ inputs.image_tag2 }}
-        IMAGE_ARTIFACT: "${{ inputs.image_basename }}${{ inputs.image_suffix }}"
+    - id: docker_images
+      env:
+        IMAGE_TAGS: ${{ inputs.image_tags }}
+        DOCKER_IMAGE_BASE: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}" # without :tag
       run: |
         set -x
-        echo image_tag1=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_TAG1") >> $GITHUB_ENV
-        echo image_tag2=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_TAG2") >> $GITHUB_ENV
-        echo image_artifact=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$IMAGE_ARTIFACT") >> $GITHUB_ENV
+
+        # All docker images in lowercase with :tag, split by ,
+        all_docker_images=
+
+        # For each docker image tag to set, split by ,
+        for image_tag in ${IMAGE_TAGS//,/ }; do
+
+          # Only alphanumeric characters, . - and _ are allowed in docker image tags.
+          # Replace other characters by -
+          image_tag=$(sed "s/[^a-zA-Z0-9\.\-\_]/-/g" <<< "$image_tag")
+
+          docker_image="${DOCKER_IMAGE_BASE,,}:${image_tag,,}" # lowercase
+          all_docker_images="${all_docker_images}${docker_image},"
+        done
+
+        # Remove last ,
+        all_docker_images=${all_docker_images::-1}
+
+        echo "last_docker_image=${docker_image}" >> "$GITHUB_ENV"
+        echo "last_image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+        echo "all_docker_images=${all_docker_images}" >> "$GITHUB_ENV"
+        echo "all_docker_images=${all_docker_images}" >> "$GITHUB_OUTPUT"
       shell: bash
 
-    # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<tag1> in lowercase
-    - id: docker_image
+    # # Extract metadata from Git reference and GitHub events
+    # - name: Extract Docker metadata
+    #   id: meta
+    #   uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
+    #   with:
+    #     images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
+
+    # # Replace some parts of the Dockerfile depending on wether we're in debug mode or not.
+    # # It would be cleaner to use 'if' blocks in the Dockerfile but this doesn't exist...
+    # - name: Configure Dockerfile for debug mode
+    #   env:
+    #     DEBUG_MODE: ${{ inputs.debug_mode }}
+    #     BRANCH_NAME: ${{ inputs.branch_name }}
+    #     DOCKERFILE: ${{ inputs.dockerfile }}
+    #   run: |
+    #     set -x
+    #     if [[ $DEBUG_MODE == true ]]; then
+    #       commands=$(cat << EOF
+    #     USER root
+    #     COPY ./git_debug_image.sh ./restore-apt.sh /usr/local/bin/
+    #     # Use ';' not '&&' because they are not well handled by awk.
+    #     RUN set -e; \
+    #         cd /usr/local/bin/; \
+    #         chmod u+x ./git_debug_image.sh ./restore-apt.sh; \
+    #         ./git_debug_image.sh $BRANCH_NAME; \
+    #         rm -f ./git_debug_image.sh ./restore-apt.sh
+    #     WORKDIR /home/user/rs-server
+    #     EOF
+    #       )
+    #       # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
+    #       awk -v r="$commands" '{gsub(/# \[DEBUG_MODE_COMMANDS\]/,r)}1' $DOCKERFILE > tmp
+    #       mv tmp $DOCKERFILE
+    #       sed -i "s@\[DEBUG_MODE_RELOAD\]@--reload@g" $DOCKERFILE
+    #       sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@--reload@g" $DOCKERFILE
+    #       sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@ENV RELOAD=true@g" $DOCKERFILE
+    #     else
+    #       sed -i "s@# \[DEBUG_MODE_COMMANDS\]@@g" $DOCKERFILE
+    #       sed -i "s@, \"\[DEBUG_MODE_RELOAD\]\"@@g" $DOCKERFILE
+    #       sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@@g" $DOCKERFILE
+    #       sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@@g" $DOCKERFILE
+    #     fi
+    #     cat $DOCKERFILE
+    #   shell: bash
+
+    # # Checkout code from the current branch and build Docker image.
+    # - name: Build Docker image
+    #   uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
+    #   with:
+    #     context: ${{ inputs.build_context_path }}
+    #     file: ${{ inputs.dockerfile }}
+    #     load: true
+    #     tags: ${{ env.all_docker_images }}
+    #     labels: ${{ steps.meta.outputs.labels }}
+    #     push: false # push after the security scans below
+    #     build-args: ${{ inputs.build_args }}
+
+    # - name: Run Trivy vulnerability scanner
+    #   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+    #   env:
+    #     TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+    #     TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+    #   with:
+    #     version: v0.69.3
+    #     image-ref: ${{ env.last_docker_image }}
+    #     format: sarif
+    #     output: trivy-results-docker.sarif
+    #     exit-code: 0
+    #     limit-severities-for-sarif: true
+    #     severity: HIGH,CRITICAL
+    #     timeout: 30m
+
+    # - name: Upload Trivy scan results to GitHub Security tab
+    #   uses: github/codeql-action/upload-sarif@v4
+    #   with:
+    #     sarif_file: trivy-results-docker.sarif
+    #     category: ${{ inputs.image_basename }}${{ inputs.image_suffix }}
+
+    # - name: Display link to Trivy results
+    #   env:
+    #     GITHUB_REF_NAME: ${{ github.ref_name }}
+    #     GITHUB_REPOSITORY: ${{ github.repository }}
+    #   run: |
+    #     set -x
+
+    #     # If this is not a pull request, the query is "is:open+branch:branch_name"
+    #     if [[ "$GITHUB_REF_NAME" != *merge* ]]; then
+    #       query="is:open+branch:$GITHUB_REF_NAME"
+
+    #     # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+    #     else
+    #       query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "$GITHUB_REF_NAME")
+    #     fi
+
+    #     echo "Trivy scan results:" \
+    #     "https://github.com/${GITHUB_REPOSITORY}/security/code-scanning?query=${query}" \
+    #     >> $GITHUB_STEP_SUMMARY
+    #   shell: bash
+
+
+
+
+
+    - name: TEST !!
       env:
-        DOCKER_IMAGE1: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.image_tag1 }}"
-        DOCKER_IMAGE2: "${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.image_tag2 }}"
+        ALL_DOCKER_IMAGES: ${{ env.all_docker_images }}
       run: |
         set -x
-        docker_image1=${DOCKER_IMAGE1,,} # lowercase
-        echo "docker_image1=${docker_image1}" >> "$GITHUB_ENV"
-        echo "docker_image1=${docker_image1}" >> "$GITHUB_OUTPUT"
-
-        [[ -n "${{ env.image_tag2 }}" ]] && docker_image2=${DOCKER_IMAGE2,,} # lowercase, only if image_tag2 is set
-        echo "docker_image2=${docker_image2}" >> "$GITHUB_ENV"
-        echo "docker_image2=${docker_image2}" >> "$GITHUB_OUTPUT"
+        docker pull bash
+        for image in ${ALL_DOCKER_IMAGES//,/ }; do
+          docker tag bash $image
+        done
       shell: bash
 
-    # Extract metadata from Git reference and GitHub events
-    - name: Extract Docker metadata
-      id: meta
-      uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
-      with:
-        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
 
-    # Replace some parts of the Dockerfile depending on wether we're in debug mode or not.
-    # It would be cleaner to use 'if' blocks in the Dockerfile but this doesn't exist...
-    - name: Configure Dockerfile for debug mode
-      env:
-        DEBUG_MODE: ${{ inputs.debug_mode }}
-        BRANCH_NAME: ${{ inputs.branch_name }}
-        DOCKERFILE: ${{ inputs.dockerfile }}
-      run: |
-        set -x
-        if [[ $DEBUG_MODE == true ]]; then
-          commands=$(cat << EOF
-        USER root
-        COPY ./git_debug_image.sh ./restore-apt.sh /usr/local/bin/
-        # Use ';' not '&&' because they are not well handled by awk.
-        RUN set -e; \
-            cd /usr/local/bin/; \
-            chmod u+x ./git_debug_image.sh ./restore-apt.sh; \
-            ./git_debug_image.sh $BRANCH_NAME; \
-            rm -f ./git_debug_image.sh ./restore-apt.sh
-        WORKDIR /home/user/rs-server
-        EOF
-          )
-          # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
-          awk -v r="$commands" '{gsub(/# \[DEBUG_MODE_COMMANDS\]/,r)}1' $DOCKERFILE > tmp
-          mv tmp $DOCKERFILE
-          sed -i "s@\[DEBUG_MODE_RELOAD\]@--reload@g" $DOCKERFILE
-          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@--reload@g" $DOCKERFILE
-          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@ENV RELOAD=true@g" $DOCKERFILE
-        else
-          sed -i "s@# \[DEBUG_MODE_COMMANDS\]@@g" $DOCKERFILE
-          sed -i "s@, \"\[DEBUG_MODE_RELOAD\]\"@@g" $DOCKERFILE
-          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@@g" $DOCKERFILE
-          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@@g" $DOCKERFILE
-        fi
-        cat $DOCKERFILE
-      shell: bash
 
-    # Checkout code from the current branch and build Docker image.
-    - name: Build Docker image
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
-      with:
-        context: ${{ inputs.build_context_path }}
-        file: ${{ inputs.dockerfile }}
-        load: true
-        tags: ${{ env.docker_image1 }},${{ env.docker_image2 }}
-        labels: ${{ steps.meta.outputs.labels }}
-        push: false # push after the security scans below
-        build-args: ${{ inputs.build_args }}
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-      env:
-        TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-        TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
-      with:
-        version: v0.69.3
-        image-ref: ${{ env.docker_image1 }}
-        format: sarif
-        output: trivy-results-docker.sarif
-        exit-code: 0
-        limit-severities-for-sarif: true
-        severity: HIGH,CRITICAL
-        timeout: 30m
-
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v4
-      with:
-        sarif_file: trivy-results-docker.sarif
-        category: ${{ inputs.image_basename }}${{ inputs.image_suffix }}
-
-    - name: Display link to Trivy results
-      env:
-        GITHUB_REF_NAME: ${{ github.ref_name }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-      run: |
-
-          set -x
-
-          # If this is not a pull request, the query is "is:open+branch:branch_name"
-          if [[ "$GITHUB_REF_NAME" != *merge* ]]; then
-            query="is:open+branch:$GITHUB_REF_NAME"
-
-          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
-          else
-            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "$GITHUB_REF_NAME")
-          fi
-
-          echo "Trivy scan results:" \
-          "https://github.com/${GITHUB_REPOSITORY}/security/code-scanning?query=${query}" \
-          >> $GITHUB_STEP_SUMMARY
-      shell: bash
 
     - name: Push Docker images
       env:
-        DOCKER_IMAGE1: ${{ env.docker_image1 }}
-        DOCKER_IMAGE2: ${{ env.docker_image2 }}
+        ALL_DOCKER_IMAGES: ${{ env.all_docker_images }}
       run: |
         set -x
         docker images
-        docker push $DOCKER_IMAGE1
-        [[ -n $DOCKER_IMAGE2 ]] && docker push $DOCKER_IMAGE2
+        for image in ${ALL_DOCKER_IMAGES//,/ }; do
+          docker push $image
+        done
       shell: bash
