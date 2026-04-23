@@ -23,7 +23,7 @@ on:
     tags: ['**'] # new git tags (including hierarchical tags like v1.0/beta)
   workflow_dispatch: # manual trigger
     inputs:
-      docker_tag2:
+      docker_tag:
         description: Add this tag to the docker images as e.g. 'latest' or 'feat-rspy123'
         required: false
 
@@ -144,7 +144,7 @@ jobs:
 
           # For a manual trigger, use the user-defined tag
           elif [[ ${{ github.event_name }} == workflow_dispatch ]]; then
-            docker_tags="${docker_tags},${{ github.event.inputs.docker_tag2 }}"
+            docker_tags="${docker_tags},${{ github.event.inputs.docker_tag }}"
 
           else
             >&2 echo "Unknown trigger"
@@ -275,9 +275,8 @@ jobs:
         with:
           matrix-step-name: ${{ github.job }}
           matrix-key: ${{ matrix.image }}
-          outputs: |-
-            docker_image: ${{ steps.publish-docker.outputs.docker_image }}
-            docker_image2: ${{ steps.publish-docker.outputs.docker_image2 }}
+          outputs: |
+            docker_images: ${{ steps.publish-docker.outputs.docker_images }}
 
   # Test rs-demo with the new Docker images
   test-demo:
@@ -303,8 +302,8 @@ jobs:
           set -x
 
           # Clone the rs-demo repository
-          git clone https://github.com/RS-PYTHON/rs-demo.git
-          cd rs-demo
+          # git clone https://github.com/RS-PYTHON/rs-demo.git
+          # cd rs-demo
 
           # Run the rs-demo local mode using the newly created docker images
           # ./test-rs-demo.sh
@@ -318,10 +317,40 @@ jobs:
             matrix-step-name: publish-docker-images
       - name: Push Docker images after testing
         if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
+        env:
+          DOCKER_TAGS: ${{ needs.set-env.outputs.docker_tags }} # separated by ,
         run: |
           set -x
-          echo "${{ fromJson(steps.read-matrix-outputs.outputs.result) }}"
-          echo "${{ steps.read-matrix-outputs.outputs.result }}"
+
+          # Docker images that have been pushed
+          # e.g. {"docker_images": {"cadip": "<cadip_image>", "adgs": "<adgs_image>" }}
+          json_images='${{ steps.read-matrix-outputs.outputs.result }}' # use simple quotes, not double quotes !
+          pushed_images=$(echo "$json_images" | jq -r .docker_images[])
+
+          # Pull each pushed image in parallel
+          for pushed_image in $pushed_images; do
+            docker pull "$pushed_image" &
+          done
+          wait
+
+          # Add new tags and push in parallel
+          for pushed_image in $pushed_images; do
+            for new_tag in ${DOCKER_TAGS//,/ }; do
+
+              # Only alphanumeric characters, . - and _ are allowed in docker image tags.
+              # Replace other characters by -
+              new_tag=$(sed "s/[^a-zA-Z0-9\.\-\_]/-/g" <<< "$new_tag")
+
+              # Remove the tag from the last image, see: https://stackoverflow.com/a/19482947
+              # and add the new tag
+              new_image="${pushed_image%:*}:${new_tag}"
+
+              docker tag "$pushed_image" "$new_image"
+              docker push "$new_image" &
+            done
+          done
+          wait
+
   publish-wheels-pypi:
     name: "Publish wheels and sdists to PyPI"
     if: (github.actor != 'dependabot[bot]') && (github.event_name == 'push') && startsWith(github.ref, 'refs/tags')
