@@ -106,122 +106,103 @@ runs:
         echo "all_docker_images=${all_docker_images}" >> "$GITHUB_OUTPUT"
       shell: bash
 
-    # # Extract metadata from Git reference and GitHub events
-    # - name: Extract Docker metadata
-    #   id: meta
-    #   uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
-    #   with:
-    #     images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
+    # Extract metadata from Git reference and GitHub events
+    - name: Extract Docker metadata
+      id: meta
+      uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
 
-    # # Replace some parts of the Dockerfile depending on wether we're in debug mode or not.
-    # # It would be cleaner to use 'if' blocks in the Dockerfile but this doesn't exist...
-    # - name: Configure Dockerfile for debug mode
-    #   env:
-    #     DEBUG_MODE: ${{ inputs.debug_mode }}
-    #     BRANCH_NAME: ${{ inputs.branch_name }}
-    #     DOCKERFILE: ${{ inputs.dockerfile }}
-    #   run: |
-    #     set -x
-    #     if [[ $DEBUG_MODE == true ]]; then
-    #       commands=$(cat << EOF
-    #     USER root
-    #     COPY ./git_debug_image.sh ./restore-apt.sh /usr/local/bin/
-    #     # Use ';' not '&&' because they are not well handled by awk.
-    #     RUN set -e; \
-    #         cd /usr/local/bin/; \
-    #         chmod u+x ./git_debug_image.sh ./restore-apt.sh; \
-    #         ./git_debug_image.sh $BRANCH_NAME; \
-    #         rm -f ./git_debug_image.sh ./restore-apt.sh
-    #     WORKDIR /home/user/rs-server
-    #     EOF
-    #       )
-    #       # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
-    #       awk -v r="$commands" '{gsub(/# \[DEBUG_MODE_COMMANDS\]/,r)}1' $DOCKERFILE > tmp
-    #       mv tmp $DOCKERFILE
-    #       sed -i "s@\[DEBUG_MODE_RELOAD\]@--reload@g" $DOCKERFILE
-    #       sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@--reload@g" $DOCKERFILE
-    #       sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@ENV RELOAD=true@g" $DOCKERFILE
-    #     else
-    #       sed -i "s@# \[DEBUG_MODE_COMMANDS\]@@g" $DOCKERFILE
-    #       sed -i "s@, \"\[DEBUG_MODE_RELOAD\]\"@@g" $DOCKERFILE
-    #       sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@@g" $DOCKERFILE
-    #       sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@@g" $DOCKERFILE
-    #     fi
-    #     cat $DOCKERFILE
-    #   shell: bash
-
-    # # Checkout code from the current branch and build Docker image.
-    # - name: Build Docker image
-    #   uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
-    #   with:
-    #     context: ${{ inputs.build_context_path }}
-    #     file: ${{ inputs.dockerfile }}
-    #     load: true
-    #     tags: ${{ env.all_docker_images }}
-    #     labels: ${{ steps.meta.outputs.labels }}
-    #     push: false # push after the security scans below
-    #     build-args: ${{ inputs.build_args }}
-
-    # - name: Run Trivy vulnerability scanner
-    #   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-    #   env:
-    #     TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-    #     TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
-    #   with:
-    #     version: v0.69.3
-    #     image-ref: ${{ env.last_docker_image }}
-    #     format: sarif
-    #     output: trivy-results-docker.sarif
-    #     exit-code: 0
-    #     limit-severities-for-sarif: true
-    #     severity: HIGH,CRITICAL
-    #     timeout: 30m
-
-    # - name: Upload Trivy scan results to GitHub Security tab
-    #   uses: github/codeql-action/upload-sarif@v4
-    #   with:
-    #     sarif_file: trivy-results-docker.sarif
-    #     category: ${{ inputs.image_basename }}${{ inputs.image_suffix }}
-
-    # - name: Display link to Trivy results
-    #   env:
-    #     GITHUB_REF_NAME: ${{ github.ref_name }}
-    #     GITHUB_REPOSITORY: ${{ github.repository }}
-    #   run: |
-    #     set -x
-
-    #     # If this is not a pull request, the query is "is:open+branch:branch_name"
-    #     if [[ "$GITHUB_REF_NAME" != *merge* ]]; then
-    #       query="is:open+branch:$GITHUB_REF_NAME"
-
-    #     # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
-    #     else
-    #       query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "$GITHUB_REF_NAME")
-    #     fi
-
-    #     echo "Trivy scan results:" \
-    #     "https://github.com/${GITHUB_REPOSITORY}/security/code-scanning?query=${query}" \
-    #     >> $GITHUB_STEP_SUMMARY
-    #   shell: bash
-
-
-
-
-
-    - name: TEST !!
+    # Replace some parts of the Dockerfile depending on wether we're in debug mode or not.
+    # It would be cleaner to use 'if' blocks in the Dockerfile but this doesn't exist...
+    - name: Configure Dockerfile for debug mode
       env:
-        ALL_DOCKER_IMAGES: ${{ env.all_docker_images }}
+        DEBUG_MODE: ${{ inputs.debug_mode }}
+        BRANCH_NAME: ${{ inputs.branch_name }}
+        DOCKERFILE: ${{ inputs.dockerfile }}
       run: |
         set -x
-        docker pull bash
-        for image in ${ALL_DOCKER_IMAGES//,/ }; do
-          docker tag bash $image
-        done
+        if [[ $DEBUG_MODE == true ]]; then
+          commands=$(cat << EOF
+        USER root
+        COPY ./git_debug_image.sh ./restore-apt.sh /usr/local/bin/
+        # Use ';' not '&&' because they are not well handled by awk.
+        RUN set -e; \
+            cd /usr/local/bin/; \
+            chmod u+x ./git_debug_image.sh ./restore-apt.sh; \
+            ./git_debug_image.sh $BRANCH_NAME; \
+            rm -f ./git_debug_image.sh ./restore-apt.sh
+        WORKDIR /home/user/rs-server
+        EOF
+          )
+          # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
+          awk -v r="$commands" '{gsub(/# \[DEBUG_MODE_COMMANDS\]/,r)}1' $DOCKERFILE > tmp
+          mv tmp $DOCKERFILE
+          sed -i "s@\[DEBUG_MODE_RELOAD\]@--reload@g" $DOCKERFILE
+          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@--reload@g" $DOCKERFILE
+          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@ENV RELOAD=true@g" $DOCKERFILE
+        else
+          sed -i "s@# \[DEBUG_MODE_COMMANDS\]@@g" $DOCKERFILE
+          sed -i "s@, \"\[DEBUG_MODE_RELOAD\]\"@@g" $DOCKERFILE
+          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@@g" $DOCKERFILE
+          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@@g" $DOCKERFILE
+        fi
+        cat $DOCKERFILE
       shell: bash
 
+    # Checkout code from the current branch and build Docker image.
+    - name: Build Docker image
+      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
+      with:
+        context: ${{ inputs.build_context_path }}
+        file: ${{ inputs.dockerfile }}
+        load: true
+        tags: ${{ env.all_docker_images }}
+        labels: ${{ steps.meta.outputs.labels }}
+        push: false # push after the security scans below
+        build-args: ${{ inputs.build_args }}
 
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      env:
+        TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+        TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+      with:
+        version: v0.69.3
+        image-ref: ${{ env.last_docker_image }}
+        format: sarif
+        output: trivy-results-docker.sarif
+        exit-code: 0
+        limit-severities-for-sarif: true
+        severity: HIGH,CRITICAL
+        timeout: 30m
 
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: trivy-results-docker.sarif
+        category: ${{ inputs.image_basename }}${{ inputs.image_suffix }}
 
+    - name: Display link to Trivy results
+      env:
+        GITHUB_REF_NAME: ${{ github.ref_name }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -x
+
+        # If this is not a pull request, the query is "is:open+branch:branch_name"
+        if [[ "$GITHUB_REF_NAME" != *merge* ]]; then
+          query="is:open+branch:$GITHUB_REF_NAME"
+
+        # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+        else
+          query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "$GITHUB_REF_NAME")
+        fi
+
+        echo "Trivy scan results:" \
+        "https://github.com/${GITHUB_REPOSITORY}/security/code-scanning?query=${query}" \
+        >> $GITHUB_STEP_SUMMARY
+      shell: bash
 
     - name: Push Docker images
       env:
