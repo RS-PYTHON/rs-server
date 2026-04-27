@@ -75,7 +75,7 @@ jobs:
         with:
           filters: |
             frontend: ${{ steps.find.outputs.found }}
-          base: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} # since last commit on same branch
+          base: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} # since last commit on same branch #
 
       - if: ${{ steps.paths-filter.outputs.frontend == 'true' }}
         env:
