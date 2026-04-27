@@ -19,9 +19,6 @@ inputs:
   python-version:
     description: "Python version"
     required: false
-  install-project:
-    description: "'poetry install' this project and dependencies ?"
-    default: 'true'
   options:
     description: "'poetry install' options e.g. '--with dev'"
     required: false
@@ -49,21 +46,6 @@ runs:
       with:
         python-version: ${{ case(inputs.python-version != '',inputs.python-version, env.PYTHON_VERSION) }}
         cache: poetry
-
-    - if: ${{ inputs.install-project == 'true' }}
-      env:
-        INPUTS_PYTHON_VERSION: ${{ inputs.python-version }}
-        INPUTS_OPTIONS: ${{ inputs.options }}
-      run: |
-        set -x
-
-        # Regenerate the poetry.lock file for non-standard python versions
-        [[ "$INPUTS_PYTHON_VERSION" != "${{ env.PYTHON_VERSION }}" ]] && poetry lock --regenerate
-
-        poetry install $INPUTS_OPTIONS # don't use quotes around options
-        poetry -q run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
 
     - if: ${{ inputs.rm-plugin-dir == 'true' }}
       run: |

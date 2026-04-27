@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: ./.github/actions/poetry-install
+      - uses: ./.github/actions/setup-poetry
         with:
           rm-plugin-dir: true
 

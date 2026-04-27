@@ -101,9 +101,7 @@ jobs:
           fetch-depth: 0 # so that Dunamai produce the correct version
 
       - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
-        uses: ./.github/actions/poetry-install
-        with:
-          install-project: false # we need poetry for the sub-projects, but no need to install the root project
+        uses: ./.github/actions/setup-poetry
 
       - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
         name: Generate the aggregated openapi.json/swagger

@@ -46,7 +46,7 @@ runs:
         echo "PACKAGE_DIRECTORY=${PACKAGE_DIRECTORY}" >> $GITHUB_ENV
       shell: bash
 
-    - uses: ./.github/actions/poetry-install
+    - uses: ./.github/actions/setup-poetry
 
     # Run 'poetry dynamic-versioning' from the root folder to find the version name, sed the result
     - name: Find version name
