@@ -101,14 +101,14 @@ jobs:
           fetch-depth: 0 # so that Dunamai produce the correct version
 
       - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
-        uses: ./.github/actions/install-python
+        uses: ./.github/actions/poetry-install
+        with:
+          install-project: false # we need poetry for the sub-projects, but no need to install the root project
 
       - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
         name: Generate the aggregated openapi.json/swagger
         run: |
           set -x
-
-          pip install poetry # we need poetry for the sub-projects, but no need to install the root project
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
 
           # Commit the openapi.json if it changed

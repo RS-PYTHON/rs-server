@@ -19,6 +19,9 @@ inputs:
   python-version:
     description: "Python version"
     required: false
+  install-project:
+    description: "'poetry install' this project and dependencies ?"
+    default: 'true'
   options:
     description: "'poetry install' options e.g. '--with dev'"
     required: false
@@ -26,25 +29,29 @@ inputs:
   rm-plugin-dir:
     description: "Remove the installed poetry plugin directory that triggers quality issues"
     required: false
-    default: "false"
-
+    default: 'false'
   working-directory:
-    description: "the working directory in which poetry is run."
+    description: "The working directory from which poetry is run"
     required: false
     default: .
 
 runs:
   using: "composite"
   steps:
-    - uses: ./.github/actions/install-python
-      with:
-        python-version: ${{ inputs.python-version }}
+    # See: https://github.com/actions/setup-python/blob/v6/docs/advanced-usage.md#caching-packages
+    - name: Install poetry
+      run: |
+        set -x
+        pipx install poetry==2.3.2
+      shell: bash
 
-    - uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a
+    - uses: actions/setup-python@v6
       with:
-        version: 2.3.2
+        python-version: ${{ case(inputs.python-version != '',inputs.python-version, env.PYTHON_VERSION) }}
+        cache: poetry
 
-    - env:
+    - if: ${{ inputs.install-project == 'true' }}
+      env:
         INPUTS_PYTHON_VERSION: ${{ inputs.python-version }}
         INPUTS_OPTIONS: ${{ inputs.options }}
       run: |
