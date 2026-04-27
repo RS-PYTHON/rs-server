@@ -113,6 +113,10 @@ if [[ " $@ " == *" --run-services "* ]]; then
     done
     echo "DPR service container is healthy"
 
+    which poetry
+    poetry config --list
+    ls /crash
+
     # Run local fastapi services
     run_local_service() {
         path=$(realpath "${FRONT_DIR}/$1")
