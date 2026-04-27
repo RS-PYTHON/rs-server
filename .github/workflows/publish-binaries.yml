@@ -33,11 +33,71 @@ env:
 
 jobs:
 
-  build-wheels:
-    name: "Build wheels"
+  generate-frontend:
+    name: Generate frontend
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
-    continue-on-error: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
+
+      - id: find
+        name: Find all files that could modify openapi.json
+        run: |
+          set -x
+          found=
+
+          # Find all python files that contain something like @app.delete, @router.get, ...
+          found="${found} $(grep --include="*.py" --exclude-dir="tests" -lrE "@.*\.(delete|get|patch|put|post)")"
+
+          # Add project files that contain the pygeoapi or stac-fastapi version
+          found="${found} services/catalog/pyproject.toml services/staging/pyproject.toml services/common/pyproject.toml"
+          found="${found} services/catalog/poetry.lock    services/staging/poetry.lock    services/common/poetry.lock"
+
+          # Add everything from the frontend
+          found="${found} $(find services/frontend/rs_server_frontend services/frontend/resources services/frontend/tools)"
+
+          # If I forgot some files, add them here with: found="${found} dir/to/file1 dir/to/file2"
+          # Or simply run this command locally:
+          # ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
+          # and commit/push the result to your branch.
+
+          # Convert to a json array
+          found=$(echo -n $found | jq -R -s 'split(" ")') # no "" around $found
+          echo found=$found >> "$GITHUB_OUTPUT"
+
+      - id: paths-filter
+        uses: dorny/paths-filter@f3ceefdc7ef57bc2d8560787d4b6c33e44044cec
+        with:
+          filters: |
+            frontend: ${{ steps.find.outputs.found }}
+
+      - if: ${{ steps.paths-filter.outputs.frontend == 'true' }}
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -x
+          echo toto >> services/frontend/resources/openapi.json
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add services/frontend/resources/openapi.json
+          git commit -m "Updated swagger: services/frontend/resources/openapi.json"
+          # git fetch origin
+          # git rebase origin/${GITHUB_HEAD_REF} || exit 0
+          # git push origin HEAD:${GITHUB_HEAD_REF}
+          git push
+
+      - run: ls /crash
+
+  build-wheels:
+    name: "Build wheels"
+    needs: generate-frontend
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
     strategy:
       matrix:
         service: # all services must be under the services/ folder
