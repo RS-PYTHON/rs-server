@@ -279,16 +279,18 @@ jobs:
     name: Get pushed Docker image names
     needs: [set-env, publish-docker-images]
     # Only if a temp Docker tag has been set
-    if: ${{ (github.actor != 'dependabot[bot]') && (needs.set-env.outputs.docker_temp_tag != '' )}}
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       pushed_images: ${{ steps.read.outputs.pushed_images }}
     steps:
       - id: read-matrix-outputs
+        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
         uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
         with:
             matrix-step-name: publish-docker-images
       - id: read
+        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
         run: |
           set -x
 
