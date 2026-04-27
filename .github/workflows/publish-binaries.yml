@@ -34,38 +34,46 @@ env:
 jobs:
 
   test-cache1:
-    name: Test cache
+    name: Test cache 1
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
       - uses: ./.github/actions/setup-poetry
       - run: set -x; poetry install; ls /crash
 
   test-cache2:
-    name: Test cache
+    name: Test cache 2
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
       - uses: ./.github/actions/setup-poetry
       - run: set -x; cd services/adgs; poetry install; ls /crash
 
   test-cache3:
-    name: Test cache
+    name: Test cache 3
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
       - uses: ./.github/actions/setup-poetry
       - run: set -x; ./test-cache3.sh; ls /crash
 
   test-cache4:
-    name: Test cache
+    name: Test cache 4
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
       - uses: ./.github/actions/setup-poetry
       - run: set -x; ./test-cache4.sh; ls /crash
 
