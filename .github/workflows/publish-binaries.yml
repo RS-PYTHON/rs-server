@@ -33,7 +33,44 @@ env:
 
 jobs:
 
+  test-cache1:
+    name: Test cache
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-poetry
+      - run: set -x; poetry install; ls /crash
+
+  test-cache2:
+    name: Test cache
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-poetry
+      - run: set -x; cd services/adgs; poetry install; ls /crash
+
+  test-cache3:
+    name: Test cache
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-poetry
+      - run: set -x; ./test-cache3.sh; ls /crash
+
+  test-cache4:
+    name: Test cache
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-poetry
+      - run: set -x; ./test-cache4.sh; ls /crash
+
   generate-frontend:
+    needs: [test-cache1, test-cache2, test-cache3, test-cache4]
     name: Generate frontend ?
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
