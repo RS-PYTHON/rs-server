@@ -137,6 +137,7 @@ class Staging(
         self.logger = Logging.default(__name__)
         self.request = request
         self.stream_list: list[Feature] = []
+        self.expired_items: list[Feature] = []
         #################
         # Copy authentication headers from original HTTP request
         self.auth_headers: dict[str, str] = {}
@@ -474,6 +475,20 @@ class Staging(
                 self.logger.debug(f"Session {item.get('id')} has {len(item.get('assets'))} assets")
 
             self.create_streaming_list(features, item_collection)
+            # Keep the input features for unpublished catalog items: expired catalog entries may no longer
+            # have assets, while the input features still contain the source assets that will be restaged.
+            self.expired_items = [
+                item
+                for item in features
+                if item.id
+                in {
+                    catalog_item["id"]
+                    for catalog_item in item_collection.get("features", [])
+                    if catalog_item.get("properties", {}).get("unpublished")
+                }
+            ]
+            # Expired catalog items must also go through the streaming flow alongside new items.
+            self.stream_list.extend(self.expired_items)
             return True
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
             self.log_job_execution(JobStatus.failed, 0, f"Failed to search catalog: {exc}")
@@ -582,8 +597,14 @@ class Staging(
         """Handles publishing features and cleanup in case of failure."""
         # Publish all the features once processed
         published_features_ids: list[str] = []
+        expired_item_ids = {feature.id for feature in self.expired_items}
         for feature in self.stream_list:
-            if not self.publish_rspy_feature(catalog_collection, feature):
+            publish_ok = (
+                self.update_expired_rspy_feature(catalog_collection, feature)
+                if feature.id in expired_item_ids
+                else self.publish_rspy_feature(catalog_collection, feature)
+            )
+            if not publish_ok:
                 # cleanup
                 self.log_job_execution(
                     JobStatus.failed,
@@ -598,7 +619,8 @@ class Staging(
                 self.unsubscribe_refresh_tokens(refresh_tokens)
                 self.logger.error(f"The item {feature.id} couldn't be published in the catalog")
                 return False
-            published_features_ids.append(feature.id)
+            if feature.id not in expired_item_ids:
+                published_features_ids.append(feature.id)
         return True
 
     def unsubscribe_refresh_tokens(self, refresh_tokens: dict[str, RefreshTokenData]):
@@ -1107,6 +1129,50 @@ class Staging(
                 attempt += 1
             except (RequestException, JSONDecodeError) as exc:
                 self.logger.error("Error while publishing items to rspy catalog %s", exc)
+                return False
+
+        return False
+
+    def update_expired_rspy_feature(self, catalog_collection: str, feature: Feature) -> bool:
+        """
+        Updates an expired feature already present in the catalog.
+
+        The feature is sent through the catalog PUT endpoint with refreshed assets.
+        """
+        update_url = f"{self.catalog_url}/catalog/collections/{catalog_collection}/items/{feature.id}"
+
+        for asset in feature.assets.values():
+            if hasattr(asset, "alternate"):
+                del asset.alternate  # type: ignore
+
+        attempt = 0
+        while attempt <= self.catalog_publish_max_retries:
+            try:
+                response = requests.put(
+                    update_url,
+                    headers={
+                        **self.auth_headers,
+                        "Content-Type": "application/geo+json",
+                    },
+                    data=feature.model_dump_json(),
+                    timeout=self.catalog_publish_timeout,
+                )
+                response.raise_for_status()
+                return True
+            except requests.exceptions.Timeout as exc:
+                if attempt >= self.catalog_publish_max_retries:
+                    self.logger.error("Error while updating expired item in rspy catalog %s", exc)
+                    return False
+                self.logger.warning(
+                    "Timeout while updating expired item in rspy catalog. Retry %s/%s in %ss",
+                    attempt + 1,
+                    self.catalog_publish_max_retries,
+                    self.catalog_publish_retry_delay,
+                )
+                time.sleep(self.catalog_publish_retry_delay)
+                attempt += 1
+            except (RequestException, JSONDecodeError) as exc:
+                self.logger.error("Error while updating expired item in rspy catalog %s", exc)
                 return False
 
         return False

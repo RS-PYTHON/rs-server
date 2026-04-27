@@ -21,7 +21,7 @@ import requests
 from pygeoapi.util import JobStatus
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_staging.processors.processor_staging import Staging
-from rs_server_staging.utils.rspy_models import FeatureCollectionModel
+from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
 
 # pylint: disable=no-member
 
@@ -178,6 +178,39 @@ class TestStagingCatalog:
         result = await self._call_check_catalog(staging_instance, staging_inputs)
         assert result is False
 
+    @pytest.mark.asyncio
+    async def test_check_catalog_keeps_input_assets_for_expired_items(
+        self,
+        mocker,
+        staging_instance: Staging,
+        staging_inputs: dict,
+    ):
+        """Expired catalog items should keep the input feature assets for restaging."""
+        staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
+
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "id": "1",
+                    "assets": {},
+                    "properties": {"unpublished": "2026-01-01T00:00:00.000000Z"},
+                },
+            ],
+        }
+        mock_response.raise_for_status = mocker.Mock()
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        mocker.patch("httpx.AsyncClient.get", return_value=mock_response)
+        mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
+
+        result = await self._call_check_catalog(staging_instance, staging_inputs)
+
+        assert result is True
+        assert [feature.id for feature in staging_instance.expired_items] == ["1"]
+        assert "asset1" in staging_instance.expired_items[0].assets
+        assert [feature.id for feature in staging_instance.stream_list] == ["2", "1"]
+
 
 class TestStagingPublishCatalog:
     """Class to group tests for catalog publishing after streaming was processes"""
@@ -283,6 +316,64 @@ class TestStagingPublishCatalog:
         assert mock_post.call_count == staging_instance.catalog_publish_max_retries + 1
         assert mock_sleep.call_count == staging_instance.catalog_publish_max_retries
         mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
+
+    def test_update_expired_rspy_feature_success(self, mocker, staging_instance: Staging):
+        """Test successful update of an expired feature already present in the catalog."""
+        feature = Feature(
+            type="Feature",
+            properties={"unpublished": "2026-01-01T00:00:00.000000Z"},
+            id="feature1",
+            stac_version="1.1.0",
+            assets={"asset1": {"href": "s3://bucket/path"}},
+            stac_extensions=[],
+        )
+        feature.assets["asset1"].alternate = {"s3": {"href": "s3://alternate/path"}}  # type: ignore[attr-defined]
+
+        mock_response = mocker.Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_put = mocker.patch("requests.put", return_value=mock_response)
+
+        result = staging_instance.update_expired_rspy_feature("test_collection", feature)
+
+        assert result is True
+        assert feature.properties["unpublished"] == "2026-01-01T00:00:00.000000Z"
+        assert not hasattr(feature.assets["asset1"], "alternate")
+        mock_put.assert_called_once_with(
+            f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature1",
+            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key", "Content-Type": "application/geo+json"},
+            data=feature.model_dump_json(),
+            timeout=staging_instance.catalog_publish_timeout,
+        )
+
+    def test_publish_processed_features_updates_expired_items(self, mocker, staging_instance: Staging):
+        """Expired items should use PUT update flow, while new items keep POST publish flow."""
+        expired_feature = Feature(
+            type="Feature",
+            properties={},
+            id="expired-feature",
+            stac_version="1.1.0",
+            assets={"asset1": {"href": "s3://bucket/expired"}},
+            stac_extensions=[],
+        )
+        new_feature = Feature(
+            type="Feature",
+            properties={},
+            id="new-feature",
+            stac_version="1.1.0",
+            assets={"asset1": {"href": "s3://bucket/new"}},
+            stac_extensions=[],
+        )
+        staging_instance.stream_list = [expired_feature, new_feature]
+        staging_instance.expired_items = [expired_feature]
+
+        mock_update = mocker.patch.object(staging_instance, "update_expired_rspy_feature", return_value=True)
+        mock_publish = mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=True)
+
+        result = staging_instance.publish_processed_features("test_collection", {})
+
+        assert result is True
+        mock_update.assert_called_once_with("test_collection", expired_feature)
+        mock_publish.assert_called_once_with("test_collection", new_feature)
 
     def test_repr(self, staging_instance: Staging):
         """Test repr method for coverage"""
