@@ -2993,7 +2993,7 @@ def test_serialize_adgs_asset_missing_external_ids():
 
 def test_build_summaries_cadip_valid(monkeypatch):
     """Test mapping of Satellite values to platform for summaries in Cadip."""
-    query = {"Satellite": ["S1A", "S1C"]}
+    query = {"Satellite": ["S1A", "S1C", "S1D"]}
 
     monkeypatch.setattr(
         "rs_server_common.utils.utils.map_stac_platform",
@@ -3001,12 +3001,13 @@ def test_build_summaries_cadip_valid(monkeypatch):
             "satellites": [
                 {"sentinel-1a": {"code": "S1A"}},
                 {"sentinel-1c": {"code": "S1C"}},
+                {"sentinel-1d": {"code": "S1D"}},
             ],
         },
     )
 
     result = stac_api_common.build_summaries("cadip", query)
-    assert result == {"platform": ["sentinel-1a", "sentinel-1c"]}
+    assert result == {"platform": ["sentinel-1a", "sentinel-1c", "sentinel-1d"]}
 
 
 def test_build_summaries_auxip_valid():

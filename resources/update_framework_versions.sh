@@ -115,7 +115,7 @@ all_files+=($(_realpath rs-testmeans/src/CADIP/Dockerfile))
 # [ghcr.io/rs-python/dask/l0]
 # [ghcr.io/rs-python/dask/s1ard]
 # [ghcr.io/rs-python/dask/mockup]
-# + re-run rs-workflow-env/docker/eopf/build-dask-eopf.py -p all
+# + re-run rs-workflow-env/docker/eopf/build_dask_eopf.py -p all
 all_files+=($(_realpath rs-workflow-env/docker/eopf/Dockerfile.dask-eopf))
 all_files+=($(_realpath rs-workflow-env/docker/eopf/Dockerfile.dask-eopf-mockup))
 
