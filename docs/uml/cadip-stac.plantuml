@@ -29,9 +29,9 @@ RS_Server_CADIP --> John: {s1_nsg, s1_sgs, s2_sgs, s3_sgs}
 newpage CADIP items
 
 John -> RS_Server_CADIP: GET /cadip/collections/s1_nsg/items
-RS_Server_CADIP -> CADIP_nsg ++ : GET /Sessions\n?$filter=Satellite in ('S1A', 'S1C')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_nsg ++ : GET /Sessions\n?$filter=Satellite in ('S1A', 'S1C', 'S1D')\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
-RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1D_XXXN')\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
@@ -50,12 +50,12 @@ John -> RS_Server_CADIP: GET /cadip/search?platform=sentinel-1a
 par
 RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
-RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1D_XXXN')\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 else
 RS_Server_CADIP -> CADIP_sgs : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
 CADIP_sgs --> RS_Server_CADIP : <OData sessions response/>
-RS_Server_CADIP -> CADIP_sgs  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_sgs  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1D_XXXN')\n&$orderby=PublicationDate desc
 CADIP_sgs --> RS_Server_CADIP : <OData files response/>
 end
 RS_Server_CADIP -> RS_Server_CADIP : Aggregation + OData > STAC mapping
@@ -69,7 +69,7 @@ loop to get 10*200 sessions from nsg:\nn=min(limit*page, nsg_max_page_size)\ncou
 RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc\n&$top=<n>&$skip=<count>
 CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
 RS_Server_CADIP -> RS_Server_CADIP: count += n
-RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1D_XXXN')\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 end
 else
@@ -77,7 +77,7 @@ loop to get 10*200 sessions from sgs\nn=min(limit*page, sgs_max_page_size)\ncoun
 RS_Server_CADIP -> CADIP_sgs : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc\n&$top=<n>&$skip=<count>
 CADIP_sgs --> RS_Server_CADIP : <OData sessions response/>
 RS_Server_CADIP -> RS_Server_CADIP: count += n
-RS_Server_CADIP -> CADIP_sgs  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_sgs  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1D_XXXN')\n&$orderby=PublicationDate desc
 CADIP_sgs --> RS_Server_CADIP : <OData files response/>
 end
 end
@@ -92,7 +92,7 @@ RS_Server_CADIP --> John: {platform}
 John -> RS_Server_CADIP: POST /cadip/search?collections=s1_nsg&platform=sentinel-1a
 RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
-RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1D_XXXN')\n&$orderby=PublicationDate desc
 CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}

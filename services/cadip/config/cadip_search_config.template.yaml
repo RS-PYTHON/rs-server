@@ -70,7 +70,7 @@ collections:
   - id: cadip_sentinel1
     station: cadip
     query:
-      Satellite: S1A, S1B, S1C
+      Satellite: S1A, S1C, S1D
     title: "Sentinel-1 'cadip' station"
     description: "Sentinel-1 'cadip' station"
 
@@ -98,7 +98,7 @@ collections:
   - id: mti_sentinel1
     station: mti
     query:
-      Satellite: S1A, S1B, S1C
+      Satellite: S1A, S1C, S1D
     title: "Sentinel-1 'mti' station"
     description: "Sentinel-1 'mti' station"
 
@@ -126,7 +126,7 @@ collections:
   - id: sgs_sentinel1
     station: sgs
     query:
-      Satellite: S1A, S1B, S1C
+      Satellite: S1A, S1C, S1D
     title: "Sentinel-1 'sgs' station"
     description: "Sentinel-1 'sgs' station"
 

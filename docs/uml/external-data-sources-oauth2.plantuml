@@ -31,7 +31,7 @@ end
 RS_Server_CADIP -> CADIP_nsg ++ : POST OAuth2 token (grant_type=password)
 CADIP_nsg --> RS_Server_CADIP : Token
 
-RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite in ('S1A', 'S1C')\n&$orderby=PublicationDate desc (+ token)
+RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite in ('S1A', 'S1C', 'S1D')\n&$orderby=PublicationDate desc (+ token)
 CADIP_nsg --> RS_Server_CADIP : <OData response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
