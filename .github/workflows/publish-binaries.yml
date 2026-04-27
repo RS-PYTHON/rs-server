@@ -37,12 +37,10 @@ jobs:
     name: Generate frontend
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
-    permissions:
-      contents: write
+    outputs:
+      trigger: ${{ steps.paths-filter.outputs.trigger }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
 
       - id: find
         name: Find all files that could modify openapi.json
@@ -74,37 +72,19 @@ jobs:
         uses: dorny/paths-filter@f3ceefdc7ef57bc2d8560787d4b6c33e44044cec
         with:
           filters: |
-            frontend: ${{ steps.find.outputs.found }}
-          base: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} # since last commit on same branch #
-
-      - if: ${{ steps.paths-filter.outputs.frontend == 'true' }}
-        env:
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-        run: |
-          set -x
-          echo toto > services/frontend/resources/openapi.json
-
-          # Commit the openapi.json if it changed
-          to_commit="services/frontend/resources/openapi.json"
-          if [[ -n $(git status -s $to_commit) ]]; then
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
-            git add $to_commit
-            git commit -m "Updated frontend openapi.json/swagger"
-            git push
-          fi
-
-      - run: ls /crash
+            trigger: ${{ steps.find.outputs.found }}
 
   build-wheels:
     name: "Build wheels"
     needs: generate-frontend
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: write # for the git push
     strategy:
       matrix:
         service: # all services must be under the services/ folder
-          # - adgs
+          - adgs
           # - cadip
           # - catalog
           # - common
@@ -117,44 +97,39 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} # checkout branch not pr (needed by git push)
           fetch-depth: 0 # so that Dunamai produce the correct version
 
-      - if: ${{ matrix.service == 'frontend' }}
+      - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
         uses: ./.github/actions/install-python
 
-      - if: ${{ matrix.service == 'frontend' }}
+      - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
         name: Generate the aggregated openapi.json/swagger
         run: |
           set -x
+
           pip install poetry # we need poetry for the sub-projects, but no need to install the root project
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
 
-      # - id: build-wheel
-      #   uses: ./.github/actions/build-wheel
-      #   with:
-      #     package_directory: "services/${{ matrix.service }}"
+          # Commit the openapi.json if it changed
+          to_commit="services/frontend/resources/openapi.json"
+          if [[ -n $(git status -s $to_commit) ]]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add $to_commit
+            git commit -m "Updated frontend openapi.json/swagger"
+            git push
+          fi
 
       - id: build-wheel
-        run: |
-          set -x
-          touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-          touch rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-          echo "version_name=1.0a8.post72.dev0" >> "$GITHUB_OUTPUT"
-      - name: Save wheel package as artifact
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/build-wheel
         with:
-          name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-          path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0-py3-none-any.whl
-      - name: Save sdist as artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
-          path: rs_server_${{ matrix.service }}-1.0a8.post72.dev0.tar.gz
+          package_directory: "services/${{ matrix.service }}"
 
       - id: outputs
         # The version name should be the same for all services. Save it only once for any service.
         if: ${{ matrix.service == 'adgs' }}
-        run: echo "version_name=${{ steps.build-wheel.outputs.version_name }}" >> "$GITHUB_OUTPUT"
+        run: set -x; echo "version_name=${{ steps.build-wheel.outputs.version_name }}" >> "$GITHUB_OUTPUT"
 
   set-env:
     name: Set environment
