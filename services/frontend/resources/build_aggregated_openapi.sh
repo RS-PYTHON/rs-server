@@ -149,11 +149,11 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # Use the same values as in services.yml
 
     # Use postgres database
-    run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
-    run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
-    run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
-    run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health"
-    run_local_service "../osam" "rs_server_osam.main:app" 7001 "_mgmt/ping"
+    run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health" &
+    run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health" &
+    run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping" &
+    run_local_service "../prip" "rs_server_prip.fastapi.prip_app:app" 8005 "health" &
+    run_local_service "../osam" "rs_server_osam.main:app" 7001 "_mgmt/ping" &
 
     # Use pgstac database
     PGDATABASE=$POSTGRES_DB \
@@ -165,7 +165,9 @@ if [[ " $@ " == *" --run-services "* ]]; then
     PREFIX_PATH=/catalog \
     OPENAPI_URL=/catalog/api \
     DOCS_URL=/catalog/api.html \
-        run_local_service "../catalog" "rs_server_catalog.app:app" 8003 "catalog/_mgmt/ping"
+        run_local_service "../catalog" "rs_server_catalog.app:app" 8003 "catalog/_mgmt/ping" &
+
+    wait
 fi
 
 services_file="${SCRIPT_DIR}/services.yml" # input file = describe services
