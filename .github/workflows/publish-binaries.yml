@@ -58,7 +58,7 @@ jobs:
           # Add everything from the frontend
           found="${found} $(find services/frontend/rs_server_frontend services/frontend/resources services/frontend/tools)"
 
-          # If I forgot some files, add them here with: found="${found} dir/to/file1 dir/to/file2"
+          # If I forgot some files, add them here with: found="${found} path/to/file1 path/to/file2"
           # Or simply run this command locally:
           # ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
           # and commit/push the result to your branch.
@@ -85,13 +85,13 @@ jobs:
       matrix:
         service: # all services must be under the services/ folder
           - adgs
-          # - cadip
-          # - catalog
-          # - common
+          - cadip
+          - catalog
+          - common
           - frontend
-          # - osam
-          # - prip
-          # - staging
+          - osam
+          - prip
+          - staging
     outputs:
       version_name: ${{ steps.outputs.outputs.version_name }}
     steps:
@@ -172,13 +172,13 @@ jobs:
         image:
           - adgs
           - cadip
-          # - catalog
-          # - frontend
-          # - osam
-          # - prip
-          # - staging
-          # - staging-dask-k8s
-          # - staging-dask-local
+          - catalog
+          - frontend
+          - osam
+          - prip
+          - staging
+          - staging-dask-k8s
+          - staging-dask-local
 
         # Options specific to each image.
         # whl_pattern is a glob pattern to download the right binary wheels:
@@ -193,39 +193,36 @@ jobs:
             whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/cadip/.github/Dockerfile
             image_suffix: rs-server-cadip
-
-
-            build_args: "REMOVE=ME"
-          # - image: catalog
-          #   whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/catalog/.github/Dockerfile
-          #   image_suffix: rs-server-catalog
-          # - image: frontend
-          #   whl_pattern: "rs_server_frontend-*.whl"
-          #   dockerfile: ./services/frontend/.github/Dockerfile
-          #   image_suffix: rs-server-frontend
-          # - image: osam
-          #   whl_pattern: "{rs_server_osam-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/osam/.github/Dockerfile
-          #   image_suffix: rs-server-osam
-          # - image: prip
-          #   whl_pattern: "{rs_server_prip-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/prip/.github/Dockerfile
-          #   image_suffix: rs-server-prip
-          # - image: staging
-          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/staging/.github/Dockerfile
-          #   image_suffix: rs-server-staging
-          # - image: staging-dask-k8s
-          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-          #   image_suffix: dask/staging/k8s
-          #   build_args: "BASE_IMAGE_TARGET=k8s"
-          # - image: staging-dask-local
-          #   whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
-          #   dockerfile: ./services/staging/.github/Dockerfile.dask-staging
-          #   image_suffix: dask/staging/local
-          #   build_args: "BASE_IMAGE_TARGET=local"
+          - image: catalog
+            whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/catalog/.github/Dockerfile
+            image_suffix: rs-server-catalog
+          - image: frontend
+            whl_pattern: "rs_server_frontend-*.whl"
+            dockerfile: ./services/frontend/.github/Dockerfile
+            image_suffix: rs-server-frontend
+          - image: osam
+            whl_pattern: "{rs_server_osam-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/osam/.github/Dockerfile
+            image_suffix: rs-server-osam
+          - image: prip
+            whl_pattern: "{rs_server_prip-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/prip/.github/Dockerfile
+            image_suffix: rs-server-prip
+          - image: staging
+            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/staging/.github/Dockerfile
+            image_suffix: rs-server-staging
+          - image: staging-dask-k8s
+            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/staging/.github/Dockerfile.dask-staging
+            image_suffix: dask/staging/k8s
+            build_args: "BASE_IMAGE_TARGET=k8s"
+          - image: staging-dask-local
+            whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
+            dockerfile: ./services/staging/.github/Dockerfile.dask-staging
+            image_suffix: dask/staging/local
+            build_args: "BASE_IMAGE_TARGET=local"
 
     steps:
       - uses: actions/checkout@v6
@@ -330,7 +327,7 @@ jobs:
           cd rs-demo
 
           # Run the rs-demo local mode using the newly created docker images
-          #./test-rs-demo.sh
+          ./test-rs-demo.sh
 
       # If we used a temp docker tag, and only if the tests succeeded, then
       # we tag the images with the real tags and push them.
