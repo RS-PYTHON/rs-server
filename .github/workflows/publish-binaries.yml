@@ -70,26 +70,29 @@ jobs:
           echo found=$found >> "$GITHUB_OUTPUT"
 
       - id: paths-filter
+        name: Check if these files were modified
         uses: dorny/paths-filter@f3ceefdc7ef57bc2d8560787d4b6c33e44044cec
         with:
           filters: |
             frontend: ${{ steps.find.outputs.found }}
+          base: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} # since last commit on same branch
 
       - if: ${{ steps.paths-filter.outputs.frontend == 'true' }}
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           set -x
-          echo toto >> services/frontend/resources/openapi.json
+          echo toto > services/frontend/resources/openapi.json
 
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add services/frontend/resources/openapi.json
-          git commit -m "Updated swagger: services/frontend/resources/openapi.json"
-          # git fetch origin
-          # git rebase origin/${GITHUB_HEAD_REF} || exit 0
-          # git push origin HEAD:${GITHUB_HEAD_REF}
-          git push
+          # Commit the openapi.json if it changed
+          to_commit="services/frontend/resources/openapi.json"
+          if [[ -n $(git status -s $to_commit) ]]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add $to_commit
+            git commit -m "Updated frontend openapi.json/swagger"
+            git push
+          fi
 
       - run: ls /crash
 
@@ -101,11 +104,11 @@ jobs:
     strategy:
       matrix:
         service: # all services must be under the services/ folder
-          - adgs
-          - cadip
+          # - adgs
+          # - cadip
           # - catalog
           # - common
-          # - frontend
+          - frontend
           # - osam
           # - prip
           # - staging
