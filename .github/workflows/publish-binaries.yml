@@ -77,12 +77,12 @@ jobs:
           # We'll generate, commit and push this file only if its last commit is older than
           # or equal to any of the above files
           generated="services/frontend/resources/openapi.json"
-          last_generation=$(git log -1 --pretty="format:%ci" $generated)
+          last_generation=$(TZ=GMT git log -1 --format=%cd --date=iso-local $generated)
 
           regenerate=false
           for file in $found; do
             # Change directory, needed for rs-dpr-service
-            file_change=$(cd $(dirname $file) && git log -1 --pretty="format:%ci" $(basename $file))
+            file_change=$(cd $(dirname $file) && TZ=GMT git log -1 --format=%cd --date=iso-local $(basename $file))
             if [[ ("$last_generation" < "$file_change") || ("$last_generation" == "$file_change") ]]; then
               regenerate=true
               break
