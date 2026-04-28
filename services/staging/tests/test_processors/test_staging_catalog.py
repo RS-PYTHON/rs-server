@@ -269,7 +269,9 @@ class TestStagingPublishCatalog:
                 data=feature.model_dump_json(),
                 timeout=staging_instance.catalog_publish_timeout,
             )
-            mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
+            mock_logger.error.assert_called_once_with(
+                "Error while publishing items in rspy catalog HTTP Error occurred",
+            )
 
     def test_publish_rspy_feature_timeout_retry_success(self, mocker, staging_instance: Staging):
         """Test that a timeout is retried before succeeding."""
@@ -292,10 +294,9 @@ class TestStagingPublishCatalog:
         assert mock_post.call_count == 2
         mock_sleep.assert_called_once_with(staging_instance.catalog_publish_retry_delay)
         mock_logger.warning.assert_called_once_with(
-            "Timeout while publishing items to rspy catalog. Retry %s/%s in %ss",
-            1,
-            staging_instance.catalog_publish_max_retries,
-            staging_instance.catalog_publish_retry_delay,
+            f"Timeout while publishing items in rspy catalog. "
+            f"Retry 1/{staging_instance.catalog_publish_max_retries} in "
+            f"{staging_instance.catalog_publish_retry_delay}s",
         )
         mock_logger.error.assert_not_called()
 
@@ -315,7 +316,7 @@ class TestStagingPublishCatalog:
         assert result is False
         assert mock_post.call_count == staging_instance.catalog_publish_max_retries + 1
         assert mock_sleep.call_count == staging_instance.catalog_publish_max_retries
-        mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
+        mock_logger.error.assert_called_once_with("Error while publishing items in rspy catalog HTTP Error occurred")
 
     def test_update_expired_rspy_feature_success(self, mocker, staging_instance: Staging):
         """Test successful update of an expired feature already present in the catalog."""
