@@ -65,9 +65,13 @@ jobs:
             services/common/poetry.lock \
             rs-dpr-service/poetry.lock"
 
-          # Add everything from the frontend
+          # Add everything from the frontend, except the openapi.json file itself
           found="${found} \
-            $(find services/frontend/rs_server_frontend services/frontend/resources services/frontend/tools -type f)"
+            $(find \
+                services/frontend/rs_server_frontend \
+                services/frontend/resources \
+                services/frontend/tools \
+                -type f -not -path "**/openapi.json")"
 
           # If I forgot some files, add them here with: found="${found} path/to/file1 path/to/file2"
           # Or simply run this command locally:
