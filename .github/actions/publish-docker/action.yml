@@ -105,7 +105,7 @@ runs:
 
         # Docker image used as an external cache
         # See: https://docs.docker.com/build/cache/optimize/#use-an-external-cache
-        cache_image="${DOCKER_IMAGE_BASE,,}:buildcache" # lowercase
+        cache_image="${DOCKER_IMAGE_BASE,,}:${image_tag}-cache" # lowercase
 
         echo "last_docker_image=${docker_image}" >> "$GITHUB_ENV"
         echo "last_image_tag=${image_tag}" >> "$GITHUB_OUTPUT"

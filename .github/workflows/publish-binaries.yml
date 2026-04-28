@@ -161,7 +161,6 @@ jobs:
       - id: other-env
         run: |
           set -x
-
           # Always use the debug mode except for new tags
           [[ "${{ github.ref_type }}" == tag ]] && debug_mode=false || debug_mode=true
           echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
@@ -248,16 +247,12 @@ jobs:
       - if: ${{ matrix.image == 'frontend' }}
         name: Copy entrypoint script
         run: cp ./services/frontend/.github/entrypoint_frontend.sh ./build_context_path
-
       - name: Copy Dockerfile requirements
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
-
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode == 'true' }}
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
-
       - run: ls ./build_context_path
-
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
@@ -275,7 +270,6 @@ jobs:
           build_args: ${{ matrix.build_args }}
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
-
       - uses: cloudposse/github-action-matrix-outputs-write@81ea135d4c4f90a5220bb38304380073c571dbb8
         id: out
         with:
@@ -287,14 +281,13 @@ jobs:
   get-pushed-images:
     name: Get pushed Docker image names
     needs: [set-env, publish-docker-images]
-    # Only if a temp Docker tag has been set
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       pushed_images: ${{ steps.read.outputs.pushed_images }}
     steps:
       - id: read-matrix-outputs
-        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
+        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }} # only if a temp Docker tag has been set
         uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
         with:
             matrix-step-name: publish-docker-images
@@ -302,7 +295,6 @@ jobs:
         if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
         run: |
           set -x
-
           # Docker images that have been pushed
           # e.g. {"docker_images": {"cadip": "<cadip_image>", "adgs": "<adgs_image>" }}
           json_images='${{ steps.read-matrix-outputs.outputs.result }}' # use simple quotes, not double quotes !
