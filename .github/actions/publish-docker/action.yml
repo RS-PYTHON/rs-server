@@ -158,6 +158,9 @@ runs:
         cat $DOCKERFILE
       shell: bash
 
+    # - run: set -x; docker pull ${{ env.cache_image }} || true
+    #   shell: bash
+
     # Checkout code from the current branch and build Docker image.
     - name: Build Docker image
       uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25

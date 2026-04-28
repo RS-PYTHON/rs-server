@@ -112,7 +112,6 @@ jobs:
             git push
           fi
 
-      - run: ls /crash
   build-wheels:
     name: "Build wheels"
     needs: build-frontend
