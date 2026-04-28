@@ -126,7 +126,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
         export OIDC_CLIENT_ID=OIDC_CLIENT_ID
         export OIDC_CLIENT_SECRET=OIDC_CLIENT_SECRET
         export RSPY_COOKIE_SECRET=RSPY_COOKIE_SECRET
-
+#
         # Install the poetry environment and run uvicorn with the environment variables set above
         cd "$path"
         poetry install
