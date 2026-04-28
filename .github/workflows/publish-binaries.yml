@@ -95,7 +95,7 @@ jobs:
           echo "regenerate=$regenerate" >> "$GITHUB_OUTPUT"
 
       - if: ${{ steps.find.outputs.regenerate == 'true'}}
-        uses: ./.github/actions/setup-poetry
+        uses: RS-PYTHON/actions/.github/actions/setup-poetry@feat-rspy964/push-latest-after-tests
       - name: Generate the aggregated openapi.json/swagger
         if: ${{ steps.find.outputs.regenerate == 'true'}}
         run: |
@@ -135,7 +135,7 @@ jobs:
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - id: build-wheel
-        uses: ./.github/actions/build-wheel
+        uses: RS-PYTHON/actions/.github/actions/build-wheel@feat-rspy964/push-latest-after-tests
         with:
           package_directory: "services/${{ matrix.service }}"
       - id: outputs
@@ -156,7 +156,7 @@ jobs:
     steps:
       - id: set-binary-env
         name: Call action 'set-binary-env'
-        uses: RS-PYTHON/rs-server/.github/actions/set-binary-env@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/set-binary-env@feat-rspy964/push-latest-after-tests
         with:
           wheel_version_name: ${{ needs.build-wheels.outputs.version_name }}
           manual_tag: ${{ github.event.inputs.docker_tag }}
@@ -257,7 +257,7 @@ jobs:
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
       - run: ls ./build_context_path
       - id: publish-docker
-        uses: ./.github/actions/publish-docker
+        uses: RS-PYTHON/actions/.github/actions/publish-docker@feat-rspy964/push-latest-after-tests
         with:
           dockerfile: ${{ matrix.dockerfile }}
           build_context_path: ./build_context_path
@@ -339,7 +339,7 @@ jobs:
       # we tag the images with the real tags and push them.
       - name: Tag and push Docker images
         if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
-        uses: RS-PYTHON/rs-server/.github/actions/tag-push-docker@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/tag-push-docker@feat-rspy964/push-latest-after-tests
         with:
           old_docker_images: ${{ needs.get-pushed-images.outputs.pushed_images }}
           new_tags: ${{ needs.set-env.outputs.docker_tags }}
