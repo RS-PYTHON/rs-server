@@ -17,7 +17,7 @@
 from rs_server_common import settings
 
 # Set automatically by running `poetry dynamic-versioning`
-__version__ = "1.0a9.post27.dev0"
+__version__ = "0.0.0"
 
 settings.SERVICE_NAME = "rs.server.adgs"
 

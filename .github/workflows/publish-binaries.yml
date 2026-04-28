@@ -32,18 +32,23 @@ env:
   DOCKER_REGISTRY: ghcr.io
 
 jobs:
-  generate-frontend:
-    name: Generate frontend
+  build-frontend:
+    name: Build frontend openapi.json
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
-    outputs:
-      trigger: ${{ steps.paths-filter.outputs.trigger }}
+    permissions:
+      contents: write # for the git push
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Checkout branch not pr (needed by git push)
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
+          fetch-depth: 0 # to have file history
       - uses: actions/checkout@v6
         with:
           repository: RS-PYTHON/rs-dpr-service
           path: rs-dpr-service
+          fetch-depth: 0
       - id: find
         name: Find all files that could modify openapi.json
         run: |
@@ -54,10 +59,15 @@ jobs:
           found="${found} $(grep --include="*.py" --exclude-dir="tests" -lrE "@.*\.(delete|get|patch|put|post)")"
 
           # Add project files that contain the pygeoapi or stac-fastapi version
-          found="${found} services/catalog/poetry.lock services/staging/poetry.lock services/common/poetry.lock rs-dpr-service/poetry.lock"
+          found="${found} \
+            services/catalog/poetry.lock \
+            services/staging/poetry.lock \
+            services/common/poetry.lock \
+            rs-dpr-service/poetry.lock"
 
           # Add everything from the frontend
-          found="${found} $(find services/frontend/rs_server_frontend services/frontend/resources services/frontend/tools)"
+          found="${found} \
+            $(find services/frontend/rs_server_frontend services/frontend/resources services/frontend/tools -type f)"
 
           # If I forgot some files, add them here with: found="${found} path/to/file1 path/to/file2"
           # Or simply run this command locally:
@@ -71,34 +81,39 @@ jobs:
 
           regenerate=false
           for file in $found; do
+            # Change directory, needed for rs-dpr-service
             file_change=$(cd $(dirname $file) && git log -1 --pretty="format:%ci" $(basename $file))
             if [[ ("$last_generation" < "$file_change") || ("$last_generation" == "$file_change") ]]; then
               regenerate=true
               break
             fi
           done
+          echo "regenerate=$regenerate" >> "$GITHUB_OUTPUT"
 
-          echo regenerate=$regenerate
-          ls /crash
+      - if: ${{ steps.find.outputs.regenerate == 'true'}}
+        uses: ./.github/actions/setup-poetry
+      - name: Generate the aggregated openapi.json/swagger
+        if: ${{ steps.find.outputs.regenerate == 'true'}}
+        run: |
+          set -x
+          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
 
-          # Convert to a json array
-          found=$(echo -n $found | jq -R -s 'split(" ")') # no "" around $found
-          echo found=$found >> "$GITHUB_OUTPUT"
+          # Commit the openapi.json if it changed
+          generated="services/frontend/resources/openapi.json"
+          if [[ -n $(git status -s $generated) ]]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add $generated
+            git commit -m "Updated frontend openapi.json/swagger"
+            git push
+          fi
 
-      - id: paths-filter
-        name: Check if these files were modified
-        uses: dorny/paths-filter@f3ceefdc7ef57bc2d8560787d4b6c33e44044cec
-        with:
-          filters: |
-            trigger: ${{ steps.find.outputs.found }}
-
+      - run: ls /crash
   build-wheels:
     name: "Build wheels"
-    needs: generate-frontend
+    needs: build-frontend
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
-    permissions:
-      contents: write # for the git push
     strategy:
       matrix:
         service: # all services must be under the services/ folder
@@ -115,33 +130,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} # checkout branch not pr (needed by git push)
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
-        uses: ./.github/actions/setup-poetry
-
-      - if: ${{ matrix.service == 'frontend' && needs.generate-frontend.outputs.trigger == 'true'}}
-        name: Generate the aggregated openapi.json/swagger
-        run: |
-          set -x
-          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
-
-          # Commit the openapi.json if it changed
-          generated="services/frontend/resources/openapi.json"
-          if [[ -n $(git status -s $generated) ]]; then
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
-            git add $generated
-            git commit -m "Updated frontend openapi.json/swagger"
-            git push
-          fi
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
           package_directory: "services/${{ matrix.service }}"
-
       - id: outputs
         # The version name should be the same for all services. Save it only once for any service.
         if: ${{ matrix.service == 'adgs' }}

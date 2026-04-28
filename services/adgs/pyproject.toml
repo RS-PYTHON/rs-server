@@ -18,7 +18,7 @@ dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versio
 
 [tool.poetry]
 name = "rs-server-adgs"
-version = "1.0a9.post27.dev0"
+version = "0.0.0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 license = "Apache-2.0"
 authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
@@ -88,7 +88,7 @@ check_untyped_defs = true
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
 
 [tool.poetry-dynamic-versioning]
-enable = false
+enable = true
 metadata = false
 
 [build-system]
