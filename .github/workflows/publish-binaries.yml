@@ -28,7 +28,6 @@ on:
         required: false
 
 env:
-  PYTHON_VERSION: 3.13.12
   DOCKER_REGISTRY: ghcr.io
 
 jobs:
@@ -150,7 +149,7 @@ jobs:
     needs: build-wheels
     outputs:
       branch_name: ${{ steps.set-binary-env.outputs.branch_name }}
-      docker_tags: ${{ steps.set-binary-env.outputs.docker_tags }} # separated by ,
+      docker_tags: ${{ steps.set-binary-env.outputs.docker_tags }}
       docker_temp_tag: ${{ steps.set-binary-env.outputs.docker_temp_tag }}
       debug_mode: ${{ steps.other-env.outputs.debug_mode }}
     steps:
@@ -174,10 +173,10 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     needs: set-env
     permissions:
-     security-events: write # needed for github/codeql-action/upload-sarif
-     packages: write # needed for 'docker push'
+      security-events: write # needed for github/codeql-action/upload-sarif
+      packages: write # needed for 'docker push'
     outputs:
-      last_image_tag: ${{ steps.publish-docker.outputs.last_image_tag }} # same value for all images
+      latest_or_branch_tag: ${{ steps.publish-docker.outputs.latest_or_branch_tag }} # same value for all images
     strategy:
       matrix:
         image:
@@ -356,7 +355,7 @@ jobs:
       - name: Test rs-demo
         env:
           BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
-          DOCKER_TAG: ${{ needs.publish-docker-images.outputs.last_image_tag }}
+          DOCKER_TAG: ${{ needs.publish-docker-images.outputs.latest_or_branch_tag }}
         run: |
           set -x
 
