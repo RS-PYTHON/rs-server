@@ -66,7 +66,12 @@ from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
 from rs_server_staging.utils.tools import get_minimal_collection_body
 from starlette.requests import Request
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+)
 
 
 class Staging(
@@ -1091,7 +1096,9 @@ class Staging(
                     data=feature.model_dump_json(),
                     timeout=self.catalog_publish_timeout,
                 )
-                response.raise_for_status()  # Raise an error for HTTP error responses
+                # Treat HTTP 409 as success (happens for concurrent staging of the same data)
+                if response.status_code != HTTP_409_CONFLICT:
+                    response.raise_for_status()  # Raise an error for HTTP error responses
                 return True
             except requests.exceptions.Timeout as exc:
                 if attempt >= self.catalog_publish_max_retries:
