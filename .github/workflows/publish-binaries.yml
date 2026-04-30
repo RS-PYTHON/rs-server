@@ -304,7 +304,6 @@ jobs:
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           build_args: ${{ matrix.build_args }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }}
       - uses: cloudposse/github-action-matrix-outputs-write@81ea135d4c4f90a5220bb38304380073c571dbb8
         with:
           matrix-step-name: publish-docker-images

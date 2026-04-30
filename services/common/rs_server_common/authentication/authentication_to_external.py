@@ -18,12 +18,9 @@ Authentication to external stations module.
 
 import os
 import re
-from pathlib import Path
 from typing import Any
 
-import yaml
 from fastapi import HTTPException
-from rs_server_common import settings
 from rs_server_common.authentication.external_authentication_config import (
     S3ExternalAuthenticationConfig,
     StationExternalAuthenticationConfig,
@@ -32,7 +29,6 @@ from rs_server_common.authentication.external_authentication_config import (
 from rs_server_common.utils.logging import Logging
 from starlette.status import (
     HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 logger = Logging.default(__name__)
@@ -46,57 +42,10 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
     """
     Read the rs-server configuration for authentication to extenal stations.
 
-    In local mode, we read an existing rs-server.yaml local file, either customized by the user
-    or released with the source code.
-
-    In cluster mode, we read the environment variables with the pattern:
-    RSPY__TOKEN__<service>__<station>__<section_name>__<rest_of_the_info_for_key>
-
     Returns:
         dict: A dictionary containing the configuration data
-
-    Raises:
-        HTTPException:
-            - If the configuration file cannot be found (`FileNotFoundError`).
-            - If there is an error in reading or parsing the YAML file (`yaml.YAMLError`).
-            - For any other unexpected errors that occur during the file reading process.
     """
     config_data: dict[str, Any] = {}
-
-    if settings.LOCAL_MODE:
-
-        # In local mode, if this local file exists, it means it could be customized by the user, so we use it.
-        path = f"{os.path.expanduser('~')}/.config/rs-server.yaml"
-
-        # Else we use the default file released with the source code.
-        if not os.path.isfile(path):
-            path = str((Path(__file__).parent.parent.parent / "config/rs-server.yaml").resolve())
-
-        try:
-
-            # Open the configuration file and load the YAML content
-            with open(path, encoding="utf-8") as f:
-                contents = f.read()
-                # expandvars is used to replace missing values in template with env vars
-                # This is mainly intended for the s3 credentials
-                contents = os.path.expandvars(contents)
-                config_data = yaml.safe_load(contents)
-
-            # Ensure the loaded configuration is a dictionary
-            if not isinstance(config_data, dict):
-                logger.error(msg := "Error loading the configuration for external stations authentication")
-                raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
-
-            return config_data
-
-        except (FileNotFoundError, yaml.YAMLError) as e:
-            logger.error(msg := f"Error loading configuration: {e}")
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception(msg := f"An unexpected error occurred: {e}")
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
-
-    # Else, we are in cluster mode
 
     # Read all the env vars. The pattern for all the env vars used is:
     # RSPY__TOKEN__<service>__<station>__<section_name>__<rest of the info for key>

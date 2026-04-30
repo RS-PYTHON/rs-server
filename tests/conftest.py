@@ -30,6 +30,63 @@ from importlib import reload
 # pylint: disable=wrong-import-order,wrong-import-position
 os.environ["RSPY_LOCAL_MODE"] = "1"
 os.environ["CORS_ORIGINS"] = "http://domain_a,http://domain_b"  # also mockup the cors settings
+
+TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
+TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
+TOKEN_CLIENT_SECRET = os.getenv("RSPY_CLIENT_SECRET", "client_secret")
+TOKEN_URL = os.getenv("RSPY_TOKEN_URL", "http://127.0.0.1:5000/oauth2/token")
+
+
+def set_oauth_token_env(service: str, station: str, domain: str, service_url: str, token_url: str):
+    """Set RSPY__TOKEN__ env vars before authentication_to_external is imported."""
+    prefix = f"RSPY__TOKEN__{service.upper()}__{station.upper()}"
+    os.environ[f"{prefix}__AUTHENTICATION__AUTHORIZATION"] = "Basic test"
+    os.environ[f"{prefix}__AUTHENTICATION__CLIENT__ID"] = "client_id"
+    os.environ[f"{prefix}__AUTHENTICATION__CLIENT__SECRET"] = TOKEN_CLIENT_SECRET
+    os.environ[f"{prefix}__AUTHENTICATION__TOKEN__URL"] = token_url
+    os.environ[f"{prefix}__SERVICE__URL"] = service_url
+    os.environ[f"{prefix}__DOMAIN"] = domain
+    os.environ[f"{prefix}__SERVICE__NAME"] = service
+    os.environ[f"{prefix}__AUTHENTICATION__AUTH__TYPE"] = "oauth2"
+    os.environ[f"{prefix}__AUTHENTICATION__GRANT__TYPE"] = "password"
+    os.environ[f"{prefix}__AUTHENTICATION__PASSWORD"] = TOKEN_PASSWORD
+    os.environ[f"{prefix}__AUTHENTICATION__USERNAME"] = TOKEN_USERNAME
+
+
+for aux in ["adgs", "adgs2"]:
+    set_oauth_token_env(
+        "auxip",
+        aux,
+        "mockup-station-adgs2.processing.svc.cluster.local",
+        "http://127.0.0.1:5001",
+        "http://127.0.0.1:5001/oauth2/token",
+    )
+for c_station, port in {"cadip": 5000, "mti": 5004, "sgs": 5006}.items():
+    set_oauth_token_env(
+        "cadip",
+        c_station,
+        f"mockup-station-cadip-{c_station}.processing.svc.cluster.local",
+        f"http://127.0.0.1:{port}",
+        f"http://127.0.0.1:{port}/oauth2/token",
+    )
+for cadip_session, port in {"cadip_session": 5000, "mti_session": 5003, "sgs_session": 5005}.items():
+    domain_station = cadip_session.replace("_session", "")
+    set_oauth_token_env(
+        "cadip",
+        cadip_session,
+        f"mockup-station-cadip-{domain_station}.processing.svc.cluster.local",
+        f"http://127.0.0.1:{port}",
+        f"http://127.0.0.1:{port}/oauth2/token",
+    )
+for prip_station, port in {"s1a": 5007, "s2b": 5008}.items():
+    set_oauth_token_env(
+        "prip",
+        prip_station,
+        f"mockup-prip-{prip_station}.processing.svc.cluster.local",
+        f"http://127.0.0.1:{port}",
+        f"http://127.0.0.1:{port}/oauth2/token",
+    )
+
 from rs_server_common import settings, stac_api_common
 
 reload(settings)
@@ -64,11 +121,6 @@ PRIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "prip_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
 os.environ["RSPY_PRIP_SEARCH_CONFIG"] = str(PRIP_SEARCH.absolute())
-
-TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
-TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
-TOKEN_CLIENT_SECRET = os.getenv("RSPY_CLIENT_SECRET", "client_secret")
-TOKEN_URL = os.getenv("RSPY_TOKEN_URL", "http://127.0.0.1:5000/oauth2/token")
 
 ##################
 # INITIALISATION #
