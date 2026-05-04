@@ -151,7 +151,7 @@ jobs:
       branch_name: ${{ steps.set-binary-env.outputs.branch_name }}
       docker_tags: ${{ steps.set-binary-env.outputs.docker_tags }}
       docker_temp_tag: ${{ steps.set-binary-env.outputs.docker_temp_tag }}
-      debug_mode: ${{ steps.other-env.outputs.debug_mode }}
+      debug_mode: ${{ steps.set-binary-env.outputs.debug_mode }}
     steps:
       - id: set-binary-env
         name: Call action 'set-binary-env'
@@ -159,13 +159,6 @@ jobs:
         with:
           wheel_version_name: ${{ needs.build-wheels.outputs.version_name }}
           manual_tag: ${{ github.event.inputs.docker_tag }}
-
-      - id: other-env
-        run: |
-          set -x
-          # Always use the debug mode except for new tags
-          [[ "${{ github.ref_type }}" == tag ]] && debug_mode=false || debug_mode=true
-          echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
 
   publish-docker-images:
     name: "Build and publish Docker images"
