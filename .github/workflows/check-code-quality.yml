@@ -16,8 +16,8 @@ name: Check code quality
 
 on:
   push:
-   branches: [develop, main] # pushes on the 'develop' or 'main' branches
-   tags: ['**'] # new git tags (including hierarchical tags like v1.0/beta)
+    branches: [develop, main] # pushes on the 'develop' or 'main' branches
+    tags: ['**'] # new git tags (including hierarchical tags like v1.0/beta)
   pull_request:
     types: [opened, synchronize, reopened]
     # run this worflow only for code/test related changes (avoid it for documentation)

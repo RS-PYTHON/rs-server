@@ -150,7 +150,7 @@ jobs:
     outputs:
       branch_name: ${{ steps.set-binary-env.outputs.branch_name }}
       docker_tags: ${{ steps.set-binary-env.outputs.docker_tags }}
-      docker_temp_tag: ${{ steps.set-binary-env.outputs.docker_temp_tag }}
+      docker_final_tags: ${{ steps.set-binary-env.outputs.docker_final_tags }}
       debug_mode: ${{ steps.set-binary-env.outputs.debug_mode }}
     steps:
       - id: set-binary-env
@@ -168,8 +168,6 @@ jobs:
     permissions:
       security-events: write # needed for github/codeql-action/upload-sarif
       packages: write # needed for 'docker push'
-    outputs:
-      latest_or_branch_tag: ${{ steps.publish-docker.outputs.latest_or_branch_tag }} # same value for all images
     strategy:
       matrix:
         image:
@@ -289,10 +287,7 @@ jobs:
           build_context_path: ./build_context_path
           image_basename: ${{ github.repository_owner }}/
           image_suffix: ${{ matrix.image_suffix }}
-          image_tags: ${{
-            case(needs.set-env.outputs.docker_temp_tag != '',
-            needs.set-env.outputs.docker_temp_tag,
-            needs.set-env.outputs.docker_tags) }} # pass the temp tag if defined, else the nominal tags
+          image_tags: ${{ needs.set-env.outputs.docker_tags }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -313,12 +308,12 @@ jobs:
       pushed_images: ${{ steps.read.outputs.pushed_images }}
     steps:
       - id: read-matrix-outputs
-        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }} # only if a temp Docker tag has been set
+        if: ${{ needs.set-env.outputs.docker_final_tags != '' }} # only if a temp Docker tag has been set
         uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
         with:
             matrix-step-name: publish-docker-images
       - id: read
-        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
+        if: ${{ needs.set-env.outputs.docker_final_tags != '' }}
         run: |
           set -x
           # Docker images that have been pushed
@@ -347,9 +342,12 @@ jobs:
       - name: Test rs-demo
         env:
           BRANCH_NAME: ${{ needs.set-env.outputs.branch_name }}
-          DOCKER_TAG: ${{ needs.publish-docker-images.outputs.latest_or_branch_tag }}
+          DOCKER_TAGS: ${{ needs.set-env.outputs.docker_tags }}
         run: |
           set -x
+
+          # Keep last tag (after the last ',')
+          export DOCKER_TAG=${DOCKER_TAGS##*,}
 
           # Clone the rs-demo repository
           git clone https://github.com/RS-PYTHON/rs-demo.git
@@ -361,11 +359,11 @@ jobs:
       # If we used a temp docker tag, and only if the tests succeeded, then
       # we tag the images with the real tags and push them.
       - name: Tag and push Docker images
-        if: ${{ needs.set-env.outputs.docker_temp_tag != '' }}
+        if: ${{ needs.set-env.outputs.docker_final_tags != '' }}
         uses: RS-PYTHON/actions/.github/actions/tag-push-docker@feat-rspy964/push-latest-after-tests
         with:
           old_docker_images: ${{ needs.get-pushed-images.outputs.pushed_images }}
-          new_tags: ${{ needs.set-env.outputs.docker_tags }}
+          new_tags: ${{ needs.set-env.outputs.docker_final_tags }}
 
   publish-wheels-pypi:
     name: "Publish wheels and sdists to PyPI"
