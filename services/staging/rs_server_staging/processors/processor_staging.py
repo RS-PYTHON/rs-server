@@ -66,7 +66,12 @@ from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
 from rs_server_staging.utils.tools import get_minimal_collection_body
 from starlette.requests import Request
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+)
 
 
 class Staging(
@@ -1170,10 +1175,14 @@ class Staging(
                     timeout=self.catalog_publish_timeout,
                 )
                 response.raise_for_status()
+
                 if method == "post":
                     self.logger.info(f"Item {feature.id} was published successfully in catalog")
                 else:
                     self.logger.info(f"Expired catalog item {feature.id} was updated successfully")
+                # Treat HTTP 409 as success (happens for concurrent staging of the same data)
+                if response.status_code != HTTP_409_CONFLICT:
+                    response.raise_for_status()  # Raise an error for HTTP error responses
                 return True
             except requests.exceptions.Timeout as exc:
                 if attempt >= self.catalog_publish_max_retries:
