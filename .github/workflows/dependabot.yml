@@ -28,7 +28,7 @@ jobs:
     if: startsWith(github.head_ref, 'dependabot/')
     steps:
       - uses: actions/checkout@v6
-      - uses: RS-PYTHON/actions/.github/actions/setup-poetry@feat-rspy964/push-latest-after-tests
+      - uses: RS-PYTHON/actions/.github/actions/setup-poetry@develop
 
       - name: Regenerate lock files
         run: |

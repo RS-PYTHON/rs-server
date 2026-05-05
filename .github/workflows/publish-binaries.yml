@@ -94,7 +94,7 @@ jobs:
           echo "regenerate=$regenerate" >> "$GITHUB_OUTPUT"
 
       - if: ${{ steps.find.outputs.regenerate == 'true'}}
-        uses: RS-PYTHON/actions/.github/actions/setup-poetry@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/setup-poetry@develop
       - name: Generate the aggregated openapi.json/swagger
         if: ${{ steps.find.outputs.regenerate == 'true'}}
         run: |
@@ -134,7 +134,7 @@ jobs:
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - id: build-wheel
-        uses: RS-PYTHON/actions/.github/actions/build-wheel@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/build-wheel@develop
         with:
           package_directory: "services/${{ matrix.service }}"
       - id: outputs
@@ -155,7 +155,7 @@ jobs:
     steps:
       - id: set-binary-env
         name: Call action 'set-binary-env'
-        uses: RS-PYTHON/actions/.github/actions/set-binary-env@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/set-binary-env@develop
         with:
           wheel_version_name: ${{ needs.build-wheels.outputs.version_name }}
           manual_tag: ${{ github.event.inputs.docker_tag }}
@@ -281,7 +281,7 @@ jobs:
 
       - run: ls ./build_context_path
       - id: publish-docker
-        uses: RS-PYTHON/actions/.github/actions/publish-docker@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/publish-docker@develop
         with:
           dockerfile: ${{ matrix.dockerfile }}
           build_context_path: ./build_context_path
@@ -360,7 +360,7 @@ jobs:
       # we tag the images with the real tags and push them.
       - name: Tag and push Docker images
         if: ${{ needs.set-env.outputs.docker_final_tags != '' }}
-        uses: RS-PYTHON/actions/.github/actions/tag-push-docker@feat-rspy964/push-latest-after-tests
+        uses: RS-PYTHON/actions/.github/actions/tag-push-docker@develop
         with:
           old_docker_images: ${{ needs.get-pushed-images.outputs.pushed_images }}
           new_tags: ${{ needs.set-env.outputs.docker_final_tags }}
