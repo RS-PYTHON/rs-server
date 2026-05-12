@@ -179,7 +179,7 @@ def prepare_streaming_tasks(
         if named_assets:
             # if named_assets is True and file:local_path exists in the asset content,
             # use it as asset name instead of the key in the assets dict
-            # otherswise, the asset name will be the key in the assets dict, as before
+            # otherwise, the asset name will be the key in the assets dict, as before
             asset_name = asset_content.to_dict().get("file:local_path", asset_name)
         s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
 
