@@ -994,7 +994,12 @@ class Staging(
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         try:
             for feature in self.stream_list:
-                new_assets_info = prepare_streaming_tasks(catalog_collection, feature, self.staging_user, self.named_assets)
+                new_assets_info = prepare_streaming_tasks(
+                    catalog_collection,
+                    feature,
+                    self.staging_user,
+                    self.named_assets,
+                )
                 if new_assets_info is None:
                     return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
                 self.assets_info += new_assets_info
