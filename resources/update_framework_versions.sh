@@ -25,7 +25,7 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 #
 # Hardcode here the versions to use, with the same variable names as in the files below
 
-# We use a different python version in eopf + the dpr processors + rs-dpr-service
+# We use a different python version in eopf + the dpr processors
 PYTHON_VERSION=3.13.12
 PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
@@ -76,16 +76,12 @@ all_files+=($(_realpath rs-workflow-env/docker/base/Dockerfile.python))
 all_files+=($(_realpath rs-client-libraries/.github/workflows/check-code-quality.yml))
 all_files+=($(_realpath rs-client-libraries/.github/workflows/publish-binaries.yml))
 all_files+=($(_realpath rs-demo/.github/workflows/run_demos.yml))
-all_files+=($(_realpath rs-dpr-service/.github/workflows/check-code-quality.yml))
-all_files+=($(_realpath rs-dpr-service/.github/workflows/publish-binaries.yml))
 all_files+=($(_realpath rs-infra-core/.github/common/resources/install-requirements.sh))
 all_files+=($(_realpath rs-server/.github/workflows/check-code-quality.yml))
 all_files+=($(_realpath rs-server/.github/workflows/publish-binaries.yml))
 
 # [local mode] [cluster mode] [docker images]
 # + run rs-server ci/cd
-# [ghcr.io/rs-python/rs-dpr-service]
-all_files+=($(_realpath rs-dpr-service/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-adgs]
 all_files+=($(_realpath rs-server/services/adgs/.github/Dockerfile))
 # [ghcr.io/rs-python/rs-server-cadip]
