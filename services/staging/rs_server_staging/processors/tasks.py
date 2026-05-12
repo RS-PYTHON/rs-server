@@ -170,7 +170,7 @@ def prepare_streaming_tasks(
 
     assets_info: list[AssetInfo] = []
 
-    for asset_name, asset_content in feature.assets.items():
+    for asset_name, asset_content in list(feature.assets.items()):
         if not asset_content.href or not asset_name:
             logger.error("Missing href or title in asset dictionary")
             return None
