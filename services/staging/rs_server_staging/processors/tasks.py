@@ -177,10 +177,11 @@ def prepare_streaming_tasks(
         # Add the user_collection as main directory, as soon as the authentication will be
         # implemented in this staging process
         if named_assets:
-            asset_file_path = asset_content.href.split("/")[-1]
-            s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_file_path}"
-        else:
-            s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
+            # if named_assets is True and file:local_path exists in the asset content,
+            # use it as asset name instead of the key in the assets dict
+            # otherswise, the asset name will be the key in the assets dict, as before
+            asset_name = asset_content.to_dict().get("file:local_path", asset_name)
+        s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
 
         origin_service = urlparse(asset_content.href).scheme
         if origin_service == "s3":
