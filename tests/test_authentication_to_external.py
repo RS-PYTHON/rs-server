@@ -336,6 +336,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
     external_data_sources:
       {ext_auth_config.station_id}:
         domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local
+        max_requests_per_minute: 10
         service:
           name: {ext_auth_config.service_name}
           url: "http://test_url:6000"
@@ -361,6 +362,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
         result.domain
         == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local"
     )
+    assert result.max_requests_per_minute == 10
 
 
 @pytest.mark.unit
@@ -629,6 +631,7 @@ def test_create_external_auth_config(get_external_auth_config):
     # Mock the YAML content where the service does not match
     station_dict = {
         "domain": ext_auth_config.domain,
+        "max_requests_per_minute": "10",
         "authentication": {
             "auth_type": ext_auth_config.auth_type,
             "token_url": ext_auth_config.token_url,
@@ -655,6 +658,7 @@ def test_create_external_auth_config(get_external_auth_config):
     assert result.service_name == ext_auth_config.service_name
     assert result.service_url == ext_auth_config.service_url
     assert result.auth_type == ext_auth_config.auth_type
+    assert result.max_requests_per_minute == 10
     assert result.token_url == ext_auth_config.token_url
     assert result.grant_type == ext_auth_config.grant_type
     assert result.username == ext_auth_config.username
@@ -688,6 +692,7 @@ def test_create_s3_external_auth_config(get_s3_external_auth_config):
     # Mock the YAML content where the service does not match
     station_dict = {
         "domain": ext_auth_config.domain,
+        "max_requests_per_minute": 10,
         "authentication": {
             "auth_type": ext_auth_config.auth_type,
             "access_key": ext_auth_config.access_key,
@@ -708,6 +713,7 @@ def test_create_s3_external_auth_config(get_s3_external_auth_config):
     assert result.service_name == ext_auth_config.service_name
     assert result.service_url == ext_auth_config.service_url
     assert result.auth_type == ext_auth_config.auth_type
+    assert result.max_requests_per_minute == 10
     assert result.access_key == ext_auth_config.access_key
     assert result.secret_key == ext_auth_config.secret_key
 

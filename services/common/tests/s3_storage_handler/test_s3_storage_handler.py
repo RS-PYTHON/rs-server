@@ -33,6 +33,7 @@ from moto.server import ThreadedMotoServer
 from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     SLEEP_TIME,
+    DomainRateLimiter,
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
@@ -49,6 +50,23 @@ from .helpers import (  # pylint: disable=no-name-in-module
 
 FULL_FOLDER = RESOURCES_FOLDER / "s3" / "full_s3_storage_handler_test"
 SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
+
+
+@pytest.mark.unit
+def test_domain_rate_limiter_waits_for_sliding_window(mocker):
+    """The proactive limiter waits until the oldest request leaves the 60-second window."""
+    limiter = DomainRateLimiter()
+    monotonic_mock = mocker.patch(
+        "rs_server_common.s3_storage_handler.s3_storage_handler.time.monotonic",
+        side_effect=[0, 1, 61],
+    )
+    sleep_mock = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.time.sleep")
+
+    limiter.acquire("download.dataspace.copernicus.eu", 1)
+    limiter.acquire("download.dataspace.copernicus.eu", 1)
+
+    sleep_mock.assert_called_once_with(59)
+    assert monotonic_mock.call_count == 3
 
 
 @pytest.mark.unit
@@ -1098,6 +1116,111 @@ def test_s3_streaming_upload():
     streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
 
     server.stop()
+
+
+@pytest.mark.unit
+def test_s3_streaming_upload_retries_after_http_429(mocker):
+    """HTTP 429 responses are retried after honoring Retry-After."""
+    # Simulate the CDSE URL that can return HTTP 429 when the request limit is exceeded.
+    stream_url = "https://download.dataspace.copernicus.eu/odata/v1/Products(product-id)/$value"
+
+    # Simulate the request already prepared by requests.Session.prepare_request.
+    # The production code extracts the hostname from prepared_request.url for rate limiting.
+    prepared_request = mocker.Mock(url=stream_url)
+
+    # Replace the global limiter with a mock so we can verify that it is called
+    # without actually waiting in the test.
+    rate_limiter_mock = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.DOMAIN_RATE_LIMITER")
+
+    # Replace time.sleep so we can verify the Retry-After wait duration
+    # without making the test sleep for 7 seconds.
+    sleep_mock = mocker.patch("rs_server_common.s3_storage_handler.s3_storage_handler.time.sleep")
+
+    # First simulated HTTP response: CDSE replies with Too Many Requests.
+    first_response = mocker.MagicMock()
+
+    # session.send(...) is used by the code as "with ... as response",
+    # so the mock must behave like a context manager.
+    first_response.__enter__.return_value = first_response
+    first_response.status_code = 429
+
+    # The Retry-After header tells the code how many seconds to wait before retrying.
+    first_response.headers = {"retry-after": "7"}
+
+    # The code logs response.request.headers, so expose that attribute on the mock.
+    first_response.request.headers = {}
+
+    # Second simulated HTTP response: the retry succeeds.
+    second_response = mocker.MagicMock()
+
+    # This response is also used as a context manager.
+    second_response.__enter__.return_value = second_response
+    second_response.status_code = 200
+    second_response.headers = {}
+    second_response.request.headers = {}
+
+    # response.raw is used as "with response.raw as data_stream",
+    # and data_stream is then passed to upload_fileobj.
+    second_response.raw.__enter__.return_value = "stream-data"
+
+    # Simulate the HTTP session used by CustomSessionRedirect.
+    session_mock = mocker.Mock()
+
+    # When the code prepares the request, return the prepared_request defined above.
+    session_mock.prepare_request.return_value = prepared_request
+
+    # The first send gets 429, the second one gets 200.
+    session_mock.send.side_effect = [first_response, second_response]
+
+    # Replace CustomSessionRedirect with the mocked session,
+    # so the test does not make any real HTTP request.
+    session_class_mock = mocker.patch(
+        "rs_server_common.s3_storage_handler.s3_storage_handler.CustomSessionRedirect",
+        return_value=session_mock,
+    )
+
+    # Build the handler, but avoid any real S3 connection.
+    s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5000", ""))
+
+    # Replace the S3 client with a mock so we only verify the upload call.
+    s3_handler.s3_client = mocker.Mock()
+
+    # Avoid the real connect_s3 call; this test targets the HTTP retry mechanism, not S3 connection setup.
+    mocker.patch.object(s3_handler, "connect_s3")
+
+    # Call the code under test: HTTP streaming with the limit configured at 10 requests/minute.
+    s3_handler.s3_streaming_from_http(
+        stream_url,
+        ["download.dataspace.copernicus.eu"],
+        HTTPBasicAuth("user", "pass"),
+        "bucket",
+        "key",
+        max_requests_per_minute=10,
+    )
+
+    # Verify that the custom session receives the trusted domains for redirects.
+    session_class_mock.assert_called_once_with(["download.dataspace.copernicus.eu"])
+
+    # There must be two HTTP attempts: first 429, then 200.
+    assert session_mock.send.call_count == 2
+
+    # Verify the proactive part: before each request, the limiter is consulted
+    # with the domain extracted from the URL and the configured limit.
+    rate_limiter_mock.acquire.assert_has_calls(
+        [
+            mocker.call("download.dataspace.copernicus.eu", 10),
+            mocker.call("download.dataspace.copernicus.eu", 10),
+        ],
+    )
+
+    # Verify the reactive part: on 429, the code honors Retry-After: 7.
+    sleep_mock.assert_called_once_with(7)
+
+    # After the successful retry with 200, the code checks the response status.
+    second_response.raise_for_status.assert_called_once()
+
+    # If the retry succeeds, the stream is uploaded to S3.
+    s3_handler.s3_client.upload_fileobj.assert_called_once()
 
 
 @pytest.mark.unit

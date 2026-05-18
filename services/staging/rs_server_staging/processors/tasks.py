@@ -116,6 +116,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
                     auth,
                     bucket,
                     s3_file,
+                    config.max_requests_per_minute if config else None,
                 )
 
             s3_handler.disconnect_s3()
