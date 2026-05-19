@@ -177,7 +177,7 @@ class Staging(
         #################
         # Inputs section
         self.assets_info: list[AssetInfo] = []
-
+        self.named_assets: bool = False
         self.cluster = cluster
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
@@ -301,7 +301,7 @@ class Staging(
         catalog_collection: str = data["collection"]
 
         self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
-
+        self.named_assets = bool(data.get("asset_names"))
         if not self._filter_features_with_assets(item_collection, data.get("asset_names", None)):
             return self._get_execute_result()
 
@@ -994,7 +994,12 @@ class Staging(
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         try:
             for feature in self.stream_list:
-                new_assets_info = prepare_streaming_tasks(catalog_collection, feature, self.staging_user)
+                new_assets_info = prepare_streaming_tasks(
+                    catalog_collection,
+                    feature,
+                    self.staging_user,
+                    self.named_assets,
+                )
                 if new_assets_info is None:
                     return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
                 self.assets_info += new_assets_info
