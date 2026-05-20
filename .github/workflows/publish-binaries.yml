@@ -40,6 +40,7 @@ jobs:
       contents: write # for the git push
     outputs:
       artifact: ${{ steps.generate.outputs.artifact }}
+      openapi_dir: ${{ steps.generate.outputs.openapi_dir }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -104,7 +105,7 @@ jobs:
           set -x
           echo ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version ################################################################################### REMOVE
 
-          echo tata > $OPENAPI_JSON  ################################################################################### REMOVE
+          echo titi > $OPENAPI_JSON  ################################################################################### REMOVE
 
           # Commit the openapi.json if it changed
           if ! git diff --exit-code  $OPENAPI_JSON; then
@@ -117,8 +118,9 @@ jobs:
 
           # If we could not push the file (e.g. because the 'develop' branch is protected),
           # we upload it instead as an artifact
-          artifact=true ################################################################################### REMOVE
           echo artifact=$artifact >> "$GITHUB_OUTPUT"
+          echo openapi_dir=$(dirname $OPENAPI_JSON) >> "$GITHUB_OUTPUT"
+
       - if: ${{ steps.generate.outputs.artifact == 'true' }}
         uses: actions/upload-artifact@v7
         with:
@@ -153,7 +155,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: openapi.json
-          path: ${{ env.OPENAPI_JSON }}
+          path: ${{ needs.build-frontend.outputs.openapi_dir }}
 
       - if: ${{ (matrix.service == 'frontend') }}
         run: |
