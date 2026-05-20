@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           # Checkout branch not pr (needed by git push)
-          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
+          #ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} ####################################"" REMOVE
           fetch-depth: 0 # to have file history
       - uses: actions/checkout@v6
         with:
@@ -103,7 +103,8 @@ jobs:
         if: ${{ steps.find.outputs.regenerate == 'true'}}
         run: |
           set -x
-          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
+          echo ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version ####################################################################" REMOVE
+          echo toto > $OPENAPI_JSON ####################################################################" REMOVE
 
           # Commit the openapi.json if it changed
           if ! git diff --exit-code  $OPENAPI_JSON; then
@@ -114,7 +115,7 @@ jobs:
 
             # If we cannot push the file (e.g. because the 'develop' branch is protected),
             # we upload it instead as an artifact
-            git push || artifact=true
+            git push  # || artifact=true ####################################################################" REMOVE
           fi
 
           echo artifact=$artifact >> "$GITHUB_OUTPUT"
@@ -159,6 +160,8 @@ jobs:
       - if: ${{ (matrix.service == 'frontend') }}
         run: |
           set -x
+          git branch
+          git status
           ls -al $(find . -name openapi.json) ################################################################################### REMOVE
           cat $(find . -name openapi.json)
           exit 2
