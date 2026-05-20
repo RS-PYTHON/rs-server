@@ -95,7 +95,7 @@ jobs:
             fi
           done
 
-          # In case of a tag, always regenerate, because the tag is displayed on top of the swagger page
+          # In case of a tag, always regenerate, because the tag name is displayed on top of the swagger page
           if [[ "${{ github.ref_type }}" == tag ]]; then
             regenerate=true
           fi
@@ -156,6 +156,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
+
       - name: Download openapi.json
         if: ${{ (matrix.service == 'frontend') && (needs.build-frontend.outputs.artifact == 'true') }}
         uses: actions/download-artifact@v8
@@ -163,17 +164,11 @@ jobs:
           name: openapi.json
           path: ${{ needs.build-frontend.outputs.openapi_dir }}
 
-      - if: ${{ (matrix.service == 'frontend') }}
-        run: |
-          set -x
-          ls -al $(find . -name openapi.json) ################################################################################### REMOVE
-          cat $(find . -name openapi.json)
-          exit 2
-
       - id: build-wheel
         uses: RS-PYTHON/actions/.github/actions/build-wheel@develop
         with:
           package_directory: "services/${{ matrix.service }}"
+
       - id: outputs
         # The version name should be the same for all services. Save it only once for any service.
         if: ${{ matrix.service == 'adgs' }}
