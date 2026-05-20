@@ -159,6 +159,8 @@ jobs:
       - if: ${{ (matrix.service == 'frontend') }}
         run: |
           set -x
+          git branch
+          git status
           ls -al $(find . -name openapi.json) ################################################################################### REMOVE
           cat $(find . -name openapi.json)
           exit 2
