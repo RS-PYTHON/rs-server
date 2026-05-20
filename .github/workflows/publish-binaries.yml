@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           # Checkout branch not pr (needed by git push)
-          #ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }} ####################################"" REMOVE
+          ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
           fetch-depth: 0 # to have file history
       - uses: actions/checkout@v6
         with:
@@ -94,6 +94,12 @@ jobs:
               break
             fi
           done
+
+          # In case of a tag, always regenerate, because the tag is displayed on top of the swagger page
+          if [[ "${{ github.ref_type }}" == tag ]]; then
+            regenerate=true
+          fi
+
           echo "regenerate=$regenerate" >> "$GITHUB_OUTPUT"
 
       - if: ${{ steps.find.outputs.regenerate == 'true'}}
@@ -113,9 +119,10 @@ jobs:
             git add $OPENAPI_JSON
             git commit -m "Updated frontend openapi.json/swagger"
 
-            # If we cannot push the file (e.g. because the 'develop' branch is protected),
-            # we upload it instead as an artifact
-            git push  # || artifact=true ####################################################################" REMOVE
+            # If e.g. the 'develop' branch is protected, we cannot push the file, but it's ok
+            # because we also upload the file as an artifact. It will be downloaded before building the wheel.
+            git push || true
+            artifact=true
           fi
 
           echo artifact=$artifact >> "$GITHUB_OUTPUT"
@@ -160,8 +167,6 @@ jobs:
       - if: ${{ (matrix.service == 'frontend') }}
         run: |
           set -x
-          git branch
-          git status
           ls -al $(find . -name openapi.json) ################################################################################### REMOVE
           cat $(find . -name openapi.json)
           exit 2
