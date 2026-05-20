@@ -109,8 +109,7 @@ jobs:
         if: ${{ steps.find.outputs.regenerate == 'true'}}
         run: |
           set -x
-          echo ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version ####################################################################" REMOVE
-          echo toto > $OPENAPI_JSON ####################################################################" REMOVE
+          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
 
           # Commit the openapi.json if it changed
           if ! git diff --exit-code  $OPENAPI_JSON; then
