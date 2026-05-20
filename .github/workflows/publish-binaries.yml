@@ -104,7 +104,7 @@ jobs:
           set -x
           echo ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version ################################################################################### REMOVE
 
-          echo toto > $OPENAPI_JSON  ################################################################################### REMOVE
+          echo tata > $OPENAPI_JSON  ################################################################################### REMOVE
 
           # Commit the openapi.json if it changed
           if ! git diff --exit-code  $OPENAPI_JSON; then
@@ -159,7 +159,7 @@ jobs:
         run: |
           set -x
           ls -al $(find . -name openapi.json) ################################################################################### REMOVE
-          git diff $(find . -name openapi.json)
+          cat $(find . -name openapi.json)
           exit 2
 
       - id: build-wheel
