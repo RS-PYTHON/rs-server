@@ -1056,12 +1056,34 @@ retried for %s times. Aborting",
 
             # The rate limit is applied per external download domain, e.g. download.dataspace.copernicus.eu.
             domain = urlparse(prepared_url or "").hostname or ""
+            self.logger.info(
+                "Prepared streaming request for domain '%s' with max_requests_per_minute=%s",
+                domain or "unknown",
+                max_requests_per_minute,
+            )
             backoff_seconds = HTTP_RATE_LIMIT_BACKOFF_SECONDS
             for attempt in range(HTTP_RATE_LIMIT_MAX_RETRIES + 1):
                 # Proactive protection: wait before sending if this domain already reached its request budget.
+                self.logger.info(
+                    "Waiting for rate-limit slot before downloading from domain '%s' (attempt %s/%s)",
+                    domain or "unknown",
+                    attempt + 1,
+                    HTTP_RATE_LIMIT_MAX_RETRIES + 1,
+                )
                 DOMAIN_RATE_LIMITER.acquire(domain, max_requests_per_minute)
+                self.logger.info(
+                    "Sending streaming request to %s (attempt %s/%s)",
+                    prepared_url,
+                    attempt + 1,
+                    HTTP_RATE_LIMIT_MAX_RETRIES + 1,
+                )
                 with session.send(prepared_request, stream=True, timeout=timeout) as response:
                     self.logger.debug(f"Request headers: {response.request.headers}")
+                    self.logger.info(
+                        "Received HTTP status %s while streaming %s",
+                        response.status_code,
+                        request.url,
+                    )
                     if response.status_code == 429 and attempt < HTTP_RATE_LIMIT_MAX_RETRIES:
                         # Reactive protection: honor Retry-After when present, otherwise use exponential backoff.
                         # read the 'retry-after' from response header, if not present use the backoff_seconds
@@ -1076,6 +1098,11 @@ retried for %s times. Aborting",
                         continue
 
                     response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
+                    self.logger.info(
+                        "HTTP response is valid; starting upload stream to s3://%s/%s",
+                        bucket,
+                        key,
+                    )
 
                     # Default chunksize is set to 64Kb, can be manually increased
                     chunk_size = 64 * 1024  # 64kb
