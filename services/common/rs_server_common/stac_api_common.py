@@ -52,7 +52,6 @@ from geojson_pydantic.geometries import Polygon as GeoPolygon
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.footprint_facility import (
-    AlreadyReworkedPolygonError,
     check_cross_antimeridian,
     rework_to_linestring_geometry,
     rework_to_polygon_geometry,
@@ -72,7 +71,15 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from shapely import wkt
-from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon, box, mapping, shape
+from shapely.geometry import (
+    LineString,
+    MultiLineString,
+    MultiPolygon,
+    Polygon,
+    box,
+    mapping,
+    shape,
+)
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
