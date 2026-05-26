@@ -74,7 +74,9 @@ from shapely import wkt
 from shapely.geometry import (
     LineString,
     MultiLineString,
+    MultiPoint,
     MultiPolygon,
+    Point,
     Polygon,
     box,
     mapping,
@@ -922,17 +924,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     continue
                 # Skip if geometry does not cross the antimeridian
                 shapely_geom = shape(geometry)
-                if not check_cross_antimeridian(shapely_geom):
+                # Points do not define a path, so antimeridian crossing checks can be false positives for MultiPoint.
+                if isinstance(shapely_geom, (Point, MultiPoint)) or not check_cross_antimeridian(shapely_geom):
                     continue
 
+                reworked_geometry = shapely_geom
                 if isinstance(shapely_geom, (Polygon, MultiPolygon)):
                     # Rework geometry to be a valid Polygon / MultiPolygon
                     reworked_geometry = rework_to_polygon_geometry(shapely_geom)
                 elif isinstance(shapely_geom, (LineString, MultiLineString)):
                     # Rework geometry to be a valid LineString / MultiLineString
                     reworked_geometry = rework_to_linestring_geometry(shapely_geom)
-                else:
-                    raise TypeError(f"Unsupported geometry type: {type(shapely_geom)}")
 
                 geo_cls = shapely_to_geojson_cls.get(type(reworked_geometry))
                 if not geo_cls:
