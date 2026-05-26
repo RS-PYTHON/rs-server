@@ -75,6 +75,7 @@ class StationExternalAuthenticationConfig(ExternalAuthenticationConfig):
     password: str
     client_id: str
     client_secret: str
+    max_requests_per_minute: int | None = None
     scope: str | None = None
     authorization: str | None = None
     trusted_domains: list[str] | None = None
@@ -98,7 +99,19 @@ class S3ExternalAuthenticationConfig(ExternalAuthenticationConfig):
 
     access_key: str
     secret_key: str
+    max_requests_per_minute: int | None = None
     trusted_domains: list[str] | None = None
+
+
+def _parse_optional_positive_int(value: Any) -> int | None:
+    """Parse an optional positive integer from configuration."""
+    if value in (None, ""):
+        return None
+
+    parsed_value = int(value)
+    if parsed_value <= 0:
+        raise ValueError("The value must be greater than 0.")
+    return parsed_value
 
 
 def create_external_auth_config(
@@ -121,6 +134,7 @@ def create_external_auth_config(
         KeyError: If any required keys are missing in the configuration dictionaries.
     """
     try:
+        max_requests_per_minute = _parse_optional_positive_int(station_dict.get("max_requests_per_minute"))
         if service_dict["name"] == "s3":
             return S3ExternalAuthenticationConfig(
                 station_id=station_id,
@@ -128,6 +142,7 @@ def create_external_auth_config(
                 service_name=service_dict["name"],
                 service_url=service_dict["url"],
                 auth_type=station_dict.get("authentication", {}).get("auth_type"),
+                max_requests_per_minute=max_requests_per_minute,
                 trusted_domains=station_dict.get("trusteddomains", None),
                 access_key=station_dict.get("authentication", {}).get("access_key"),
                 secret_key=station_dict.get("authentication", {}).get("secret_key"),
@@ -139,6 +154,7 @@ def create_external_auth_config(
             service_name=service_dict["name"],
             service_url=service_dict["url"],
             auth_type=station_dict.get("authentication", {}).get("auth_type"),
+            max_requests_per_minute=max_requests_per_minute,
             token_url=station_dict.get("authentication", {}).get("token_url"),
             grant_type=station_dict.get("authentication", {}).get("grant_type"),
             username=station_dict.get("authentication", {}).get("username"),
@@ -151,4 +167,6 @@ def create_external_auth_config(
         )
     except KeyError as e:
         logger.error(f"Error loading configuration, couldn't find a key: {e}")
+    except (TypeError, ValueError) as e:
+        logger.error(f"Error loading configuration, invalid max_requests_per_minute value: {e}")
     return None
