@@ -442,6 +442,38 @@ def _num_cross_antimeridian(geometry):
 _SHAPELY_SUPPORTS_NEW_MAKE_VALID = "method" in inspect.signature(shapely.make_valid).parameters
 
 
+def rework_to_linestring_geometry(geometry: Geometry):
+    """Elaborates linestring geometry and manages antimeridian crossing."""
+    boundaries = np.array(shapely.get_coordinates(geometry))
+    boundaries = np.unique(boundaries.round(decimals=1), axis=0)
+
+    if check_cross_antimeridian(geometry):
+        _min = min(boundaries, key=lambda point: point[0])
+        _max = max(boundaries, key=lambda point: point[0])
+        lat_at_180 = _lat_cross_antimeridian(_min, _max)
+        negative = [-180, lat_at_180]
+        positive = [180, lat_at_180]
+
+        left_antimeridian = []
+        right_antimeridian = []
+        [right_antimeridian.append(boundary) for boundary in boundaries if boundary[0] > 0]
+        [left_antimeridian.append(boundary) for boundary in boundaries if boundary[0] < 0]
+
+        right_antimeridian = np.concatenate((right_antimeridian, np.array([positive])), axis=0)
+        left_antimeridian = np.concatenate((np.array([negative]), left_antimeridian), axis=0)
+
+        reworked = shapely.multilinestrings(
+            [
+                shapely.linestrings(left_antimeridian),
+                shapely.linestrings(right_antimeridian),
+            ],
+        )
+    else:
+        reworked = shapely.linestrings(boundaries)
+
+    return reworked
+
+
 def rework_to_polygon_geometry(geometry: Geometry):
     """Rework the geometry to manage polar and antimeridian singularity.
     This process implements the **Polar inclusive algorithm**.

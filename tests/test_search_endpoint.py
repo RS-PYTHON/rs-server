@@ -855,6 +855,42 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_linestring_antimeridian(
+        self,
+        client: TestClient,
+        prip_response,
+    ):
+        """Test PRIP LineString antimeridian geometry rework."""
+        linestring_response = deepcopy(prip_response)
+        linestring_response["value"][0]["GeoFootprint"] = {
+            "type": "LineString",
+            "coordinates": [[-179.5266, -15.8221], [162.4354, 53.0335]],
+        }
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=linestring_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        assert items["features"][0]["geometry"] == {
+            "type": "MultiLineString",
+            "coordinates": [
+                [[-180.0, -13.899447513812106], [-179.5, -15.8]],
+                [[162.4, 53.0], [180.0, -13.899447513812106]],
+            ],
+        }
+
+    @pytest.mark.unit
+    @responses.activate
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, odata, expected_code",
         [

@@ -45,12 +45,15 @@ from fastapi import HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
 from fastapi.datastructures import QueryParams
+from geojson_pydantic.geometries import LineString as GeoLineString
+from geojson_pydantic.geometries import MultiLineString as GeoMultiLineString
 from geojson_pydantic.geometries import MultiPolygon as GeoMultiPolygon
 from geojson_pydantic.geometries import Polygon as GeoPolygon
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.footprint_facility import (
     check_cross_antimeridian,
+    rework_to_linestring_geometry,
     rework_to_polygon_geometry,
 )
 from rs_server_common.rspy_models import Item, ItemCollection
@@ -68,7 +71,17 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from shapely import wkt
-from shapely.geometry import MultiPolygon, Polygon, box, mapping, shape
+from shapely.geometry import (
+    LineString,
+    MultiLineString,
+    MultiPoint,
+    MultiPolygon,
+    Point,
+    Polygon,
+    box,
+    mapping,
+    shape,
+)
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
@@ -126,6 +139,8 @@ ServiceRole: TypeAlias = Literal["auxip", "cadip", "prip"]
 
 # Map Shapely types to Pydantic GeoJSON types
 shapely_to_geojson_cls = {
+    LineString: GeoLineString,
+    MultiLineString: GeoMultiLineString,
     Polygon: GeoPolygon,
     MultiPolygon: GeoMultiPolygon,
 }
@@ -909,11 +924,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     continue
                 # Skip if geometry does not cross the antimeridian
                 shapely_geom = shape(geometry)
-                if not check_cross_antimeridian(shapely_geom):
+                # Points do not define a path, so antimeridian crossing checks can be false positives for MultiPoint.
+                if isinstance(shapely_geom, (Point, MultiPoint)) or not check_cross_antimeridian(shapely_geom):
                     continue
 
-                # Rework geometry to be a valid Polygon / MultiPolygon
-                reworked_geometry = rework_to_polygon_geometry(shapely_geom)
+                reworked_geometry = shapely_geom
+                if isinstance(shapely_geom, (Polygon, MultiPolygon)):
+                    # Rework geometry to be a valid Polygon / MultiPolygon
+                    reworked_geometry = rework_to_polygon_geometry(shapely_geom)
+                elif isinstance(shapely_geom, (LineString, MultiLineString)):
+                    # Rework geometry to be a valid LineString / MultiLineString
+                    reworked_geometry = rework_to_linestring_geometry(shapely_geom)
 
                 geo_cls = shapely_to_geojson_cls.get(type(reworked_geometry))
                 if not geo_cls:
