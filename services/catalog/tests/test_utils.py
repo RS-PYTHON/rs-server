@@ -431,6 +431,38 @@ class TestGetS3Handler:
         # Make sure that item can't be published
         assert s3_manager.check_if_item_can_be_published(content) is False
 
+    def test_update_assets_checksums(self, mocker, s3_manager):
+        """
+        Test that S3 object checksum attributes are added to each STAC asset.
+        """
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {
+                "asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"},
+                "asset2": {"href": "s3://rspython-ops-catalog-all-production/file2"},
+            },
+        }
+
+        s3_manager.is_catalog_local_mode = False
+        mocker.patch.object(
+            s3_manager.s3_handler,
+            "get_object_attributes",
+            side_effect=[
+                {"Checksum": {"ChecksumSHA256": "checksum-1"}},
+                {"Checksum": {"ChecksumCRC32": "checksum-2"}},
+            ],
+        )
+
+        result = s3_manager.update_assets_checksums(content)
+
+        assert result["assets"]["asset1"]["file:checksum"] == "checksum-1"
+        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
+        assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
+            mocker.call("rspython-ops-catalog-all-production", "file1"),
+            mocker.call("rspython-ops-catalog-all-production", "file2"),
+        ]
+
 
 def test_middleware_order(client):
     """Check that the FastAPI application middlewares were inserted in the right order."""

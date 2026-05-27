@@ -421,6 +421,7 @@ field is not permitted also."
                         detail=f"Not all assets for item {content['id']} are available in S3.",
                     )
                 logger.debug("All assets of the item are available in S3, the item can be published or updated")
+                content = self.s3_manager(request).update_assets_checksums(content)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_timestamps_for_creation(content)

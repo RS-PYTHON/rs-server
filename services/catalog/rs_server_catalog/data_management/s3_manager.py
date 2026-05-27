@@ -312,3 +312,34 @@ class S3Manager:
                 exist_list.extend(executor.map(_check_asset, assets_to_check))
 
         return all(exist_list)
+
+    def update_assets_checksums(self, content: dict) -> dict:
+        """Update each asset with the checksum returned by S3 GetObjectAttributes."""
+        if self.is_catalog_local_mode:
+            return content
+
+        user = content["properties"].get("owner", "")
+        collection_id = content.get("collection", "").removeprefix(f"{user}_")
+        item_eopf_type = content["properties"].get("eopf:type", "")
+        bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
+
+        for asset_name, asset_info in content.get("assets", {}).items():
+            href = asset_info.get("href")
+            if not href:
+                logger.warning("Asset %s has no href; skipping checksum update", asset_name)
+                continue
+
+            key = href.removeprefix(f"s3://{bucket_name}/")
+            try:
+                object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
+            except RuntimeError as error:
+                logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
+                continue
+
+            checksum = object_attributes.get("Checksum", {})
+            for checksum_key, checksum_value in checksum.items():
+                if checksum_key.startswith("Checksum") and checksum_value:
+                    asset_info["file:checksum"] = checksum_value
+                    break
+
+        return content
