@@ -336,6 +336,12 @@ class S3Manager:
                 logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
                 continue
 
+            # GetObjectAttributes returns the checksum values in the S3/AWS format:
+            # a "Checksum" dict containing one or more algorithm-specific base64 values
+            # such as ChecksumCRC32, ChecksumCRC32C, ChecksumSHA1 or ChecksumSHA256.
+            # For now we store the first checksum value returned by the object storage
+            # into the STAC asset field; the multihash/STAC-normalized conversion can
+            # build on this once we preserve the selected algorithm alongside the value.
             checksum = object_attributes.get("Checksum", {})
             for checksum_key, checksum_value in checksum.items():
                 if checksum_key.startswith("Checksum") and checksum_value:
