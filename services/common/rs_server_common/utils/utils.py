@@ -30,6 +30,10 @@ import yaml
 from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
+from rs_server_common.footprint_facility import (
+    check_raw_antimeridian_jump,
+    rework_to_polygon_geometry,
+)
 from rs_server_common.utils.logging import Logging
 from shapely import make_valid
 from shapely.geometry import MultiPolygon, Polygon, mapping, shape
@@ -338,6 +342,16 @@ def odata_to_stac(
 def repair_and_orient_geojson_geometry(geometry: dict[str, Any]) -> dict[str, Any]:
     """Repair invalid GeoJSON if needed and enforce RFC7946 ring orientation on polygonal results."""
     shapely_geometry = shape(geometry)
+    # For raw polygonal footprints crossing the antimeridian, run the footprint-facility rework before
+    # generic make_valid. Shapely repairs lon/lat coordinates in a planar space; applying make_valid first
+    # can split a self-intersecting antimeridian footprint into a MultiPolygon that footprint-facility later
+    # treats as already reworked and may reject with AlreadyReworkedPolygonError. Use check_raw_antimeridian_jump
+    # here, not check_cross_antimeridian: a longitude jump > 180 is the raw-data signal that a segment
+    # should cross the antimeridian, while coordinates already placed on +/-180 are often the result of
+    # a previous split/rework and must not trigger another early polygon rework.
+    if isinstance(shapely_geometry, (Polygon, MultiPolygon)) and check_raw_antimeridian_jump(shapely_geometry):
+        shapely_geometry = rework_to_polygon_geometry(shapely_geometry)
+
     if not shapely_geometry.is_valid:
         shapely_geometry = make_valid(shapely_geometry)
 
