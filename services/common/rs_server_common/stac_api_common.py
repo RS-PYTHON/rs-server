@@ -959,6 +959,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # Re-apply orientation after antimeridian rework because the split can yield MultiPolygons.
                 normalized_geometry = repair_and_orient_geojson_geometry(mapping(reworked_geometry))
                 feature.geometry = geo_cls.parse_obj(normalized_geometry)  # type: ignore
+                # Keep bbox consistent with the reworked geometry.
+                feature.bbox = shape(normalized_geometry).bounds
 
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
