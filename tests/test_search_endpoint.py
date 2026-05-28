@@ -930,7 +930,7 @@ class TestFeatureCollectionOdataStacMapping:
             ],
         }
         already_reworked_response["value"][0]["GeoFootprint"] = already_reworked_geometry
-        # Keep the raw geometry until build_response_payload 
+        # Keep the raw geometry until build_response_payload
         # so this test targets its AlreadyReworkedPolygonError branch.
         mocker.patch("rs_server_common.utils.utils.repair_and_orient_geojson_geometry", side_effect=keep_geometry)
         mocker.patch("rs_server_common.stac_api_common.repair_and_orient_geojson_geometry", side_effect=keep_geometry)
