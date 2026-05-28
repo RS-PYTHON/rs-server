@@ -891,6 +891,68 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_already_reworked_multipolygon(
+        self,
+        client: TestClient,
+        prip_response,
+        mocker,
+    ):
+        """Test PRIP already-reworked MultiPolygon fallback."""
+
+        def keep_geometry(geometry):
+            return geometry
+
+        already_reworked_response = deepcopy(prip_response)
+        # Two identical antimeridian-crossing polygons make this MultiPolygon invalid.
+        # It still passes check_cross_antimeridian and makes footprint-facility raise AlreadyReworkedPolygonError.
+        already_reworked_geometry = {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [170.0, 10.0],
+                        [-170.0, 10.0],
+                        [-170.0, 20.0],
+                        [170.0, 20.0],
+                        [170.0, 10.0],
+                    ],
+                ],
+                [
+                    [
+                        [170.0, 10.0],
+                        [-170.0, 10.0],
+                        [-170.0, 20.0],
+                        [170.0, 20.0],
+                        [170.0, 10.0],
+                    ],
+                ],
+            ],
+        }
+        already_reworked_response["value"][0]["GeoFootprint"] = already_reworked_geometry
+        # Keep the raw geometry until build_response_payload so this test targets its AlreadyReworkedPolygonError branch.
+        mocker.patch("rs_server_common.utils.utils.repair_and_orient_geojson_geometry", side_effect=keep_geometry)
+        mocker.patch("rs_server_common.stac_api_common.repair_and_orient_geojson_geometry", side_effect=keep_geometry)
+        rework_spy = mocker.spy(stac_api_common, "rework_to_polygon_geometry")
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=already_reworked_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        rework_spy.assert_called_once()
+        assert items["features"][0]["geometry"] == already_reworked_geometry
+
+    @pytest.mark.unit
+    @responses.activate
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, odata, expected_code",
         [
