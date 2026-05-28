@@ -315,7 +315,7 @@ class S3Manager:
 
     def update_assets_checksums(self, content: dict) -> dict:
         """Update each asset with the checksum returned by S3 GetObjectAttributes."""
-        if self.is_catalog_local_mode:
+        if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):
             return content
 
         user = content["properties"].get("owner", "")
