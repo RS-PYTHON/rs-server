@@ -20,9 +20,10 @@ import io
 import logging
 import ntpath
 import os
+import threading
 import time
 import traceback
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -49,6 +50,10 @@ S3_ERR_FORBIDDEN_ACCESS = "403"
 S3_ERR_NOT_FOUND = "404"
 HTTP_CONNECTION_TIMEOUT = 10
 HTTP_READ_TIMEOUT = 120
+# should we use env vars?
+HTTP_RATE_LIMIT_WINDOW_SECONDS = 60
+HTTP_RATE_LIMIT_MAX_RETRIES = 3
+HTTP_RATE_LIMIT_BACKOFF_SECONDS = 1
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "3600"))
 # the maximum number of attempts that are made on a single request
 # this defines the number of retries at the s3 protocol level
@@ -58,6 +63,38 @@ S3_PROTOCOL_MAX_ATTEMPTS = 5
 
 # The boto3 delete_objects function takes max 1000 items to delete.
 MAX_DELETE_FILES = 1000
+
+
+class DomainRateLimiter:
+    """Simple per-domain sliding-window rate limiter."""
+
+    def __init__(self):
+        self._requests_by_domain: defaultdict[str, deque[float]] = defaultdict(deque)
+        self._lock = threading.Lock()
+
+    def acquire(self, domain: str, max_requests_per_minute: int | None):
+        """Wait until one more request can be sent for the given domain."""
+        if not domain or not max_requests_per_minute:
+            return
+
+        while True:
+            with self._lock:
+                # uze monotonic time instea of time.time() to avoid issues with system clock changes
+                now = time.monotonic()
+                requests_for_domain = self._requests_by_domain[domain]
+                while requests_for_domain and now - requests_for_domain[0] >= HTTP_RATE_LIMIT_WINDOW_SECONDS:
+                    requests_for_domain.popleft()
+
+                if len(requests_for_domain) < max_requests_per_minute:
+                    requests_for_domain.append(now)
+                    return
+
+                wait_time = HTTP_RATE_LIMIT_WINDOW_SECONDS - (now - requests_for_domain[0])
+
+            time.sleep(max(wait_time, 0))
+
+
+DOMAIN_RATE_LIMITER = DomainRateLimiter()
 
 
 # pylint: disable=too-many-lines
@@ -154,6 +191,18 @@ class CustomSessionRedirect(requests.Session):
             return False  # Do not strip auth
 
         return super().should_strip_auth(old_url, new_url)
+
+
+def _retry_after_seconds(response: requests.Response, fallback_seconds: int) -> int:
+    """Return the Retry-After delay in seconds, or a fallback if it is missing/invalid."""
+    retry_after = response.headers.get("retry-after")
+    if not retry_after:
+        return fallback_seconds
+
+    try:
+        return max(0, int(retry_after))
+    except ValueError:
+        return fallback_seconds
 
 
 class S3StorageHandler:
@@ -955,7 +1004,14 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def s3_streaming_upload(self, request: requests.Request, trusted_domains: list[str], bucket: str, key: str):
+    def s3_streaming_upload(
+        self,
+        request: requests.Request,
+        trusted_domains: list[str],
+        bucket: str,
+        key: str,
+        max_requests_per_minute: int | None = None,
+    ):
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
 
@@ -970,6 +1026,7 @@ retried for %s times. Aborting",
             auth (Any): Authentication credentials for the HTTP request (if required).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
+            max_requests_per_minute (int | None): Optional maximum number of HTTP requests per minute for the domain.
 
         Raises:
             ConnectionError: If there is a failure due to the HTTP request or the S3 upload
@@ -991,20 +1048,73 @@ retried for %s times. Aborting",
             prepared_request = session.prepare_request(request)
             self.connect_s3()
             self.logger.info(f"Starting the streaming of {request.url} to s3://{bucket}/{key}")
-            with session.send(prepared_request, stream=True, timeout=timeout) as response:
-                self.logger.debug(f"Request headers: {response.request.headers}")
-                response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
 
-                # Default chunksize is set to 64Kb, can be manually increased
-                chunk_size = 64 * 1024  # 64kb
-                with response.raw as data_stream:
-                    self.s3_client.upload_fileobj(
-                        data_stream,
+            # PreparedRequest.url may be typed as str or bytes. Normalize it to str before parsing the hostname.
+            prepared_url = (
+                prepared_request.url.decode() if isinstance(prepared_request.url, bytes) else prepared_request.url
+            )
+
+            # The rate limit is applied per external download domain, e.g. download.dataspace.copernicus.eu.
+            domain = urlparse(prepared_url or "").hostname or ""
+            self.logger.info(
+                "Prepared streaming request for domain '%s' with max_requests_per_minute=%s",
+                domain or "unknown",
+                max_requests_per_minute,
+            )
+            backoff_seconds = HTTP_RATE_LIMIT_BACKOFF_SECONDS
+            for attempt in range(HTTP_RATE_LIMIT_MAX_RETRIES + 1):
+                # Proactive protection: wait before sending if this domain already reached its request budget.
+                self.logger.info(
+                    "Waiting for rate-limit slot before downloading from domain '%s' (attempt %s/%s)",
+                    domain or "unknown",
+                    attempt + 1,
+                    HTTP_RATE_LIMIT_MAX_RETRIES + 1,
+                )
+                DOMAIN_RATE_LIMITER.acquire(domain, max_requests_per_minute)
+                self.logger.info(
+                    "Sending streaming request to %s (attempt %s/%s)",
+                    prepared_url,
+                    attempt + 1,
+                    HTTP_RATE_LIMIT_MAX_RETRIES + 1,
+                )
+                with session.send(prepared_request, stream=True, timeout=timeout) as response:
+                    self.logger.debug(f"Request headers: {response.request.headers}")
+                    self.logger.info(
+                        "Received HTTP status %s while streaming %s",
+                        response.status_code,
+                        request.url,
+                    )
+                    if response.status_code == 429 and attempt < HTTP_RATE_LIMIT_MAX_RETRIES:
+                        # Reactive protection: honor Retry-After when present, otherwise use exponential backoff.
+                        # read the 'retry-after' from response header, if not present use the backoff_seconds
+                        wait_time = _retry_after_seconds(response, backoff_seconds)
+                        self.logger.warning(
+                            "Rate limited while streaming %s. Retrying in %s seconds.",
+                            request.url,
+                            wait_time,
+                        )
+                        time.sleep(wait_time)
+                        backoff_seconds *= 2
+                        continue
+
+                    response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
+                    self.logger.info(
+                        "HTTP response is valid; starting upload stream to s3://%s/%s",
                         bucket,
                         key,
-                        Config=boto3.s3.transfer.TransferConfig(multipart_threshold=chunk_size * 2),
                     )
-                self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
+
+                    # Default chunksize is set to 64Kb, can be manually increased
+                    chunk_size = 64 * 1024  # 64kb
+                    with response.raw as data_stream:
+                        self.s3_client.upload_fileobj(
+                            data_stream,
+                            bucket,
+                            key,
+                            Config=boto3.s3.transfer.TransferConfig(multipart_threshold=chunk_size * 2),
+                        )
+                    self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
+                    break
         except (
             requests.exceptions.RequestException,
             botocore.client.ClientError,
@@ -1027,6 +1137,7 @@ retried for %s times. Aborting",
         auth: Any,
         bucket: str,
         key: str,
+        max_requests_per_minute: int | None = None,
     ):
         """
         Upload a file from an http source to an S3 bucket.
@@ -1037,6 +1148,7 @@ retried for %s times. Aborting",
             auth (Any): Authentication credentials for the HTTP request (if required).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
+            max_requests_per_minute (int | None): Optional maximum number of HTTP requests per minute for the domain.
         """
         # Prepare the request
         request = requests.Request(
@@ -1046,7 +1158,7 @@ retried for %s times. Aborting",
         )
 
         # Start streaming with formatted request
-        self.s3_streaming_upload(request, trusted_domains, bucket, key)
+        self.s3_streaming_upload(request, trusted_domains, bucket, key, max_requests_per_minute)
 
     def s3_streaming_from_s3(
         self,
