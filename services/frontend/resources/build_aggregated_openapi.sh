@@ -82,8 +82,9 @@ if [[ " $@ " == *" --run-services "* ]]; then
         i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$pgstac_container'" && exit 1
     done
 
-    # DPR service
-    dpr_image="ghcr.io/rs-python/rs-dpr-service:latest"
+    # DPR service. Use this image or any other py<python-version>-<dask-version> image,
+    # they all have the same swagger contents.
+    dpr_image="ghcr.io/rs-python/rs-dpr-service_py3.13.12-2026.1.2:latest"
 
     if ! docker ps --format '{{.Names}}' | grep -q "^$dpr_container\$"; then
         docker pull "$dpr_image"
