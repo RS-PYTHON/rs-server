@@ -686,6 +686,31 @@ class S3StorageHandler:
             self.logger.exception(f"General exception when trying to access key s3://{bucket}/{s3_key}")
             raise
 
+    def get_object_attributes(self, bucket: str, key: str) -> dict:
+        """Get S3 object attributes for an object key.
+
+        This uses the S3-compatible GetObjectAttributes API supported by OVH Object Storage.
+        Only the Checksum attribute is requested because it is needed for the STAC file:checksum field.
+
+        Args:
+            bucket (str): The S3 bucket name.
+            key (str): The S3 object key.
+
+        Returns:
+            dict: The raw response returned by the S3 client.
+        """
+        try:
+            self.connect_s3()
+            self.logger.debug("Getting object attributes for s3://%s/%s", bucket, key)
+            return self.s3_client.get_object_attributes(
+                Bucket=bucket,
+                Key=key,
+                ObjectAttributes=["Checksum"],
+            )
+        except (botocore.client.ClientError, botocore.exceptions.BotoCoreError) as error:
+            self.logger.exception("Failed to get object attributes for s3://%s/%s: %s", bucket, key, error)
+            raise RuntimeError(f"Failed to get object attributes for s3://{bucket}/{key}") from error
+
     def wait_timeout(self, timeout):
         """
         Wait for a specified timeout duration (minimum 200 ms).
