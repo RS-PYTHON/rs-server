@@ -600,6 +600,15 @@ def prip_feature():
         return json.loads(f.read())
 
 
+@pytest.fixture(name="prip_invalid_polygon_feature")
+@lru_cache(maxsize=1)
+def prip_invalid_polygon_feature():
+    """Expected PRIP STAC geometry for invalid antimeridian polygon mapping test."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_invalid_polygon_feature.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
 @pytest.fixture(name="prip_feature_no_geom")
 @lru_cache(maxsize=1)
 def prip_feature_no_geom():
@@ -614,6 +623,15 @@ def prip_feature_no_geom():
 def prip_pickup_response():
     """Mock PRIP OData pickup response used by the mapping test."""
     data_json = RESOURCES_FOLDER / "endpoints" / "prip_pickup_response.json"
+    with open(data_json, encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+@pytest.fixture(name="prip_invalid_polygon_response")
+@lru_cache(maxsize=1)
+def prip_invalid_polygon_response():
+    """Mock PRIP OData response with an invalid antimeridian polygon."""
+    data_json = RESOURCES_FOLDER / "endpoints" / "prip_invalid_polygon_pickup_response.json"
     with open(data_json, encoding="utf-8") as f:
         return json.loads(f.read())
 

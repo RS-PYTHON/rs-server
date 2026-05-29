@@ -36,9 +36,10 @@ from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common import stac_api_common
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
+from rs_server_common.utils import utils as common_utils
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
-from shapely.geometry import box
+from shapely.geometry import box, shape
 from shapely.wkt import loads as wkt_loads
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
@@ -951,6 +952,44 @@ class TestFeatureCollectionOdataStacMapping:
         assert response.headers.get("Content-Type") == "application/geo+json"
         rework_spy.assert_called_once()
         assert items["features"][0]["geometry"] == already_reworked_geometry
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_invalid_polygon_antimeridian(
+        self,
+        client: TestClient,
+        prip_invalid_polygon_response,
+        prip_invalid_polygon_feature,
+        mocker,
+    ):
+        """Test PRIP invalid antimeridian Polygon geometry repair and rework."""
+        repair_spy = mocker.spy(common_utils, "repair_and_orient_geojson_geometry")
+        rework_spy = mocker.spy(common_utils, "rework_to_polygon_geometry")
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=prip_invalid_polygon_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        repair_spy.assert_called()
+        rework_spy.assert_called()
+        geometry = items["features"][0]["geometry"]
+        actual_shape = shape(geometry)
+        expected_shape = shape(prip_invalid_polygon_feature["geometry"])
+        assert geometry["type"] == "Polygon"
+        assert len(geometry["coordinates"]) == 3
+        assert actual_shape.is_valid
+        assert items["features"][0]["bbox"] == prip_invalid_polygon_feature["bbox"]
+        assert actual_shape.equals_exact(expected_shape, tolerance=1e-3, normalize=True)
 
     @pytest.mark.unit
     @responses.activate
