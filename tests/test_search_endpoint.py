@@ -993,6 +993,50 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_invalid_polygon_antimeridian_fix_shape_error(
+        self,
+        client: TestClient,
+        prip_invalid_polygon_response,
+        mocker,
+    ):
+        """Test PRIP swath polygon repair when antimeridian.fix_shape fails."""
+        # Force the antimeridian library to fail while rebuilding the swath quads,
+        # so rebuild_swath_polygon falls back to the original quad + local make_valid path.
+        fix_shape_mock = mocker.patch.object(
+            common_utils.antimeridian,
+            "fix_shape",
+            side_effect=RuntimeError("forced antimeridian failure"),
+        )
+        warning_mock = mocker.patch.object(common_utils.logger, "warning")
+
+        # Reuse the existing invalid antimeridian polygon fixture: it is already shaped
+        # like a swath strip, so the PRIP mapping flow reaches rebuild_swath_polygon.
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=prip_invalid_polygon_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        fix_shape_mock.assert_called()
+
+        # This is the exact fallback branch covered in utils.rebuild_swath_polygon.
+        warning_mock.assert_any_call(
+            "antimeridian.fix_shape failed on swath quad, using local make_valid: forced antimeridian failure",
+        )
+        actual_shape = shape(items["features"][0]["geometry"])
+        assert actual_shape.is_valid
+
+    @pytest.mark.unit
+    @responses.activate
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, odata, expected_code",
         [
