@@ -965,7 +965,7 @@ class TestFeatureCollectionOdataStacMapping:
     ):
         """Test PRIP invalid antimeridian Polygon geometry repair and rework."""
         repair_spy = mocker.spy(common_utils, "repair_and_orient_geojson_geometry")
-        rework_spy = mocker.spy(common_utils, "rework_to_polygon_geometry")
+        rebuild_spy = mocker.spy(common_utils, "rebuild_swath_polygon")
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
@@ -981,12 +981,12 @@ class TestFeatureCollectionOdataStacMapping:
         assert response.status_code == status.HTTP_200_OK
         assert response.headers.get("Content-Type") == "application/geo+json"
         repair_spy.assert_called()
-        rework_spy.assert_called()
+        rebuild_spy.assert_called()
         geometry = items["features"][0]["geometry"]
         actual_shape = shape(geometry)
         expected_shape = shape(prip_invalid_polygon_feature["geometry"])
-        assert geometry["type"] == "Polygon"
-        assert len(geometry["coordinates"]) == 3
+        assert geometry["type"] == "MultiPolygon"
+        assert len(geometry["coordinates"]) == 2
         assert actual_shape.is_valid
         assert items["features"][0]["bbox"] == prip_invalid_polygon_feature["bbox"]
         assert actual_shape.equals_exact(expected_shape, tolerance=1e-3, normalize=True)
