@@ -24,6 +24,35 @@ Changed
 
 None
 
+[1.0a10] - Sprint 36 - 2026-05-20
+================================
+
+## Added
+
+- RSPY-964: Update CI/CD to push 'latest' docker images only after successful tests
+- RSPY-974: Authenticate the same way to external stations in local and cluster mode
+- RSPY-1010: [rs-dpr-service] add pytests for code coverage >80%
+- RSPY-1014: Convert S00__ADF_ECMWA aux file
+- RSPY-1015: Convert S00__ADF_ECMWF aux file
+- RSPY-1016: Convert S00__ADF_GETAS aux file
+- RSPY-1019: Convert S00__ADF_WATER aux file
+- RSPY-1023: Convert S03_ADF_OL* L1 aux files
+- RSPY-1036: Update the flow with task table ICD version 1.0 draft J
+- RSPY-1039: Allow additional items in product mapping parameters
+- RSPY-1040: Stage a product that has expired
+- RSPY-1041: On-demand SAFE conversion flow
+- RSPY-1042: Staging: prefer file:localpath over asset name
+- RSPY-1046: Add Sentinel-1D
+- RSPY-1047: Implement AUX file retrieval multiplicity
+- RSPY-1049: Make staging consider HTTP 409 as normal when publishing to the catalog
+- RSPY-1050: Allow to specify EOPF logging level in generic processing flow
+- RSPY-1056: Improve display of processor logs in Prefect processing flow
+- RSPY-1058: Update flows with task table ICD version 1.0 draft K
+
+## Fixed
+
+- RSPY-1030: [DPR Processing] Processing failed due to missing eopf:origin_datetime field in the staging session on the catalog ( 3 pts )
+
 [1.0a9] - Sprint 35 - 2026-04-22
 ================================
 
