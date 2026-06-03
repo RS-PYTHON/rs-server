@@ -26,13 +26,18 @@ from pathlib import Path
 from threading import Thread
 from typing import Any
 
+import antimeridian
 import yaml
 from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
+from rs_server_common.footprint_facility import (
+    check_raw_antimeridian_jump,
+    rework_to_polygon_geometry,
+)
 from rs_server_common.utils.logging import Logging
-from shapely import make_valid
-from shapely.geometry import MultiPolygon, Polygon, mapping, shape
+from shapely import get_parts, make_valid, union_all
+from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, mapping, shape
 from shapely.geometry.polygon import orient
 
 # pylint: disable=too-few-public-methods
@@ -335,9 +340,104 @@ def odata_to_stac(
     return feature_template
 
 
+def looks_like_swath_polygon(geometry: Polygon) -> bool:
+    """Return True for a polygon that can be rebuilt as a swath strip.
+
+    Criteria:
+    - no interior rings/holes;
+    - at least four exterior points, excluding closure;
+    - an even number of exterior points, so the ring can be split into two paired edges.
+    """
+    # Holes make the two-edge strip interpretation unsafe.
+    if geometry.interiors:
+        return False
+
+    points = [(float(lon), float(lat)) for lon, lat in geometry.exterior.coords[:-1]]
+    # A swath strip needs two paired edges; odd rings cannot be paired.
+    if len(points) < 4 or len(points) % 2:
+        return False
+
+    return True
+
+
+def rebuild_swath_polygon(geometry: Polygon) -> MultiPolygon | Polygon:
+    """Rebuild a two-edge swath footprint into antimeridian-safe geometry.
+
+    The polygon exterior is interpreted as two paired swath edges: the first half
+    of the coordinates is one edge, and the reversed second half is the opposite
+    edge. The footprint is rebuilt as consecutive quadrilateral cells between
+    paired vertices. Each cell is fixed for +/-180 longitude crossings, then the
+    fixed polygon parts are unioned back into a Polygon or MultiPolygon.
+
+    References:
+    - GeoJSON antimeridian cutting:
+      https://www.rfc-editor.org/rfc/rfc7946#section-3.1.9
+    - antimeridian segmentation algorithm:
+      https://www.gadom.ski/antimeridian/v0.4.5/the-algorithm/
+    - antimeridian.fix_shape API:
+      https://www.gadom.ski/antimeridian/v0.4.5/api/#antimeridian.fix_shape
+    """
+
+    def polygon_parts(geometry):
+        parts = []
+        for part in get_parts(geometry):
+            if isinstance(part, Polygon):
+                parts.append(part)
+            elif isinstance(part, (MultiPolygon, GeometryCollection)):
+                parts.extend(polygon_parts(part))
+        return parts
+
+    # Drop the closing coordinate and split the ring into the two swath borders.
+    points = [(float(lon), float(lat)) for lon, lat in geometry.exterior.coords[:-1]]
+    half = len(points) // 2
+    edge_a = points[:half]
+    edge_b = list(reversed(points[half:]))
+    parts = []
+
+    for index in range(half - 1):
+        # Rebuild one local strip cell between paired vertices on both borders.
+        quad = Polygon([edge_a[index], edge_a[index + 1], edge_b[index + 1], edge_b[index], edge_a[index]])
+        try:
+            # Fix the local cell at +/-180 without letting a global repair choose the wrong interior.
+            fixed_quad = shape(antimeridian.fix_shape(quad, fix_winding=True, great_circle=False))
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.warning(f"antimeridian.fix_shape failed on swath quad, using local make_valid: {exception}")
+            fixed_quad = quad
+        if not fixed_quad.is_valid:
+            fixed_quad = make_valid(fixed_quad)
+        parts.extend(polygon_parts(fixed_quad))
+
+    if not parts:
+        return geometry
+
+    # Merge repaired cells back into a single polygonal footprint.
+    rebuilt = union_all(parts)
+    if not rebuilt.is_valid:
+        rebuilt = make_valid(rebuilt)
+    polygons = polygon_parts(rebuilt)
+    return MultiPolygon(polygons) if len(polygons) > 1 else polygons[0]
+
+
 def repair_and_orient_geojson_geometry(geometry: dict[str, Any]) -> dict[str, Any]:
     """Repair invalid GeoJSON if needed and enforce RFC7946 ring orientation on polygonal results."""
     shapely_geometry = shape(geometry)
+    # For raw polygonal footprints crossing the antimeridian, run the footprint-facility rework before
+    # generic make_valid. Shapely repairs lon/lat coordinates in a planar space; applying make_valid first
+    # can split a self-intersecting antimeridian footprint into a MultiPolygon that footprint-facility later
+    # treats as already reworked and may reject with AlreadyReworkedPolygonError. Use check_raw_antimeridian_jump
+    # here, not check_cross_antimeridian: a longitude jump > 180 is the raw-data signal that a segment
+    # should cross the antimeridian, while coordinates already placed on +/-180 are often the result of
+    # a previous split/rework and must not trigger another early polygon rework.
+    if isinstance(shapely_geometry, Polygon) and check_raw_antimeridian_jump(shapely_geometry):
+        if looks_like_swath_polygon(shapely_geometry):
+            # Swath footprints are strips encoded as two borders; rebuild them as small cells so
+            # antimeridian repair keeps the strip shape instead of guessing a large polygon interior.
+            shapely_geometry = rebuild_swath_polygon(shapely_geometry)
+        else:
+            shapely_geometry = rework_to_polygon_geometry(shapely_geometry)
+    elif isinstance(shapely_geometry, MultiPolygon) and check_raw_antimeridian_jump(shapely_geometry):
+        shapely_geometry = rework_to_polygon_geometry(shapely_geometry)
+
     if not shapely_geometry.is_valid:
         shapely_geometry = make_valid(shapely_geometry)
 

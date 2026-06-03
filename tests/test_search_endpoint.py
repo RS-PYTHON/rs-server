@@ -36,9 +36,10 @@ from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common import stac_api_common
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
+from rs_server_common.utils import utils as common_utils
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
-from shapely.geometry import box
+from shapely.geometry import box, shape
 from shapely.wkt import loads as wkt_loads
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PRIP
@@ -888,6 +889,151 @@ class TestFeatureCollectionOdataStacMapping:
                 [[162.4, 53.0], [180.0, -13.899447513812106]],
             ],
         }
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_already_reworked_multipolygon(
+        self,
+        client: TestClient,
+        prip_response,
+        mocker,
+    ):
+        """Test PRIP already-reworked MultiPolygon fallback."""
+
+        def keep_geometry(geometry):
+            return geometry
+
+        already_reworked_response = deepcopy(prip_response)
+        # Two identical antimeridian-crossing polygons make this MultiPolygon invalid.
+        # It still passes check_cross_antimeridian and makes footprint-facility raise AlreadyReworkedPolygonError.
+        already_reworked_geometry = {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [170.0, 10.0],
+                        [-170.0, 10.0],
+                        [-170.0, 20.0],
+                        [170.0, 20.0],
+                        [170.0, 10.0],
+                    ],
+                ],
+                [
+                    [
+                        [170.0, 10.0],
+                        [-170.0, 10.0],
+                        [-170.0, 20.0],
+                        [170.0, 20.0],
+                        [170.0, 10.0],
+                    ],
+                ],
+            ],
+        }
+        already_reworked_response["value"][0]["GeoFootprint"] = already_reworked_geometry
+        # Keep the raw geometry until build_response_payload
+        # so this test targets its AlreadyReworkedPolygonError branch.
+        mocker.patch("rs_server_common.utils.utils.repair_and_orient_geojson_geometry", side_effect=keep_geometry)
+        mocker.patch("rs_server_common.stac_api_common.repair_and_orient_geojson_geometry", side_effect=keep_geometry)
+        rework_spy = mocker.spy(stac_api_common, "rework_to_polygon_geometry")
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=already_reworked_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        rework_spy.assert_called_once()
+        assert items["features"][0]["geometry"] == already_reworked_geometry
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_invalid_polygon_antimeridian(
+        self,
+        client: TestClient,
+        prip_invalid_polygon_response,
+        prip_invalid_polygon_feature,
+        mocker,
+    ):
+        """Test PRIP invalid antimeridian Polygon geometry repair and rework."""
+        repair_spy = mocker.spy(common_utils, "repair_and_orient_geojson_geometry")
+        rebuild_spy = mocker.spy(common_utils, "rebuild_swath_polygon")
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=prip_invalid_polygon_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        repair_spy.assert_called()
+        rebuild_spy.assert_called()
+        geometry = items["features"][0]["geometry"]
+        actual_shape = shape(geometry)
+        expected_shape = shape(prip_invalid_polygon_feature["geometry"])
+        assert geometry["type"] == "MultiPolygon"
+        assert len(geometry["coordinates"]) == 2
+        assert actual_shape.is_valid
+        assert items["features"][0]["bbox"] == prip_invalid_polygon_feature["bbox"]
+        assert actual_shape.equals_exact(expected_shape, tolerance=1e-3, normalize=True)
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_PRIP], indirect=["fastapi_app"])
+    def test_prip_feature_collection_mapping_invalid_polygon_antimeridian_fix_shape_error(
+        self,
+        client: TestClient,
+        prip_invalid_polygon_response,
+        mocker,
+    ):
+        """Test PRIP swath polygon repair when antimeridian.fix_shape fails."""
+        # Force the antimeridian library to fail while rebuilding the swath quads,
+        # so rebuild_swath_polygon falls back to the original quad + local make_valid path.
+        fix_shape_mock = mocker.patch.object(
+            common_utils.antimeridian,
+            "fix_shape",
+            side_effect=RuntimeError("forced antimeridian failure"),
+        )
+        warning_mock = mocker.patch.object(common_utils.logger, "warning")
+
+        # Reuse the existing invalid antimeridian polygon fixture: it is already shaped
+        # like a swath strip, so the PRIP mapping flow reaches rebuild_swath_polygon.
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+            "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json=prip_invalid_polygon_response,
+            status=200,
+        )
+
+        response: Response = client.get("/prip/collections/S1A_L0_IW_RAW/items")
+        items = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers.get("Content-Type") == "application/geo+json"
+        fix_shape_mock.assert_called()
+
+        # This is the exact fallback branch covered in utils.rebuild_swath_polygon.
+        warning_mock.assert_any_call(
+            "antimeridian.fix_shape failed on swath quad, using local make_valid: forced antimeridian failure",
+        )
+        actual_shape = shape(items["features"][0]["geometry"])
+        assert actual_shape.is_valid
 
     @pytest.mark.unit
     @responses.activate

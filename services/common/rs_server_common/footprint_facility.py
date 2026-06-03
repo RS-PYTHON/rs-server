@@ -105,6 +105,35 @@ def check_cross_antimeridian(geometry: Geometry) -> bool:
     return False
 
 
+def check_raw_antimeridian_jump(geometry: Geometry) -> bool:
+    """
+    RS-Server extension: detect only raw longitude jumps, unlike check_cross_antimeridian.
+
+    check_raw_antimeridian_jump is a local extension added to make antimeridian post-processing idempotent
+    and avoid reworking already split geometries. Unlike check_cross_antimeridian, this ignores coordinates
+    already placed on +/-180.
+    """
+    # Multi geometries must be checked component by component to avoid comparing unrelated coordinate sequences.
+    # Unlike check_cross_antimeridian, do not fall through to shapely.get_coordinates on the whole multi geometry:
+    # concatenating separate components could compare the last point of one part with the first point of another
+    # and report a false raw longitude jump.
+    if hasattr(geometry, "geoms"):
+        for geom in geometry.geoms:
+            if check_raw_antimeridian_jump(geom):
+                return True
+        # No component has a raw jump; stop here to avoid comparing coordinates across independent parts.
+        return False
+
+    # A raw antimeridian crossing is represented by a direct longitude jump greater than 180 degrees.
+    boundary = np.array(shapely.get_coordinates(geometry))
+    i = 0
+    while i < boundary.shape[0] - 1:
+        if abs(boundary[i + 1, 0] - boundary[i, 0]) > 180:
+            return True
+        i += 1
+    return False
+
+
 def _check_contains_north_pole(geometry: Geometry):
     """
     Check if the given geometry contains North Pole.

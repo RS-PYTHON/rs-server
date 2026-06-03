@@ -233,6 +233,25 @@ files = [
 ]
 
 [[package]]
+name = "antimeridian"
+version = "0.4.7"
+description = "Correct GeoJSON geometries that cross the 180th meridian"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "antimeridian-0.4.7-py3-none-any.whl", hash = "sha256:fedc04d5460ee9f05e37e7adc335843538fbd911c2bf7bd36c5393cd4ffe107d"},
+    {file = "antimeridian-0.4.7.tar.gz", hash = "sha256:ae1ee613ddec6bf1bec35ee89d49baed03341e0c295b26f4c1dca3b36fff9698"},
+]
+
+[package.dependencies]
+numpy = ">=1.22.4"
+shapely = ">=2.0"
+
+[package.extras]
+cli = ["click (>=8.1.6)"]
+
+[[package]]
 name = "anyio"
 version = "4.13.0"
 description = "High-level concurrency and networking framework on top of asyncio or Trio"
@@ -508,18 +527,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.43.19"
+version = "1.43.21"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "boto3-1.43.19-py3-none-any.whl", hash = "sha256:ec6825193b75fbb6bfbf12181e4960d00ad2f404343586765394ce620e63783c"},
-    {file = "boto3-1.43.19.tar.gz", hash = "sha256:8b84704719dd3960ac12a8f37d9ff5adb853715baa9742f84fdbe2de0305c4cb"},
+    {file = "boto3-1.43.21-py3-none-any.whl", hash = "sha256:8bb863b32dabe5baa4f2e3701778c259243ba117e4811a595411819958c4fb1b"},
+    {file = "boto3-1.43.21.tar.gz", hash = "sha256:6dfeb70bf4f9a3514b91c7199f475f71f939199d62f9c63cd555b033fb283f89"},
 ]
 
 [package.dependencies]
-botocore = ">=1.43.19,<1.44.0"
+botocore = ">=1.43.21,<1.44.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.18.0,<0.19.0"
 
@@ -528,14 +547,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.43.19"
+version = "1.43.21"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "botocore-1.43.19-py3-none-any.whl", hash = "sha256:99dbdccbf748974750601e805cecc9362a85d11fee89d6d58cd3f4ff302e6ff9"},
-    {file = "botocore-1.43.19.tar.gz", hash = "sha256:18ac2fdd76c89b940707eb10493ff58678adad337d03215caec2d408ccd43cc0"},
+    {file = "botocore-1.43.21-py3-none-any.whl", hash = "sha256:f021ba3e844c36031106fc531ec90259ef005ba5d04f691df53bc4ecbd08f0dd"},
+    {file = "botocore-1.43.21.tar.gz", hash = "sha256:17604607efe28894e947401379e569cc8f0fe2d69337ece98bd0c82d1bcfaf92"},
 ]
 
 [package.dependencies]
@@ -2170,14 +2189,14 @@ license = ["ukkonen"]
 
 [[package]]
 name = "idna"
-version = "3.17"
+version = "3.18"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "idna-3.17-py3-none-any.whl", hash = "sha256:466e48829084efe2548012b855df21540b96f2e20e51bd124c851536556a592c"},
-    {file = "idna-3.17.tar.gz", hash = "sha256:5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f"},
+    {file = "idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2"},
+    {file = "idna-3.18.tar.gz", hash = "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"},
 ]
 
 [package.extras]
@@ -5585,7 +5604,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5602,7 +5621,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5619,7 +5638,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5638,7 +5657,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5647,6 +5666,7 @@ files = []
 develop = true
 
 [package.dependencies]
+antimeridian = "^0.4.7"
 authlib = "^1.6.1"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
@@ -5683,7 +5703,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5705,7 +5725,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-osam"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5725,7 +5745,7 @@ url = "services/osam"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5742,7 +5762,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a9.post58.dev0"
+version = "1.0a10.post14.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5984,14 +6004,14 @@ zst = ["backports.zstd (>=1.0.0) ; python_version < \"3.14\""]
 
 [[package]]
 name = "snowballstemmer"
-version = "3.1.0"
+version = "3.1.1"
 description = "This package provides 36 stemmers for 34 languages generated from Snowball algorithms."
 optional = false
 python-versions = ">=3.3"
 groups = ["dev"]
 files = [
-    {file = "snowballstemmer-3.1.0-py3-none-any.whl", hash = "sha256:17e6d1da216aa07db6dad37139ea70cf13c4b2e9a096f6e64a9648fc657d3154"},
-    {file = "snowballstemmer-3.1.0.tar.gz", hash = "sha256:fd9e34526b23340cd23ffea6c9f9760974ecc2c2ac9e1d81401443ccdb2a801f"},
+    {file = "snowballstemmer-3.1.1-py3-none-any.whl", hash = "sha256:7e207fa178741da09cdee59d3ecec3827ad5f92b1fc5c9ff3755b639f71f5752"},
+    {file = "snowballstemmer-3.1.1.tar.gz", hash = "sha256:e07bbc54a0d798fe6010a12398422e62a8bfbba95c394fd0956ef58cb4d3e260"},
 ]
 
 [[package]]

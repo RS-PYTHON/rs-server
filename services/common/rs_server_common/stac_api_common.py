@@ -52,7 +52,9 @@ from geojson_pydantic.geometries import Polygon as GeoPolygon
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.footprint_facility import (
+    AlreadyReworkedPolygonError,
     check_cross_antimeridian,
+    check_raw_antimeridian_jump,
     rework_to_linestring_geometry,
     rework_to_polygon_geometry,
 )
@@ -925,14 +927,28 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # Skip if geometry does not cross the antimeridian
                 shapely_geom = shape(geometry)
                 # Points do not define a path, so antimeridian crossing checks can be false positives for MultiPoint.
-                if isinstance(shapely_geom, (Point, MultiPoint)) or not check_cross_antimeridian(shapely_geom):
+                if isinstance(shapely_geom, (Point, MultiPoint)):
                     continue
 
                 reworked_geometry = shapely_geom
                 if isinstance(shapely_geom, (Polygon, MultiPolygon)):
+                    # Only retry polygon rework for invalid geometries that still look antimeridian-related.
+                    if shapely_geom.is_valid or not check_cross_antimeridian(shapely_geom):
+                        continue
                     # Rework geometry to be a valid Polygon / MultiPolygon
-                    reworked_geometry = rework_to_polygon_geometry(shapely_geom)
+                    try:
+                        reworked_geometry = rework_to_polygon_geometry(shapely_geom)
+                    except AlreadyReworkedPolygonError:
+                        if not isinstance(shapely_geom, MultiPolygon):
+                            raise
+                        # make_valid can leave an antimeridian footprint as a MultiPolygon that footprint-facility
+                        # considers already reworked; keep it instead of failing the whole items response.
+                        reworked_geometry = shapely_geom
                 elif isinstance(shapely_geom, (LineString, MultiLineString)):
+                    # Rework only raw line crossings to avoid unnecessary processing and to keep already split
+                    # lines idempotent: they may touch +/-180 but should not be reworked again.
+                    if not check_raw_antimeridian_jump(shapely_geom):
+                        continue
                     # Rework geometry to be a valid LineString / MultiLineString
                     reworked_geometry = rework_to_linestring_geometry(shapely_geom)
 
@@ -943,6 +959,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # Re-apply orientation after antimeridian rework because the split can yield MultiPolygons.
                 normalized_geometry = repair_and_orient_geojson_geometry(mapping(reworked_geometry))
                 feature.geometry = geo_cls.parse_obj(normalized_geometry)  # type: ignore
+                # Keep bbox consistent with the reworked geometry.
+                feature.bbox = shape(normalized_geometry).bounds
 
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
