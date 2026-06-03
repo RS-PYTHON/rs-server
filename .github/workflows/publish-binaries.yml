@@ -408,6 +408,7 @@ jobs:
       - name: Download dist dependencies
         uses: actions/download-artifact@v8
         with:
+          pattern: "*.{whl,tar.gz}"
           path: ./dist
           merge-multiple: true
       - name: Publish wheel and sdist packages
