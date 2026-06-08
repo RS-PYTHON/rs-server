@@ -632,6 +632,14 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(coll_list):
+                    # Handle case when user is specified in ?collections=user:collection
+                    normalized = collection.replace(":", "_")
+
+                    if await self._collection_exists(request, normalized):
+                        coll_list[i] = normalized
+                        continue
+
+                    coll_list[i] = f"{self.request_ids['owner_id']}_{normalized}"
                     if not await self._collection_exists(request, collection):
                         coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
                         logger.debug(f"Using collection name: {coll_list[i]}")
