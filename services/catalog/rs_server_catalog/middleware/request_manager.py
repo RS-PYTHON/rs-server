@@ -574,15 +574,19 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if "collections" in content:
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(content["collections"]):
-                    if not await self._collection_exists(request, collection):
-                        content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
+                    normalized = collection.replace(":", "_")
+                    owner_prefixed = f"{self.request_ids['owner_id']}_{normalized}"
+
+                    if await self._collection_exists(request, normalized):
+                        content["collections"][i] = normalized
+                    elif await self._collection_exists(request, owner_prefixed):
+                        content["collections"][i] = owner_prefixed
                         logger.debug(f"Using collection name: {content['collections'][i]}")
-                        # Check the existence of the collection after concatenation of owner_id
-                        if not await self._collection_exists(request, content["collections"][i]):
-                            raise HTTPException(
-                                status_code=HTTP_404_NOT_FOUND,
-                                detail=f"Collection {collection} not found.",
-                            )
+                    else:
+                        raise HTTPException(
+                            status_code=HTTP_404_NOT_FOUND,
+                            detail=f"Collection {collection} not found.",
+                        )
 
                 self.request_ids["collection_ids"] = content["collections"]
             if content != original_content:
@@ -632,15 +636,20 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(coll_list):
-                    if not await self._collection_exists(request, collection):
-                        coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
-                        logger.debug(f"Using collection name: {coll_list[i]}")
-                        # Check the existence of the collection after concatenation of owner_id
-                        if not await self._collection_exists(request, coll_list[i]):
-                            raise HTTPException(
-                                status_code=HTTP_404_NOT_FOUND,
-                                detail=f"Collection {collection} not found.",
-                            )
+                    # Handle case when user is specified in ?collections=user:collection
+                    normalized = collection.replace(":", "_")
+                    owner_prefixed = f"{self.request_ids['owner_id']}_{normalized}"
+
+                    if await self._collection_exists(request, normalized):
+                        coll_list[i] = normalized
+                    elif await self._collection_exists(request, owner_prefixed):
+                        coll_list[i] = owner_prefixed
+                        logger.debug(f"Using collection name: {owner_prefixed}")
+                    else:
+                        raise HTTPException(
+                            status_code=HTTP_404_NOT_FOUND,
+                            detail=f"Collection {collection} not found.",
+                        )
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)

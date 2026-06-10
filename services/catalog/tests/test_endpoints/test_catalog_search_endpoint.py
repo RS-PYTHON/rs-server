@@ -298,6 +298,33 @@ class TestCatalogSearchEndpoint:
             finally:
                 pathlib.Path("queryables.json").unlink(missing_ok=True)
 
+    def test_search_endpoint_with_collections(self, client):
+        """This test handles the : delimiter in /search?collections=toto:S1_L1 for POST and GET requests"""
+
+        # This is the default case
+        test_params = {"collections": "toto_S1_L1"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+        # GET request
+        test_params = {"collections": "toto:S1_L1"}
+
+        response_g = client.get("/catalog/search", params=test_params)
+        assert response_g.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response_g.content)
+        assert len(content["features"]) == 2
+
+        # POST request
+        test_json = {
+            "collections": ["toto:S1_L1"],
+        }
+        response_p = client.post("/catalog/search", json=test_json)
+        assert response_p.status_code == fastapi.status.HTTP_200_OK
+        assert len(content["features"]) == 2
+
 
 class TestCatalogSearchEndpointWithTemporalFilters:
     """This class contains integration tests for the endpoint '/catalog/search' using advanced temporal filters.
