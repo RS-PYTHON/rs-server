@@ -178,9 +178,7 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
         service_name (str): service name
         logger: non-default logger to user
     """
-    # No concurrent threads
     with lock:
-
         global initialized
         if initialized:
             return
@@ -213,7 +211,10 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
     # Specific opentelemetry instrumentation with custom hooks
     #
 
+    instrumented = []
+
     if app:
+        instrumented.append("fastapi")
         if trace_requests_headers() or trace_requests_body():
             FastAPIInstrumentor.instrument_app(
                 app,
@@ -224,17 +225,23 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str, logger=None):
             )
         else:
             FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
-        # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
 
     if trace_requests_headers() or trace_requests_body():
+        instrumented.append("requests")
         RequestsInstrumentor().instrument(
             tracer_provider=otel_tracer,
             request_hook=requests_hook,
             response_hook=requests_hook,
         )
 
-    BotocoreInstrumentor().instrument(tracer_provider=otel_tracer, request_hook=botocore_request_hook)
+    instrumented.extend(["aiobotocore", "botocore"])
     AiobotocoreInstrumentor().instrument(tracer_provider=otel_tracer, request_hook=botocore_request_hook)
+    BotocoreInstrumentor().instrument(tracer_provider=otel_tracer, request_hook=botocore_request_hook)
+
+    # Don't instrument these packages again (separated by ,)
+    disable = os.getenv("OTEL_PYTHON_DISABLED_INSTRUMENTATIONS", "").split(",")
+    disable.extend(instrumented)
+    os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = ",".join(disable)
 
     # Instrument all other dependencies under opentelemetry.instrumentation.*
     # NOTE 1: we need 'poetry run opentelemetry-bootstrap -a install' to install these.
