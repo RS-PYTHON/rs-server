@@ -148,6 +148,7 @@ class TestGetS3FilenameFromAsset:
         assert excinfo.value.status_code == 400
         assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
 
+
 class TestDeleteS3Files:
     """Class to group the test cases for delete_s3_files function"""
 
@@ -223,7 +224,6 @@ class TestDeleteS3Files:
 
         assert result is True
         mock_logger.exception.assert_called_once()
-
 
 
 class TestIsS3Path:
