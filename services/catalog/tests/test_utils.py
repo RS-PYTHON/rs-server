@@ -148,6 +148,83 @@ class TestGetS3FilenameFromAsset:
         assert excinfo.value.status_code == 400
         assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
 
+class TestDeleteS3Files:
+    """Class to group the test cases for delete_s3_files function"""
+
+    @pytest.mark.asyncio
+    async def test_delete_s3_files_empty_list(self, mocker, s3_manager):
+        """Test the behavior when the list of S3 files to be deleted is empty."""
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        result = await S3Manager(s3_manager).delete_s3_files([])
+
+        assert result is True
+        mock_logger.info.assert_called_once_with("No files to be deleted from bucket")
+
+    @pytest.mark.asyncio
+    async def test_delete_s3_files_no_s3_handler(self, mocker, s3_manager):
+        """Test the behavior when the S3 handler cannot be created."""
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler", return_value=None)
+
+        result = await S3Manager(s3_manager).delete_s3_files(["s3://bucket_name/path/to/file"])
+
+        assert result is False
+        mock_logger.error.assert_called_once_with("Failed to create the s3 handler when trying to delete the s3 files")
+
+    @pytest.mark.asyncio
+    async def test_delete_s3_files_valid_paths(self, mocker, s3_manager):
+        """Test the behavior with valid S3 paths for deletion."""
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
+        mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
+        mock_s3_handler = mocker.Mock()
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock()
+        mock_get_s3_handler.return_value = mock_s3_handler
+
+        result = await S3Manager(s3_manager).delete_s3_files(["s3://bucket_name/path/to/file"])
+
+        assert result is True
+        mock_s3_handler.adelete_keys_from_s3.assert_called_once_with(["s3://bucket_name/path/to/file"])
+        mock_logger.error.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_s3_files_deletion_runtime_error(self, mocker, s3_manager):
+        """Test the behavior when a RuntimeError occurs during deletion."""
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+        mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
+        mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
+        mock_s3_handler = mocker.Mock()
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Deletion failed"))
+        mock_get_s3_handler.return_value = mock_s3_handler
+        ftbd = "s3://bucket_name/path/to/file"
+        result = await S3Manager(s3_manager).delete_s3_files([ftbd])
+
+        assert result is True  # Function should continue even if deletion fails
+        mock_logger.exception.assert_called_once_with(
+            "Failed to delete file from s3 bucket. Reason: Deletion failed. However, the process will still continue !",
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_s3_files_adelete_raises_runtime_error(self, mocker, s3_manager):
+        """Cover the branch where adelete_keys_from_s3 raises RuntimeError."""
+
+        # Prepare S3Manager with a mock s3_handler
+        mock_s3_handler = mocker.Mock()
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Test failure"))
+
+        manager = S3Manager(s3_manager)
+        manager.s3_handler = mock_s3_handler
+
+        files_to_delete = ["s3://bucket/file1.txt"]
+
+        mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
+
+        result = await manager.delete_s3_files(files_to_delete)
+
+        assert result is True
+        mock_logger.exception.assert_called_once()
+
+
 
 class TestIsS3Path:
     """Class to group the test cases for is_s3_path function"""
