@@ -20,11 +20,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 import botocore
 from fastapi import HTTPException
-from rs_server_catalog.utils import get_temp_bucket_name, verify_existing_item_from_catalog, TransferFromS3ToS3Config
+from rs_server_catalog.utils import (
+    get_temp_bucket_name,
+    verify_existing_item_from_catalog,
+)
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_bucket_name_from_config,
 )
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3StorageHandler,
+    TransferFromS3ToS3Config,
+)
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
 from starlette.requests import Request
@@ -412,7 +418,6 @@ class S3Manager:
             ) from kerr
         except RuntimeError as rte:
             raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
-
 
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
         """Used to clear specific files from temporary bucket or from catalog bucket.
