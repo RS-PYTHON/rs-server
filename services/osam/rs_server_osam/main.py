@@ -81,10 +81,11 @@ RSPY_UAC_HOMEPAGE = os.environ.get("RSPY_UAC_HOMEPAGE", "")
 try:
     docs_url = os.environ["RSPY_DOCS_URL"].strip("/")
     docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
-    oauth2.SWAGGER_HOMEPAGE = "/" + docs_url.strip("/")
 
+    # NOTE: the next two lines should not be needed anymore
+    # oauth2.SWAGGER_HOMEPAGE = "/" + docs_url.strip("/")
     # The docs should be under /osam/docs. We want the auth endpoints to be under /osam/auth
-    oauth2.AUTH_PREFIX = oauth2.SWAGGER_HOMEPAGE.replace("/docs", "/auth")
+    # oauth2.AUTH_PREFIX = oauth2.SWAGGER_HOMEPAGE.replace("/docs", "/auth")
 except KeyError:
     docs_params = {}
 
