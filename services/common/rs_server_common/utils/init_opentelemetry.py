@@ -155,6 +155,8 @@ def fastapi_hook(span: Span, scope: dict[str, Any], message=None):
 
 def botocore_hook(span, _service_name, _operation_name, api_params: dict):
     """Callback function invoked by BotocoreInstrumentor and AiobotocoreInstrumentor"""
+    if not (span and span.is_recording()):
+        return
     bucket = api_params.get("Bucket", "")
     key = api_params.get("Key", "")
     span.set_attribute("_path", f"s3://{bucket}/{key}")
@@ -178,7 +180,9 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str):
     os.environ["OTEL_SERVICE_NAME"] = service_name
 
     # Send openelemetry signals to tempo
-    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.getenv("TEMPO_ENDPOINT")
+    if not (tempo_endpoint := os.getenv("TEMPO_ENDPOINT")):
+        return
+    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = tempo_endpoint
 
     # We'll use custom instrumentation for these packages (separated by ,)
     custom = "aiobotocore,botocore,fastapi,requests"
