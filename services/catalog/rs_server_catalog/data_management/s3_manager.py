@@ -21,7 +21,6 @@ from concurrent.futures import ThreadPoolExecutor
 import botocore
 from fastapi import HTTPException
 from rs_server_catalog.utils import (
-    get_temp_bucket_name,
     verify_existing_item_from_catalog,
 )
 from rs_server_common.s3_storage_handler.s3_storage_config import (
@@ -29,7 +28,6 @@ from rs_server_common.s3_storage_handler.s3_storage_config import (
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
-    TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
@@ -355,69 +353,6 @@ class S3Manager:
                     break
 
         return content
-
-    def s3_bucket_handling(self, bucket_name: str, files_s3_key: list[str], item: dict, request: Request) -> list:
-        """Handle the transfer and deletion of files in S3 buckets.
-
-        Args:
-            bucket_name (str): Name of the S3 bucket to transfer files to
-            files_s3_key (list[str]): List of S3 keys for the files to be transfered.
-            item (dict): The catalog item from which all the remaining assets should be deleted.
-            request (Request): The request object, used to determine the request method.
-
-        Returns:
-            list: List of files to be deleted after a successful transfer
-
-        Raises:
-            HTTPException: If there are errors during the S3 transfer or deletion process.
-        """
-        if self.is_catalog_local_mode or not files_s3_key:
-            logger.debug(f"s3_bucket_handling: nothing to do: {self.s3_handler} | {files_s3_key}")
-            return []
-
-        try:
-            s3_files_to_be_deleted = []
-            # get the temporary bucket name, there should be one only in the set
-            temp_bucket_name = get_temp_bucket_name(files_s3_key)
-            # now, remove the s3://temp_bucket_name for each s3_key
-            for idx, s3_key in enumerate(files_s3_key):
-                # build the list with files to be deleted from the temporary bucket
-                s3_files_to_be_deleted.append(s3_key)
-                files_s3_key[idx] = s3_key.replace(f"s3://{temp_bucket_name}", "")
-
-            err_message = f"Failed to transfer file(s) from '{temp_bucket_name}' bucket to \
-'{bucket_name}' catalog bucket!"
-            config = TransferFromS3ToS3Config(
-                files_s3_key,
-                temp_bucket_name,
-                bucket_name,
-                copy_only=True,
-                max_retries=3,
-            )
-
-            failed_files = self.s3_handler.transfer_from_s3_to_s3(config)
-
-            if failed_files:
-                s3_files_to_be_deleted.clear()
-                raise HTTPException(
-                    detail=f"{err_message} {failed_files}",
-                    status_code=HTTP_400_BAD_REQUEST,
-                )
-            # For a PUT request, all new assets are transferred (as described above).
-            # Any asset that already exists in the catalog from a previous POST request
-            # but is not included in the current request will be deleted.
-            # In the case of a PATCH request (not yet implemented), no assets should be deleted.
-            if item and request.method == "PUT":
-                for asset in item["assets"]:
-                    s3_files_to_be_deleted.append(item["assets"][asset]["href"])
-            return s3_files_to_be_deleted
-        except KeyError as kerr:
-            raise HTTPException(
-                detail=f"{err_message} Failed to find S3 credentials.",
-                status_code=HTTP_400_BAD_REQUEST,
-            ) from kerr
-        except RuntimeError as rte:
-            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
         """Used to clear specific files from temporary bucket or from catalog bucket.
