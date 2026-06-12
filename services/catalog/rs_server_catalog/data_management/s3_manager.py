@@ -20,11 +20,15 @@ from concurrent.futures import ThreadPoolExecutor
 
 import botocore
 from fastapi import HTTPException
-from rs_server_catalog.utils import verify_existing_item_from_catalog
+from rs_server_catalog.utils import (
+    verify_existing_item_from_catalog,
+)
 from rs_server_common.s3_storage_handler.s3_storage_config import (
     get_bucket_name_from_config,
 )
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3StorageHandler,
+)
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
 from starlette.requests import Request
@@ -349,3 +353,27 @@ class S3Manager:
                     break
 
         return content
+
+    async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
+        """Used to clear specific files from temporary bucket or from catalog bucket.
+
+        Args:
+            s3_files_to_be_deleted (list[str]): list of files to delete from the S3 bucket
+
+        Returns:
+            bool: True is deletion was successful, False otherwise
+        """
+        if not s3_files_to_be_deleted:
+            logger.info("No files to be deleted from bucket")
+            return True
+        if not self.s3_handler:
+            logger.error("Failed to create the s3 handler when trying to delete the s3 files")
+            return False
+
+        try:
+            await self.s3_handler.adelete_keys_from_s3(s3_files_to_be_deleted)
+        except RuntimeError as rte:
+            logger.exception(
+                f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
+            )
+        return True

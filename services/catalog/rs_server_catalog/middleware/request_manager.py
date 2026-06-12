@@ -43,6 +43,7 @@ from rs_server_catalog.utils import (
     DEFAULT_GEOM,
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
+    get_token_for_pagination,
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication
@@ -220,6 +221,7 @@ class CatalogRequestManager:
     def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
         self.request_ids = request_ids
+        self.s3_files_to_be_deleted: list = []
 
     @lru_cache
     def s3_manager(self, request: Request):
@@ -277,6 +279,63 @@ class CatalogRequestManager:
                 detail=f"Exception when trying to get the item {item_id} from the collection '{collection_id}'",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
+
+    async def build_filelist_to_be_deleted(self, request):
+        """Build the list of the s3 files that will be deleted if the request is successfull"""
+        for ci in self.request_ids["collection_ids"]:
+            collection_id = f"{self.request_ids['owner_id']}_{ci}"
+            items = []
+            try:
+                if "/items" not in request.scope["path"]:
+                    # this is the case for delete endpoint /collections/<collection_name>
+                    # use pagination, otherwise a maximum of the default limit (10) items is returned
+                    # NOTE: Unable to use the pagination from pgstac client. Temporary, use a limit of 100
+                    token = None
+                    while True:
+                        items_collection = await self.client.item_collection(
+                            request=request,
+                            collection_id=collection_id,
+                            limit=100,
+                            token=token,
+                        )
+                        items.extend(items_collection.get("features", []))
+                        # Check if there's a next token for pagination
+                        token = get_token_for_pagination(items_collection)
+
+                        if not token:
+                            # No more pages left, break the loop
+                            break
+                else:
+                    # this is the case for delete endpoint /collections/<collection_name>/items/<item_name>
+                    item = await self.client.get_item(
+                        item_id=self.request_ids["item_id"],
+                        collection_id=collection_id,
+                        request=request,
+                    )
+                    items = [item]
+            except NotFoundError as nfe:
+                logger.error(f"Failed to find the requested object to be deleted. {nfe}")
+                return
+            except KeyError as e:
+                logger.error(f"Failed to build the list of items to be deleted due to missing key: {e}")
+                return
+            logger.debug(f"Found {len(items)} items: {items}")
+            try:
+                for item in items:
+                    assets = item.get("assets", {})
+                    for _, asset_info in assets.items():
+                        s3_href = asset_info.get("href")
+                        if s3_href:
+                            self.s3_files_to_be_deleted.append(s3_href)
+            except KeyError as e:
+                logger.error(
+                    f"Failed to build the list of S3 files to be deleted due to missing key in dictionary: {e}",
+                )
+                return
+            logger.info(
+                "Successfully built the list of S3 files to be deleted. "
+                f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
+            )
 
     async def manage_requests(self, request: Request) -> Request | Response:
         """Main function to dispatch the request pre-processing depending on which endpoint is called.
@@ -507,7 +566,7 @@ field is not permitted also."
 collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
-
+        await self.build_filelist_to_be_deleted(request)
         return True
 
     async def manage_search_request(  # pylint: disable=too-many-statements,too-many-branches

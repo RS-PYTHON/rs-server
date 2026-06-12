@@ -103,9 +103,15 @@ class CatalogResponseManager:
     """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
     Each type of Response is managed in one of the functions."""
 
-    def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
+    def __init__(
+        self,
+        client: CoreCrudClient,
+        request_ids: dict[Any, Any],
+        s3_files_to_be_deleted: list[str] | None = None,
+    ):
         self.client = client
         self.request_ids = request_ids
+        self.s3_files_to_be_deleted = s3_files_to_be_deleted or []
 
     @lru_cache
     def s3_manager(self, request: Request):
@@ -186,7 +192,7 @@ class CatalogResponseManager:
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             response = await self.manage_put_post_response(request, streaming_response)
         elif request.method == "DELETE" and self.request_ids["owner_id"]:
-            response = await self.manage_delete_response(streaming_response, self.request_ids["owner_id"])
+            response = await self.manage_delete_response(request, streaming_response, self.request_ids["owner_id"])
 
         return response
 
@@ -466,6 +472,8 @@ class CatalogResponseManager:
                     response_content["geometry"] = None
                 if response_content.get("bbox") == DEFAULT_BBOX:
                     response_content["bbox"] = None
+                await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
+                self.s3_files_to_be_deleted.clear()
                 response_content = mask_internal_default_geometry_and_bbox(response_content)
         except RuntimeError as exc:
             raise HTTPException(
@@ -477,7 +485,7 @@ class CatalogResponseManager:
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
 
-    async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
+    async def manage_delete_response(self, request: Request, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
 
         Args:
@@ -490,4 +498,6 @@ class CatalogResponseManager:
         response_content = await read_streaming_response(response)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
+        await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
+        self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))
