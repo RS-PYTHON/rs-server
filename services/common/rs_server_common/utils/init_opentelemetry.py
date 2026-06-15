@@ -35,7 +35,7 @@ from opentelemetry.util._decorator import _agnosticcontextmanager
 from rs_server_common.settings import env_bool
 
 lock = Lock()
-initialized = False
+INITIALIZED = False
 
 
 # Show details of http headers and body/content in tempo/grafana ?
@@ -171,10 +171,10 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str):
         service_name (str): service name
     """
     with lock:
-        global initialized
-        if initialized:
+        global INITIALIZED  # pylint: disable=global-statement
+        if INITIALIZED:
             return
-        initialized = True
+        INITIALIZED = True
 
     # Set the opentelemetry service name
     os.environ["OTEL_SERVICE_NAME"] = service_name
