@@ -415,6 +415,7 @@ class S3StorageHandler:
                         future.result()
 
                 # If everything went OK, exit the function
+                self.logger.info("The files were deleted successfully")
                 return
 
             except Exception as e:  # pylint: disable=broad-exception-caught
