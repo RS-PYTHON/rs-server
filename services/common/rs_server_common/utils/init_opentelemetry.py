@@ -185,17 +185,18 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str):
     os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = tempo_endpoint
 
     # We'll use custom instrumentation for these packages (separated by ,)
-    custom = "aiobotocore,botocore,fastapi,requests"
-    os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = (
-        f"{os.getenv('OTEL_PYTHON_DISABLED_INSTRUMENTATIONS', '')},{custom}"
-    )
+    org_disabled = os.getenv("OTEL_PYTHON_DISABLED_INSTRUMENTATIONS", "")
+    os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = f"{org_disabled},aiobotocore,botocore,fastapi,requests"
 
     # Run the opentelemetry auto instrumentation on all packages under opentelemetry.instrumentation.*
     # This is what the command line "opentelemetry-instrumentation" would do.
     # NOTE 1: we need 'poetry run opentelemetry-bootstrap -a install' to install these packages.
     # NOTE 2: in local mode we have this error that we can ignore:
     # Failed to export metrics to tempo:4317, error code: StatusCode.UNIMPLEMENTED
-    auto_instrumentation.initialize()
+    try:
+        auto_instrumentation.initialize()
+    finally:
+        os.environ["OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"] = org_disabled
 
     #
     # Specific opentelemetry instrumentation with custom hooks
