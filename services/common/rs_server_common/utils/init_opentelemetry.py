@@ -190,9 +190,7 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str):
 
     # Run the opentelemetry auto instrumentation on all packages under opentelemetry.instrumentation.*
     # This is what the command line "opentelemetry-instrumentation" would do.
-    # NOTE 1: we need 'poetry run opentelemetry-bootstrap -a install' to install these packages.
-    # NOTE 2: in local mode we have this error that we can ignore:
-    # Failed to export metrics to tempo:4317, error code: StatusCode.UNIMPLEMENTED
+    # NOTE: we need 'poetry run opentelemetry-bootstrap -a install' to install these packages.
     try:
         auto_instrumentation.initialize()
     finally:
