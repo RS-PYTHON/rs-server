@@ -104,13 +104,9 @@ def extract_interval(args):
 
         interval = a["interval"]
 
-        if (
-            isinstance(interval, list)
-            and interval
-            and isinstance(interval[0], str)
-        ):
+        if isinstance(interval, list) and interval and isinstance(interval[0], str):
             return a
-        
+
     # Handle simple timestamp literal operators such as t_before
     for a in args:
         if isinstance(a, str):
@@ -118,24 +114,18 @@ def extract_interval(args):
 
     raise ValueError(f"No literal interval in args: {args}")
 
+
 def extract_properties(args):
     """extract property"""
     props = [a for a in args if isinstance(a, dict) and "property" in a]
 
     if not props:
         for a in args:
-            if (
-                isinstance(a, dict)
-                and "interval" in a
-                and isinstance(a["interval"], list)
-            ):
-                props.extend(
-                    p
-                    for p in a["interval"]
-                    if isinstance(p, dict) and "property" in p
-                )
+            if isinstance(a, dict) and "interval" in a and isinstance(a["interval"], list):
+                props.extend(p for p in a["interval"] if isinstance(p, dict) and "property" in p)
 
     return props
+
 
 def parse_interval(interval: str) -> timedelta:
     """parse interval"""
