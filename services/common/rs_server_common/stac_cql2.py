@@ -97,17 +97,45 @@ def parse_dtrange(  # noqa: C901 # pylint: disable=too-many-branches
 
 
 def extract_interval(args):
-    """extarct interval"""
+    """extract literal interval"""
     for a in args:
-        if isinstance(a, dict) and "interval" in a:
-            return a
-    raise ValueError(f"No interval in args: {args}")
+        if not (isinstance(a, dict) and "interval" in a):
+            continue
 
+        interval = a["interval"]
+
+        if (
+            isinstance(interval, list)
+            and interval
+            and isinstance(interval[0], str)
+        ):
+            return a
+        
+    # Handle simple timestamp literal operators such as t_before
+    for a in args:
+        if isinstance(a, str):
+            return a
+
+    raise ValueError(f"No literal interval in args: {args}")
 
 def extract_properties(args):
     """extract property"""
-    return [a for a in args if isinstance(a, dict) and "property" in a]
+    props = [a for a in args if isinstance(a, dict) and "property" in a]
 
+    if not props:
+        for a in args:
+            if (
+                isinstance(a, dict)
+                and "interval" in a
+                and isinstance(a["interval"], list)
+            ):
+                props.extend(
+                    p
+                    for p in a["interval"]
+                    if isinstance(p, dict) and "property" in p
+                )
+
+    return props
 
 def parse_interval(interval: str) -> timedelta:
     """parse interval"""
