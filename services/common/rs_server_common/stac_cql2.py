@@ -75,7 +75,6 @@ def parse_dtrange(  # noqa: C901 # pylint: disable=too-many-branches
 
     if len(timestrs) != 2:
         raise ValueError(f"Timestamp cannot have more than 2 values: {timestrs}")
-    # import pdb;pdb.set_trace()
 
     if timestrs[0] in ["..", ""]:
         s = datetime.min
