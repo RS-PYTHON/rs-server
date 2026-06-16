@@ -75,6 +75,7 @@ def parse_dtrange(  # noqa: C901 # pylint: disable=too-many-branches
 
     if len(timestrs) != 2:
         raise ValueError(f"Timestamp cannot have more than 2 values: {timestrs}")
+    # import pdb;pdb.set_trace()
 
     if timestrs[0] in ["..", ""]:
         s = datetime.min
@@ -95,6 +96,19 @@ def parse_dtrange(  # noqa: C901 # pylint: disable=too-many-branches
     return (s, e)
 
 
+def extract_interval(args):
+    """extarct interval"""
+    for a in args:
+        if isinstance(a, dict) and "interval" in a:
+            return a
+    raise ValueError(f"No interval in args: {args}")
+
+
+def extract_properties(args):
+    """extract property"""
+    return [a for a in args if isinstance(a, dict) and "property" in a]
+
+
 def parse_interval(interval: str) -> timedelta:
     """parse interval"""
     match = re.match(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", interval.upper())
@@ -111,8 +125,8 @@ def temporal_op_query(op: str, args: list[dict], temporal_mapping: dict[str, str
     if not temporal_mapping:
         raise ValueError("Undefined temporal property mapping")
 
-    props: list[dict] = args[0]["interval"] if "interval" in args[0].keys() else [args[0]]
-    rrange = parse_dtrange(args[1])
+    props = extract_properties(args)
+    rrange = parse_dtrange(extract_interval(args))
     outq = (
         temporal_operations[op.lower()]
         .replace("ll", temporal_mapping[props[0]["property"]])
