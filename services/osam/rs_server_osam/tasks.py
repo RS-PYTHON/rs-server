@@ -26,9 +26,7 @@ from functools import wraps
 from typing import Any
 
 from cachetools import TTLCache, cached
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import run_in_threads
 from rs_server_osam.utils.cloud_provider_api_handler import OVHApiHandler
@@ -105,13 +103,6 @@ logger = Logging.default(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-# Setup tracer
-trace.set_tracer_provider(TracerProvider())
-tracer = trace.get_tracer(__name__)
-span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
-trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
-
-
 # Get keycloak/ovh handler (it doesn't creates duplicates)
 def get_keycloak_handler():
     """Used to get a copy of Keycloak handler"""
@@ -139,7 +130,7 @@ def traced_function(name=None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             span_name = name or func.__name__
-            with tracer.start_as_current_span(span_name) as span:
+            with init_opentelemetry.start_span(__name__, span_name) as span:
                 span.set_attribute("function.name", func.__name__)
                 return func(*args, **kwargs)
 
