@@ -83,7 +83,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     Raises:
         ValueError: If the path is not valid.
     """
-    path = request.url.path
+    path = request.scope["path"]
     method = request.method
     patterns = [r"/favicon.ico"]
 
