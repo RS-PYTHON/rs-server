@@ -24,8 +24,42 @@ Changed
 
 None
 
+[1.0a11] - Sprint 37 - 2026-06-17
+=================================
+
+## Added
+
+- RSPY-287: Implement the file:checksum from STAC File Info extension in Catalog
+- RSPY-725: [Catalog] Improve the search filter on the "expires" field, if possible
+- RSPY-860: S1 ARD: Support reading DEM directly from earthdatahub
+- RSPY-994: Create shared disks
+- RSPY-1002: Trivy Supply Chain Incident — Remediation Runbook
+- RSPY-1034: Add shared disk storage to payload.yaml
+- RSPY-1035: Link the input used and the processing url to each generated product
+- RSPY-1037: Implement rate limiting policies in staging
+- RSPY-1044: Make DPR service compatible with multiple dask versions
+- RSPY-1055: Define an optional source to search AUX STAC items
+- RSPY-1057: Clarify procedure to test processor integration with static payload
+- RSPY-1064: Operability improvements: rename the flows
+- RSPY-1068: Sprint 37 corrections of issues
+- RSPY-1071: Update to Prefect 3.6.29
+- RSPY-1072: Operability improvements: update the logs and artifacts
+- RSPY-1078: CI: Fix the rs-infra-security certificates
+- RSPY-1084: Configure shared temporary S3 folder between processing Dask workers
+- RSPY-1086: Add dynamic APT dependency system for EOPF images
+
+## Fixed
+
+- RSPY-1061: [RS-SERVER-PRIP] ValueError: Polygon and MultiPolygon features only are supported ( 2pts )
+- RSPY-1063: [RS-SERVER-PRIP] Error AlreadyReworkedPolygonError("Algorithm not supported already reworked inputs.") ( 2 pts )
+- RSPY-1075: [RS-SERVER-CATALOG] Search fails when using the [OWNER]:[COLLECTION] format ( 1 pt)
+- RSPY-1077: CI: Fix the jupyterhub deployment (1 pt)
+- RSPY-1080: Duplicated inputs for pipelines with several steps using the same input (1 pt)
+- RSPY-1082: Assets not removed from S3 when collection is deleted (2 pts)
+- RSPY-1087: adf conversion : wrong start_datetime and end_datetime values for converted value ( 2 pts)
+
 [1.0a10] - Sprint 36 - 2026-05-20
-================================
+=================================
 
 ## Added
 
