@@ -171,7 +171,7 @@ def test_handle_exceptions_middleware(client, mocker, rfc7807: bool = False):
         spy_log_error.reset_mock()
 
         # Remove the mocked endpoint
-        app.router.routes = list(filter(lambda route: route.path != endpoint_path, app.router.routes))
+        app.router.routes = list(filter(lambda route: getattr(route, "path", "") != endpoint_path, app.router.routes))
 
     ###############
     # Test case 1 #
