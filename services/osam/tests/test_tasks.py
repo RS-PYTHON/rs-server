@@ -456,14 +456,22 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "s3:GetBucketLocation",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog-paul/paul/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
+                        ],
+                    },
+                    {
+                        "Sid": "BucketLevelActions",
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog",
                         ],
                     },
                 ],
@@ -496,14 +504,22 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": [
                             "s3:GetObject",
-                            "s3:GetBucketLocation",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-aux/*",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/*",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/*",
+                        ],
+                    },
+                    {
+                        "Sid": "BucketLevelActions",
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
                         ],
                     },
                 ],
@@ -539,14 +555,22 @@ def test_build_s3_rights(user, user_info, expected):
                             "s3:PutObject",
                             "s3:DeleteObject",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                             "s3:AbortMultipartUpload",
-                            "s3:GetBucketLocation",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog/copernicus/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/*",
+                        ],
+                    },
+                    {
+                        "Sid": "BucketLevelActions",
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
                         ],
                     },
                 ],
@@ -587,9 +611,7 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "s3:GetBucketLocation",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog/*",
@@ -620,9 +642,7 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": [
                             "s3:GetObject",
-                            "s3:GetBucketLocation",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
@@ -639,13 +659,22 @@ def test_build_s3_rights(user, user_info, expected):
                             "s3:PutObject",
                             "s3:DeleteObject",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                             "s3:AbortMultipartUpload",
-                            "s3:GetBucketLocation",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
+                        ],
+                    },
+                    {
+                        "Sid": "BucketLevelActions",
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
                         ],
                     },
                 ],
@@ -671,12 +700,18 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "s3:GetBucketLocation",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog-paul/*",
+                        ],
+                    },
+                    {
+                        "Sid": "BucketLevelActions",
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul",
                         ],
                     },
                 ],
@@ -703,13 +738,17 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "s3:GetBucketLocation",
                             "s3:ListMultipartUploadParts",
-                            "s3:ListBucketMultipartUploads",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog-paul/*",
                         ],
+                    },
+                    {
+                        "Sid": "BucketLevelActions",
+                        "Effect": "Allow",
+                        "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                        "Resource": ["arn:aws:s3:::rspython-ops-catalog-paul"],
                     },
                 ],
             },

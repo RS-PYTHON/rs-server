@@ -68,7 +68,7 @@ BLOCK_LIST_BUCKETS = {
 
 BLOCK_LIST_READ_TEMPLATE = {
     "Effect": "Allow",
-    "Action": ["s3:GetBucketLocation", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+    "Action": ["s3:ListMultipartUploadParts"],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
@@ -76,9 +76,7 @@ BLOCK_LIST_READ_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
     "Action": [
         "s3:GetObject",
-        "s3:GetBucketLocation",
         "s3:ListMultipartUploadParts",
-        "s3:ListBucketMultipartUploads",
     ],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
@@ -90,11 +88,16 @@ BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE = {
         "s3:PutObject",
         "s3:DeleteObject",
         "s3:ListMultipartUploadParts",
-        "s3:ListBucketMultipartUploads",
         "s3:AbortMultipartUpload",
-        "s3:GetBucketLocation",
     ],
     "Resource": "arn:aws:s3:::%placeholder%*",
+}
+
+BLOCK_BUCKET_LEVEL_ACTIONS_TEMPLATE = {
+    "Sid": "BucketLevelActions",
+    "Effect": "Allow",
+    "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+    "Resource": "arn:aws:s3:::%placeholder%",
 }
 
 logger = Logging.default(__name__)
@@ -486,6 +489,11 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
         (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE),
     ]
     statements: list[dict[str, Any]] = []
+
+    # Block for bucket level actions
+    template_bucketlevelactions: dict[str, Any] = copy.deepcopy(BLOCK_BUCKET_LEVEL_ACTIONS_TEMPLATE)
+    template_bucketlevelactions["Resource"] = []
+
     for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks
         if not s3_rights.get(key):
             continue
@@ -499,6 +507,11 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                 continue
             bucket = f"arn:aws:s3:::{parts[0]}"
             owner_collection = f"{parts[1]}/{parts[2]}"
+
+            # Add the bucket to the bucket level actions statement
+            if bucket not in template_bucketlevelactions["Resource"]:
+                template_bucketlevelactions["Resource"].append(bucket)
+
             # check in the current statements
             found_in_template_bucket = False
             for stmt in statements:
@@ -507,8 +520,9 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                     if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
                         stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
                     break
-                # If for this condition there is already a ListBucket action, we group the concerned buckets
-                if stmt["Action"] == ["s3:ListBucket"] and stmt["Condition"]["StringLike"]["s3:prefix"] == [
+                # If a BLOCK_LIST_BUCKETS already exists for this owner,
+                # we add the concerned bucket to the existing statement instead of adding one
+                if stmt["Action"] == BLOCK_LIST_BUCKETS["Action"] and stmt["Condition"]["StringLike"]["s3:prefix"] == [
                     owner_collection,
                 ]:
                     found_in_template_bucket = True
@@ -533,6 +547,9 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
 
         template["Resource"] = resources
         statements.append(template)
+
+    # Add the bucket level actions statement
+    statements.append(template_bucketlevelactions)
 
     # Fill in main access policy template
     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
