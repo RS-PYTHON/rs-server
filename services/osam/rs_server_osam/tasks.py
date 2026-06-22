@@ -509,6 +509,16 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                     if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
                         stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
                     break
+                # If for this condition there is already a ListBucket action, we group the concerned buckets
+                if stmt["Action"] == ["s3:ListBucket"] and stmt["Condition"]["StringLike"]["s3:prefix"] == [
+                    owner_collection,
+                ]:
+                    found_in_template_bucket = True
+                    if not isinstance(stmt["Resource"], list):
+                        stmt["Resource"] = [stmt["Resource"]]
+                    if bucket not in stmt["Resource"]:
+                        stmt["Resource"].append(bucket)
+                    break
             if not found_in_template_bucket:
                 template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
                 template_bucket["Resource"] = bucket

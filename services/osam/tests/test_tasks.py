@@ -446,19 +446,11 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog",
+                        ],
                         "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
@@ -494,19 +486,11 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
+                        ],
                         "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
@@ -543,19 +527,11 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        ],
                         "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
@@ -604,20 +580,12 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        ],
                         "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -636,7 +604,20 @@ def test_build_s3_rights(user, user_info, expected):
                     {
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        ],
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        ],
                         "Condition": {"StringLike": {"s3:prefix": ["emilie/*"]}},
                     },
                     {
