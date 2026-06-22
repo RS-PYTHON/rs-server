@@ -457,7 +457,6 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": [
                             "s3:GetBucketLocation",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                         ],
@@ -498,7 +497,6 @@ def test_build_s3_rights(user, user_info, expected):
                         "Action": [
                             "s3:GetObject",
                             "s3:GetBucketLocation",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                         ],
@@ -540,7 +538,6 @@ def test_build_s3_rights(user, user_info, expected):
                             "s3:GetObject",
                             "s3:PutObject",
                             "s3:DeleteObject",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                             "s3:AbortMultipartUpload",
@@ -591,7 +588,6 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": [
                             "s3:GetBucketLocation",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                         ],
@@ -625,7 +621,6 @@ def test_build_s3_rights(user, user_info, expected):
                         "Action": [
                             "s3:GetObject",
                             "s3:GetBucketLocation",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                         ],
@@ -643,7 +638,6 @@ def test_build_s3_rights(user, user_info, expected):
                             "s3:GetObject",
                             "s3:PutObject",
                             "s3:DeleteObject",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                             "s3:AbortMultipartUpload",
@@ -678,7 +672,6 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": [
                             "s3:GetBucketLocation",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                         ],
@@ -711,7 +704,6 @@ def test_build_s3_rights(user, user_info, expected):
                         "Effect": "Allow",
                         "Action": [
                             "s3:GetBucketLocation",
-                            "s3:ListBucket",
                             "s3:ListMultipartUploadParts",
                             "s3:ListBucketMultipartUploads",
                         ],
