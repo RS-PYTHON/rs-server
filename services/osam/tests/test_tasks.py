@@ -15,6 +15,7 @@
 """Unit tests for tasks"""
 
 from datetime import datetime
+from pprint import pprint
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -445,16 +446,6 @@ def test_build_s3_rights(user, user_info, expected):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog-paul",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                            "arn:aws:s3:::rspython-ops-catalog",
-                        ],
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
                         "Action": [
                             "s3:ListMultipartUploadParts",
                         ],
@@ -463,6 +454,16 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/paul/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog/paul/s1-l1/*",
                         ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog-paul",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog",
+                        ],
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -492,16 +493,6 @@ def test_build_s3_rights(user, user_info, expected):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
-                        ],
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
-                    },
-                    {
-                        "Effect": "Allow",
                         "Action": [
                             "s3:GetObject",
                             "s3:ListMultipartUploadParts",
@@ -511,6 +502,16 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/*",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/*",
                         ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
+                        ],
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -540,16 +541,6 @@ def test_build_s3_rights(user, user_info, expected):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        ],
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
                         "Action": [
                             "s3:GetObject",
                             "s3:PutObject",
@@ -562,6 +553,16 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/*",
                         ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        ],
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -600,16 +601,6 @@ def test_build_s3_rights(user, user_info, expected):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog",
-                            "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        ],
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
                         "Action": [
                             "s3:ListMultipartUploadParts",
                         ],
@@ -618,25 +609,6 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1/*",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1/*",
                         ],
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        ],
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": [
-                            "arn:aws:s3:::rspython-ops-catalog",
-                            "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
-                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
-                        ],
-                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*"]}},
                     },
                     {
                         "Effect": "Allow",
@@ -667,6 +639,27 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": [
+                            "arn:aws:s3:::rspython-ops-catalog",
+                            "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
+                        ],
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
+                        "Condition": {"StringLike": {"s3:prefix": ["emilie/*"]}},
+                    },
+                    {
                         "Sid": "BucketLevelActions",
                         "Effect": "Allow",
                         "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
@@ -693,18 +686,18 @@ def test_build_s3_rights(user, user_info, expected):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
-                    },
-                    {
-                        "Effect": "Allow",
                         "Action": [
                             "s3:ListMultipartUploadParts",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog-paul/*",
                         ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -731,18 +724,18 @@ def test_build_s3_rights(user, user_info, expected):
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["s3:ListBucket"],
-                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
-                    },
-                    {
-                        "Effect": "Allow",
                         "Action": [
                             "s3:ListMultipartUploadParts",
                         ],
                         "Resource": [
                             "arn:aws:s3:::rspython-ops-catalog-paul/*",
                         ],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:ListBucket"],
+                        "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
+                        "Condition": {"StringLike": {"s3:prefix": ["*/*"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -759,6 +752,10 @@ def test_build_s3_rights(user, user_info, expected):
 def test_update_s3_rights_lists(mock_datetime, s3_rights, expected):
     """Test build s3 rights"""
     mock_datetime.now.return_value = datetime(2025, 1, 1)
+    print("=== EXPECTED ===")
+    pprint(expected)
+    print("=== COMPUTED ===")
+    pprint(update_s3_rights_lists(s3_rights))
     assert update_s3_rights_lists(s3_rights) == expected
 
 

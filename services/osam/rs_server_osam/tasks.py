@@ -520,17 +520,6 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                     if owner_collection not in stmt["Condition"]["StringLike"]["s3:prefix"]:
                         stmt["Condition"]["StringLike"]["s3:prefix"].append(owner_collection)
                     break
-                # If a BLOCK_LIST_BUCKETS already exists for this owner,
-                # we add the concerned bucket to the existing statement instead of adding one
-                if stmt["Action"] == BLOCK_LIST_BUCKETS["Action"] and stmt["Condition"]["StringLike"]["s3:prefix"] == [
-                    owner_collection,
-                ]:
-                    found_in_template_bucket = True
-                    if not isinstance(stmt["Resource"], list):
-                        stmt["Resource"] = [stmt["Resource"]]
-                    if bucket not in stmt["Resource"]:
-                        stmt["Resource"].append(bucket)
-                    break
             if not found_in_template_bucket:
                 template_bucket: dict[str, Any] = copy.deepcopy(BLOCK_LIST_BUCKETS)
                 template_bucket["Resource"] = bucket
@@ -548,12 +537,46 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
         template["Resource"] = resources
         statements.append(template)
 
+    # Final list of statements to be added to the final policy
+    final_statements: list[dict[str, Any]] = []
+
+    # NOTE: in the following code, the keys of the dictionary are originally lists
+    # (the value of stmt["Condition"]["StringLike"]["s3:prefix"]), BUT, since lists
+    # cannot be used as dictionary keys, we convert them to tuples, after applying sort()
+    # to ensure that the order of elements does not affect the key.
+    merged_statements: dict[tuple, dict] = {}
+
+    # Postprocessing of the statements list to compress it
+    for stmt in statements:
+        # Check if the statement is ListBucket, and if so compute its key
+        stmt_listbucket_key = None
+        if stmt["Action"] == BLOCK_LIST_BUCKETS["Action"]:
+            # stmt_listbucket_key = tuple(stmt["Condition"]["StringLike"]["s3:prefix"].sort())
+            stmt_listbucket_key = tuple(sorted(stmt["Condition"]["StringLike"]["s3:prefix"]))
+
+        # Case 1: another statement than ListBucket => directly add it to the final statements list
+        if not stmt_listbucket_key:
+            final_statements.append(stmt)
+        # Case 2: a ListBucket statement with the same condition already exists => we add its resources to the existing statement
+        elif stmt_listbucket_key in merged_statements:
+            if not isinstance(merged_statements[stmt_listbucket_key]["Resource"], list):
+                merged_statements[stmt_listbucket_key]["Resource"] = [
+                    merged_statements[stmt_listbucket_key]["Resource"],
+                ]
+            merged_statements[stmt_listbucket_key]["Resource"].append(stmt["Resource"])
+        # Case 3: a ListBucket statement with a new condition => new entry to the merged_statements dict
+        else:
+            merged_statements[stmt_listbucket_key] = stmt
+
+    # Add the merged "ListBucket" statements to the final statements list
+    final_statements.extend(merged_statements.values())
+
     # Add the bucket level actions statement
-    statements.append(template_bucketlevelactions)
+    final_statements.append(template_bucketlevelactions)
 
     # Fill in main access policy template
     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
     final_policy["Version"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    final_policy["Statement"] = statements
+    final_policy["Statement"] = final_statements
     logger.info(json.dumps(final_policy, indent=2))
     return final_policy
