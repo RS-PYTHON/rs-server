@@ -558,7 +558,8 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
         # Case 1: another statement than ListBucket => directly add it to the final statements list
         if not stmt_listbucket_key:
             final_statements.append(stmt)
-        # Case 2: a ListBucket statement with the same condition already exists => we add its resources to the existing statement
+        # Case 2: a ListBucket statement with the same condition already exists
+        # => we add its resources to the existing statement
         elif stmt_listbucket_key in merged_statements:
             if not isinstance(merged_statements[stmt_listbucket_key]["Resource"], list):
                 merged_statements[stmt_listbucket_key]["Resource"] = [
