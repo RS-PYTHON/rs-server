@@ -456,6 +456,7 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": [
@@ -504,6 +505,7 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": [
@@ -555,6 +557,7 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": [
@@ -639,6 +642,7 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": [
@@ -648,12 +652,14 @@ def test_build_s3_rights(user, user_info, expected):
                         "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
                         "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-emilie-s1-aux-infinite",
@@ -694,6 +700,7 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",
@@ -732,6 +739,7 @@ def test_build_s3_rights(user, user_info, expected):
                         ],
                     },
                     {
+                        "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-paul",

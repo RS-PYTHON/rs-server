@@ -60,6 +60,7 @@ S3_ACCESS_RIGHTS_TEMPLATE = {"Version": "%date%", "Statement": list[dict[str, Se
 WILDCARD_CHAR = "*"
 
 BLOCK_LIST_BUCKETS = {
+    "Sid": "ListBucketSentinel",
     "Effect": "Allow",
     "Action": ["s3:ListBucket"],
     "Resource": "arn:aws:s3:::%bucketholder%",
