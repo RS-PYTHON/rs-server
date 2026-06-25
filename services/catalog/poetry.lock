@@ -57,14 +57,14 @@ cli = ["click (>=8.1.6)"]
 
 [[package]]
 name = "anyio"
-version = "4.14.0"
+version = "4.14.1"
 description = "High-level concurrency and networking framework on top of asyncio or Trio"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "anyio-4.14.0-py3-none-any.whl", hash = "sha256:dd9b7a2a9799ed6552fde617b2c5df02b7fdd7d88392fc48101e51bae46164d9"},
-    {file = "anyio-4.14.0.tar.gz", hash = "sha256:b47c1f9ccf73e67021df785332508f99379c68fa7d0684e8e3492cb1d4b23f89"},
+    {file = "anyio-4.14.1-py3-none-any.whl", hash = "sha256:4e5533c5b8ff0a24f5d7a176cbe6877129cd183893f66b537f8f227d10527d72"},
+    {file = "anyio-4.14.1.tar.gz", hash = "sha256:8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e"},
 ]
 
 [package.dependencies]
@@ -694,14 +694,14 @@ files = [
 
 [[package]]
 name = "click"
-version = "8.4.1"
+version = "8.4.2"
 description = "Composable command line interface toolkit"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "click-8.4.1-py3-none-any.whl", hash = "sha256:482be17c6991b8c19c5429a1e995d9b0efdbb63172824c41f99965dc0ade8ec2"},
-    {file = "click-8.4.1.tar.gz", hash = "sha256:918b5633eddf6b41c32d4f454bf0de810065c74e3f7dbf8ee5452f8be88d3e96"},
+    {file = "click-8.4.2-py3-none-any.whl", hash = "sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76"},
+    {file = "click-8.4.2.tar.gz", hash = "sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6"},
 ]
 
 [package.dependencies]
@@ -1618,18 +1618,18 @@ files = [
 
 [[package]]
 name = "jwcrypto"
-version = "1.5.7"
+version = "1.5.8"
 description = "Implementation of JOSE Web standards"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "jwcrypto-1.5.7-py3-none-any.whl", hash = "sha256:729463fefe28b6de5cf1ebfda3e94f1a1b41d2799148ef98a01cb9678ebe2bb0"},
-    {file = "jwcrypto-1.5.7.tar.gz", hash = "sha256:70204d7cca406eda8c82352e3c41ba2d946610dafd19e54403f0a1f4f18633c6"},
+    {file = "jwcrypto-1.5.8-py3-none-any.whl", hash = "sha256:85aeb475f808d56bbc2f2ed1f6f73e6a317c4011a4321505f02f0aed695a3742"},
+    {file = "jwcrypto-1.5.8.tar.gz", hash = "sha256:c3d7114b6f6e65b52f6b7da817eb8cb8423e1da31e1ef13508447c81ecbdcc34"},
 ]
 
 [package.dependencies]
-cryptography = ">=3.4"
+cryptography = ">=39.0.0"
 typing_extensions = ">=4.5.0"
 
 [[package]]
@@ -2835,14 +2835,14 @@ certifi = "*"
 
 [[package]]
 name = "pyshp"
-version = "3.0.13"
+version = "3.1.2"
 description = "Pure Python read/write support for ESRI Shapefile format"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "pyshp-3.0.13-py3-none-any.whl", hash = "sha256:2fe73e200c3359c27084517f8d819e7ea635fe8ae8633270a42c67af39ca1915"},
-    {file = "pyshp-3.0.13.tar.gz", hash = "sha256:d13c377a8e07b8a6501e8a9a9ac82ee48676b5b61910a3859a26973a482769d2"},
+    {file = "pyshp-3.1.2-py3-none-any.whl", hash = "sha256:beda46068cbcd6846916b0759396322ca8728da9fa1a537ffb32d1db2137741d"},
+    {file = "pyshp-3.1.2.tar.gz", hash = "sha256:81baf3f8a270015242576d9c90b9120d4a91719fda28d0d39a716b9ca99a4402"},
 ]
 
 [package.extras]
@@ -3283,7 +3283,7 @@ tests = ["coverage (>=6.0.0)", "flake8", "mypy", "pytest (>=7.0.0)", "pytest-asy
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a11.post7.dev0"
+version = "1.0a11.post11.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -3315,8 +3315,10 @@ python-dotenv = "^1.0.0"
 python-keycloak = ">=5.7.0,<8.0"
 requests = "^2.32.5"
 sqlalchemy = "^2.0.43"
-stac-fastapi-pgstac = ">=6.2.0"
-stac-fastapi-types = "^6.2.0"
+stac-fastapi-api = ">=6.2.0,<6.3.0"
+stac-fastapi-extensions = ">=6.2.0,<6.3.0"
+stac-fastapi-pgstac = ">=6.2.0,<6.3.0"
+stac-fastapi-types = ">=6.2.0,<6.3.0"
 stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1"
 urllib3 = ">=2.6.3"
@@ -3585,14 +3587,14 @@ url = ["furl (>=0.4.1)"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "6.3.0"
+version = "6.2.1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_api-6.3.0-py3-none-any.whl", hash = "sha256:767b281f606f13d242b3834e6a0ed50cc2c7d0022184613ab7613750dd2a4d3a"},
-    {file = "stac_fastapi_api-6.3.0.tar.gz", hash = "sha256:d4d093dae4b13da8228eadae11ab2d9f438a22078b0559c5c39533ce1195926a"},
+    {file = "stac_fastapi_api-6.2.1-py3-none-any.whl", hash = "sha256:c2b9ea71d0f0eb97510eb00a2fb6fdb9b03838c6fee940d8ea5602923e664a63"},
+    {file = "stac_fastapi_api-6.2.1.tar.gz", hash = "sha256:049b52530d56c6f1ab4da6249a112f0031b3cf19ee95af9c212a011f137b9e17"},
 ]
 
 [package.dependencies]
@@ -3601,14 +3603,14 @@ stac-fastapi-types = ">=6.2,<7.0"
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.3.0"
+version = "6.2.1"
 description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_extensions-6.3.0-py3-none-any.whl", hash = "sha256:d4c541dff1e2a2b7997c01b676fce0c4cd1c82faa88630efe3da3f976a738b24"},
-    {file = "stac_fastapi_extensions-6.3.0.tar.gz", hash = "sha256:79f941bb7aa7f6a4e3c19da8deacda1dee42f19c596360f5ce9a9f9ecde214d8"},
+    {file = "stac_fastapi_extensions-6.2.1-py3-none-any.whl", hash = "sha256:d72f5c9323df3f54a9731f3813f9b036b81235e8728a17a6c99ca202751e4308"},
+    {file = "stac_fastapi_extensions-6.2.1.tar.gz", hash = "sha256:355c0c5f0d2c9b87d0238fff031963b2878d66a67faec93ff6f47d530aa370c0"},
 ]
 
 [package.dependencies]
@@ -3617,14 +3619,14 @@ stac-fastapi-types = ">=6.2,<7.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "6.3.0"
+version = "6.2.2"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-6.3.0-py3-none-any.whl", hash = "sha256:4891f56e6490c4d32e0dc801875180dc5a7598d2875ce226300208d40d163fce"},
-    {file = "stac_fastapi_pgstac-6.3.0.tar.gz", hash = "sha256:26f9a820f9bab5a4a2445f0353986239f6b2664e2f7ccd7fbccfce65d17ed85d"},
+    {file = "stac_fastapi_pgstac-6.2.2-py3-none-any.whl", hash = "sha256:1f2d044beefe6b2fd8882607c50951c57400d8f77e7d0fbb37118bffcad08feb"},
+    {file = "stac_fastapi_pgstac-6.2.2.tar.gz", hash = "sha256:bdefccbcadb5c1247c545ac92095bae6c06fc6a307b73849c7848eaa368cae69"},
 ]
 
 [package.dependencies]
@@ -3639,25 +3641,24 @@ jsonpatch = ">=1.33.0"
 orjson = "*"
 pydantic = ">=2.4,<3.0"
 pydantic-settings = ">=2.7,<3.0"
-stac-fastapi-api = ">=6.3,<7.0"
-stac-fastapi-extensions = ">=6.3,<7.0"
-stac-fastapi-types = ">=6.3,<7.0"
+stac-fastapi-api = ">=6.1,<7.0"
+stac-fastapi-extensions = ">=6.1,<7.0"
+stac-fastapi-types = ">=6.1,<7.0"
 
 [package.extras]
-catalogs = ["stac-fastapi-catalogs-extension (==0.4.0)"]
 server = ["uvicorn[standard] (==0.38.0)"]
 validation = ["stac-pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.3.0"
+version = "6.2.1"
 description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_types-6.3.0-py3-none-any.whl", hash = "sha256:fcbaa7b3128917bd4f761296d93c13d54696c08f0e7d561c91b12244d2a1047a"},
-    {file = "stac_fastapi_types-6.3.0.tar.gz", hash = "sha256:7a084f9660f1e61f160f4a4f21a52f8355be4af983c48ed5a77d7f5e024b3509"},
+    {file = "stac_fastapi_types-6.2.1-py3-none-any.whl", hash = "sha256:0cd0b697431c13a335df5ff99b6d84303187f1612979021912d9a952fa38e3bc"},
+    {file = "stac_fastapi_types-6.2.1.tar.gz", hash = "sha256:08e0a2f5304afcc65820861946b21f77b4511810d5e877f41736cdc51a471489"},
 ]
 
 [package.dependencies]
