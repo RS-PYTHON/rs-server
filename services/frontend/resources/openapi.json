@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "RS-Server",
-    "version": "1.0a11.post5.dev0",
+    "version": "1.0a11.post12.dev0",
     "description": "\nThe Copernicus Space Component Reference System is an open-source software solution allowing to implement,\nmaintain, deploy, operate and monitor Sentinel data processing workflows based on the future re-engineered Level\n0, 1, 2 Sentinel Data processors (Q3 2024/2025).\n\n---\n#### OAuth 2.0 authentication\n\n<a href=\"/auth/login\" target=\"_self\">Login</a> /\n<a href=\"/auth/logout\" target=\"_blank\">Logout</a>\n\n---\n#### Links\n\n<a href=\"https://home.rs-python.eu/\" target=\"_blank\">Website</a> /\n<a href=\"https://home.rs-python.eu/rs-documentation/\" target=\"_blank\">Documentation</a> /\n<a href=\"${RSPY_UAC_HOMEPAGE}\" target=\"_blank\">API-Key Manager</a>\n<br><br>\n<a href=\"#/ADGS%20stations\" target=\"_blank\">ADGS stations</a> /\n<a href=\"#/CADIP%20stations\" target=\"_blank\">CADIP stations</a> /\n<a href=\"#/PRIP%20stations\" target=\"_blank\">PRIP stations</a> /\n<a href=\"#/OSAM%20service\" target=\"_blank\">OSAM service</a> /\n<a href=\"#/Catalog\" target=\"_blank\">Catalog</a> /\n<a href=\"#/Staging%20service\" target=\"_blank\">Staging service</a> /\n<a href=\"#/Processing%20service\" target=\"_blank\">Processing service</a>\n\n---\n#### STAC Browser\n\n<a href=\"${STAC_BROWSER_URL_ADGS}\" target=\"_blank\">ADGS</a> /\n<a href=\"${STAC_BROWSER_URL_CADIP}\" target=\"_blank\">CADIP</a> /\n<a href=\"${STAC_BROWSER_URL_PRIP}\" target=\"_blank\">PRIP</a> /\n<a href=\"${STAC_BROWSER_URL_CATALOG}\" target=\"_blank\">Catalog</a>\n\n---\n"
   },
   "paths": {
