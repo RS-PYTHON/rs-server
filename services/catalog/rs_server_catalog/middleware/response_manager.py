@@ -139,10 +139,22 @@ class CatalogResponseManager:
         # Don't forward responses that fail.
         # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
         status_code = streaming_response.status_code
+        logger.info(
+            "Managing catalog response for %s %s; status=%s",
+            request.method,
+            request.scope["path"],
+            status_code,
+        )
         if status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
 
             # Read the body
             response_content = await read_streaming_response(streaming_response)
+            logger.warning(
+                "Catalog backend returned non-success status for %s %s: %s",
+                request.method,
+                request.scope["path"],
+                status_code,
+            )
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
             await asyncio.to_thread(self.s3_manager(request).clear_catalog_bucket, response_content)
 
@@ -155,6 +167,7 @@ class CatalogResponseManager:
             ):
                 # Return empty list of properties and additionalProperties set to true on /catalog/queryables
                 # when there are no collections in catalog.
+                logger.info("Returning empty queryables response because catalog has no collections")
                 return JSONResponse(
                     {
                         "$id": f"{request.url}",
@@ -174,9 +187,11 @@ class CatalogResponseManager:
         # Handle responses
         response: Response = streaming_response
         if request.scope["path"] == CATALOG_PREFIX + "/search":
+            logger.debug("Dispatching catalog search response manager")
             # GET: '/catalog/search'
             response = await self.manage_search_response(request, streaming_response)
         elif request.method == "GET" and "/download" in request.url.path:
+            logger.debug("Dispatching catalog download response manager")
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, streaming_response)
         elif request.method == "GET" and (
@@ -188,12 +203,20 @@ class CatalogResponseManager:
             # URL: GET: '/catalog/collections
             response = await self.manage_get_response(request, streaming_response)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
+            logger.debug("Dispatching catalog put/post response manager")
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             response = await self.manage_put_post_response(request, streaming_response)
         elif request.method == "DELETE" and self.request_ids["owner_id"]:
+            logger.debug("Dispatching catalog delete response manager")
             response = await self.manage_delete_response(request, streaming_response, self.request_ids["owner_id"])
 
+        logger.info(
+            "Managed catalog response for %s %s; final_status=%s",
+            request.method,
+            request.scope["path"],
+            response.status_code,
+        )
         return response
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> GeoJSONResponse:
@@ -212,17 +235,20 @@ class CatalogResponseManager:
         owner_id = ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
+            logger.debug("Managing GET search response with query=%s", query)
             if "filter" in query:
                 qs_filter = query["filter"][0]
                 owner_id = extract_owner_name_from_text_filter(qs_filter)
         elif request.method == "POST":
             query = await request.json()
+            logger.debug("Managing POST search response with body=%s", query)
             if "filter" in query:
                 qs_filter_json = query["filter"]
                 owner_id = extract_owner_name_from_json_filter(qs_filter_json)
 
         if owner_id:
             self.request_ids["owner_id"] = owner_id
+            logger.debug("Search response owner inferred from filter: %s", owner_id)
 
         # Remove owner_id from the collection name
         if "collections" in query:
@@ -232,6 +258,11 @@ class CatalogResponseManager:
                 coll.removeprefix(f"{self.request_ids['owner_id']}_") for coll in query["collections"][0].split(",")
             ]
         content = await read_streaming_response(response)
+        logger.info(
+            "Adapting search response links for owner=%s collections=%s",
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+        )
         content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
             content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
@@ -239,6 +270,7 @@ class CatalogResponseManager:
 
         # Add the stac authentication extension
         await StacManager.add_authentication_extension(content)
+        logger.debug("Search response content after adaptation: %s", content)
 
         return GeoJSONResponse(content, response.status_code, headers_minus_content_length(response))
 
@@ -263,6 +295,13 @@ class CatalogResponseManager:
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
+        logger.info(
+            "Managing download response for owner=%s collections=%s item=%s user=%s",
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+            user_login,
+        )
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint raise a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
@@ -280,14 +319,18 @@ class CatalogResponseManager:
         content = await read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
+            logger.info("Generating download redirect for item %s", self.request_ids["item_id"])
             content, code = await asyncio.to_thread(
                 self.s3_manager(request).generate_presigned_url,
                 content,
                 request.url.path,
             )
             if code == HTTP_302_FOUND:
+                logger.info("Returning presigned URL redirect for item %s", self.request_ids["item_id"])
                 return RedirectResponse(url=content, status_code=code)
+            logger.warning("Failed to generate presigned URL for item %s; status=%s", self.request_ids["item_id"], code)
             return JSONResponse(content, code, headers_minus_content_length(response))
+        logger.info("Download response item not found for %s", self.request_ids["item_id"])
         return JSONResponse(content, response.status_code, headers_minus_content_length(response))
 
     async def manage_get_response(
@@ -305,6 +348,8 @@ class CatalogResponseManager:
         """
         # Load content of the response as a dictionary
         dec_content = await read_streaming_response(response)
+        logger.info("Managing GET response content for %s", request.scope["path"])
+        logger.debug("GET response content before adaptation: %s", dec_content)
         content = await self._manage_get_response_content(request, dec_content) if dec_content else None
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(content, response.status_code, headers_minus_content_length(response), media_type)
@@ -325,6 +370,13 @@ class CatalogResponseManager:
         StacManager.update_stac_catalog_metadata(content)
         auth_roles = []
         user_login = ""
+        logger.debug(
+            "Adapting GET response content; path=%s owner=%s collections=%s item=%s",
+            request.scope["path"],
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+        )
 
         content = mask_internal_default_geometry_and_bbox(content)
 
@@ -354,6 +406,7 @@ class CatalogResponseManager:
                 auth_roles,
                 user_login,
             )
+            logger.info("Landing page exposes %d accessible collection(s)", len(collections))
             base_url = (
                 next((link["href"] for link in content["links"] if link.get("rel") == "self"), "").rstrip("/") + "/"
             )
@@ -378,6 +431,9 @@ class CatalogResponseManager:
                 content["collections"],
                 auth_roles,
                 user_login,
+            )
+            logger.info(
+                "/catalog/collections response contains %d accessible collection(s)", len(content["collections"])
             )
 
             # The self link shall be EXACTLY the same as the requested URL
@@ -408,6 +464,7 @@ class CatalogResponseManager:
             "/collections" in request.scope["path"] and "/items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = adapt_object_links(content, self.request_ids["owner_id"])
+            logger.debug("Adapted collection object links for owner %s", self.request_ids["owner_id"])
 
             # Self-links shall match the requested URL, even in implicit mode (owner not specified)
             # Example of implicit path: /catalog/collections/SENTINEL-2
@@ -433,13 +490,16 @@ class CatalogResponseManager:
                 self.request_ids["owner_id"],
                 self.request_ids["collection_ids"][0],
             )
+            logger.debug("Adapted item collection links for owner %s", self.request_ids["owner_id"])
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = adapt_object_links(content, self.request_ids["owner_id"])
+            logger.debug("Adapted item object links for item %s", self.request_ids["item_id"])
         else:
             logger.debug(f"No link adaptation performed for {request.scope}")
 
         # Add the stac authentication extension
         await StacManager.add_authentication_extension(content)
+        logger.debug("GET response content after adaptation: %s", content)
         return content
 
     async def manage_put_post_response(self, request: Request, response: StreamingResponse):
@@ -462,6 +522,13 @@ class CatalogResponseManager:
         try:
             user = self.request_ids["owner_id"]
             response_content = await read_streaming_response(response)
+            logger.info(
+                "Managing %s response for owner=%s collections=%s",
+                request.method,
+                user,
+                self.request_ids["collection_ids"],
+            )
+            logger.debug("PUT/POST response content before adaptation: %s", response_content)
             response_content = adapt_object_links(response_content, self.request_ids["owner_id"])
 
             # Hide internal default geometry/bbox (used only to satisfy pgstac persistence constraints).
@@ -475,12 +542,15 @@ class CatalogResponseManager:
                 await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
                 self.s3_files_to_be_deleted.clear()
                 response_content = mask_internal_default_geometry_and_bbox(response_content)
+                logger.debug("Masked internal default geometry/bbox for item response")
         except RuntimeError as exc:
+            logger.exception("Failed to clean temporary bucket after catalog write: %s", exc)
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=f"Failed to clean temporary bucket: {exc}",
             ) from exc
         except Exception as exc:  # pylint: disable=broad-except
+            logger.exception("Failed to manage PUT/POST response: %s", exc)
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Bad request: {exc}") from exc
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
@@ -496,8 +566,15 @@ class CatalogResponseManager:
             JSONResponse: The new response with the updated collection name.
         """
         response_content = await read_streaming_response(response)
+        logger.info(
+            "Managing delete response for owner=%s; scheduled_s3_files=%d",
+            user,
+            len(self.s3_files_to_be_deleted),
+        )
+        logger.debug("Delete response content before adaptation: %s", response_content)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
         self.s3_files_to_be_deleted.clear()
+        logger.info("Finished delete response cleanup for owner=%s", user)
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))

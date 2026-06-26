@@ -181,6 +181,21 @@ class Staging(
         self.cluster = cluster
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
+        self.logger.info(
+            "Created staging job %s for user %s; catalog_url=%s",
+            self.job_id,
+            self.staging_user,
+            self.catalog_url,
+        )
+        self.logger.debug(
+            "Staging job %s initialized with auth header keys=%s, local_cluster=%s, "
+            "publish_timeout=%s, max_retries=%s",
+            self.job_id,
+            list(self.auth_headers.keys()),
+            bool(self.cluster),
+            self.catalog_publish_timeout,
+            self.catalog_publish_max_retries,
+        )
 
     def _resolve_items_from_link(self, data: dict) -> dict | tuple[str, dict] | None:
         """
@@ -190,16 +205,25 @@ class Staging(
         try:
             items = data.get("items")
             if not items or "href" not in items or "value" in items:
+                self.logger.debug("Job %s has no external item href to resolve", self.job_id)
                 return None
 
             # Check if the given url is from us (cadip, auxip or prip)
             # we don't want to send our apikey to any url
+            self.logger.info("Resolving staging input link for job %s", self.job_id)
+            self.logger.debug("Job %s resolving input items href=%s", self.job_id, items["href"])
             if any(href in items["href"] for href in self.server_url):
                 response = requests.get(items["href"], timeout=60, headers=self.auth_headers)
             else:
                 response = requests.get(items["href"], timeout=60)
             response.raise_for_status()
             response_dict = response.json()
+            self.logger.info(
+                "Resolved staging input link for job %s as %s",
+                self.job_id,
+                response_dict.get("type"),
+            )
+            self.logger.debug("Resolved input payload for job %s: %s", self.job_id, response_dict)
 
             if response_dict.get("type") not in ("Feature", "FeatureCollection"):
                 raise ValueError("The input link must point to a Feature or FeatureCollection")
@@ -207,6 +231,7 @@ class Staging(
             return response_dict
 
         except (RequestException, RuntimeError) as exc:
+            self.logger.exception("Failed to resolve staging input link for job %s: %s", self.job_id, exc)
             self.log_job_execution(
                 JobStatus.failed,
                 0,
@@ -219,15 +244,22 @@ class Staging(
         Convert a Feature or FeatureCollection dict into a FeatureCollectionModel.
         """
         item_type = item_value.get("type")
+        self.logger.debug("Parsing staging input for job %s; item_type=%s", self.job_id, item_type)
 
         if item_type == "Feature":
-            return FeatureCollectionModel(
+            collection = FeatureCollectionModel(
                 type="FeatureCollection",
                 features=[Feature.model_validate(item_value)],
             )
+            self.logger.info("Parsed single feature %s for staging job %s", collection.features[0].id, self.job_id)
+            return collection
 
         if item_type == "FeatureCollection":
-            return FeatureCollectionModel.model_validate(item_value)
+            collection = FeatureCollectionModel.model_validate(item_value)
+            features = collection.features if isinstance(collection.features, list) else []
+            self.logger.info("Parsed %d features for staging job %s", len(features), self.job_id)
+            self.logger.debug("Parsed feature ids for job %s: %s", self.job_id, [f.id for f in features])
+            return collection
 
         return None
 
@@ -245,6 +277,13 @@ class Staging(
 
         Returns False if processing should stop.
         """
+        initial_count = len(item_collection.features or [])
+        self.logger.debug(
+            "Filtering features for job %s; initial_count=%d, requested_asset_names=%s",
+            self.job_id,
+            initial_count,
+            sorted(asset_names) if asset_names else [],
+        )
         if not item_collection.features:
             self.log_job_execution(
                 JobStatus.successful,
@@ -255,9 +294,23 @@ class Staging(
 
         if asset_names:
             for feature in item_collection.features:
+                before_assets = set(feature.assets.keys())
                 feature.assets = {key: value for key, value in feature.assets.items() if key in asset_names}
+                self.logger.debug(
+                    "Filtered assets for job %s feature %s from %s to %s",
+                    self.job_id,
+                    feature.id,
+                    sorted(before_assets),
+                    sorted(feature.assets.keys()),
+                )
 
         item_collection.features = [feature for feature in item_collection.features if feature.assets]
+        self.logger.info(
+            "Prepared %d/%d features with assets for staging job %s",
+            len(item_collection.features),
+            initial_count,
+            self.job_id,
+        )
         if not item_collection.features:
             self.log_job_execution(
                 JobStatus.successful,
@@ -275,8 +328,11 @@ class Staging(
         """
         Asynchronously execute the RSPY staging process.
         """
+        self.logger.info("Starting staging execution for job %s", self.job_id)
+        self.logger.debug("Raw execute input for job %s: %s", self.job_id, data)
         resolved_items = self._resolve_items_from_link(data)
         if resolved_items is None and "href" in data.get("items", {}):
+            self.logger.info("Stopping staging job %s after input link resolution failure", self.job_id)
             return self._get_execute_result()
 
         if resolved_items:
@@ -284,6 +340,7 @@ class Staging(
 
         item_value = data.get("items", {}).get("value")
         if not item_value:
+            self.logger.info("Staging job %s received no valid items", self.job_id)
             return self.log_job_execution(
                 JobStatus.successful,
                 0,
@@ -292,6 +349,7 @@ class Staging(
 
         item_collection = self._parse_item_collection(item_value)
         if not item_collection:
+            self.logger.error("Staging job %s received invalid input type", self.job_id)
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
@@ -302,9 +360,21 @@ class Staging(
 
         self.staging_user = getpass.getuser() if common_settings.LOCAL_MODE else self.request.state.user_login
         self.named_assets = bool(data.get("asset_names"))
+        self.logger.info(
+            "Staging job %s targets collection %s as user %s",
+            self.job_id,
+            catalog_collection,
+            self.staging_user,
+        )
         if not self._filter_features_with_assets(item_collection, data.get("asset_names", None)):
             return self._get_execute_result()
 
+        self.logger.info(
+            "Checking catalog state for job %s; collection=%s, feature_count=%d",
+            self.job_id,
+            catalog_collection,
+            len(item_collection.features),
+        )
         if not await self.check_catalog(catalog_collection, item_collection.features):
             return self.log_job_execution(
                 JobStatus.failed,
@@ -316,8 +386,10 @@ class Staging(
 
         loop = asyncio.get_event_loop()
         if loop.is_running():
+            self.logger.debug("Scheduling background staging task for job %s on running event loop", self.job_id)
             _ = asyncio.create_task(self.process_rspy_features(catalog_collection))
         else:
+            self.logger.debug("Running staging task for job %s until completion on current event loop", self.job_id)
             loop.run_until_complete(self.process_rspy_features(catalog_collection))
 
         return self._get_execute_result()
@@ -353,6 +425,7 @@ class Staging(
             "progress": int(self.progress),
             "message": self.message,
         }
+        self.logger.debug("Creating job execution record for %s: %s", self.job_id, job_metadata)
         self.db_process_manager.add_job(job_metadata)
 
     def log_job_execution(
@@ -406,32 +479,58 @@ class Staging(
             bool: True if the collection exists or was successfully created; False otherwise.
         """
         collection_url = f"{self.catalog_url}/catalog/collections/{catalog_collection}"
+        self.logger.info("Checking catalog collection %s for job %s", catalog_collection, self.job_id)
+        self.logger.debug("Catalog collection check URL for job %s: %s", self.job_id, collection_url)
 
         try:
             # Check if collection exists in catalog
             response = requests.get(collection_url, headers=self.auth_headers, timeout=5)
+            self.logger.debug(
+                "Catalog collection check response for job %s collection %s: status=%s",
+                self.job_id,
+                catalog_collection,
+                response.status_code,
+            )
 
             if response.status_code == HTTP_200_OK:
+                self.logger.info("Catalog collection %s already exists for job %s", catalog_collection, self.job_id)
                 return True  # Collection exists
 
             if response.status_code == HTTP_404_NOT_FOUND:
                 # If status is not found, create collection body and try to post it.
+                self.logger.info(
+                    "Catalog collection %s not found; creating it for job %s", catalog_collection, self.job_id
+                )
+                minimal_collection = get_minimal_collection_body(catalog_collection)
+                self.logger.debug("Minimal collection body for job %s: %s", self.job_id, minimal_collection)
                 create_response = requests.post(
                     f"{self.catalog_url}/catalog/collections",
                     headers={
                         **self.auth_headers,
                         "Content-Type": "application/json",
                     },
-                    data=dumps(get_minimal_collection_body(catalog_collection)),
+                    data=dumps(minimal_collection),
                     timeout=5,
                 )
                 create_response.raise_for_status()
+                self.logger.info(
+                    "Catalog collection %s creation finished for job %s with status %s",
+                    catalog_collection,
+                    self.job_id,
+                    create_response.status_code,
+                )
                 return create_response.status_code == HTTP_201_CREATED
 
             response.raise_for_status()
 
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
             # If anything fails, log failure and exit.
+            self.logger.exception(
+                "Catalog collection check/create failed for job %s collection %s: %s",
+                self.job_id,
+                catalog_collection,
+                exc,
+            )
             self.log_job_execution(JobStatus.failed, 0, f"Failed to create catalog collection: {exc}")
         return False
 
@@ -461,6 +560,15 @@ class Staging(
         }
 
         search_url = f"{self.catalog_url}/catalog/search"
+        self.logger.info(
+            "Searching catalog for existing items for job %s; collection=%s, ids=%s",
+            self.job_id,
+            catalog_collection,
+            [feature.id for feature in features],
+        )
+        self.logger.debug(
+            "Catalog search request for job %s: url=%s, params=%s", self.job_id, search_url, filter_object
+        )
 
         try:
             response = await common_settings.http_client().get(
@@ -472,6 +580,7 @@ class Staging(
             response.raise_for_status()  # Raise an error for HTTP error responses
             # check the response type
             item_collection = response.json()
+            self.logger.debug("Catalog search response for job %s: %s", self.job_id, item_collection)
             if not item_collection.get("type") or item_collection.get("type") != "FeatureCollection":
                 self.logger.error("Failed to search catalog, no expected response received")
                 return False
@@ -494,8 +603,15 @@ class Staging(
             ]
             # Expired catalog items must also go through the streaming flow alongside new items.
             self.stream_list.extend(self.expired_items)
+            self.logger.info(
+                "Catalog check finished for job %s; new_items=%d, expired_items=%d",
+                self.job_id,
+                len(self.stream_list) - len(self.expired_items),
+                len(self.expired_items),
+            )
             return True
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
+            self.logger.exception("Catalog search failed for job %s: %s", self.job_id, exc)
             self.log_job_execution(JobStatus.failed, 0, f"Failed to search catalog: {exc}")
             return False
 
@@ -532,6 +648,11 @@ class Staging(
             if not catalog_response["features"]:
                 # No search result found, process everything from item_collection
                 self.stream_list = features
+                self.logger.info(
+                    "No existing catalog items found for job %s; all %d features will be streamed",
+                    self.job_id,
+                    len(features),
+                )
             else:
                 # Do the difference, call rs-server-download only with features to be downloaded
                 # Extract IDs from the catalog response directly
@@ -539,6 +660,17 @@ class Staging(
                 # Select only features whose IDs have not already been downloaded (returned in /search)
                 not_downloaded_features = [item for item in features if item.id not in already_downloaded_ids]
                 self.stream_list = not_downloaded_features
+                self.logger.info(
+                    "Prepared streaming list for job %s; already_in_catalog=%d, to_stream=%d",
+                    self.job_id,
+                    len(already_downloaded_ids),
+                    len(self.stream_list),
+                )
+                self.logger.debug(
+                    "Streaming feature ids for job %s: %s",
+                    self.job_id,
+                    [feature.id for feature in self.stream_list],
+                )
         except KeyError as ke:
             self.logger.exception(
                 f"The 'features' field is missing in the response from the catalog service. {ke}",
@@ -575,10 +707,17 @@ class Staging(
             return
 
         # Use S3 object storage credentials of the logged user
+        self.logger.info("Cleaning up %d staged asset(s) for job %s", len(self.assets_info), self.job_id)
         s3_handler = S3StorageHandler(authentication.get_s3_credentials(self.request))
 
         for s3_obj in self.assets_info:
             try:
+                self.logger.debug(
+                    "Deleting staged object for job %s from s3://%s/%s",
+                    self.job_id,
+                    s3_obj.s3_bucket,
+                    s3_obj.s3_file,
+                )
                 s3_handler.delete_key_from_s3(s3_obj.s3_bucket, s3_obj.s3_file)
             except RuntimeError as error:
                 self.logger.warning(
@@ -592,18 +731,29 @@ class Staging(
     def wait_for_dask_completion(self, client: Client):
         """Waits for all Dask tasks to finish before proceeding."""
         timeout = int(os.environ.get("RSPY_STAGING_TIMEOUT", 600))
+        self.logger.info("Waiting for Dask task completion for job %s; timeout=%ss", self.job_id, timeout)
         while timeout > 0:
             if not client.call_stack():
+                self.logger.debug("Dask call stack is empty for job %s", self.job_id)
                 break  # No tasks running anymore
             time.sleep(1)
             timeout -= 1
+        if timeout <= 0:
+            self.logger.warning("Timed out while waiting for Dask completion for job %s", self.job_id)
 
     def publish_processed_features(self, catalog_collection: str, refresh_tokens: dict[str, RefreshTokenData]) -> bool:
         """Handles publishing features and cleanup in case of failure."""
         # Publish all the features once processed
         published_features_ids: list[str] = []
         expired_item_ids = {feature.id for feature in self.expired_items}
+        self.logger.info(
+            "Publishing %d processed feature(s) for job %s into collection %s",
+            len(self.stream_list),
+            self.job_id,
+            catalog_collection,
+        )
         for feature in self.stream_list:
+            self.logger.info("Publishing processed feature %s for job %s", feature.id, self.job_id)
             publish_ok = (
                 self.update_expired_rspy_feature(catalog_collection, feature)
                 if feature.id in expired_item_ids
@@ -626,10 +776,12 @@ class Staging(
                 return False
             if feature.id not in expired_item_ids:
                 published_features_ids.append(feature.id)
+        self.logger.info("Published processed features for job %s successfully", self.job_id)
         return True
 
     def unsubscribe_refresh_tokens(self, refresh_tokens: dict[str, RefreshTokenData]):
         """Unsubscribe all available refresh tokens."""
+        self.logger.debug("Unsubscribing %d refresh token(s) for job %s", len(refresh_tokens), self.job_id)
         for refresh_token in refresh_tokens.values():
             if refresh_token:
                 refresh_token.unsubscribe(self.logger)
@@ -645,6 +797,14 @@ class Staging(
         """Refresh the access token if needed and submit the streaming task to Dask."""
         refresh_token = refresh_tokens.get(asset.domain, None)
         # refresh the token if needed
+        self.logger.debug(
+            "Submitting Dask streaming task for job %s; asset=%s, bucket=%s, domain=%s, refresh=%s",
+            self.job_id,
+            asset.s3_file,
+            asset.s3_bucket,
+            asset.domain,
+            try_token_refresh,
+        )
         if refresh_token and try_token_refresh and not update_station_token(refresh_token, self.logger):
             raise RuntimeError(f"Could not retrieve or refresh the token for {asset}")
         return client.submit(
@@ -697,12 +857,19 @@ class Staging(
 
         # Get the S3 object storage credentials for the logged user
         s3_credentials = authentication.get_s3_credentials(self.request)
+        self.logger.debug("Retrieved S3 credentials object for job %s", self.job_id)
 
         # prevent submitting more tasks than necessary.
         # this can occur when the number of tasks that can run in parallel
         # exceeds the actual number of tasks intended for submission.
         max_parallel_tasks = min(sum(client.nthreads().values()), len(self.assets_info))
         self.logger.info(f"Number of tasks asigned to the initial batch: {max_parallel_tasks}")
+        self.logger.debug(
+            "Dask task scheduling state for job %s: worker_threads=%s, asset_count=%d",
+            self.job_id,
+            client.nthreads(),
+            len(self.assets_info),
+        )
         # convert to iterator for dynamic updates
         data_iter = iter(self.assets_info)
         try:
@@ -724,6 +891,12 @@ class Staging(
                 res = task.result()  # This will raise the exception from the task if it failed
                 self.logger.debug(f"Task result = {res}")
                 completed_tasks += 1
+                self.logger.info(
+                    "Completed streaming task %d/%d for job %s",
+                    completed_tasks,
+                    len(self.assets_info),
+                    self.job_id,
+                )
                 self.log_job_execution(
                     JobStatus.running,
                     round(completed_tasks * 100 / len(self.assets_info)),
@@ -732,8 +905,11 @@ class Staging(
                 self.logger.debug("%s Task streaming completed", task.key)
                 # Submit a new task if available and no errors occurred
                 try:
-                    tasks.add(self.submit_dask_task(client, next(data_iter), refresh_tokens, s3_credentials, True))
+                    next_asset = next(data_iter)
+                    tasks.add(self.submit_dask_task(client, next_asset, refresh_tokens, s3_credentials, True))
+                    self.logger.debug("Queued next asset %s for job %s", next_asset.s3_file, self.job_id)
                 except StopIteration:
+                    self.logger.debug("No more Dask tasks to queue for job %s", self.job_id)
                     pass  # No more data to process
             except Exception as task_e:  # pylint: disable=broad-exception-caught
                 self.logger.error("Task failed with exception: %s", task_e)
@@ -814,6 +990,7 @@ class Staging(
 
         # If self.cluster is already initialized, it means the application is running in local mode, and
         # the cluster was created when the application started.
+        self.logger.info("Connecting Dask client for staging job %s", self.job_id)
         if not self.cluster:
             # Connect to the gateway and get the list of the clusters
             try:
@@ -821,6 +998,7 @@ class Staging(
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
                 # In local mode, authenticate to the dask cluster with username/password
                 if common_settings.LOCAL_MODE:
+                    self.logger.debug("Using BasicAuth for local Dask gateway connection")
                     gateway_auth = BasicAuth(
                         os.environ["LOCAL_DASK_USERNAME"],
                         os.environ["LOCAL_DASK_PASSWORD"],
@@ -832,6 +1010,7 @@ class Staging(
                     auth_type = os.environ["DASK_GATEWAY__AUTH__TYPE"]
                     # Handle JupyterHub authentication
                     if auth_type == "jupyterhub":
+                        self.logger.debug("Using JupyterHub auth for Dask gateway connection")
                         gateway_auth = JupyterHubAuth(api_token=os.environ["JUPYTERHUB_API_TOKEN"])
                     else:
                         self.logger.error(f"Unsupported authentication type: {auth_type}")
@@ -891,6 +1070,7 @@ class Staging(
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well
         client = Client(self.cluster)
+        self.logger.info("Dask client connected for staging job %s", self.job_id)
 
         # Forward logging from dask workers to the caller
         client.forward_logging()
@@ -903,6 +1083,9 @@ class Staging(
 
         env_var_pattern = re.compile(r".*_(HOST|PORT|USER|PASS|CLIENT_CRT|CLIENT_KEY|CA_CRT)$")
         env_var_names = [key for key in os.environ if env_var_pattern.fullmatch(key)]
+        # Dask workers run in separate processes/pods, so only connection-related
+        # environment variables are copied across; values are intentionally not logged.
+        self.logger.debug("Forwarding %d environment variable names to Dask workers", len(env_var_names))
         client.run(set_dask_env, os.environ, env_var_names)
 
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
@@ -928,6 +1111,7 @@ class Staging(
         """Load the external auth config for this domain and validates the authorization
         by checking if the user has the corresponding staging_download role."""
         try:
+            self.logger.info("Loading external authentication config for domain %s", domain)
             external_auth_config = load_external_auth_config_by_domain(domain)
             if not external_auth_config:
                 raise HTTPException(
@@ -945,6 +1129,11 @@ class Staging(
                     request=self.request,
                     staging_process=True,
                 )
+                self.logger.info(
+                    "Validated staging_download role for station %s and job %s",
+                    external_auth_config.station_id,
+                    self.job_id,
+                )
             return external_auth_config
 
         except (ServiceNotFound, HTTPException) as e:
@@ -954,14 +1143,19 @@ class Staging(
     def get_refresh_token(self, external_auth_config: ExternalAuthenticationConfig) -> RefreshTokenData:
         """Handles authentication token retrieval and refresh."""
         # Find or create a token
+        self.logger.info("Getting refresh token for station %s", external_auth_config.station_id)
         with self.station_token_list_lock:
             for refresh_token in self.station_token_list:
                 if refresh_token.station_id() == external_auth_config.station_id:
+                    self.logger.debug(
+                        "Reusing existing refresh token holder for station %s", refresh_token.station_id()
+                    )
                     refresh_token.subscribe(self.logger)
                     break
             else:
                 refresh_token = RefreshTokenData(external_auth_config)
                 self.station_token_list.append(refresh_token)
+                self.logger.debug("Created refresh token holder for station %s", refresh_token.station_id())
 
         if not update_station_token(refresh_token, self.logger):
             refresh_token.unsubscribe(self.logger)
@@ -988,12 +1182,26 @@ class Staging(
                 status message).
                 Example: ("application/json", {"running": <job_id>})
         """
+        self.logger.info(
+            "Starting staging workflow for job %s; collection=%s, feature_count=%d",
+            self.job_id,
+            catalog_collection,
+            len(self.stream_list),
+        )
         self.logger.debug("Starting main loop")
 
         # Step 1: Validate and prepare streaming tasks
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         try:
             for feature in self.stream_list:
+                assets = getattr(feature, "assets", {})
+                asset_count = len(assets) if isinstance(assets, dict) else 0
+                self.logger.debug(
+                    "Preparing streaming tasks for job %s feature %s with %d asset(s)",
+                    self.job_id,
+                    getattr(feature, "id", ""),
+                    asset_count,
+                )
                 new_assets_info = prepare_streaming_tasks(
                     catalog_collection,
                     feature,
@@ -1003,7 +1211,14 @@ class Staging(
                 if new_assets_info is None:
                     return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
                 self.assets_info += new_assets_info
+                self.logger.debug(
+                    "Prepared %d streaming task(s) for job %s feature %s",
+                    len(new_assets_info),
+                    self.job_id,
+                    feature.id,
+                )
         except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception("Failed to prepare streaming tasks for job %s: %s", self.job_id, e)
             return self.log_job_execution(JobStatus.failed, 0, f"Error when preparing streaming tasks: {e}")
 
         if not self.assets_info:
@@ -1018,6 +1233,7 @@ class Staging(
         if not domains:
             # If we got 0 domain, it means we only have assets from external s3 buckets
             domains = ["s3"]
+        self.logger.debug("Authentication domains for job %s after normalization: %s", self.job_id, domains)
 
         # Step 3: Connect to dask cluster BEFORE retrieving the token, because an unnecessary request would be sent
         # to the external station if the connection to the dask cluster fails
@@ -1033,6 +1249,7 @@ class Staging(
             # If domain is s3, it means we are going to stage from an external s3 only,
             # for which we don't need a token
             for domain in domains:
+                self.logger.debug("Preparing authentication for job %s domain %s", self.job_id, domain)
                 if domain not in ("s3", "FTP"):
                     external_auth_config = self.load_and_validate_external_auth_config(domain)
                     if external_auth_config.auth_type:
@@ -1071,11 +1288,13 @@ class Staging(
                 refresh_tokens,
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception("Task monitoring thread failed for job %s: %s", self.job_id, e)
             self.log_job_execution(JobStatus.failed, 0, f"Error from tasks monitoring thread: {e}")
 
         # cleanup by disconnecting the dask client
         self.assets_info = []
         dask_client.close()
+        self.logger.info("Finished staging workflow for job %s with status %s", self.job_id, self.status.value)
 
         return self._get_execute_result()
 
@@ -1153,6 +1372,7 @@ class Staging(
         for asset in feature.assets.values():
             if hasattr(asset, "alternate"):
                 del asset.alternate  # type: ignore
+        self.logger.debug("Catalog payload for item %s after alternate cleanup: %s", feature.id, feature.model_dump())
 
         if method == "post":
             error_context = "publishing items"
@@ -1180,6 +1400,13 @@ class Staging(
                     timeout=self.catalog_publish_timeout,
                 )
                 response.raise_for_status()
+                self.logger.debug(
+                    "Catalog %s response for item %s: status=%s, body=%s",
+                    method.upper(),
+                    feature.id,
+                    response.status_code,
+                    response.text,
+                )
 
                 if method == "post":
                     self.logger.info(f"Item {feature.id} was published successfully in catalog")
@@ -1242,14 +1469,21 @@ class Staging(
             were successful or failed, along with the relevant error information.
         """
         try:
+            self.logger.info(
+                "Unpublishing %d catalog item(s) from collection %s after staging rollback",
+                len(feature_ids),
+                catalog_collection,
+            )
             for feature_id in feature_ids:
                 catalog_delete_item = f"{self.catalog_url}/catalog/collections/{catalog_collection}/items/{feature_id}"
+                self.logger.debug("Deleting catalog item %s using %s", feature_id, catalog_delete_item)
                 response = requests.delete(
                     catalog_delete_item,
                     headers=self.auth_headers,
                     timeout=3,
                 )
                 response.raise_for_status()  # Raise an error for HTTP error responses
+                self.logger.info("Deleted catalog item %s during rollback", feature_id)
         except (RequestException, JSONDecodeError) as exc:
             self.logger.error("Error while deleting the item from rspy catalog %s", exc)
 

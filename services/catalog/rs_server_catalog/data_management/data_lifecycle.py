@@ -73,6 +73,7 @@ class DataLifecycle:
         self.period: float = float(os.getenv("RSPY_DATA_LIFECYCLE_PERIOD") or -1)
         self.cancel_flag: bool = False
         self.fake_request = self.get_fake_request()
+        self.logger.info("Data lifecycle initialized with period=%s seconds", self.period)
 
     def get_fake_request(self, extra_scope: dict | None = None) -> Request:
         """
@@ -90,14 +91,17 @@ class DataLifecycle:
         } | (extra_scope or {})
         request = Request(scope=scope)
         request._base_url = URL("https://dummy-url")  # pylint: disable=protected-access
+        self.logger.debug("Created fake lifecycle request with scope=%s", scope)
         return request
 
     async def cancel(self):
         """Cancel the periodic task"""
         self.cancel_flag = True
         if not self.periodic_task:
+            self.logger.debug("Data lifecycle cancel requested but no periodic task exists")
             return
 
+        self.logger.info("Cancelling data lifecycle periodic task")
         # See: https://superfastpython.com/asyncio-periodic-task/#How_to_Run_a_Periodic_Task
         self.periodic_task.cancel()
         try:
@@ -108,13 +112,21 @@ class DataLifecycle:
     def run(self):
         """Trigger the periodic task in a distinct thread and exit."""
         if (self.period >= 0) and (not self.cancel_flag):
+            self.logger.info("Starting data lifecycle periodic task; period=%s seconds", self.period)
             self.periodic_task = asyncio.create_task(self._periodic_loop())
+        else:
+            self.logger.info(
+                "Data lifecycle periodic task disabled; period=%s cancel_flag=%s",
+                self.period,
+                self.cancel_flag,
+            )
 
     async def _periodic_loop(self):
         """Run the periodic task in an infinite loop."""
         # Infinite loop
         while not self.cancel_flag:
             start_time = time.time()
+            self.logger.info("Starting data lifecycle periodic iteration")
             try:
                 # Run the task
                 with init_opentelemetry.start_span(__name__, "data_lifecycle"):
@@ -130,6 +142,7 @@ class DataLifecycle:
 
             # Measure execution time of the task in seconds
             runtime = time.time() - start_time
+            self.logger.info("Finished data lifecycle periodic iteration in %.2fs", runtime)
 
             # We remove this execution time to the period in seconds between two tasks,
             # so the tasks run at fixed intervals.
@@ -151,6 +164,7 @@ class DataLifecycle:
         """
         # Current datetime
         now: str = datetime.now().strftime(ISO_8601_FORMAT)
+        self.logger.info("Running data lifecycle cleanup once at %s", now)
 
         # Filter on expired items that have not already been unpublished
         _filter = {
@@ -160,6 +174,7 @@ class DataLifecycle:
                 {"op": "isNull", "args": [{"property": "unpublished"}]},
             ],
         }
+        self.logger.debug("Data lifecycle expired item filter: %s", _filter)
 
         # Search the database. We call directly the stac_fastapi layer, not the rs-server-catalog
         # http endpoint, so we don't handle the /catalog prefix, the owner_id, the authentication, ...
@@ -170,9 +185,11 @@ class DataLifecycle:
             limit=ITEM_LIMIT,
         )
         items: list[Item] = item_collection.get("features", [])
+        self.logger.info("Data lifecycle found %d expired item(s)", len(items))
 
         if items:
-            self.logger.debug(f"Clean {len(items)} items")
+            self.logger.info(f"Clean {len(items)} items")
+            self.logger.debug("Expired item ids: %s", [item.get("id") for item in items])
         else:
             self.logger.debug("No items to clean")
             return
@@ -188,6 +205,13 @@ class DataLifecycle:
         items_by_collection: dict[str, list[Item]] = defaultdict(list)
         for item in items:
             items_by_collection[item["collection"]].append(item)
+        self.logger.debug(
+            "Expired items grouped by collection: %s",
+            {
+                collection: [item.get("id") for item in col_items]
+                for collection, col_items in items_by_collection.items()
+            },
+        )
 
         # First, update the items in the stac database using a bulk transaction.
         # We need one transaction by collection name, run in parallel.
@@ -211,6 +235,11 @@ class DataLifecycle:
 
                 # Run the bulk transaction.
                 # NOTE: we call directly the stac_fastapi layer, not the rs-server-catalog http endpoint
+                self.logger.info(
+                    "Bulk-updating %d expired item(s) in collection %s",
+                    len(col_items),
+                    col_name,
+                )
                 self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, bulk_request))
 
         # Then, delete all files from the buckets in parallel.
@@ -221,6 +250,8 @@ class DataLifecycle:
 
         for bucket_name, bucket_keys in bucket_info.items():
             bucket_files.extend([f"s3://{bucket_name}/{key}" for key in bucket_keys])
+        self.logger.info("Deleting %d expired asset file(s) from object storage", len(bucket_files))
+        self.logger.debug("Expired asset files scheduled for deletion: %s", bucket_files)
 
         # We use the administrator bucket credentials that are saved as env vars
         await S3StorageHandler(
@@ -231,7 +262,7 @@ class DataLifecycle:
                 os.environ["S3_REGION"],
             ),
         ).adelete_keys_from_s3(bucket_files)
-        self.logger.debug("Finished deleting s3 keys")
+        self.logger.info("Finished deleting s3 keys for expired items")
 
     def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
@@ -243,6 +274,7 @@ class DataLifecycle:
             bucket_info: bucket information to be updated
         """
         # Set the updated and unpublished properties to current datetime
+        self.logger.info("Marking item %s as unpublished at %s", item.get("id"), now)
         item.setdefault("properties", {})["updated"] = now
         item.setdefault("properties", {})["unpublished"] = now
 
@@ -264,6 +296,7 @@ class DataLifecycle:
                 if (parsed.scheme.lower() != "s3") or (not bucket_name) or (not bucket_key):
                     raise KeyError()
                 bucket_info[bucket_name].append(bucket_key)
+                self.logger.debug("Collected expired asset for deletion: bucket=%s key=%s", bucket_name, bucket_key)
 
             except KeyError:
                 self.logger.debug(f"Asset has no valid href: {asset}")

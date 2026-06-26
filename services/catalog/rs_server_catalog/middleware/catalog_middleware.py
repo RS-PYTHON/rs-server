@@ -80,6 +80,10 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         """
         request_body = None if request.method not in ["PATCH", "POST", "PUT"] else await request.json()
         auth_roles = user_login = owner_id = None
+        logger.info("Catalog request received: %s %s", request.method, request.url.path)
+        logger.debug("Catalog request query params: %s", dict(request.query_params))
+        if request_body is not None:
+            logger.debug("Catalog request body for %s %s: %s", request.method, request.url.path, request_body)
 
         # ---------- Management of  authentification (retrieve user_login + default owner_id)
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
@@ -95,6 +99,7 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
             except (NameError, AttributeError):
                 auth_roles = []
                 user_login = get_user(None, None)  # Get default local or cluster user
+                logger.debug("Catalog request has no authenticated state; using fallback user %s", user_login)
         elif common_settings.LOCAL_MODE:
             user_login = get_user(None, None)
         owner_id = ""  # Default owner_id is empty
@@ -113,11 +118,22 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
+            logger.error("Invalid catalog endpoint for request %s %s", request.method, request.url.path)
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
         logger.debug(f"path = {request.scope['path']} | requests_ids = {self.request_ids}")
+        logger.info(
+            "Catalog request routed: %s %s -> %s; owner=%s, collections=%s, item=%s",
+            request.method,
+            request.url.path,
+            request.scope["path"],
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+        )
 
         # Ensure that user_login is not null after rerouting
         if not self.request_ids["user_login"]:
+            logger.error("Catalog request has no user_login after rerouting: %s", self.request_ids)
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="user_login is not defined !",
@@ -140,6 +156,7 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
 
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
                 self.request_ids["item_id"] = request_body.get("id")
+            logger.debug("Catalog request ids after body recovery: %s", self.request_ids)
 
         # ---------- Apply specific changes for each endpoint
 
@@ -148,13 +165,32 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         # If the request manager returns a response, it usually means the user is not authorized
         # to do the operation received, so we directly return the response
         if isinstance(request, Response):
+            logger.info(
+                "Catalog request %s %s returned early with status %s",
+                request_manager.request_ids,
+                getattr(request, "media_type", None),
+                request.status_code,
+            )
             return request
 
         response = await call_next(request)
+        logger.info(
+            "Catalog backend response for %s %s has status %s",
+            request.method,
+            request.scope["path"],
+            response.status_code,
+        )
 
         response_manager = CatalogResponseManager(
             request_manager.client,
             request_manager.request_ids,
             request_manager.s3_files_to_be_deleted,
         )
-        return await response_manager.manage_responses(request, cast(StreamingResponse, response))
+        managed_response = await response_manager.manage_responses(request, cast(StreamingResponse, response))
+        logger.info(
+            "Catalog response completed for %s %s with status %s",
+            request.method,
+            request.scope["path"],
+            managed_response.status_code,
+        )
+        return managed_response

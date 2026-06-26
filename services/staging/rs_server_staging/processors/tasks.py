@@ -83,11 +83,17 @@ def streaming_task(  # pylint: disable=R0913, R0917
     """
 
     logger_dask = logging.getLogger(__name__)
-    logger_dask.info("The streaming task started")
 
     product_url = asset_info.product_url
     s3_file = asset_info.s3_file
     bucket = asset_info.s3_bucket
+    logger_dask.info("The streaming task started for %s -> s3://%s/%s", product_url, bucket, s3_file)
+    logger_dask.debug(
+        "Streaming task input: origin_service=%s, domain=%s, trusted_domains=%s",
+        asset_info.origin_service,
+        asset_info.domain,
+        asset_info.trusted_domains,
+    )
     # get the retry timeout
     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
     # get the number of retries in case of failure
@@ -97,9 +103,10 @@ def streaming_task(  # pylint: disable=R0913, R0917
     while attempt < max_retries:
         try:
             # Use S3 object storage credentials of the logged user
-            logger_dask.debug(f"{s3_file}: Creating the s3_handler")
+            logger_dask.debug("%s: Creating the s3_handler (attempt %d/%d)", s3_file, attempt + 1, max_retries)
             s3_handler = S3StorageHandler(s3_credentials)
             if product_url.startswith("s3://"):
+                logger_dask.info("Streaming external S3 asset to s3://%s/%s", bucket, s3_file)
                 s3_handler.s3_streaming_from_s3(
                     product_url,
                     asset_info.external_s3_endpoint_url,
@@ -110,6 +117,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
                     asset_info.trusted_domains,
                 )
             else:
+                logger_dask.info("Streaming HTTP asset to s3://%s/%s", bucket, s3_file)
                 s3_handler.s3_streaming_from_http(
                     product_url,
                     config.trusted_domains if config else [],
@@ -120,6 +128,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
                 )
 
             s3_handler.disconnect_s3()
+            logger_dask.debug("Disconnected S3 handler after streaming %s", s3_file)
             break
         except ConnectionError as e:
             attempt += 1
@@ -168,6 +177,20 @@ def prepare_streaming_tasks(
     owner = feature.properties.get("owner", staging_user)
     eopf_type = feature.properties.get("eopf:type", "")
     s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
+    logger.info(
+        "Preparing streaming tasks for feature %s in collection %s; bucket=%s",
+        feature.id,
+        catalog_collection,
+        s3_bucket_name,
+    )
+    logger.debug(
+        "Feature %s task preparation input: owner=%s, eopf_type=%s, asset_names=%s, named_assets=%s",
+        feature.id,
+        owner,
+        eopf_type,
+        list(feature.assets.keys()),
+        named_assets,
+    )
 
     assets_info: list[AssetInfo] = []
 
@@ -185,6 +208,14 @@ def prepare_streaming_tasks(
         s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
 
         origin_service = urlparse(asset_content.href).scheme
+        logger.debug(
+            "Preparing asset %s for feature %s; origin_service=%s, destination=s3://%s/%s",
+            asset_name,
+            feature.id,
+            origin_service,
+            s3_bucket_name,
+            s3_obj_path,
+        )
         if origin_service == "s3":
             asset_info = create_asset_info_with_s3_auth(
                 feature,
@@ -199,6 +230,7 @@ def prepare_streaming_tasks(
         assets_info.append(asset_info)
         asset_content.href = f"s3://{s3_bucket_name}/{s3_obj_path}"
         feature.assets[asset_name] = asset_content
+    logger.info("Prepared %d streaming task(s) for feature %s", len(assets_info), feature.id)
     return assets_info
 
 
@@ -227,6 +259,8 @@ def create_asset_info_with_s3_auth(
         IncompleteFeatureError: If the feature misses a necessary field.
         RuntimeError: When no credentials were found for any reason.
     """
+    feature_id = getattr(feature, "id", None)
+    logger.info("Resolving external S3 credentials for feature %s asset %s", feature_id, asset_name)
     if "storage:refs" not in asset_content.keys():
         raise IncompleteAssetError(f"Missing field 'storage:refs' in asset {asset_name}.")
     if "storage:schemes" not in feature.properties.keys():
@@ -235,10 +269,17 @@ def create_asset_info_with_s3_auth(
     storage_refs = asset_content["storage:refs"]
     storage_schemes: dict = feature.properties.get("storage:schemes")
     s3_authentication_config = None
+    logger.debug(
+        "External S3 credential lookup for feature %s asset %s; refs=%s",
+        feature.id,
+        asset_name,
+        storage_refs,
+    )
 
     # Find the first storage ref of the asset that is linked to a storage scheme in the feature,
     # for which credentials exist
     for ref in storage_refs:
+        logger.debug("Checking storage ref %s for feature %s asset %s", ref, feature.id, asset_name)
         if ref not in storage_schemes.keys():
             logger.warning(f"No storage scheme found for storage ref '{ref}' in feature {feature.id}.")
         else:
@@ -285,6 +326,7 @@ def find_credentials_for_external_s3_storage(
         Access key and secret key or empty strings if no credentials were found.
     """
     domain = storage_scheme.get("platform", "")
+    logger.debug("Looking up external S3 authentication config for storage scheme %s", storage_scheme_name)
 
     if not domain:
         logger.warning(
@@ -293,6 +335,7 @@ def find_credentials_for_external_s3_storage(
         )
         return None
     domain = urlparse(domain).hostname
+    logger.debug("Resolved storage scheme %s to domain %s", storage_scheme_name, domain)
 
     try:
         authentication_config = load_external_auth_config_by_domain(domain)

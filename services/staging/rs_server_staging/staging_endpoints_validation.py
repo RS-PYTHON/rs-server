@@ -23,6 +23,7 @@ from typing import Any
 from openapi_core import OpenAPI  # Spec, validate_request, validate_response
 from openapi_core.contrib.starlette.requests import StarletteOpenAPIRequest
 from openapi_core.contrib.starlette.responses import StarletteOpenAPIResponse
+from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -40,6 +41,8 @@ if not os.path.isfile(PATH_TO_YAML_OPENAPI):
     raise FileNotFoundError(f"The following file path was not found: {PATH_TO_YAML_OPENAPI}")
 OPENAPI = OpenAPI.from_file_path(PATH_TO_YAML_OPENAPI)
 
+logger = Logging.default(__name__)
+
 
 async def validate_request(request: Request) -> dict[Any, Any]:
     """Validate an endpoint request according to the ogc specifications
@@ -55,11 +58,16 @@ async def validate_request(request: Request) -> dict[Any, Any]:
         raise FileNotFoundError(f"The following file path was not found: {PATH_TO_YAML_OPENAPI}")
     try:
         body = await request.body()
+        logger.info("Validating staging request %s %s", request.method, request.url.path)
+        logger.debug("Staging request body for validation: %s", body)
         openapi_request = StarletteOpenAPIRequest(request, body)
         OPENAPI.validate_request(openapi_request)
-        return json.loads(body) if body else None  # type: ignore
+        parsed_body = json.loads(body) if body else None  # type: ignore
+        logger.info("Validated staging request %s %s", request.method, request.url.path)
+        return parsed_body
     except Exception as e:
         # Handle exceptions and return an appropriate error message
+        logger.exception("Staging request validation failed for %s %s: %s", request.method, request.url.path, e)
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Request body validation failed: {e}") from e
 
 
@@ -74,6 +82,9 @@ def validate_response(request: Request, data: dict, status_code=HTTP_200_OK):
         data (dict): data to send in the endpoint response
     """
     json_response = JSONResponse(status_code=status_code, content=data)
+    logger.info("Validating staging response for %s %s; status=%s", request.method, request.url.path, status_code)
+    logger.debug("Staging response data for validation: %s", data)
     openapi_request = StarletteOpenAPIRequest(request)
     openapi_response = StarletteOpenAPIResponse(json_response)
     OPENAPI.validate_response(openapi_request, openapi_response)
+    logger.info("Validated staging response for %s %s", request.method, request.url.path)
