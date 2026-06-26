@@ -57,7 +57,7 @@ flask = "^3.1.1" # for pygeoapi
 geoalchemy2 = ">=0.18"
 SQLAlchemy = "^2.0.42"
 dask-gateway = "2025.4.0"
-dask = {extras = ["distributed"], version = "2026.1.2"}
+dask = {extras = ["distributed"], version = "2026.3.0"}
 openapi-core = ">=0.23.1"
 psycopg2 = "^2.9.11"
 xmltodict = "^1.0.2"
