@@ -433,7 +433,8 @@ class CatalogResponseManager:
                 user_login,
             )
             logger.info(
-                "/catalog/collections response contains %d accessible collection(s)", len(content["collections"])
+                "/catalog/collections response contains %d accessible collection(s)",
+                len(content["collections"]),
             )
 
             # The self link shall be EXACTLY the same as the requested URL

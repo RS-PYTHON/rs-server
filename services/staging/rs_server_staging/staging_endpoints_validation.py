@@ -64,7 +64,7 @@ async def validate_request(request: Request) -> dict[Any, Any]:
         OPENAPI.validate_request(openapi_request)
         parsed_body = json.loads(body) if body else None  # type: ignore
         logger.info("Validated staging request %s %s", request.method, request.url.path)
-        return parsed_body
+        return parsed_body  # type: ignore
     except Exception as e:
         # Handle exceptions and return an appropriate error message
         logger.exception("Staging request validation failed for %s %s: %s", request.method, request.url.path, e)

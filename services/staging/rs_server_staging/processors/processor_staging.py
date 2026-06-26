@@ -499,7 +499,9 @@ class Staging(
             if response.status_code == HTTP_404_NOT_FOUND:
                 # If status is not found, create collection body and try to post it.
                 self.logger.info(
-                    "Catalog collection %s not found; creating it for job %s", catalog_collection, self.job_id
+                    "Catalog collection %s not found; creating it for job %s",
+                    catalog_collection,
+                    self.job_id,
                 )
                 minimal_collection = get_minimal_collection_body(catalog_collection)
                 self.logger.debug("Minimal collection body for job %s: %s", self.job_id, minimal_collection)
@@ -567,7 +569,10 @@ class Staging(
             [feature.id for feature in features],
         )
         self.logger.debug(
-            "Catalog search request for job %s: url=%s, params=%s", self.job_id, search_url, filter_object
+            "Catalog search request for job %s: url=%s, params=%s",
+            self.job_id,
+            search_url,
+            filter_object,
         )
 
         try:
@@ -910,7 +915,6 @@ class Staging(
                     self.logger.debug("Queued next asset %s for job %s", next_asset.s3_file, self.job_id)
                 except StopIteration:
                     self.logger.debug("No more Dask tasks to queue for job %s", self.job_id)
-                    pass  # No more data to process
             except Exception as task_e:  # pylint: disable=broad-exception-caught
                 self.logger.error("Task failed with exception: %s", task_e)
                 client.cancel(tasks)
@@ -1148,7 +1152,8 @@ class Staging(
             for refresh_token in self.station_token_list:
                 if refresh_token.station_id() == external_auth_config.station_id:
                     self.logger.debug(
-                        "Reusing existing refresh token holder for station %s", refresh_token.station_id()
+                        "Reusing existing refresh token holder for station %s",
+                        refresh_token.station_id(),
                     )
                     refresh_token.subscribe(self.logger)
                     break
