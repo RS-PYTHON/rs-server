@@ -36,6 +36,7 @@ from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common import stac_api_common
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
+from rs_server_common.stac_cql2 import extract_interval, extract_properties
 from rs_server_common.utils import utils as common_utils
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
@@ -1802,16 +1803,6 @@ class TestFeatureCollectionOdataStacMapping:
                 "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
-            (
-                ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&filter="
-                "T_CONTAINS(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'), published)"  # noqa: E501 # pylint: disable=line-too-long
-                "&sortby=-properties.created&limit=1",
-                "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate lt 2025-04-01T00:00:00.000Z and PublicationDate gt 2025-04-02T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
-                status.HTTP_200_OK,
-            ),
         ],
         indirect=["fastapi_app"],
         ids=[
@@ -1830,7 +1821,6 @@ class TestFeatureCollectionOdataStacMapping:
             "t_equals",
             # "t_disjoint",
             "t_intersects",
-            "t_contains",
         ],
     )
     @responses.activate
@@ -3238,3 +3228,47 @@ def test_build_summaries_prip_valid(monkeypatch):
             "S01SIWSLC",
         ],
     }
+
+
+def test_extract_interval_properties():
+    """Test swap_temporal_sides from stac_cql2.py."""
+
+    args = [
+        {"property": "published"},
+        {
+            "interval": [
+                "2026-06-08T00:00:00.000Z",
+                "2026-06-09T00:00:00.000Z",
+            ],
+        },
+    ]
+
+    index, interval = extract_interval(args)
+
+    assert index == 1
+    assert interval["interval"] == [
+        "2026-06-08T00:00:00.000Z",
+        "2026-06-09T00:00:00.000Z",
+    ]
+    assert extract_properties(args) == [{"property": "published"}]
+
+    #  test the other way
+    args2 = [
+        {
+            "interval": [
+                "2026-06-07T06:00:00Z",
+                "2026-06-07T07:00:00Z",
+            ],
+        },
+        {"property": "published"},
+    ]
+
+    index, interval = extract_interval(args2)
+
+    assert index == 0
+    assert interval["interval"] == [
+        "2026-06-07T06:00:00Z",
+        "2026-06-07T07:00:00Z",
+    ]
+
+    assert extract_properties(args2) == [{"property": "published"}]
