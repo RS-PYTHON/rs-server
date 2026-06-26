@@ -80,6 +80,11 @@ def streaming_task(  # pylint: disable=R0913, R0917
         (`ClientError`, `BotoCoreError`).
         - The function waits S3_RETRY_TIMEOUT seconds before retrying
         - It keeps trying for S3_MAX_RETRIES times
+
+    Logging:
+        - `info` records task lifecycle and source/destination identifiers.
+        - `debug` records retry attempts and non-sensitive routing details.
+        Credential values are intentionally never logged.
     """
 
     logger_dask = logging.getLogger(__name__)
@@ -102,10 +107,13 @@ def streaming_task(  # pylint: disable=R0913, R0917
     attempt = 0
     while attempt < max_retries:
         try:
-            # Use S3 object storage credentials of the logged user
+            # Create the handler inside the retry loop because failed streaming
+            # attempts can leave connections in an uncertain state.
             logger_dask.debug("%s: Creating the s3_handler (attempt %d/%d)", s3_file, attempt + 1, max_retries)
             s3_handler = S3StorageHandler(s3_credentials)
             if product_url.startswith("s3://"):
+                # External S3-to-catalog S3 copies use credentials resolved from
+                # the feature storage scheme, not the station token flow.
                 logger_dask.info("Streaming external S3 asset to s3://%s/%s", bucket, s3_file)
                 s3_handler.s3_streaming_from_s3(
                     product_url,
@@ -117,6 +125,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
                     asset_info.trusted_domains,
                 )
             else:
+                # HTTP/FTP-like sources rely on the station auth config and
+                # optional token prepared by the parent staging workflow.
                 logger_dask.info("Streaming HTTP asset to s3://%s/%s", bucket, s3_file)
                 s3_handler.s3_streaming_from_http(
                     product_url,
@@ -133,7 +143,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
         except ConnectionError as e:
             attempt += 1
             if attempt < max_retries:
-                # keep retrying
+                # Connection failures are considered transient at the S3 layer,
+                # so wait using the storage handler retry policy before retrying.
                 s3_handler.disconnect_s3()
                 logger_dask.error(f"S3 level failed to stream. Retrying in {s3_retry_timeout} seconds.")
                 s3_handler.wait_timeout(s3_retry_timeout)
@@ -162,18 +173,25 @@ def prepare_streaming_tasks(
     staging_user: str,
     named_assets=False,
 ) -> list[AssetInfo] | None:
-    """Prepare tasks for the given feature to the Dask cluster.
+    """Prepare Dask streaming task inputs for all assets of a STAC feature.
+
+    This function also rewrites each asset href in the feature to the final
+    catalog S3 location. That mutation is intentional: once streaming succeeds,
+    the same feature object is published to the catalog with staged asset paths.
 
     Args:
         catalog_collection (str): Name of the catalog collection.
         feature: The feature containing assets to download.
         staging_user (str): The user for whom to stage the assets.
-        named_assets (bool): Whether to use named assets.
+        named_assets (bool): If True, prefer asset `file:local_path` as the
+            destination asset name when present.
 
     Returns:
-        True if the info has been constructed, False otherwise
+        A list of AssetInfo objects used by Dask, or None when an asset is
+        missing the minimum href/name information.
     """
-    # Get infos from feature to retrieve S3 bucket name from configuration
+    # Bucket selection depends on logical ownership, collection and optional
+    # EOPF type; this keeps staging aligned with catalog storage partitioning.
     owner = feature.properties.get("owner", staging_user)
     eopf_type = feature.properties.get("eopf:type", "")
     s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
@@ -198,8 +216,10 @@ def prepare_streaming_tasks(
         if not asset_content.href or not asset_name:
             logger.error("Missing href or title in asset dictionary")
             return None
-        # Add the user_collection as main directory, as soon as the authentication will be
-        # implemented in this staging process
+
+        # The final object key is deterministic and includes the staging user,
+        # collection, item id and asset name so cleanup and catalog publication can
+        # reconstruct the same object identity from logs.
         if named_assets:
             # if named_assets is True and file:local_path exists in the asset content,
             # use it as asset name instead of the key in the assets dict
@@ -217,6 +237,8 @@ def prepare_streaming_tasks(
             s3_obj_path,
         )
         if origin_service == "s3":
+            # S3 origins need extra credentials/trusted-domain metadata extracted
+            # from STAC storage extensions before the Dask task can run.
             asset_info = create_asset_info_with_s3_auth(
                 feature,
                 asset_name,
@@ -225,9 +247,12 @@ def prepare_streaming_tasks(
                 s3_bucket_name,
             )
         else:
+            # Non-S3 origins are streamed through the station auth path.
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
         assets_info.append(asset_info)
+        # Mutate the feature in place so the later catalog POST/PUT references
+        # the object that the Dask task is about to create.
         asset_content.href = f"s3://{s3_bucket_name}/{s3_obj_path}"
         feature.assets[asset_name] = asset_content
     logger.info("Prepared %d streaming task(s) for feature %s", len(assets_info), feature.id)
@@ -241,8 +266,12 @@ def create_asset_info_with_s3_auth(
     s3_file: str,
     s3_bucket: str,
 ) -> AssetInfo:
-    """Specific to assets being staged from an external S3 bucket.
-    This function returns an AssetInfo with credentials for the S3 bucket.
+    """Build AssetInfo for an asset staged from an external S3 bucket.
+
+    The function reads the STAC `storage:refs` and `storage:schemes` fields,
+    finds the first referenced scheme that has a matching external S3
+    authentication configuration, and copies only the required credentials into
+    the AssetInfo passed to Dask. Credential values are not logged.
 
     Args:
         feature (Feature): The feature containing asset to download.
@@ -276,8 +305,9 @@ def create_asset_info_with_s3_auth(
         storage_refs,
     )
 
-    # Find the first storage ref of the asset that is linked to a storage scheme in the feature,
-    # for which credentials exist
+    # Try refs in STAC order and stop at the first scheme that resolves to usable
+    # credentials. This lets products advertise several storage locations while
+    # keeping task preparation deterministic.
     for ref in storage_refs:
         logger.debug("Checking storage ref %s for feature %s asset %s", ref, feature.id, asset_name)
         if ref not in storage_schemes.keys():
@@ -316,14 +346,18 @@ def find_credentials_for_external_s3_storage(
     storage_scheme: dict,
     storage_scheme_name: str,
 ) -> S3ExternalAuthenticationConfig:
-    """Uses the platform field of the storage scheme to get credentials from configuration if they exist.
+    """Resolve external S3 credentials from a STAC storage scheme.
+
+    The storage scheme `platform` field is parsed as a domain and matched
+    against the external authentication configuration. Only S3 auth
+    configurations are accepted.
 
     Args:
         storage_scheme (dict): storage_scheme from the feature.
         storage_scheme_name (str): Name of the storage scheme.
 
     Returns:
-        Access key and secret key or empty strings if no credentials were found.
+        S3ExternalAuthenticationConfig when credentials exist, otherwise None.
     """
     domain = storage_scheme.get("platform", "")
     logger.debug("Looking up external S3 authentication config for storage scheme %s", storage_scheme_name)

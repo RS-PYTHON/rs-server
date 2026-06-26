@@ -63,7 +63,13 @@ logger = Logging.default(__name__)
 
 
 def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[str, Any]:
-    """Inject internal default geometry/bbox when both are null for pgstac persistence compatibility."""
+    """
+    Inject internal default geometry/bbox when both are null.
+
+    pgstac stores item geometry in a NOT NULL column, while RS Server must keep
+    accepting upstream items without spatial metadata. The default geometry is
+    therefore an internal persistence shim and is masked again in responses.
+    """
     if content.get("geometry") is None and content.get("bbox") is None:
         logger.debug("Injecting pgstac default geometry/bbox for item %s", content.get("id"))
         content["geometry"] = copy.deepcopy(DEFAULT_GEOM)
@@ -72,7 +78,13 @@ def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[s
 
 
 def iter_external_id_parts(raw: Any) -> list[str]:
-    """Split externalIds input (string/list) into clean, comma-separated tokens."""
+    """
+    Split externalIds input into clean tokens.
+
+    Clients may send `externalIds` as a single string, a comma-separated string,
+    or a list. Normalizing early lets GET query params and POST bodies share the
+    same filter-building path.
+    """
     parts: list[str] = []
     values = raw if isinstance(raw, list) else [raw]
     for value in values:
@@ -85,7 +97,13 @@ def iter_external_id_parts(raw: Any) -> list[str]:
 
 
 def build_external_ids_tokens(raw: Any) -> list[str]:
-    """Normalize externalIds values into tokens used by pgstac filtering."""
+    """
+    Normalize externalIds values into the token representation stored by pgstac.
+
+    Supported input forms are `scheme:value`, `scheme:`, `:value`, plain value,
+    and comma-separated/list combinations. Duplicates are removed while keeping
+    the original order for predictable debugging.
+    """
     tokens: list[str] = []
     seen: set[str] = set()
     for part in iter_external_id_parts(raw):
@@ -112,7 +130,7 @@ def build_external_ids_tokens(raw: Any) -> list[str]:
 
 
 def build_external_ids_filter(raw: Any) -> dict | None:
-    """Create a CQL2 filter (a_overlaps) for externalIds tokens."""
+    """Create a CQL2 `a_overlaps` filter for normalized externalIds tokens."""
     tokens = build_external_ids_tokens(raw)
     if not tokens:
         return None
@@ -121,7 +139,13 @@ def build_external_ids_filter(raw: Any) -> dict | None:
 
 
 def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
-    """Normalize a CQL2 filter (text or json) to CQL2-JSON."""
+    """
+    Normalize a CQL2 filter to CQL2-JSON.
+
+    The catalog middleware rewrites some filters before forwarding the request
+    to pgstac. Working in JSON form avoids brittle string manipulation and keeps
+    GET and POST behavior aligned.
+    """
     if raw_filter is None:
         return None
     if isinstance(raw_filter, dict):
@@ -152,14 +176,14 @@ def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
 
 
 def combine_filters(existing: dict | None, extra: dict) -> dict:
-    """Combine two CQL2 filters with AND."""
+    """Combine two CQL2 filters with AND, preserving an existing filter when present."""
     if existing is None:
         return extra
     return {"op": "and", "args": [existing, extra]}
 
 
 def filter_has_external_ids(filter_json: Any) -> bool:
-    """Check if a CQL2 filter tree references the externalIds property."""
+    """Recursively check whether a CQL2 filter tree references `externalIds`."""
     if isinstance(filter_json, dict):
         if filter_json.get("property") == "externalIds":
             return True
@@ -172,7 +196,13 @@ def filter_has_external_ids(filter_json: Any) -> bool:
 
 
 def normalize_external_ids_in_filter(filter_json: dict) -> dict:
-    """Rewrite externalIds comparisons into array-overlap filters."""
+    """
+    Rewrite externalIds comparisons into array-overlap filters.
+
+    pgstac stores `externalIds` as an array of tokens. Equality/in filters sent
+    by clients therefore need to become `a_overlaps` filters to match the stored
+    representation.
+    """
     if not isinstance(filter_json, dict):
         return filter_json
     op = filter_json.get("op")
@@ -202,7 +232,13 @@ def normalize_external_ids_in_filter(filter_json: dict) -> dict:
 
 
 def normalize_external_ids_filter_value(raw_filter: Any, filter_lang: str) -> tuple[Any, str, bool]:
-    """Normalize externalIds filters and return (filter, lang, changed)."""
+    """
+    Normalize any externalIds expression inside a filter value.
+
+    Returns:
+        Tuple `(filter, filter_lang, changed)` where `changed` tells callers
+        whether the request body/query string must be rewritten.
+    """
     if raw_filter is None:
         return raw_filter, filter_lang, False
     if isinstance(raw_filter, str) and "externalIds" not in raw_filter:
@@ -223,8 +259,13 @@ def normalize_external_ids_filter_value(raw_filter: Any, filter_lang: str) -> tu
 
 
 class CatalogRequestManager:
-    """Class to process the Requests sent by users to the Catalog before routing them to stac-fastapi.
-    Each type of Response is managed in one of the functions."""
+    """
+    Pre-process catalog requests before they are routed to stac-fastapi.
+
+    Responsibilities include owner/collection authorization, frontend-to-pgstac
+    route/body/query rewriting, S3 publication validation, and collecting S3
+    keys that must be deleted after successful catalog mutations.
+    """
 
     def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
@@ -240,7 +281,13 @@ class CatalogRequestManager:
         return S3Manager(authentication.get_s3_credentials(request))
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
-        """Update request body (better find the function that updates the body maybe?)"""
+        """
+        Replace the request body consumed by downstream stac-fastapi.
+
+        Starlette caches parsed body/json on the Request object. When middleware
+        changes catalog ids, timestamps or filters, both cached values must be
+        updated so later handlers observe the rewritten payload.
+        """
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         request._json = content  # pylint: disable=protected-access
         logger.info(
@@ -255,7 +302,12 @@ class CatalogRequestManager:
         return request
 
     def _override_request_query_string(self, request: Request, query_params: dict) -> Request:
-        """Update request query string"""
+        """
+        Replace the request query string consumed by downstream stac-fastapi.
+
+        Query parameters are rewritten after owner resolution and filter
+        normalization, then re-encoded with doseq support for list-like values.
+        """
         request.scope["query_string"] = urlencode(query_params, doseq=True).encode("utf-8")
         logger.info("Overrode catalog query string for %s %s", request.method, request.scope["path"])
         logger.debug("Updated catalog query params: %s", query_params)
@@ -304,7 +356,13 @@ class CatalogRequestManager:
             ) from e
 
     async def build_filelist_to_be_deleted(self, request):
-        """Build the list of the s3 files that will be deleted if the request is successfull"""
+        """
+        Build the S3 cleanup list for DELETE requests.
+
+        Collection deletes require scanning all items in the collection, while
+        item deletes only need the requested item. Actual S3 deletion is deferred
+        until the catalog response confirms that pgstac deletion succeeded.
+        """
         logger.info(
             "Building S3 deletion list for owner=%s collections=%s item=%s",
             self.request_ids["owner_id"],
@@ -374,8 +432,12 @@ class CatalogRequestManager:
             )
 
     async def manage_requests(self, request: Request) -> Request | Response:
-        """Main function to dispatch the request pre-processing depending on which endpoint is called.
-        Will pre-process the request using the function associated to the path called and return it.
+        """
+        Dispatch catalog request pre-processing by method/path.
+
+        This is the main entry point used by CatalogMiddleware. It keeps the
+        endpoint-specific transformations isolated while returning either the
+        rewritten Request or an early Response when authorization fails.
 
         Args:
             request (Request): request received by the Catalog.
@@ -428,7 +490,12 @@ class CatalogRequestManager:
         self,
         request: Request,
     ) -> Request | JSONResponse:
-        """Adapt the request body for the STAC endpoint.
+        """
+        Adapt POST/PUT request bodies for stac-fastapi.
+
+        Collection writes get owner-prefixed ids and timestamps. Item writes
+        validate authorization, collection existence, geometry/bbox consistency,
+        S3 availability and checksums before the request is forwarded.
 
         Args:
             request (Request): The Client request to be updated.
@@ -652,8 +719,13 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         self,
         request: Request,
     ) -> Request | JSONResponse:
-        """find the user in the filter parameter and add it to the
-        collection name.
+        """
+        Normalize catalog search requests and resolve owner-prefixed collections.
+
+        The search endpoint accepts owner hints from URL path, query/body owner,
+        collections and CQL2 filters. This method resolves those hints, rewrites
+        collections to pgstac ids, normalizes `externalIds`, and checks read
+        authorization before forwarding the request.
 
         Args:
             request Request: the client request.
@@ -831,8 +903,10 @@ collection owned by the '{self.request_ids['owner_id']}' user",
     async def manage_patch_request(self, request: Request):
         """
         Pre-processing of a PATCH request to the Catalog.
-        Does authorization checks, enforces geometry/bbox consistency when patched,
-        and updates the "updated" field.
+
+        Does authorization checks, merges partial geometry/bbox patches with the
+        current item when necessary, enforces spatial consistency, and updates
+        the `updated` timestamp.
 
         Args:
             request (Request): The request from the Client

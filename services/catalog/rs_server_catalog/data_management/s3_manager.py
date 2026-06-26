@@ -47,7 +47,13 @@ logger = Logging.default(__name__)
 
 
 class S3Manager:
-    """Tool class to handle all operations on S3 bucket."""
+    """
+    Helper for catalog S3 operations.
+
+    The catalog uses S3 checks during item publication, presigned URL generation
+    for downloads, checksum enrichment, and cleanup after catalog mutations.
+    Local catalog mode intentionally short-circuits most S3 interactions.
+    """
 
     def __init__(self, s3_credentials: S3Credentials):
         """
@@ -84,11 +90,15 @@ class S3Manager:
         return s3_handler
 
     def clear_catalog_bucket(self, content: dict) -> None:
-        """Used to clear specific files from catalog bucket.
+        """
+        Clear files referenced by a rejected catalog payload.
+
+        This is used when stac-fastapi returns an error after middleware already
+        prepared/staged asset paths. The method best-effort deletes those files
+        to avoid orphaned catalog-bucket objects.
 
         Args:
-            content (dict): Files to delete
-            s3_handler (S3StorageHandler): S3 handler to use. If None given, will do nothing
+            content: STAC item-like payload containing asset hrefs.
         """
         if self.is_catalog_local_mode or (not hasattr(content, "get")):
             logger.debug(
@@ -99,12 +109,13 @@ class S3Manager:
             return
         logger.info("Clearing catalog bucket objects for item %s", content.get("id"))
         for asset in content.get("assets", {}):
-            # Retrieve bucket name from config using what's in content
+            # Bucket resolution mirrors publication logic so cleanup targets the
+            # same physical bucket chosen for this owner/collection/type.
             item_owner = content["properties"].get("owner", "")
             item_collection = content.get("collection", "").removeprefix(f"{item_owner}_")
             item_eopf_type = content["properties"].get("eopf:type", "")
             bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
-            # For catalog bucket, data is already stored into href field (from an asset)
+            # Asset hrefs are already catalog-bucket paths at this stage.
             file_key = content["assets"][asset]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
                 logger.debug("Deleting catalog bucket asset %s from bucket=%s key=%s", asset, bucket_name, file_key)
@@ -140,7 +151,8 @@ class S3Manager:
             logger.debug("Asset %s is not present in existing item %s", asset_name, item.get("id"))
             return False, -1
 
-        # check if the new s3_href is the same as the existing one
+        # For updates, changing an existing asset path would leave the old object
+        # ownership ambiguous, so only same-path updates are accepted.
         try:
             item_s3_path = existing_asset["href"]
         except KeyError as exc:
@@ -168,7 +180,8 @@ class S3Manager:
         bucket = s3_key_array[2]
         key_path = "/".join(s3_key_array[3:])
 
-        # check the presence of the key
+        # Once the path is validated, ask object storage if the key exists and
+        # retrieve its size for diagnostics and future metadata use.
         try:
             logger.debug("Checking S3 key existence for asset %s: bucket=%s key=%s", asset_name, bucket, key_path)
             s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
@@ -194,7 +207,12 @@ class S3Manager:
         request_ids: dict,
         item: dict,
     ) -> dict:
-        """Update the JSON body of a feature with new stac extensions and owner information.
+        """
+        Update a STAC item before it is forwarded to pgstac.
+
+        The method enforces create/update semantics, adds RS Server-required STAC
+        extensions, stores ownership in properties, and rewrites the collection id
+        to the internal owner-prefixed form used by pgstac.
 
         Args:
             content (dict): The content to update.
@@ -203,10 +221,7 @@ class S3Manager:
             item (dict): The item from the catalog (if exists) to update.
 
         Returns:
-            dict: The updated content.
-            list: List of files to delete from the S3 bucket
-
-
+            The updated item body.
         """
         collection_ids = request_ids.get("collection_ids", [])
         user = request_ids.get("owner_id")
@@ -225,7 +240,8 @@ class S3Manager:
         collection_id = collection_ids[0]
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
-        # 3 - include new stac extensions if not present
+        # Ensure catalog items always carry the extensions that downstream
+        # response/download/checksum logic expects.
         for new_stac_extension in [
             "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
@@ -235,7 +251,8 @@ class S3Manager:
                 content["stac_extensions"].append(new_stac_extension)
                 logger.debug("Added STAC extension %s to item %s", new_stac_extension, content.get("id"))
 
-        # 5 - add owner data
+        # pgstac stores collections globally, so collection ids are internally
+        # namespaced by owner while the public API hides that prefix.
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
         logger.debug("Updated item %s collection to %s", content.get("id"), content.get("collection"))
@@ -243,7 +260,12 @@ class S3Manager:
         return content
 
     def generate_presigned_url(self, content: dict, path: str) -> tuple[str, int]:
-        """This function is used to generate a time-limited download url
+        """
+        Generate a time-limited S3 download URL for a catalog asset.
+
+        The requested asset id is extracted from the download route. The returned
+        URL is intended for an HTTP redirect and should not be logged because it
+        contains temporary access credentials.
 
         Args:
             content (dict): STAC description of the item to generate an URL for
@@ -253,8 +275,8 @@ class S3Manager:
             str: Presigned URL
             int: HTTP return code
         """
-        # Assume that pgstac already selected the correct asset id
-        # just check type, generate and return url
+        # pgstac has already resolved the item; the route tail selects the asset
+        # for which we need to produce the redirect URL.
         path_splitted = path.split("/")
         asset_id = path_splitted[-1]
         item_id = path_splitted[-3]
@@ -312,6 +334,7 @@ class S3Manager:
         Notes:
             - Handles exceptions raised by `check_s3_key` and logs errors without stopping iteration.
             - For folder/prefix assets, the size returned is ignored (-1), but existence is still validated.
+            - Cheap local validation runs before parallel S3 checks so invalid payloads fail fast.
         """
         # (don't do anything if in local mode)
         if self.is_catalog_local_mode:
@@ -378,7 +401,12 @@ class S3Manager:
         return can_publish
 
     def update_assets_checksums(self, content: dict) -> dict:
-        """Update each asset with the checksum returned by S3 GetObjectAttributes."""
+        """
+        Update each asset with checksum data returned by S3 GetObjectAttributes.
+
+        Missing checksum metadata is non-fatal: publication can continue because
+        object presence was already checked separately.
+        """
         if self.is_catalog_local_mode:
             logger.debug("Skipping checksum update in local catalog mode")
             return content
@@ -419,7 +447,12 @@ class S3Manager:
         return content
 
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
-        """Used to clear specific files from temporary bucket or from catalog bucket.
+        """
+        Delete S3 files collected during catalog request processing.
+
+        Deletion happens after the catalog mutation succeeds. Failures are logged
+        but do not roll back the catalog response, because a secondary object
+        storage lifecycle can still clean up orphaned objects.
 
         Args:
             s3_files_to_be_deleted (list[str]): list of files to delete from the S3 bucket

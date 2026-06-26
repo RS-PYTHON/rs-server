@@ -242,11 +242,23 @@ class Staging(
     def _parse_item_collection(self, item_value: dict) -> FeatureCollectionModel | None:
         """
         Convert a Feature or FeatureCollection dict into a FeatureCollectionModel.
+
+        Staging accepts both a single STAC Feature and a FeatureCollection. A single
+        Feature is wrapped in a FeatureCollection so the rest of the workflow can
+        process one normalized shape.
+
+        Args:
+            item_value: Raw STAC payload coming from the execute body or a resolved href.
+
+        Returns:
+            A validated FeatureCollectionModel, or None when the payload type is unsupported.
         """
         item_type = item_value.get("type")
         self.logger.debug("Parsing staging input for job %s; item_type=%s", self.job_id, item_type)
 
         if item_type == "Feature":
+            # Normalize single-item requests so downstream code only has to handle
+            # FeatureCollectionModel.features.
             collection = FeatureCollectionModel(
                 type="FeatureCollection",
                 features=[Feature.model_validate(item_value)],
@@ -256,6 +268,8 @@ class Staging(
 
         if item_type == "FeatureCollection":
             collection = FeatureCollectionModel.model_validate(item_value)
+            # Some tests patch model_validate with a generic Mock; keep logging defensive
+            # so observability never changes the function's validation behavior.
             features = collection.features if isinstance(collection.features, list) else []
             self.logger.info("Parsed %d features for staging job %s", len(features), self.job_id)
             self.logger.debug("Parsed feature ids for job %s: %s", self.job_id, [f.id for f in features])
@@ -295,6 +309,8 @@ class Staging(
         if asset_names:
             for feature in item_collection.features:
                 before_assets = set(feature.assets.keys())
+                # `asset_names` is an optional user selection: keep the feature, but
+                # narrow its assets to the requested subset before scheduling Dask tasks.
                 feature.assets = {key: value for key, value in feature.assets.items() if key in asset_names}
                 self.logger.debug(
                     "Filtered assets for job %s feature %s from %s to %s",
@@ -304,6 +320,8 @@ class Staging(
                     sorted(feature.assets.keys()),
                 )
 
+        # Features without assets cannot produce streaming tasks; dropping them here
+        # lets the job finish cleanly instead of failing later in Dask scheduling.
         item_collection.features = [feature for feature in item_collection.features if feature.assets]
         self.logger.info(
             "Prepared %d/%d features with assets for staging job %s",
@@ -327,6 +345,18 @@ class Staging(
     ) -> tuple[str, dict]:
         """
         Asynchronously execute the RSPY staging process.
+
+        The method performs the synchronous validation/preparation phase of a
+        staging request: resolving linked inputs, normalizing the STAC payload,
+        filtering assets, checking catalog state, and finally scheduling the
+        background streaming workflow.
+
+        Args:
+            data: Validated pygeoapi execute payload.
+
+        Returns:
+            MIME type and response body containing the current job status mapped
+            to the generated job id.
         """
         self.logger.info("Starting staging execution for job %s", self.job_id)
         self.logger.debug("Raw execute input for job %s: %s", self.job_id, data)
@@ -1145,8 +1175,21 @@ class Staging(
             raise RuntimeError(f"{e}") from e
 
     def get_refresh_token(self, external_auth_config: ExternalAuthenticationConfig) -> RefreshTokenData:
-        """Handles authentication token retrieval and refresh."""
-        # Find or create a token
+        """
+        Find or create the shared refresh-token holder for an external station.
+
+        Token holders are shared between concurrent staging jobs for the same
+        station. The subscriber count prevents the background refresh mechanism
+        from keeping unused tokens alive.
+
+        Args:
+            external_auth_config: Authentication settings for the external station.
+
+        Returns:
+            A RefreshTokenData instance with a valid access token.
+        """
+        # Find or create a token while holding the global list lock. Individual
+        # token values are protected by their own padlock inside RefreshTokenData.
         self.logger.info("Getting refresh token for station %s", external_auth_config.station_id)
         with self.station_token_list_lock:
             for refresh_token in self.station_token_list:
@@ -1175,9 +1218,12 @@ class Staging(
     ) -> tuple[str, dict]:
         """
         Method used to trigger dask distributed streaming process.
-        It creates dask client object, gets the external data sources access token
-        Prepares the tasks for execution
-        Manage eventual runtime exceptions
+
+        It prepares one AssetInfo per asset, connects to Dask, loads the external
+        station authentication needed by those assets, and delegates task monitoring
+        to `manage_dask_tasks`. The Dask connection is intentionally created before
+        token retrieval so we do not call external stations if the execution
+        backend is unavailable.
 
         Args:
             catalog_collection (str): Name of the catalog collection.
@@ -1195,8 +1241,9 @@ class Staging(
         )
         self.logger.debug("Starting main loop")
 
-        # Step 1: Validate and prepare streaming tasks
-        # Process each feature by initiating the streaming download of its assets to the final bucket.
+        # Step 1: Convert each STAC asset into a concrete streaming task
+        # description. This mutates the feature asset hrefs to their final S3
+        # locations, so the later catalog publish uses the staged paths.
         try:
             for feature in self.stream_list:
                 assets = getattr(feature, "assets", {})
@@ -1230,7 +1277,9 @@ class Staging(
             self.logger.info("There are no assets to stage. Exiting....")
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
-        # Step 2: Determine the domains and validate them
+        # Step 2: Determine which external domains require station tokens.
+        # External S3 assets already carry S3 credentials from config, so they do
+        # not need a station token and are represented by the synthetic "s3" domain.
         domains = list(
             {asset.domain for asset in self.assets_info if asset.origin_service != "s3"},
         )
@@ -1240,8 +1289,8 @@ class Staging(
             domains = ["s3"]
         self.logger.debug("Authentication domains for job %s after normalization: %s", self.job_id, domains)
 
-        # Step 3: Connect to dask cluster BEFORE retrieving the token, because an unnecessary request would be sent
-        # to the external station if the connection to the dask cluster fails
+        # Step 3: Connect to Dask before retrieving station tokens. This avoids
+        # unnecessary external-auth calls if the execution backend is unavailable.
         try:
             dask_client = self.dask_cluster_connect()
         except RuntimeError as run_time_error:
@@ -1249,10 +1298,8 @@ class Staging(
             return self.log_job_execution(JobStatus.failed, 0, str(run_time_error))
 
         refresh_tokens: dict[str, RefreshTokenData] = {}
-        # Step 4: Retrieve the authentication token (only if dask connection succeeded)
+        # Step 4: Retrieve station tokens only for domains that require them.
         try:
-            # If domain is s3, it means we are going to stage from an external s3 only,
-            # for which we don't need a token
             for domain in domains:
                 self.logger.debug("Preparing authentication for job %s domain %s", self.job_id, domain)
                 if domain not in ("s3", "FTP"):
@@ -1261,7 +1308,8 @@ class Staging(
                         refresh_tokens[domain] = self.get_refresh_token(external_auth_config)
                 elif domain == "FTP" and not LOCAL_MODE:
                     self.logger.info("Staging from FTP server, no token retrieval needed")
-                    # On FTP and cluster mode, check api key roles for FTP staging
+                    # FTP staging does not use bearer tokens, but in cluster mode
+                    # each unique FTP station still requires `staging_download`.
                     from rs_server_common.authentication.authentication import (  # pylint: disable=C0415
                         auth_validation,
                     )
@@ -1282,8 +1330,8 @@ class Staging(
 
         self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
 
-        # Step 5: Manage dask tasks in a separate thread
-        # starting a thread for managing the dask callbacks
+        # Step 5: Manage Dask callbacks in a worker thread so the FastAPI event
+        # loop remains responsive while `as_completed` waits for task results.
         self.logger.debug("Starting tasks monitoring thread")
         try:
             await asyncio.to_thread(

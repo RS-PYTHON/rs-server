@@ -79,6 +79,10 @@ class DataLifecycle:
         """
         Return a fake request instance to work with the database.
 
+        Data lifecycle calls stac-fastapi clients directly instead of going
+        through HTTP. Those clients still expect a Request with app/scope data,
+        so this helper builds the minimal request shape they need.
+
         Args:
             extra_scope: Extra scope values
         """
@@ -95,7 +99,7 @@ class DataLifecycle:
         return request
 
     async def cancel(self):
-        """Cancel the periodic task"""
+        """Cancel the periodic cleanup task and wait until it acknowledges cancellation."""
         self.cancel_flag = True
         if not self.periodic_task:
             self.logger.debug("Data lifecycle cancel requested but no periodic task exists")
@@ -110,7 +114,7 @@ class DataLifecycle:
             pass
 
     def run(self):
-        """Trigger the periodic task in a distinct thread and exit."""
+        """Schedule the periodic cleanup loop when lifecycle is enabled."""
         if (self.period >= 0) and (not self.cancel_flag):
             self.logger.info("Starting data lifecycle periodic task; period=%s seconds", self.period)
             self.periodic_task = asyncio.create_task(self._periodic_loop())
@@ -122,7 +126,12 @@ class DataLifecycle:
             )
 
     async def _periodic_loop(self):
-        """Run the periodic task in an infinite loop."""
+        """
+        Run lifecycle cleanup repeatedly at a fixed cadence.
+
+        Runtime is subtracted from the configured period so cleanup runs close
+        to the configured interval without overlapping executions.
+        """
         # Infinite loop
         while not self.cancel_flag:
             start_time = time.time()
@@ -159,6 +168,11 @@ class DataLifecycle:
         """
         Run the periodic task once.
 
+        The cleanup first marks expired items as unpublished with empty assets in
+        pgstac, then deletes the corresponding objects from S3. That ordering
+        prevents clients from seeing downloadable assets after an item has been
+        logically expired.
+
         Args:
             genuine_request: request coming from the http endpoint. Only in local mode and from the pytests.
         """
@@ -194,7 +208,8 @@ class DataLifecycle:
             self.logger.debug("No items to clean")
             return
 
-        # Order assets by key=bucket name and value=list of bucket keys
+        # Group asset keys by bucket so the final delete call can be a single
+        # batch per object-storage credential set.
         bucket_info: dict[str, list[str]] = defaultdict(list)
 
         # Update each item locally and update bucket info
@@ -213,8 +228,9 @@ class DataLifecycle:
             },
         )
 
-        # First, update the items in the stac database using a bulk transaction.
-        # We need one transaction by collection name, run in parallel.
+        # First update pgstac, one bulk transaction per collection. pgstac bulk
+        # routes use collection_id from the request path, so each collection gets
+        # its own fake request scope.
         async with asyncio.TaskGroup():
             for col_name, col_items in items_by_collection.items():
 
@@ -242,10 +258,8 @@ class DataLifecycle:
                 )
                 self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, bulk_request))
 
-        # Then, delete all files from the buckets in parallel.
-        # NOTE: if ever this fails, a secondary data lifecycle is set on OVH Object Storage side to clean up
-        # automatically the files on the buckets.
-        # This is done 24 hours after the expiration delay set on the config map.
+        # Then delete all files from object storage. If this fails, the external
+        # object-storage lifecycle is expected to perform eventual cleanup.
         bucket_files = []
 
         for bucket_name, bucket_keys in bucket_info.items():
@@ -267,6 +281,10 @@ class DataLifecycle:
     def _update_local_item(self, item: Item, now: str, bucket_info: dict[str, list[str]]):
         """
         Update a single item instance locally and update bucket info.
+
+        The item mutation is done in memory before the bulk transaction. Asset
+        hrefs are copied into `bucket_info` first so files can be deleted after
+        the database update succeeds.
 
         Args:
             item: Item to clean

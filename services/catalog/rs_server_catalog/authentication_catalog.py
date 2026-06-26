@@ -37,6 +37,10 @@ def get_authorisation(
     """
     Check if the user is authorized to access collections.
 
+    Authorization roles follow the pattern
+    `rs_catalog_<owner_id>:<collection_id>_<read|write|download>`. Wildcards are
+    accepted for owner or collection. In local mode, authorization is bypassed.
+
     Args:
         requested_col_ids (list): IDs of the requested collections.
         auth_roles (list): The list of authorisations for the user_login.
@@ -71,8 +75,8 @@ def get_authorisation(
         )
         return True
 
-    # Parse authorization roles to retrieve the role owner_id, collection_id and action.
-    # Role format is: rs_catalog_<owner_id>:<collection_id>_<read|write|download>
+    # Parse only catalog roles. Other roles may exist in the token and are
+    # ignored here so authorization decisions stay scoped to the catalog.
     auth_role_pattern = (
         r"rs_catalog_(?P<owner_id>.*(?=:)):"  # Group owner_id
         r"(?P<collection_id>.+)_"  # Group collection_id
@@ -99,7 +103,8 @@ def get_authorisation(
         requested_col_ok = False
         for auth_role in parsed_auth_roles:
 
-            # Remove the owner prefix from the requested collection id, if any
+            # Some callers already pass pgstac collection ids (`owner_collection`).
+            # Strip that prefix before matching against public role collection ids.
             if owner_prefix:
                 requested_col_id = _requested_col_id.removeprefix(f"{requested_owner_id}_")
             else:
@@ -156,6 +161,10 @@ def check_user_authorization(request_ids: dict) -> None:
     """
     Checks that current user/owner is allowed to do operations on catalog objects.
 
+    The request middleware may not know the owner until the body is inspected.
+    This helper resolves a missing owner first, then enforces write access in
+    cluster mode.
+
     Raises:
         HTTPException: When the user doesn't have the expected authorizations
     """
@@ -186,6 +195,10 @@ def check_user_authorization(request_ids: dict) -> None:
 
 def get_all_accessible_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:
     """Return the list of all collections accessible by the user calling it.
+
+    In cluster mode, the landing page and `/collections` response must hide
+    collections the caller cannot read. Local mode is handled by
+    `get_authorisation`.
 
     Args:
         collections (dict): List of all collections.

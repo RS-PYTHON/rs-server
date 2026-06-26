@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Openapi_core methods for OGC validation of the staging endpoints"""
+"""OpenAPI-core helpers for OGC validation of staging endpoints."""
 
 import json
 import os
@@ -45,7 +45,12 @@ logger = Logging.default(__name__)
 
 
 async def validate_request(request: Request) -> dict[Any, Any]:
-    """Validate an endpoint request according to the ogc specifications
+    """
+    Validate an endpoint request according to the OGC API Processes schema.
+
+    The raw body is passed to openapi-core because validation must run against
+    the same bytes received by FastAPI. The parsed dict is returned only after
+    schema validation succeeds.
 
     Args:
         request (Request): endpoint request
@@ -73,9 +78,11 @@ async def validate_request(request: Request) -> dict[Any, Any]:
 
 def validate_response(request: Request, data: dict, status_code=HTTP_200_OK):
     """
-    Validate an endpoint response according to the ogc specifications
-    (described as yaml schemas) - Raises an exception if the response
-    has an unvalid format
+    Validate an endpoint response according to the OGC API Processes schema.
+
+    A Starlette JSONResponse is built only for validation purposes, then wrapped
+    as an openapi-core response object. Validation errors are allowed to bubble
+    up to the caller so endpoint tests and middleware can report schema issues.
 
     Args:
         request (Request): input request

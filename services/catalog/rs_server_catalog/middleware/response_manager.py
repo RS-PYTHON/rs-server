@@ -100,8 +100,15 @@ def mask_internal_default_geometry_and_bbox(payload: Any) -> Any:
 
 
 class CatalogResponseManager:
-    """Class to process the Responses returned by stac-fastapi for the Catalog middleware.
-    Each type of Response is managed in one of the functions."""
+    """
+    Post-process responses returned by stac-fastapi.
+
+    The catalog request middleware rewrites user-facing routes into pgstac
+    internal routes. This response manager performs the reverse operation:
+    remove owner prefixes from ids/links, enforce authorization on generated
+    responses, create presigned download redirects, mask internal persistence
+    shims, and run deferred S3 cleanup after successful mutations.
+    """
 
     def __init__(
         self,
@@ -126,7 +133,13 @@ class CatalogResponseManager:
         request: Request,
         streaming_response: StreamingResponse,
     ) -> Response:
-        """Manage responses sent by stac-fastpi after dispatch and before sending it to the user.
+        """
+        Manage responses sent by stac-fastapi before returning them to the user.
+
+        Failed backend responses are converted to regular JSON responses because
+        a StreamingResponse body can only be consumed once. Successful responses
+        are dispatched to method/path-specific handlers for link adaptation and
+        side effects such as S3 cleanup.
 
         Args:
             request (Request): Original request sent to stac-fastapi
@@ -136,8 +149,9 @@ class CatalogResponseManager:
             Response: HTTP Response
         """
 
-        # Don't forward responses that fail.
-        # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
+        # Don't forward error StreamingResponses directly: after we read the body
+        # for logging/cleanup, the stream cannot be read again by the client.
+        # NOTE: 30x redirect responses are used by oauth2 authentication.
         status_code = streaming_response.status_code
         logger.info(
             "Managing catalog response for %s %s; status=%s",
@@ -156,6 +170,8 @@ class CatalogResponseManager:
                 status_code,
             )
             logger.debug("response: %d - %s", streaming_response.status_code, response_content)
+            # If pgstac rejected a create/update after files were staged, remove
+            # any catalog-bucket objects referenced by that rejected payload.
             await asyncio.to_thread(self.s3_manager(request).clear_catalog_bucket, response_content)
 
             # GET: '/catalog/queryables' when no collections in the catalog
@@ -220,10 +236,13 @@ class CatalogResponseManager:
         return response
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> GeoJSONResponse:
-        """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_ids.
-        to get these values, this function try to search them into the search query. If successful,
-        updates the response content by removing the owner_id from the collection_ids and adapt all links.
-        If not successful, does nothing and return the response.
+        """
+        Adapt `/catalog/search` results back to public catalog ids and links.
+
+        The search endpoint does not carry owner/collection path parameters, so
+        this method recovers them from the query/body when possible, removes
+        internal owner prefixes from collections, adapts item links, masks
+        internal null-geometry defaults and adds the STAC auth extension.
 
         Args:
             response (StreamingResponse): The response from the rs server.
@@ -250,7 +269,9 @@ class CatalogResponseManager:
             self.request_ids["owner_id"] = owner_id
             logger.debug("Search response owner inferred from filter: %s", owner_id)
 
-        # Remove owner_id from the collection name
+        # Search requests can target multiple collections. pgstac returns owner-
+        # prefixed collection ids, but public API responses must expose
+        # `owner:collection` links and unprefixed collection values.
         if "collections" in query:
             # Extract owner_id from the name of the first collection in the list
             self.request_ids["owner_id"] = self.request_ids["collection_ids"][0].split("_")[0]
@@ -265,6 +286,8 @@ class CatalogResponseManager:
         )
         content = adapt_links(content, "features")
         for collection_id in self.request_ids["collection_ids"]:
+            # Apply collection-specific link adaptation after the generic pass so
+            # feature links contain the public owner/collection path shape.
             content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
         content = mask_internal_default_geometry_and_bbox(content)
 
@@ -280,7 +303,11 @@ class CatalogResponseManager:
         response: StreamingResponse,
     ) -> JSONResponse | RedirectResponse:
         """
-        Manage download response and handle requests that should generate a presigned URL.
+        Manage download responses and generate presigned URL redirects.
+
+        stac-fastapi first resolves the item/asset. If the item exists and the
+        caller is authorized, the catalog service converts the asset href into a
+        short-lived S3 presigned URL and returns an HTTP redirect.
 
         Args:
             request (starlette.requests.Request): The request object.
@@ -318,7 +345,8 @@ class CatalogResponseManager:
             )
         content = await read_streaming_response(response)
         if content.get("code", True) != "NotFoundError":
-            # Only generate presigned url if the item is found
+            # Only generate a presigned URL if pgstac found the item; otherwise
+            # preserve the original NotFound response.
             logger.info("Generating download redirect for item %s", self.request_ids["item_id"])
             content, code = await asyncio.to_thread(
                 self.s3_manager(request).generate_presigned_url,
@@ -338,7 +366,11 @@ class CatalogResponseManager:
         request: Request,
         response: StreamingResponse,
     ) -> Response | JSONResponse:
-        """Remove the user name from objects and adapt all links.
+        """
+        Remove internal owner prefixes from GET responses and adapt links.
+
+        The body is read once, transformed to the public catalog representation,
+        and returned as a regular JSONResponse with the original status/headers.
 
         Args:
             request (Request): The client request.
@@ -359,7 +391,12 @@ class CatalogResponseManager:
         request: Request,
         content: Any,
     ) -> Any:
-        """Manage content of GET responses with a body
+        """
+        Transform a decoded GET response body into the public catalog shape.
+
+        Depending on the endpoint, this may update landing-page child links,
+        filter inaccessible collections, adapt item/collection links, enforce
+        read authorization, and add STAC authentication metadata.
 
         Args:
             request (Request): The client request.
@@ -398,8 +435,9 @@ class CatalogResponseManager:
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
 
-            # patch the catalog landing page with "rel": "child" link for each collection
-            # limit must be explicitely set, otherwise the default pgstac limit of 10 is used
+            # Add public child links for every collection visible to the caller.
+            # The limit must be explicit, otherwise pgstac returns only its
+            # default page size and the landing page would look incomplete.
             collections_resp = await self.client.all_collections(request=request, limit=1000)
             collections = get_all_accessible_collections(
                 collections_resp.get("collections", []),
@@ -437,8 +475,8 @@ class CatalogResponseManager:
                 len(content["collections"]),
             )
 
-            # The self link shall be EXACTLY the same as the requested URL
-            # Remove query parameters
+            # The self link must be stable and equal to the collection endpoint,
+            # not to pgstac's paginated URL including query parameters.
             item = next((i for i in content["links"] if i.get("rel") == "self"), None)
             if item:
                 item["href"] = urlunparse(urlparse(item["href"])._replace(query=""))
@@ -467,9 +505,8 @@ class CatalogResponseManager:
             content = adapt_object_links(content, self.request_ids["owner_id"])
             logger.debug("Adapted collection object links for owner %s", self.request_ids["owner_id"])
 
-            # Self-links shall match the requested URL, even in implicit mode (owner not specified)
-            # Example of implicit path: /catalog/collections/SENTINEL-2
-            # The owner id deduced from the caller's identity
+            # Self-links shall match the requested URL, even in implicit mode
+            # where the owner was inferred from the authenticated user.
             if request.url.path.replace(":", "_") != request.scope["path"] and isinstance(content, dict):
                 # Find a link object with {"rel": "self"} inside the "links" list
                 self_link = next((s for s in (content.get("links") or []) if s.get("rel") == "self"), None)
@@ -505,7 +542,11 @@ class CatalogResponseManager:
 
     async def manage_put_post_response(self, request: Request, response: StreamingResponse):
         """
-        Manage put or post responses.
+        Manage POST/PUT responses after catalog mutations.
+
+        Successful item writes trigger deferred S3 cleanup for replaced/deleted
+        files, remove internal owner prefixes from links, and mask internal
+        default geometry/bbox values before the client sees the response.
 
         Args:
             response (starlette.responses.StreamingResponse): The response object received.
@@ -557,7 +598,12 @@ class CatalogResponseManager:
         return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
 
     async def manage_delete_response(self, request: Request, response: StreamingResponse, user: str) -> Response:
-        """Change the name of the deleted collection by removing owner_id.
+        """
+        Adapt DELETE responses and run deferred S3 cleanup.
+
+        pgstac returns internal owner-prefixed collection ids. The public
+        response removes that prefix, then deletes the S3 files collected during
+        request pre-processing now that catalog deletion succeeded.
 
         Args:
             response (StreamingResponse): The client response.
