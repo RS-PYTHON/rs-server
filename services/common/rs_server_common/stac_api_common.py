@@ -1438,13 +1438,16 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
     def get_sort_key(item):
         # Check if the attribute exists in properties, else use item directly
         if hasattr(item.properties, attribute.replace("properties.", "")):
-            return getattr(item.properties, attribute.replace("properties.", ""))
+            value =  getattr(item.properties, attribute.replace("properties.", ""))
+            return (value is None, value)
         if hasattr(item, attribute):
-            return getattr(item, attribute)
+            value = getattr(item, attribute)
+            return (value is None, value)
         # Otherwise, check if the attribute exists in any asset
         for asset in item.assets.values():
             if hasattr(asset, attribute):
-                return getattr(asset, attribute)
+                value = getattr(asset, attribute)
+                return (value is None, value)
         raise AttributeError(f"Attribute '{attribute}' not found in item")
 
     # Sort the features
