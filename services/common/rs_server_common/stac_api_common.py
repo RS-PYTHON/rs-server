@@ -85,7 +85,7 @@ from shapely.geometry import (
     shape,
 )
 from stac_fastapi.api.models import Limit
-from stac_fastapi.extensions.core.filter.request import FilterLang
+from stac_fastapi.extensions.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
 from stac_pydantic.shared import BBox
 

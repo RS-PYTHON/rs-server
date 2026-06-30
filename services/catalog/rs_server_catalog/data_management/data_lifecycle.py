@@ -32,7 +32,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHand
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
-from stac_fastapi.extensions.third_party import bulk_transactions
+from stac_fastapi.extensions import bulk_transactions
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient
 from stac_fastapi.types.stac import Item, ItemCollection
