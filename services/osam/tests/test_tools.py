@@ -55,7 +55,7 @@ def test_singleton_initial_state_and_single_file_load():
     singleton.get_s3_bucket_configuration(S3_EXPIRATION_BUCKET_CSV_FILE)
 
     assert singleton.config_file_path == S3_EXPIRATION_BUCKET_CSV_FILE
-    assert len(singleton.bucket_configuration_csv) == 8
+    assert len(singleton.bucket_configuration_csv) == 9
     assert singleton.last_fingerprint != (0, 0, 0)
 
 
@@ -160,6 +160,7 @@ def test_load_configmap_data_success(monkeypatch):
 
     expected_rows = [
         ["*", "*", "*", "100", "rspython-ops-catalog"],
+        ["copernicus", "ax___fro_ax", "*", "120", "prip-rs-sentinel-3-s03-aux"],
         ["copernicus", "s1-l1", "*", "100", "rspython-ops-catalog-copernicus-s1-l1"],
         ["copernicus", "s1-aux", "*", "100", "rspython-ops-catalog-copernicus-s1-aux"],
         ["copernicus", "s1-aux", "orbsct", "100", "rspython-ops-catalog-copernicus-s1-aux-infinite"],
@@ -170,7 +171,7 @@ def test_load_configmap_data_success(monkeypatch):
     ]
 
     assert result == expected_rows
-    assert len(result) == 8
+    assert len(result) == 9
     assert result[0][4] == "rspython-ops-catalog"
     assert any(row[0] == "paul" for row in result)
 
@@ -257,6 +258,7 @@ def test_get_keycloak_user_from_description_returns_none_when_prefix_mismatch():
 @pytest.mark.parametrize(
     "role, expected",
     [
+        ("rs_catalog_copernicus:ax___fro_ax_download", ("copernicus", "ax___fro_ax", "download")),
         ("rs_catalog_user1:*_download", ("user1", "*", "download")),
         ("rs_catalog_*:*_read", ("*", "*", "read")),
         ("rs_catalog_DemoUser:*_read", ("DemoUser", "*", "read")),

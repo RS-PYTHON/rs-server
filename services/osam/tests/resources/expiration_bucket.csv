@@ -1,4 +1,5 @@
 *,*,*,100,rspython-ops-catalog
+copernicus,ax___fro_ax,*,120,prip-rs-sentinel-3-s03-aux
 copernicus,s1-l1,*,100,rspython-ops-catalog-copernicus-s1-l1
 copernicus,s1-aux,*,100,rspython-ops-catalog-copernicus-s1-aux
 copernicus,s1-aux,orbsct,100,rspython-ops-catalog-copernicus-s1-aux-infinite
