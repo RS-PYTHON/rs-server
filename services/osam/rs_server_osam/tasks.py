@@ -60,6 +60,7 @@ S3_ACCESS_RIGHTS_TEMPLATE = {"Version": "%date%", "Statement": list[dict[str, Se
 WILDCARD_CHAR = "*"
 
 BLOCK_LIST_BUCKETS = {
+    "Sid": "ListBucketSentinel",
     "Effect": "Allow",
     "Action": ["s3:ListBucket"],
     "Resource": "arn:aws:s3:::%bucketholder%",
@@ -68,7 +69,7 @@ BLOCK_LIST_BUCKETS = {
 
 BLOCK_LIST_READ_TEMPLATE = {
     "Effect": "Allow",
-    "Action": ["s3:GetBucketLocation", "s3:ListBucket", "s3:ListMultipartUploadParts", "s3:ListBucketMultipartUploads"],
+    "Action": ["s3:ListMultipartUploadParts"],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
 
@@ -76,10 +77,7 @@ BLOCK_LIST_READ_DOWNLOAD_TEMPLATE = {
     "Effect": "Allow",
     "Action": [
         "s3:GetObject",
-        "s3:GetBucketLocation",
-        "s3:ListBucket",
         "s3:ListMultipartUploadParts",
-        "s3:ListBucketMultipartUploads",
     ],
     "Resource": "arn:aws:s3:::%placeholder%*",
 }
@@ -90,13 +88,17 @@ BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE = {
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject",
-        "s3:ListBucket",
         "s3:ListMultipartUploadParts",
-        "s3:ListBucketMultipartUploads",
         "s3:AbortMultipartUpload",
-        "s3:GetBucketLocation",
     ],
     "Resource": "arn:aws:s3:::%placeholder%*",
+}
+
+BLOCK_BUCKET_LEVEL_ACTIONS_TEMPLATE = {
+    "Sid": "BucketLevelActions",
+    "Effect": "Allow",
+    "Action": ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+    "Resource": "arn:aws:s3:::%placeholder%",
 }
 
 logger = Logging.default(__name__)
@@ -488,6 +490,11 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
         (STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST, BLOCK_LIST_WRITE_DOWNLOAD_TEMPLATE),
     ]
     statements: list[dict[str, Any]] = []
+
+    # Block for bucket level actions
+    template_bucketlevelactions: dict[str, Any] = copy.deepcopy(BLOCK_BUCKET_LEVEL_ACTIONS_TEMPLATE)
+    template_bucketlevelactions["Resource"] = []
+
     for key, block in access_rights_list_keys:  # pylint: disable=too-many-nested-blocks
         if not s3_rights.get(key):
             continue
@@ -501,6 +508,11 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                 continue
             bucket = f"arn:aws:s3:::{parts[0]}"
             owner_collection = f"{parts[1]}/{parts[2]}"
+
+            # Add the bucket to the bucket level actions statement
+            if bucket not in template_bucketlevelactions["Resource"]:
+                template_bucketlevelactions["Resource"].append(bucket)
+
             # check in the current statements
             found_in_template_bucket = False
             for stmt in statements:
@@ -526,9 +538,47 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
         template["Resource"] = resources
         statements.append(template)
 
+    # Final list of statements to be added to the final policy
+    final_statements: list[dict[str, Any]] = []
+
+    # NOTE: in the following code, the keys of the dictionary are originally lists
+    # (the value of stmt["Condition"]["StringLike"]["s3:prefix"]), BUT, since lists
+    # cannot be used as dictionary keys, we convert them to tuples, after applying sort()
+    # to ensure that the order of elements does not affect the key.
+    merged_statements: dict[tuple, dict] = {}
+
+    # Postprocessing of the statements list to compress it
+    for stmt in statements:
+        # Check if the statement is ListBucket, and if so compute its key
+        stmt_listbucket_key = None
+        if stmt["Action"] == BLOCK_LIST_BUCKETS["Action"]:
+            # stmt_listbucket_key = tuple(stmt["Condition"]["StringLike"]["s3:prefix"].sort())
+            stmt_listbucket_key = tuple(sorted(stmt["Condition"]["StringLike"]["s3:prefix"]))
+
+        # Case 1: another statement than ListBucket => directly add it to the final statements list
+        if not stmt_listbucket_key:
+            final_statements.append(stmt)
+        # Case 2: a ListBucket statement with the same condition already exists
+        # => we add its resources to the existing statement
+        elif stmt_listbucket_key in merged_statements:
+            if not isinstance(merged_statements[stmt_listbucket_key]["Resource"], list):
+                merged_statements[stmt_listbucket_key]["Resource"] = [
+                    merged_statements[stmt_listbucket_key]["Resource"],
+                ]
+            merged_statements[stmt_listbucket_key]["Resource"].append(stmt["Resource"])
+        # Case 3: a ListBucket statement with a new condition => new entry to the merged_statements dict
+        else:
+            merged_statements[stmt_listbucket_key] = stmt
+
+    # Add the merged "ListBucket" statements to the final statements list
+    final_statements.extend(merged_statements.values())
+
+    # Add the bucket level actions statement
+    final_statements.append(template_bucketlevelactions)
+
     # Fill in main access policy template
     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
     final_policy["Version"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    final_policy["Statement"] = statements
+    final_policy["Statement"] = final_statements
     logger.info(json.dumps(final_policy, indent=2))
     return final_policy
