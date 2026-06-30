@@ -212,16 +212,31 @@ class EodagProvider(Provider):
                 },
             )
 
-        if date_time := kwargs.pop("ContentDate", False):
-            # Since now both for files and sessions, time interval is optional, map it if provided.
-            fixed = date_time
-            print("FIXED", fixed)
+        date_time = kwargs.pop("ContentDate", None)
+        if date_time:
+            fixed = start = end = None
+
+            if isinstance(date_time, str):
+                # Interval: "start/end"
+                if "/" in date_time:
+                    start, end = date_time.split("/", 1)
+                else:
+                    # Single instant
+                    fixed = date_time
+
+            else:
+                # Tuple/list: (fixed, start, end)
+                fixed, start, end = (
+                    str(date) if date else None
+                    for date in date_time
+                )
+
             mapped_search_args.update(
                 {
                     "DatetimeStart": fixed,
-                    # "Start": start,
-                    # "End": end,
-                },
+                    "Start": start,
+                    "End": end,
+                }
             )
 
         date_time = kwargs.pop("ContentDate", None)
