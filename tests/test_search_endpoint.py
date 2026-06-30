@@ -1802,6 +1802,16 @@ class TestFeatureCollectionOdataStacMapping:
                 "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_CONTAINS(INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'), published)"
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2025-04-01T00:00:00.000Z and PublicationDate lt 2025-04-02T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
         ],
         indirect=["fastapi_app"],
         ids=[
@@ -1820,6 +1830,7 @@ class TestFeatureCollectionOdataStacMapping:
             "t_equals",
             # "t_disjoint",
             "t_intersects",
+            "t_contains",
         ],
     )
     @responses.activate

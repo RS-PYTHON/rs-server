@@ -95,6 +95,62 @@ def parse_dtrange(  # noqa: C901 # pylint: disable=too-many-branches
     return (s, e)
 
 
+def extract_interval(args):
+    """extract literal interval and its argument position."""
+    for index, a in enumerate(args):
+        if not (isinstance(a, dict) and "interval" in a):
+            continue
+
+        interval = a["interval"]
+
+        if isinstance(interval, list) and interval and isinstance(interval[0], str):
+            return index, a
+
+    # Handle simple timestamp literal operators such as t_before
+    for index, a in enumerate(args):
+        if isinstance(a, str):
+            return index, a
+
+    raise ValueError(f"No literal interval in args: {args}")
+
+
+def extract_properties(args):
+    """extract property"""
+    props = [a for a in args if isinstance(a, dict) and "property" in a]
+
+    if not props:
+        for a in args:
+            if isinstance(a, dict) and "interval" in a and isinstance(a["interval"], list):
+                props.extend(p for p in a["interval"] if isinstance(p, dict) and "property" in p)
+
+    if not props:
+        raise ValueError(f"No temporal property in args: {args}")
+
+    return props
+
+
+def swap_temporal_sides(operation: str) -> str:
+    """Swap left and right temporal operands in an operation template."""
+    operation = (
+        operation.replace("ll", "__LEFT_LOW__")
+        .replace("lh", "__LEFT_HIGH__")
+        .replace("rl", "ll")
+        .replace("rh", "lh")
+        .replace("__LEFT_LOW__", "rl")
+        .replace("__LEFT_HIGH__", "rh")
+    )
+    for right in ("rl", "rh"):
+        for left in ("ll", "lh"):
+            operation = (
+                operation.replace(f"{right} <= {left}", f"{left} >= {right}")
+                .replace(f"{right} >= {left}", f"{left} <= {right}")
+                .replace(f"{right} < {left}", f"{left} > {right}")
+                .replace(f"{right} > {left}", f"{left} < {right}")
+                .replace(f"{right} = {left}", f"{left} = {right}")
+            )
+    return operation
+
+
 def parse_interval(interval: str) -> timedelta:
     """parse interval"""
     match = re.match(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", interval.upper())
@@ -111,11 +167,16 @@ def temporal_op_query(op: str, args: list[dict], temporal_mapping: dict[str, str
     if not temporal_mapping:
         raise ValueError("Undefined temporal property mapping")
 
-    props: list[dict] = args[0]["interval"] if "interval" in args[0].keys() else [args[0]]
-    rrange = parse_dtrange(args[1])
+    props = extract_properties(args)
+    interval_position, interval = extract_interval(args)
+    rrange = parse_dtrange(interval)
+
+    operation = temporal_operations[op.lower()]
+    if interval_position == 0:
+        operation = swap_temporal_sides(operation)
+
     outq = (
-        temporal_operations[op.lower()]
-        .replace("ll", temporal_mapping[props[0]["property"]])
+        operation.replace("ll", temporal_mapping[props[0]["property"]])
         .replace("lh", temporal_mapping[props[1 if len(props) > 1 else 0]["property"]])
         .replace("rl", strftime_millis(rrange[0]))
         .replace("rh", strftime_millis(rrange[1]))
