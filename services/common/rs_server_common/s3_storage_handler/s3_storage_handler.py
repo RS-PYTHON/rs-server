@@ -1183,6 +1183,8 @@ retried for %s times. Aborting",
             auth=auth,
         )
 
+        self.logger.info(f"url={stream_url} - auth={auth} => request={request}")
+
         # Start streaming with formatted request
         self.s3_streaming_upload(request, trusted_domains, bucket, key, max_requests_per_minute)
 
