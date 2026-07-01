@@ -212,34 +212,7 @@ class EodagProvider(Provider):
                 },
             )
 
-        date_time = kwargs.pop("ContentDate", None)
-        if date_time:
-            fixed = start = end = None
-
-            if isinstance(date_time, str):
-                # Interval: "start/end"
-                if "/" in date_time:
-                    start, end = date_time.split("/", 1)
-                else:
-                    # Single instant
-                    fixed = date_time
-
-            else:
-                # Tuple/list: (fixed, start, end)
-                fixed, start, end = (
-                    str(date) if date else None
-                    for date in date_time
-                )
-
-            mapped_search_args.update(
-                {
-                    "DatetimeStart": fixed,
-                    "Start": start,
-                    "End": end,
-                }
-            )
-
-        date_time = kwargs.pop("ContentDate", None)
+        date_time = kwargs.pop("DatetimeStart", None)
         if date_time:
             fixed = start = end = None
 
