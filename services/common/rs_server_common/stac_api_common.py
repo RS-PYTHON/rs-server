@@ -304,7 +304,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # Because of that, we do not perform additional checks for existing summaries
                 if (query := collection.get("query")) and (summaries := build_summaries(self.service, query)):
                     collection["summaries"] = summaries
-            collections: dict[str, dict] = {"collections": all_collections, "links": []}
+            collections: dict[str, list] = {"collections": all_collections, "links": []}
             return collections
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
