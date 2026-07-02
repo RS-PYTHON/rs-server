@@ -1097,8 +1097,6 @@ def test_s3_streaming_upload():
         local directories.
 
     Args:
-        mocker: Pytest mocker fixture used for patching and stubbing during tests.
-
     Raises:
         AssertionError: If any part of the test fails.
     """

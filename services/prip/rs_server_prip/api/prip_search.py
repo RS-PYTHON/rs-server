@@ -130,6 +130,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific PRIP collection and access type.
 
     Args:
+        request (Request): Incoming HTTP request used for authentication.
         collection_id (str): Used to find the PRIP station from the RSPY_PRIP_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
@@ -207,6 +208,7 @@ async def get_prip_collection_items(
     the items based on defined query parameters.
 
     Args:
+        request (Request): Incoming HTTP request used for authentication and routing.
         collection_id (str): PRIP collection ID. Must be a valid collection identifier
                              (e.g., 'ins_s1').
         bbox (BBoxType, optional): Bounding box filter as four or six numbers
@@ -277,10 +279,9 @@ async def get_prip_collection_specific_item(
     validate access and return item information.
 
     Args:
-    - collection_id (str): PRIP collection ID. Must be a valid collection identifier
-            (e.g., 'ins_s1').
-    - item_id (str): PRIP item ID. Must be a valid item identifier
-            (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
+        request (Request): Incoming HTTP request used for authentication and routing.
+        collection_id (str): PRIP collection ID. Must be a valid collection identifier (e.g., 'ins_s1').
+        item_id (str): PRIP item ID. Must be a valid item identifier.
 
     Returns:
     - dict: A JSON object containing details of the specified item, or an error

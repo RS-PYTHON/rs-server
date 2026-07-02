@@ -103,6 +103,7 @@ def set_updated_timestamp_to_now(stac_object: dict, is_item: bool = True) -> dic
 
     Args:
         stac_object (dict): The object to be updated.
+        is_item (bool): If True, the 'updated' field is set inside 'properties'; otherwise at the root level.
 
     Returns:
         dict: The updated object.

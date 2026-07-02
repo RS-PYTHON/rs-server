@@ -95,6 +95,8 @@ def test_handle_exceptions_middleware(client, mocker, rfc7807: bool = False):
     Test that HandleExceptionsMiddleware handles and logs errors as expected.
 
     Args:
+        client: pytest fixture providing the FastAPI TestClient instance.
+        mocker: pytest-mock fixture for spying on and patching function calls.
         rfc7807 (bool): If true, the returned content is compliant with RFC 7807. This is used by pygeoapi/ogc services.
         False by default = compliant to Stac specifications.
     """

@@ -239,6 +239,7 @@ def add_collection(client: TestClient, collection: Collection, **kwargs) -> http
     Args:
         client: the catalog client
         collection: the collection to add
+        kwargs: additional keyword arguments forwarded to the HTTP POST request.
 
     Returns:
         None
@@ -332,6 +333,7 @@ def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
     Only the feature id and the parent collection is stored are configurable.
 
     Args:
+        owner_id (str): the owner identifier stored in the feature properties.
         id_: the feature id
         in_collection: the collection id containing the feature
 

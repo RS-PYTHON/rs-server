@@ -120,6 +120,8 @@ class Staging(
             db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
                 status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
+            station_token_list (list[RefreshTokenData]): Shared list of refresh tokens for all stations.
+            station_token_list_lock (threading.Lock): Lock protecting concurrent access to station_token_list.
 
         Attributes:
             auth_headers (dict): authentication headers from the original HTTP request.

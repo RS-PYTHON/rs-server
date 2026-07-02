@@ -70,7 +70,6 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     Args:
         parameters (list[dict]): the parameters list
         where we want to add the owner id parameter.
-
     Returns:
         dict: the new parameters list with the owner id parameter.
     """

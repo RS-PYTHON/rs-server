@@ -152,6 +152,7 @@ class KeycloakHandler:
         Args:
             keycloak_user (dict): UserRepresentation
             (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
+            obs_user (str): OBS (Object Storage) username to set as a Keycloak user attribute.
 
         Returns:
             dict: UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)

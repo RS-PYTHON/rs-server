@@ -236,6 +236,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
 
     Args:
+        request (Request): The incoming HTTP request used for authentication checks.
         collection_id (str): Used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
                             from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
@@ -510,8 +511,8 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         queryables (dict): Lists of queryables applicable to search op.
         collection_provider (Callable[[dict], str | None]): Function that determines STAC collection
                                                             for a given OData entity
-        limit (int, optional): Maximum number of products to return. Greater than 0, defaults to 100.
         sortby (str): Sort by +/-fieldName (ascending/descending).
+        limit (int, optional): Maximum number of products to return. Greater than 0, defaults to 100.
         page (int): Page number to be displayed, defaults to first one.
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.

@@ -401,6 +401,7 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     the corresponding access rights by matching them against a configmap.
 
     Args:
+        user (str): Username used to build default bucket path prefixes.
         user_info (dict): Dictionary containing user attributes, specifically the "keycloak_roles" key
                           with a list of role strings.
 

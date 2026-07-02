@@ -203,8 +203,8 @@ class CatalogResponseManager:
         If not successful, does nothing and return the response.
 
         Args:
-            response (StreamingResponse): The response from the rs server.
             request (Request): The request from the client.
+            response (StreamingResponse): The response from the rs server.
 
         Returns:
             GeoJSONResponse: The updated response.
@@ -318,7 +318,7 @@ class CatalogResponseManager:
 
         Args:
             request (Request): The client request.
-            dec_content (str): The decoded json content
+            content (Any): The decoded JSON response body to process and adapt.
         Returns:
             Any: the response content
         """
@@ -447,6 +447,7 @@ class CatalogResponseManager:
         Manage put or post responses.
 
         Args:
+            request (Request): The original HTTP request from the client.
             response (starlette.responses.StreamingResponse): The response object received.
 
         Returns:
@@ -489,6 +490,7 @@ class CatalogResponseManager:
         """Change the name of the deleted collection by removing owner_id.
 
         Args:
+            request (Request): The original HTTP request from the client.
             response (StreamingResponse): The client response.
             user (str): The owner id.
 
