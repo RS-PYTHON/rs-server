@@ -1454,7 +1454,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.888Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
+                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.888Z"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1462,24 +1462,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
-                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
-                status.HTTP_200_OK,
-            ),
-            (
-                ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
-                "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
-                status.HTTP_200_OK,
-            ),
-            (
-                ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
-                "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
+                "ContentDate/Start gt 2018-02-12T23:20:50.000Z and ContentDate/End lt 2019-02-12T23:20:50.001Z"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1500,7 +1483,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.000Z&$orderby="
                 "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1614,8 +1597,6 @@ class TestFeatureCollectionOdataStacMapping:
         ids=[
             "adgs1",
             "adgs2",
-            "adgs3",
-            "adgs4",
             "adgs5",
             "adgs6",
             "adgs7",
@@ -2123,14 +2104,14 @@ def test_search_parameters(
         }
     else:
         raise NotImplementedError
-    hardcoded_date = "2020-01-01T00:00:00.000Z/2022-01-01T00:00:00.000Z"
+    hardcoded_date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
     hardcoded_limit = 10
     mocked_collections = [
         {"id": "col1", **collection},
         {
             "id": "col2",
             "query": {
-                "PublicationDate": hardcoded_date,
+                "ContentDate": hardcoded_date,
                 "top": hardcoded_limit,
                 **query2,
             },
@@ -2139,7 +2120,7 @@ def test_search_parameters(
         {
             "id": "col3",
             "query": {
-                "PublicationDate": hardcoded_date,
+                "ContentDate": hardcoded_date,
                 "top": hardcoded_limit,
                 **query3,
             },
@@ -2272,19 +2253,18 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"Name in {uids} and "
-                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
-                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max})"
+                    "ContentDate/Start gt {date_min} and ContentDate/End lt {date_max}"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"Name in {uids} and "
-                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
-                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
-                    "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) "
-                    "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
-                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation})"
+                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) and "
+                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
+                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation}) and "
+                    "ContentDate/Start gt {date_min} and "
+                    "ContentDate/End lt {date_max}"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:

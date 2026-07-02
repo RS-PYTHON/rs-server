@@ -1438,7 +1438,7 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
     def get_sort_key(item):
         # Check if the attribute exists in properties, else use item directly
         if hasattr(item.properties, attribute.replace("properties.", "")):
-            value =  getattr(item.properties, attribute.replace("properties.", ""))
+            value = getattr(item.properties, attribute.replace("properties.", ""))
             return (value is None, value)
         if hasattr(item, attribute):
             value = getattr(item, attribute)

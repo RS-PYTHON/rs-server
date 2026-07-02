@@ -226,17 +226,14 @@ class EodagProvider(Provider):
 
             else:
                 # Tuple/list: (fixed, start, end)
-                fixed, start, end = (
-                    str(date) if date else None
-                    for date in date_time
-                )
+                fixed, start, end = (str(date) if date else None for date in date_time)
 
             mapped_search_args.update(
                 {
                     "DatetimeStart": fixed,
                     "Start": start,
                     "End": end,
-                }
+                },
             )
 
         for op in temporal_operations:
