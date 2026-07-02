@@ -274,10 +274,6 @@ class EodagProvider(Provider):
         Args:
             product_id: the id of the product to download
             to_file: the path where the product has to be download
-
-        Returns:
-            None
-
         """
         # Dirty fix for eodag: change extension
         org_file = to_file

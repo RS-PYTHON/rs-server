@@ -86,9 +86,6 @@ def test_get_s3_client_and_disconnect(endpoint: str):
     Args:
         endpoint (str): The endpoint to be used for testing.
 
-    Returns:
-        None
-
     Raises:
         AssertionError: If the test fails to create an instance of S3StorageHandler when the endpoint is valid,
         or if it fails to raise an exception when the endpoint is not valid.
@@ -659,9 +656,6 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
         lst_with_files (list): The list of local files to be uploaded.
         expected_res (list): The expected result of the 'files_to_be_uploaded' method.
 
-    Returns:
-        None
-
     Raises:
         AssertionError: If the actual result differs from the expected result.
 
@@ -767,9 +761,6 @@ def test_put_files_to_s3(
         keys_in_bucket (list): List of keys expected to be present in the S3 bucket.
         expected_res (list): List of tuples representing the expected files to be uploaded.
             Each tuple consists of a prefix and a file path.
-
-    Returns:
-        None
 
     Raises:
         AssertionError: If the result of S3StorageHandler.files_to_be_uploaded does not match expected_res.

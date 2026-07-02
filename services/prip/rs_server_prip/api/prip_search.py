@@ -355,6 +355,8 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException: If an invalid station identifier is provided (`CreateProviderFailed`).
         HTTPException: If there is a connection error with the station (`requests.exceptions.ConnectionError`).
         HTTPException: If there is a general failure during the process.
+        Exception: Re-raised directly if the caught exception is already an HTTPException;
+            all other exceptions are wrapped in a new HTTPException(503).
     """
     try:
         products = prip_retriever.init_prip_provider(station).search(

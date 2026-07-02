@@ -107,12 +107,6 @@ def export_aws_credentials():
     - AWS_DEFAULT_REGION
 
     Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
     """
     monkeypatch = MonkeyPatch()
 
@@ -451,10 +445,6 @@ def delete_collection(client: TestClient, collection_owner: str, collection_name
         client: the catalog client
         collection_owner: name of the owner of the collection
         collection_name: name of the collection
-
-    Returns:
-        None
-
     """
     client.delete(f"/catalog/collections/{collection_owner}:{collection_name}")
 
@@ -465,10 +455,6 @@ def delete_collections(client: TestClient, owners_collections_list: list[tuple[s
     Args:
         client: the catalog client
         owners_collections_list: list of tuples, each tuple is (collection_owner, collection_name)
-
-    Returns:
-        None
-
     """
     for element in owners_collections_list:
         delete_collection(client, collection_owner=element[0], collection_name=element[1])

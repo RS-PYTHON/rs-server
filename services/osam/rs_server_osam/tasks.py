@@ -227,9 +227,6 @@ def create_obs_user_account_for_keycloak_user(
 
     Args:
         keycloak_user (dict): A dictionary representing the Keycloak user.
-
-    Returns:
-        None
     """
     new_user_description = create_description_from_template(keycloak_user["username"], template=DESCRIPTION_TEMPLATE)
     new_user = get_ovh_handler().create_user(description=new_user_description, role=OVH_ROLE_FOR_NEW_USERS)
@@ -247,9 +244,6 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Args:
         obs_user (dict): Dictionary representing the OBS user.
         keycloak_users (list[dict]): List of Keycloak user dictionaries.
-
-    Returns:
-        None
     """
     if not all(val in obs_user["description"] for val in LIST_CHECK_OVH_DESCRIPTION):
         logger.info(f"The ovh user '{obs_user['username']}' is not created by osam service. Skipping....")
@@ -378,9 +372,6 @@ def add_default_bucket_access(
         read_set (set[str]): Set of paths with read permissions.
         write_set (set[str]): Set of paths with write permissions.
         download_set (set[str]): Set of paths with download permissions.
-
-    Returns:
-        None
     """
     path = os.path.join(bucket.strip(), user, "*") + "/"
 

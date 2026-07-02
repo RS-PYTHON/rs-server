@@ -431,9 +431,6 @@ def main_osam_task(timeout: int = 60):
         timeout (int, optional): Number of seconds to wait before checking for shutdown or trigger events.
                                  Defaults to 60 seconds.
 
-    Returns:
-        None
-
     Raises:
         RuntimeError: This function does not explicitly raise `RuntimeError`, but any internal failure
                       is logged, and the task continues unless a shutdown signal is received.

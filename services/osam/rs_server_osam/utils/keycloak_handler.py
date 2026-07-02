@@ -115,6 +115,8 @@ class KeycloakHandler:
 
         Raises:
             KeycloakConnectionError, KeycloakAuthenticationError: For critical Keycloak issues.
+            KeycloakError: For non-critical Keycloak errors (e.g. user not found).
+            Exception: Re-raised for any other unexpected error.
         """
         # sanitize the variable before logging, otherwise SonarCloud will complain
         # allow common username chars only
@@ -154,8 +156,6 @@ class KeycloakHandler:
             (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
             obs_user (str): OBS (Object Storage) username to set as a Keycloak user attribute.
 
-        Returns:
-            dict: UserRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#UserRepresentation)
         """
         attributes = keycloak_user.get("attributes", {})
         attributes["obs-user"] = [obs_user]  # Must be a list
