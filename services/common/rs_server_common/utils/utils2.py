@@ -96,6 +96,7 @@ def filelock(func, env_var: str):
     Avoid concurrent writing to the database using a file lock.
 
     Args:
+        func: The function to wrap with a file-based lock.
         env_var: environment variable that defines the folder where to save the lock file.
     """
 

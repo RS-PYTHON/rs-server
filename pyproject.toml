@@ -149,9 +149,20 @@ extend-ignore = [
 
 [tool.pylint]
 max-line-length = 120
+load-plugins = [
+    "pylint.extensions.docparams",
+]
+# Check docstring args against function signatures (Google style)
+default-docstring-type = "google"
+accept-no-param-doc = true    # only check functions that already have an Args section
+accept-no-raise-doc = true
+accept-no-return-doc = true
+accept-no-yields-doc = true
 disable = [
     "import-error",
     "logging-fstring-interpolation",
+    "missing-type-doc",      # type annotations in docstrings: already enforced by mypy
+    "differing-type-doc",    # idem
     "not-context-manager",
     "too-few-public-methods",
     "too-many-arguments",

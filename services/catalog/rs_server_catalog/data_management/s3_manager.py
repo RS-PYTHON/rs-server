@@ -82,7 +82,6 @@ class S3Manager:
 
         Args:
             content (dict): Files to delete
-            s3_handler (S3StorageHandler): S3 handler to use. If None given, will do nothing
         """
         if self.is_catalog_local_mode or (not hasattr(content, "get")):
             return

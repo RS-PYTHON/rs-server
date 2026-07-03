@@ -76,6 +76,7 @@ async def authenticate(
     or that the user is authenticated with oauth2 (keycloak).
 
     Args:
+        request (Request): Incoming HTTP request, used to detect STAC Browser origin and forward authentication context.
         apikey_value (Security): API key passed in HTTP header
 
     Returns:

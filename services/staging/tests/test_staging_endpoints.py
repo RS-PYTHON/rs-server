@@ -53,6 +53,8 @@ async def test_get_jobs_endpoint(
 
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
+        mock_app: pytest fixture that sets up the application mock environment.
+        set_db_env_var: pytest fixture that sets the database environment variable.
         staging_client: A test client for making requests to the FastAPI application.
 
     Assertions:
@@ -179,6 +181,8 @@ async def test_get_job(
 
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
+        mock_app: pytest fixture that sets up the application mock environment.
+        set_db_env_var: pytest fixture that sets the database environment variable.
         staging_client: A test client for making requests to the FastAPI application.
         mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
@@ -266,6 +270,8 @@ async def test_get_job_result(
 
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
+        mock_app: pytest fixture that sets up the application mock environment.
+        set_db_env_var: pytest fixture that sets the database environment variable.
         staging_client: A test client for making requests to the FastAPI application.
         mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
@@ -344,6 +350,8 @@ async def test_delete_job_endpoint(
 
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
+        mock_app: pytest fixture that sets up the application mock environment.
+        set_db_env_var: pytest fixture that sets the database environment variable.
         staging_client: A test client for making requests to the FastAPI application.
         mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
@@ -414,9 +422,12 @@ async def test_processes(
     API returns the expected processors correctly.
 
     Args:
+        set_db_env_var: pytest fixture that sets the database environment variable.
         staging_client: A test client for making requests to the FastAPI application.
         predefined_config (dict): A configuration dictionary containing predefined
             resources with their associated processors.
+        mocker: pytest-mock fixture for patching dependencies.
+        geoapi_cfg: pytest fixture providing the path to the geoapi configuration file.
 
     Assertions:
         - Asserts that the list of processors returned from the API matches
@@ -476,6 +487,7 @@ async def test_specific_process(
     to verify multiple scenarios.
 
     Args:
+        set_db_env_var: pytest fixture that sets the database environment variable.
         staging_client: A test client for making requests to the FastAPI application.
         resource_name (str): The name of the resource to retrieve. This can be a valid
             resource name or a non-existing resource name to test the 404 response.

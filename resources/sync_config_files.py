@@ -609,7 +609,7 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
     Copy and update a single yaml document from rs-server to rs-helm or rs-server-deployment.
 
     Args:
-        params parameters to copy a single configuration file
+        params (HelmOrInfraParams): parameters to copy a single configuration file
         output_config: current output yaml block
     """
 
