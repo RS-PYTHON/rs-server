@@ -3423,7 +3423,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -3458,7 +3458,7 @@ sqlalchemy = "^2.0.43"
 stac-fastapi-api = ">=6.2.0,<6.3.0"
 stac-fastapi-extensions = ">=6.2.0,<6.3.0"
 stac-fastapi-pgstac = ">=6.2.0,<6.3.0"
-stac-fastapi-types = ">=6.2.0,<6.3.0"
+stac-fastapi-types = ">=6.2.0,<6.4.0"
 stac-pydantic = "^3.4.0"
 starlette = ">=0.49.1"
 urllib3 = ">=2.6.3"
