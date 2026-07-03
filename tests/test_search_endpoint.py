@@ -2111,7 +2111,7 @@ def test_search_parameters(
         {
             "id": "col2",
             "query": {
-                "ContentDate": hardcoded_date,
+                "PublicationDate": hardcoded_date,
                 "top": hardcoded_limit,
                 **query2,
             },
@@ -2120,7 +2120,7 @@ def test_search_parameters(
         {
             "id": "col3",
             "query": {
-                "ContentDate": hardcoded_date,
+                "PublicationDate": hardcoded_date,
                 "top": hardcoded_limit,
                 **query3,
             },
@@ -2259,6 +2259,8 @@ def test_search_parameters(
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"Name in {uids} and "
+                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
+                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) and "
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) and "
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
