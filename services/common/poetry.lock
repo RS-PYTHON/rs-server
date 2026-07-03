@@ -3125,14 +3125,14 @@ stac-fastapi-types = ">=6.2,<7.0"
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.2.1"
+version = "6.3.2"
 description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_extensions-6.2.1-py3-none-any.whl", hash = "sha256:d72f5c9323df3f54a9731f3813f9b036b81235e8728a17a6c99ca202751e4308"},
-    {file = "stac_fastapi_extensions-6.2.1.tar.gz", hash = "sha256:355c0c5f0d2c9b87d0238fff031963b2878d66a67faec93ff6f47d530aa370c0"},
+    {file = "stac_fastapi_extensions-6.3.2-py3-none-any.whl", hash = "sha256:5654bd6b783bd68352418d0737c1b3965ee250fa42baebe3aae789eab203519b"},
+    {file = "stac_fastapi_extensions-6.3.2.tar.gz", hash = "sha256:5916abf6448553958117e85595008f046bb50dcdccf5beb67ea2f40e0782bb0b"},
 ]
 
 [package.dependencies]
@@ -3484,4 +3484,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "997628d41067a7679db0051fcbf9012711d21e0a8d60a1cbef735cfa48b026b1"
+content-hash = "90f89e98a3dc8243ab1ca683251b89de0e854ff3053066267ca9abd8149702b6"
