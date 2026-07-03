@@ -5559,7 +5559,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5576,7 +5576,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5593,7 +5593,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5612,7 +5612,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5645,7 +5645,7 @@ python-keycloak = ">=5.7.0,<8.0"
 requests = "^2.32.5"
 sqlalchemy = "^2.0.43"
 stac-fastapi-api = ">=6.2.0,<6.3.0"
-stac-fastapi-extensions = ">=6.2.0,<6.3.0"
+stac-fastapi-extensions = ">=6.2.0,<6.4.0"
 stac-fastapi-pgstac = ">=6.2.0,<6.3.0"
 stac-fastapi-types = ">=6.2.0,<6.3.0"
 stac-pydantic = "^3.4.0"
@@ -5660,7 +5660,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5682,7 +5682,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-osam"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5702,7 +5702,7 @@ url = "services/osam"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5719,7 +5719,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
