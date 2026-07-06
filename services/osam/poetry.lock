@@ -3423,7 +3423,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a11.post7.dev0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
