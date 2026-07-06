@@ -1462,7 +1462,24 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "ContentDate/Start gt 2018-02-12T23:20:50.000Z and ContentDate/End lt 2019-02-12T23:20:50.001Z"
+                "(ContentDate/Start gt 2018-02-12T23:20:50.000Z or ContentDate/Start eq 2018-02-12T23:20:50.000Z) and "
+                "(ContentDate/End lt 2019-02-12T23:20:50.001Z or ContentDate/End eq 2019-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start gt 2018-02-12T23:20:50.000Z or ContentDate/Start eq 2018-02-12T23:20:50.000Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/End lt 2018-02-12T23:20:50.000Z or ContentDate/End eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1597,6 +1614,8 @@ class TestFeatureCollectionOdataStacMapping:
         ids=[
             "adgs1",
             "adgs2",
+            "adgs3",
+            "adgs4",
             "adgs5",
             "adgs6",
             "adgs7",
@@ -2253,7 +2272,8 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"Name in {uids} and "
-                    "ContentDate/Start gt {date_min} and ContentDate/End lt {date_max}"
+                    "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
+                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
@@ -2265,8 +2285,8 @@ def test_search_parameters(
                     "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) and "
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation}) and "
-                    "ContentDate/Start gt {date_min} and "
-                    "ContentDate/End lt {date_max}"
+                    "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
+                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:

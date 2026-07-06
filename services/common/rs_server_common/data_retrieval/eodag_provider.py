@@ -236,6 +236,16 @@ class EodagProvider(Provider):
                 },
             )
 
+        start_time = kwargs.pop("Start", None)
+        end_time = kwargs.pop("End", None)
+        if start_time and end_time:
+            mapped_search_args["Start"] = start_time
+            mapped_search_args["End"] = end_time
+        elif start_time:
+            mapped_search_args["DatetimeStart"] = start_time
+        elif end_time:
+            mapped_search_args["DatetimeEnd"] = end_time
+
         for op in temporal_operations:
             if query := kwargs.pop(op, None):
                 mapped_search_args[op] = query

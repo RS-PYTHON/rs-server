@@ -77,6 +77,9 @@ def validate(queryables: dict):
     if "PublicationDate" in queryables:
         queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
 
+    if "DatetimeStart" in queryables:
+        queryables["DatetimeStart"] = validate_inputs_format(queryables["DatetimeStart"])
+
     return queryables
 
 

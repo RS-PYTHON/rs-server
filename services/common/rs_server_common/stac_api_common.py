@@ -97,7 +97,7 @@ DEFAULT_STAC_VERSION = "1.1.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
-DATE_INTERVAL_KEYS = ["PublicationDate"]
+DATE_INTERVAL_KEYS = ["PublicationDate", "ContentDate/Start", "ContentDate/End"]
 COMMA_SEPARATED_LISTS_KEYS = ["platformSerialIdentifier", "platformShortName", "Satellite", "productType", "SessionId"]
 
 # Type hints

@@ -78,6 +78,9 @@ adgs:
       DatetimeStart:
       - null
       - $.ContentDate.Start
+      DatetimeEnd:
+      - null
+      - $.ContentDate.End
       Start:
       - null
       - $.ContentDate.Start
@@ -162,8 +165,10 @@ adgs:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Start gt {Start#to_iso_utc_datetime} and ContentDate/End lt
-            {End#to_iso_utc_datetime}
+          - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start
+            eq {Start#to_iso_utc_datetime})
+          - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
+          - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
@@ -264,6 +269,9 @@ adgs2:
       DatetimeStart:
       - null
       - $.ContentDate.Start
+      DatetimeEnd:
+      - null
+      - $.ContentDate.End
       Start:
       - null
       - $.ContentDate.Start
@@ -348,8 +356,10 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Start gt {Start#to_iso_utc_datetime} and ContentDate/End lt
-            {End#to_iso_utc_datetime}
+          - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start
+            eq {Start#to_iso_utc_datetime})
+          - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
+          - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
