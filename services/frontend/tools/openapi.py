@@ -105,8 +105,15 @@ class AggregatedOpenapi:
     def build_openapi(self) -> dict:
         """Return the built openapi.json as a dict"""
 
+        # When we are not pushing a git tag, the version is like 'x.yaz.postxx.dev0'.
+        # In this case, we remove the "post" information so the version does not change after every commit.
+        version = str(__version__)
+        post_index = version.find(".post")
+        if post_index > 0:
+            version = version[:post_index]
+
         # Default info
-        target_info = {"title": "RS-Server", "version": str(__version__)}
+        target_info = {"title": "RS-Server", "version": version}
 
         # Override with configuration
         target_info.update(**self.info)
