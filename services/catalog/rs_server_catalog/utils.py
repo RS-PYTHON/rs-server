@@ -89,7 +89,8 @@ def get_temp_bucket_name(files_s3_key: list[str]) -> str | None:
         str | None: The name of the temporary S3 bucket if valid, otherwise None.
 
     Raises:
-        HTTPException: If the S3 key does not match the expected pattern, or if multiple buckets are used.
+        RuntimeError: If an S3 key does not match the expected s3://bucket/path pattern,
+            or if the keys span more than one bucket.
     """
     if not files_s3_key:
         return None

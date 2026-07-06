@@ -81,6 +81,8 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
 
     Args:
         get_external_auth_config: Fixture to get an StationExternalAuthenticationConfig object.
+        mock_token_dict (dict): Pytest fixture providing a mock token dictionary for testing token
+            retrieval and validation logic.
     """
 
     ext_auth_config = get_external_auth_config
@@ -246,6 +248,8 @@ def test_prepare_data(get_external_auth_config, call_refresh):
 
     Args:
         get_external_auth_config: Fixture to get an StationExternalAuthenticationConfig object.
+        call_refresh (bool): Parametrized flag; True to test the refresh token flow, False to test
+            the initial access token flow.
     """
     ext_auth_config = get_external_auth_config
     # Expected data with the scope
@@ -523,8 +527,8 @@ def test_load_s3_external_authentication_by_domain_config_valid(mocker, get_s3_e
 
     Args:
         mocker: Mocking framework.
-        get_external_auth_config: Fixture providing an S3ExternalAuthenticationConfig object.
-
+        get_s3_external_auth_config: Pytest fixture providing a pre-built S3ExternalAuthenticationConfig
+            object for S3 authentication tests.
     Assertions:
         - The result is not `None`.
         - The returned configuration matches the mocked values for domain, station_id, and service_name.
@@ -679,8 +683,8 @@ def test_create_s3_external_auth_config(get_s3_external_auth_config):
     using mock YAML content that simulates both matching and non-matching service configurations.
 
     Args:
-        get_external_auth_config: Fixture that returns a valid S3nExternalAuthenticationConfig object.
-
+        get_s3_external_auth_config: Pytest fixture providing a pre-built S3ExternalAuthenticationConfig
+            object for S3 authentication tests.
     The test validates:
     - The returned result is not None.
     - The result is an instance of S3ExternalAuthenticationConfig.
@@ -757,6 +761,10 @@ def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id
     Args:
         mocker: Pytest fixture for patching and mocking.
         get_external_auth_config: Fixture that provides an ExternalAuthenticationConfig object.
+        station_id (str): Parametrized station identifier (e.g., "adgs", "ins") used to scope the
+            external authentication config.
+        with_scope (bool): Parametrized flag; True if the authentication config includes an OAuth2
+            scope, False otherwise.
 
     The test validates:
     - Environment is correctly set for the station's authentication details (e.g., auth_uri, client_id,

@@ -110,6 +110,8 @@ class OVHApiHandler:
             description (str | None): Optional description for the user.
             role: (deprecated) Optional legacy role specification.
             roles: Optional list of roles for the user.
+            timeout_seconds (int): Maximum time in seconds to wait for user creation to complete. Defaults to 60.
+            poll_interval (int): Polling interval in seconds between status checks. Defaults to 2.
 
         Returns:
             dict: The created user object as returned by the OVH API.

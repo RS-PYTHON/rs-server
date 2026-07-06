@@ -289,8 +289,6 @@ async def get_user_info(request: Request) -> AuthInfo:
 
     Args:
         request (Request): HTTP request
-        is_endpoint_dependency (bool): is this function called as an endpoint dependency ?
-
     Returns:
         tuple: A tuple containing user IAM roles, configuration data, and user login information.
     """

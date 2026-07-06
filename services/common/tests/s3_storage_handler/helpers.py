@@ -34,12 +34,6 @@ def export_aws_credentials():
     - AWS_DEFAULT_REGION
 
     Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
     """
     with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)

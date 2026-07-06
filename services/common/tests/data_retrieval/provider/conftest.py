@@ -71,9 +71,7 @@ def eodag_config_folder_fixture(test_resources_folder):  # pylint: disable=W0621
     that it is executed once per test session for a given test package.
 
     Args:
-        resource_path_root (Path): The root path for test resources, typically
-                                   provided by another fixture.
-
+        test_resources_folder: pytest fixture providing the path to the test resources root directory.
     Returns:
         Path: The full path to the 'eodag' configuration directory within the test
               resources directory.
