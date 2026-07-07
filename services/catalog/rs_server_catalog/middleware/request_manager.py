@@ -63,15 +63,28 @@ logger = Logging.default(__name__)
 
 
 def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[str, Any]:
-    """Inject internal default geometry/bbox when both are null for pgstac persistence compatibility."""
+    """
+    Inject internal default geometry/bbox when both are null.
+
+    pgstac stores item geometry in a NOT NULL column, while RS Server must keep
+    accepting upstream items without spatial metadata. The default geometry is
+    therefore an internal persistence shim and is masked again in responses.
+    """
     if content.get("geometry") is None and content.get("bbox") is None:
+        logger.debug("Injecting pgstac default geometry/bbox for item %s", content.get("id"))
         content["geometry"] = copy.deepcopy(DEFAULT_GEOM)
         content["bbox"] = copy.deepcopy(DEFAULT_BBOX)
     return content
 
 
 def iter_external_id_parts(raw: Any) -> list[str]:
-    """Split externalIds input (string/list) into clean, comma-separated tokens."""
+    """
+    Split externalIds input into clean tokens.
+
+    Clients may send `externalIds` as a single string, a comma-separated string,
+    or a list. Normalizing early lets GET query params and POST bodies share the
+    same filter-building path.
+    """
     parts: list[str] = []
     values = raw if isinstance(raw, list) else [raw]
     for value in values:
@@ -84,7 +97,13 @@ def iter_external_id_parts(raw: Any) -> list[str]:
 
 
 def build_external_ids_tokens(raw: Any) -> list[str]:
-    """Normalize externalIds values into tokens used by pgstac filtering."""
+    """
+    Normalize externalIds values into the token representation stored by pgstac.
+
+    Supported input forms are `scheme:value`, `scheme:`, `:value`, plain value,
+    and comma-separated/list combinations. Duplicates are removed while keeping
+    the original order for predictable debugging.
+    """
     tokens: list[str] = []
     seen: set[str] = set()
     for part in iter_external_id_parts(raw):
@@ -106,11 +125,12 @@ def build_external_ids_tokens(raw: Any) -> list[str]:
         if token and token not in seen:
             tokens.append(token)
             seen.add(token)
+    logger.debug("Normalized externalIds input %s to tokens %s", raw, tokens)
     return tokens
 
 
 def build_external_ids_filter(raw: Any) -> dict | None:
-    """Create a CQL2 filter (a_overlaps) for externalIds tokens."""
+    """Create a CQL2 `a_overlaps` filter for normalized externalIds tokens."""
     tokens = build_external_ids_tokens(raw)
     if not tokens:
         return None
@@ -119,7 +139,13 @@ def build_external_ids_filter(raw: Any) -> dict | None:
 
 
 def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
-    """Normalize a CQL2 filter (text or json) to CQL2-JSON."""
+    """
+    Normalize a CQL2 filter to CQL2-JSON.
+
+    The catalog middleware rewrites some filters before forwarding the request
+    to pgstac. Working in JSON form avoids brittle string manipulation and keeps
+    GET and POST behavior aligned.
+    """
     if raw_filter is None:
         return None
     if isinstance(raw_filter, dict):
@@ -150,14 +176,14 @@ def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
 
 
 def combine_filters(existing: dict | None, extra: dict) -> dict:
-    """Combine two CQL2 filters with AND."""
+    """Combine two CQL2 filters with AND, preserving an existing filter when present."""
     if existing is None:
         return extra
     return {"op": "and", "args": [existing, extra]}
 
 
 def filter_has_external_ids(filter_json: Any) -> bool:
-    """Check if a CQL2 filter tree references the externalIds property."""
+    """Recursively check whether a CQL2 filter tree references `externalIds`."""
     if isinstance(filter_json, dict):
         if filter_json.get("property") == "externalIds":
             return True
@@ -170,7 +196,13 @@ def filter_has_external_ids(filter_json: Any) -> bool:
 
 
 def normalize_external_ids_in_filter(filter_json: dict) -> dict:
-    """Rewrite externalIds comparisons into array-overlap filters."""
+    """
+    Rewrite externalIds comparisons into array-overlap filters.
+
+    pgstac stores `externalIds` as an array of tokens. Equality/in filters sent
+    by clients therefore need to become `a_overlaps` filters to match the stored
+    representation.
+    """
     if not isinstance(filter_json, dict):
         return filter_json
     op = filter_json.get("op")
@@ -200,7 +232,13 @@ def normalize_external_ids_in_filter(filter_json: dict) -> dict:
 
 
 def normalize_external_ids_filter_value(raw_filter: Any, filter_lang: str) -> tuple[Any, str, bool]:
-    """Normalize externalIds filters and return (filter, lang, changed)."""
+    """
+    Normalize any externalIds expression inside a filter value.
+
+    Returns:
+        Tuple `(filter, filter_lang, changed)` where `changed` tells callers
+        whether the request body/query string must be rewritten.
+    """
     if raw_filter is None:
         return raw_filter, filter_lang, False
     if isinstance(raw_filter, str) and "externalIds" not in raw_filter:
@@ -211,12 +249,23 @@ def normalize_external_ids_filter_value(raw_filter: Any, filter_lang: str) -> tu
         return raw_filter, filter_lang, False
     # Convert externalIds comparisons to array-overlap filters (a_overlaps).
     normalized = normalize_external_ids_in_filter(filter_json)
+    logger.debug(
+        "Normalized externalIds filter from lang=%s filter=%s to lang=cql2-json filter=%s",
+        filter_lang,
+        raw_filter,
+        normalized,
+    )
     return normalized, "cql2-json", True
 
 
 class CatalogRequestManager:
-    """Class to process the Requests sent by users to the Catalog before routing them to stac-fastapi.
-    Each type of Response is managed in one of the functions."""
+    """
+    Pre-process catalog requests before they are routed to stac-fastapi.
+
+    Responsibilities include owner/collection authorization, frontend-to-pgstac
+    route/body/query rewriting, S3 publication validation, and collecting S3
+    keys that must be deleted after successful catalog mutations.
+    """
 
     def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
         self.client = client
@@ -232,15 +281,36 @@ class CatalogRequestManager:
         return S3Manager(authentication.get_s3_credentials(request))
 
     def _override_request_body(self, request: Request, content: Any) -> Request:
-        """Update request body (better find the function that updates the body maybe?)"""
+        """
+        Replace the request body consumed by downstream stac-fastapi.
+
+        Starlette caches parsed body/json on the Request object. When middleware
+        changes catalog ids, timestamps or filters, both cached values must be
+        updated so later handlers observe the rewritten payload.
+        """
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         request._json = content  # pylint: disable=protected-access
+        logger.info(
+            "Overrode catalog request body for %s %s; owner=%s, collections=%s, item=%s",
+            request.method,
+            request.scope["path"],
+            self.request_ids.get("owner_id"),
+            self.request_ids.get("collection_ids"),
+            self.request_ids.get("item_id"),
+        )
         logger.debug("new request body and json: %s", request._body)  # pylint: disable=protected-access
         return request
 
     def _override_request_query_string(self, request: Request, query_params: dict) -> Request:
-        """Update request query string"""
+        """
+        Replace the request query string consumed by downstream stac-fastapi.
+
+        Query parameters are rewritten after owner resolution and filter
+        normalization, then re-encoded with doseq support for list-like values.
+        """
         request.scope["query_string"] = urlencode(query_params, doseq=True).encode("utf-8")
+        logger.info("Overrode catalog query string for %s %s", request.method, request.scope["path"])
+        logger.debug("Updated catalog query params: %s", query_params)
         logger.debug("new request query_string: %s", request.scope["query_string"])
         return request
 
@@ -251,9 +321,12 @@ class CatalogRequestManager:
             bool: True if the collection exists, False otherwise
         """
         try:
+            logger.debug("Checking collection existence for %s", collection_id)
             await self.client.get_collection(collection_id, request)
+            logger.debug("Collection %s exists", collection_id)
             return True
         except Exception:  # pylint: disable=broad-exception-caught
+            logger.debug("Collection %s does not exist or cannot be retrieved", collection_id)
             return False
 
     async def _get_item_from_collection(self, request: Request):
@@ -268,7 +341,9 @@ class CatalogRequestManager:
         item_id = self.request_ids["item_id"]
         collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}"
         try:
+            logger.debug("Retrieving item %s from collection %s", item_id, collection_id)
             item = await self.client.get_item(item_id=item_id, collection_id=collection_id, request=request)
+            logger.info("Retrieved existing item %s from collection %s", item_id, collection_id)
             return item
         except NotFoundError:
             logger.info(f"The item '{item_id}' does not exist in collection '{collection_id}'")
@@ -281,7 +356,19 @@ class CatalogRequestManager:
             ) from e
 
     async def build_filelist_to_be_deleted(self, request):
-        """Build the list of the s3 files that will be deleted if the request is successfull"""
+        """
+        Build the S3 cleanup list for DELETE requests.
+
+        Collection deletes require scanning all items in the collection, while
+        item deletes only need the requested item. Actual S3 deletion is deferred
+        until the catalog response confirms that pgstac deletion succeeded.
+        """
+        logger.info(
+            "Building S3 deletion list for owner=%s collections=%s item=%s",
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+        )
         for ci in self.request_ids["collection_ids"]:
             collection_id = f"{self.request_ids['owner_id']}_{ci}"
             items = []
@@ -299,6 +386,12 @@ class CatalogRequestManager:
                             token=token,
                         )
                         items.extend(items_collection.get("features", []))
+                        logger.debug(
+                            "Fetched %d item(s) for deletion scan from collection %s; token=%s",
+                            len(items_collection.get("features", [])),
+                            collection_id,
+                            token,
+                        )
                         # Check if there's a next token for pagination
                         token = get_token_for_pagination(items_collection)
 
@@ -327,6 +420,7 @@ class CatalogRequestManager:
                         s3_href = asset_info.get("href")
                         if s3_href:
                             self.s3_files_to_be_deleted.append(s3_href)
+                            logger.debug("Scheduled S3 deletion for %s", s3_href)
             except KeyError as e:
                 logger.error(
                     f"Failed to build the list of S3 files to be deleted due to missing key in dictionary: {e}",
@@ -338,8 +432,12 @@ class CatalogRequestManager:
             )
 
     async def manage_requests(self, request: Request) -> Request | Response:
-        """Main function to dispatch the request pre-processing depending on which endpoint is called.
-        Will pre-process the request using the function associated to the path called and return it.
+        """
+        Dispatch catalog request pre-processing by method/path.
+
+        This is the main entry point used by CatalogMiddleware. It keeps the
+        endpoint-specific transformations isolated while returning either the
+        rewritten Request or an early Response when authorization fails.
 
         Args:
             request (Request): request received by the Catalog.
@@ -348,6 +446,14 @@ class CatalogRequestManager:
             Request|Response: Request processed to be sent to stac-fastapi OR a response if the operation
                 is not authorized
         """
+        logger.info(
+            "Managing catalog request %s %s; owner=%s, collections=%s, item=%s",
+            request.method,
+            request.scope["path"],
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+        )
         if request.method in ("POST", "PUT") and "/search" not in request.scope["path"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
@@ -384,7 +490,12 @@ class CatalogRequestManager:
         self,
         request: Request,
     ) -> Request | JSONResponse:
-        """Adapt the request body for the STAC endpoint.
+        """
+        Adapt POST/PUT request bodies for stac-fastapi.
+
+        Collection writes get owner-prefixed ids and timestamps. Item writes
+        validate authorization, collection existence, geometry/bbox consistency,
+        S3 availability and checksums before the request is forwarded.
 
         Args:
             request (Request): The Client request to be updated.
@@ -395,8 +506,17 @@ class CatalogRequestManager:
         try:
             original_content = await request.json()
             content = copy.deepcopy(original_content)
+            logger.info(
+                "Managing %s catalog write request for owner=%s collections=%s item=%s",
+                request.method,
+                self.request_ids["owner_id"],
+                self.request_ids["collection_ids"],
+                self.request_ids["item_id"],
+            )
+            logger.debug("Original catalog write content: %s", original_content)
 
             check_user_authorization(self.request_ids)
+            logger.debug("Catalog write authorization succeeded for request ids %s", self.request_ids)
 
             if len(self.request_ids["collection_ids"]) > 1:
                 raise HTTPException(
@@ -433,6 +553,7 @@ field is not permitted also."
                 content["id"] = owner_id_and_collection_id(self.request_ids["owner_id"], content["id"])
                 if not content.get("owner"):
                     content["owner"] = self.request_ids["owner_id"]
+                logger.info("Preparing collection %s for catalog write", content["id"])
 
                 # See if there is already a collection with this ID. If yes, retrieve its "created" value.
                 try:
@@ -449,6 +570,11 @@ field is not permitted also."
 
             # The following section handles the request to create/update an item
             elif "/items" in request.scope["path"]:
+                logger.info(
+                    "Preparing item %s for publication/update in collection %s",
+                    content.get("id"),
+                    collection,
+                )
                 # first check if the collection exists
                 if not await self._collection_exists(request, f"{self.request_ids['owner_id']}_{collection}"):
                     raise HTTPException(
@@ -469,6 +595,7 @@ field is not permitted also."
                 )
 
                 # Geometry checks and bbox enforcement are done before any S3 side effect.
+                logger.debug("Validating geometry/bbox for item %s", content.get("id"))
                 content = validate_geometry_and_enforce_bbox(content)
                 # Keep ESA behavior (accept null geometry+bbox) while ensuring pgstac persistence compatibility.
                 content = enforce_pgstac_defaults_for_null_geometry(content)
@@ -480,11 +607,13 @@ field is not permitted also."
                         detail=f"Not all assets for item {content['id']} are available in S3.",
                     )
                 logger.debug("All assets of the item are available in S3, the item can be published or updated")
+                logger.info("All assets are available for catalog item %s", content.get("id"))
                 content = self.s3_manager(request).update_assets_checksums(content)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_timestamps_for_creation(content)
                         content = timestamps_extension.set_timestamps_for_insertion(content)
+                        logger.debug("Set creation/insertion timestamps for item %s", content.get("id"))
                     else:  # PUT
                         published = expires = ""
                         if item and item.get("properties"):
@@ -500,6 +629,7 @@ field is not permitted also."
                             original_published=published,
                             original_expires=expires,
                         )
+                        logger.debug("Set update timestamps for item %s", content.get("id"))
                 if hasattr(content, "status_code"):
                     return content
 
@@ -508,8 +638,10 @@ field is not permitted also."
                 request = self._override_request_body(request, content)
 
             logger.debug(f"Sending back the response for {request.method} {request.scope['path']}")
+            logger.info("Finished managing %s catalog write request for %s", request.method, request.scope["path"])
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
+            logger.exception("Catalog write request is missing expected key: %s", kerr_msg)
             raise HTTPException(
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
@@ -533,6 +665,13 @@ field is not permitted also."
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
+        logger.info(
+            "Managing delete request for owner=%s collections=%s item=%s as user=%s",
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+            user_login,
+        )
 
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
@@ -547,6 +686,12 @@ field is not permitted also."
                 user_login,
             )
         ):
+            logger.warning(
+                "Delete request denied by authorization; owner=%s collections=%s user=%s",
+                self.request_ids["owner_id"],
+                self.request_ids["collection_ids"],
+                user_login,
+            )
             return False
 
         # Manage a collection deletion. The apikey user (or local user if in local mode)
@@ -567,14 +712,20 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
         await self.build_filelist_to_be_deleted(request)
+        logger.info("Delete request authorized for %s", request.scope["path"])
         return True
 
     async def manage_search_request(  # pylint: disable=too-many-statements,too-many-branches
         self,
         request: Request,
     ) -> Request | JSONResponse:
-        """find the user in the filter parameter and add it to the
-        collection name.
+        """
+        Normalize catalog search requests and resolve owner-prefixed collections.
+
+        The search endpoint accepts owner hints from URL path, query/body owner,
+        collections and CQL2 filters. This method resolves those hints, rewrites
+        collections to pgstac ids, normalizes `externalIds`, and checks read
+        authorization before forwarding the request.
 
         Args:
             request Request: the client request.
@@ -586,6 +737,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         if request.method == "POST":
             content = await request.json()
             original_content = copy.deepcopy(content)
+            logger.info("Managing POST catalog search request")
+            logger.debug("Original POST search body: %s", original_content)
 
             # Normalize externalIds filters coming from UI (e.g., "=" -> a_overlaps).
             normalized_filter, normalized_lang, changed = normalize_external_ids_filter_value(
@@ -595,6 +748,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if changed:
                 content["filter"] = normalized_filter
                 content["filter-lang"] = normalized_lang
+                logger.info("Normalized externalIds filter for POST catalog search")
 
             # Build a CQL2 filter for externalIds (array of objects) if requested.
             external_ids_filter = build_external_ids_filter(content.pop("externalIds", None))
@@ -605,10 +759,12 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 )
                 content["filter"] = combine_filters(existing_filter, external_ids_filter)
                 content["filter-lang"] = "cql2-json"
+                logger.info("Added externalIds filter to POST catalog search")
 
             # Pre-processing of filter extensions
             if "filter" in content:
                 content["filter"] = process_filter_extensions(content["filter"])
+                logger.debug("Processed POST search filter extensions: %s", content["filter"])
 
             # Management of priority for the assignation of the owner_id
             if not self.request_ids["owner_id"]:
@@ -617,6 +773,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     or content.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
+                logger.debug("POST search owner resolved to %s", self.request_ids["owner_id"])
 
             # Ensure normalized filters are serialized in request body.
             # Add filter-lang option to the content if it doesn't already exist
@@ -648,6 +805,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                         )
 
                 self.request_ids["collection_ids"] = content["collections"]
+                logger.info("POST search collections resolved to %s", self.request_ids["collection_ids"])
             if content != original_content:
                 request = self._override_request_body(request, content)
 
@@ -656,6 +814,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             # Get dictionary of query parameters
             query_params_dict = dict(request.query_params)
             original_query_params = dict(query_params_dict)
+            logger.info("Managing GET catalog search request")
+            logger.debug("Original GET search query params: %s", original_query_params)
 
             # Update owner_id if it is not already defined from path parameters
             if not self.request_ids["owner_id"]:
@@ -668,6 +828,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     or query_params_dict.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
+                logger.debug("GET search owner resolved to %s", self.request_ids["owner_id"])
 
             # Normalize externalIds filters coming from UI (e.g., "=" -> a_overlaps).
             normalized_filter, normalized_lang, changed = normalize_external_ids_filter_value(
@@ -677,6 +838,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if changed:
                 query_params_dict["filter"] = json.dumps(normalized_filter)
                 query_params_dict["filter-lang"] = normalized_lang
+                logger.info("Normalized externalIds filter for GET catalog search")
 
             # Build a CQL2 filter for externalIds (array of objects) if requested.
             external_ids_filter = build_external_ids_filter(query_params_dict.pop("externalIds", None))
@@ -688,6 +850,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 combined_filter = combine_filters(existing_filter, external_ids_filter)
                 query_params_dict["filter"] = json.dumps(combined_filter)
                 query_params_dict["filter-lang"] = "cql2-json"
+                logger.info("Added externalIds filter to GET catalog search")
 
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
@@ -712,6 +875,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
+                logger.info("GET search collections resolved to %s", self.request_ids["collection_ids"])
             if query_params_dict != original_query_params:
                 request = self._override_request_query_string(request, query_params_dict)
 
@@ -719,6 +883,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         for collection in self.request_ids["collection_ids"]:
             if not await self._collection_exists(request, collection):
                 raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Collection {collection} not found.")
+        logger.debug("Catalog search request ids after management: %s", self.request_ids)
 
         # Check authorisation in cluster mode
         if common_settings.CLUSTER_MODE:
@@ -732,13 +897,16 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 owner_prefix=True,
                 raise_if_unauthorized=True,
             )
+            logger.info("Catalog search authorization succeeded for user %s", self.request_ids["user_login"])
         return request
 
     async def manage_patch_request(self, request: Request):
         """
         Pre-processing of a PATCH request to the Catalog.
-        Does authorization checks, enforces geometry/bbox consistency when patched,
-        and updates the "updated" field.
+
+        Does authorization checks, merges partial geometry/bbox patches with the
+        current item when necessary, enforces spatial consistency, and updates
+        the `updated` timestamp.
 
         Args:
             request (Request): The request from the Client
@@ -749,8 +917,16 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         try:
             original_content = await request.json()
             content = copy.deepcopy(original_content)
+            logger.info(
+                "Managing PATCH catalog request for owner=%s collections=%s item=%s",
+                self.request_ids["owner_id"],
+                self.request_ids["collection_ids"],
+                self.request_ids["item_id"],
+            )
+            logger.debug("Original PATCH body: %s", original_content)
 
             check_user_authorization(self.request_ids)
+            logger.debug("PATCH authorization succeeded for request ids %s", self.request_ids)
 
             is_item = "/items/" in request.scope["path"]
             if is_item and ("geometry" in content or "bbox" in content):
@@ -763,6 +939,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     )
 
                 # Merge patched geometry/bbox over current item, then validate the result.
+                logger.debug("Merging PATCH geometry/bbox over current item %s", self.request_ids["item_id"])
                 merged_content = copy.deepcopy(item)
                 if "geometry" in content:
                     merged_content["geometry"] = content["geometry"]
@@ -778,14 +955,23 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 # Propagate enforced geometry/bbox back to patch body so stored item stays consistent.
                 content["geometry"] = merged_content.get("geometry", None)
                 content["bbox"] = merged_content.get("bbox", None)
+                logger.debug(
+                    "PATCH geometry/bbox enforced for item %s: geometry=%s bbox=%s",
+                    self.request_ids["item_id"],
+                    content.get("geometry"),
+                    content.get("bbox"),
+                )
 
             # Update "updated" timestamp (different field if it is an item or a collection)
             content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=is_item)
+            logger.debug("Updated PATCH timestamp for item=%s", is_item)
 
             request = self._override_request_body(request, content)
+            logger.info("Finished managing PATCH request for %s", request.scope["path"])
             return request
 
         except KeyError as kerr_msg:
+            logger.exception("PATCH request is missing expected key: %s", kerr_msg)
             raise HTTPException(
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
