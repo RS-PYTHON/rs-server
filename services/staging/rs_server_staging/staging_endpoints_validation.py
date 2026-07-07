@@ -87,6 +87,7 @@ def validate_response(request: Request, data: dict, status_code=HTTP_200_OK):
     Args:
         request (Request): input request
         data (dict): data to send in the endpoint response
+        status_code (int): HTTP status code for the response. Defaults to HTTP_200_OK.
     """
     json_response = JSONResponse(status_code=status_code, content=data)
     logger.info("Validating staging response for %s %s; status=%s", request.method, request.url.path, status_code)

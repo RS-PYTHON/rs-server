@@ -171,8 +171,8 @@ class TestLandingPagesEndpoints:
         Args:
             client: The test client to send requests.
             endpoint: The endpoint to test, e.g., "/cadip".
-            role: The role to use for authentication (not used directly in the test).
-
+            collection_link (str): URL path fragment expected to appear in at least one "data" rel
+                link href on the landing page (e.g., "/cadip/collections").
         """
         # Check for response type and links to /collections.
         response = client.get(endpoint).json()
@@ -206,8 +206,8 @@ class TestLandingPagesEndpoints:
             client: The test client to send requests.
             mocker: The pytest-mock fixture for mocking.
             endpoint: The endpoint to test, e.g., "/cadip/collections".
-            role: The role used to simulate access control.
-
+            roles (list[str]): List of IAM role strings set on the mock request state for
+                authentication (e.g., ["rs_cadip_landing_page", "rs_cadip_authTest_read"]).
         """
         # Mock clusterMode
         mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
@@ -1802,6 +1802,16 @@ class TestFeatureCollectionOdataStacMapping:
                 "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_CONTAINS(INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'), published)"
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2025-04-01T00:00:00.000Z and PublicationDate lt 2025-04-02T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
         ],
         indirect=["fastapi_app"],
         ids=[
@@ -1820,6 +1830,7 @@ class TestFeatureCollectionOdataStacMapping:
             "t_equals",
             # "t_disjoint",
             "t_intersects",
+            "t_contains",
         ],
     )
     @responses.activate

@@ -107,12 +107,6 @@ def export_aws_credentials():
     - AWS_DEFAULT_REGION
 
     Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
     """
     monkeypatch = MonkeyPatch()
 
@@ -239,6 +233,7 @@ def add_collection(client: TestClient, collection: Collection, **kwargs) -> http
     Args:
         client: the catalog client
         collection: the collection to add
+        kwargs: additional keyword arguments forwarded to the HTTP POST request.
 
     Returns:
         None
@@ -332,6 +327,7 @@ def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
     Only the feature id and the parent collection is stored are configurable.
 
     Args:
+        owner_id (str): the owner identifier stored in the feature properties.
         id_: the feature id
         in_collection: the collection id containing the feature
 
@@ -449,10 +445,6 @@ def delete_collection(client: TestClient, collection_owner: str, collection_name
         client: the catalog client
         collection_owner: name of the owner of the collection
         collection_name: name of the collection
-
-    Returns:
-        None
-
     """
     client.delete(f"/catalog/collections/{collection_owner}:{collection_name}")
 
@@ -463,10 +455,6 @@ def delete_collections(client: TestClient, owners_collections_list: list[tuple[s
     Args:
         client: the catalog client
         owners_collections_list: list of tuples, each tuple is (collection_owner, collection_name)
-
-    Returns:
-        None
-
     """
     for element in owners_collections_list:
         delete_collection(client, collection_owner=element[0], collection_name=element[1])

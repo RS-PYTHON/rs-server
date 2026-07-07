@@ -465,12 +465,14 @@ def setup_database(
         toto_s2_l3 (_type_): a collection named S2_L3 with the user id toto.
         titi_s1_l1 (_type_): a collection named S1_L1 with the user id titi.
         titi_s2_l1 (_type_): a collection named S2_L1 with the user id titi.
-        feature_toto_S1_L1_0 (_type_): a feature from the collection S1_L1 with the
-        user id toto.
-        feature_toto_S1_L1_1 (_type_): a second feature from the collection S1_L1
-        with the user id toto.
-        feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
-        user id titi.
+        darius_s1_l2 (Collection): a collection named S1_L2 with the user id darius.
+        pyteam_s1_l1 (Collection): a collection named S1_L1 with the user id pyteam.
+        unset_user_s2_l2 (Collection): a collection named S2_L2 with no owner.
+        feature_toto_s1_l1_0 (Feature): first feature in the toto/S1_L1 collection.
+        feature_toto_s1_l1_1 (Feature): second feature in the toto/S1_L1 collection.
+        feature_toto_s2_l3_0 (Feature): first feature in the toto/S2_L3 collection.
+        feature_titi_s2_l1_0 (Feature): first feature in the titi/S2_L1 collection.
+        feature_pyteam_s1_l1_0 (Feature): first feature in the pyteam/S1_L1 collection.
     """
     with _with_mock_osam_credentials():
 

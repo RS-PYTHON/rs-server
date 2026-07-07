@@ -141,7 +141,7 @@ def get_test_cases(  # pylint: disable=too-many-branches
     - partial_roles (add authorization on only half the collections)
 
     Args:
-        endpoint_desc, endpoint description
+        endpoint_desc (str): human-readable description of the endpoint being tested.
         requested_collections: database collections requested by the pytest. In the nominal test cases, we add iam
         roles to the user to give him authorization on these collections.
         write_collections: specific case when we want to POST/PUT/DELETE collections. In this case, the only test that

@@ -292,6 +292,7 @@ class S3StorageHandler:
         Args:
             bucket (str): The S3 bucket name.
             key (str): The S3 object key.
+            max_retries (int): Maximum number of deletion attempts before raising an error. Defaults to S3_MAX_RETRIES.
 
         Raises:
             RuntimeError: If an error occurs during the bucket access check.
@@ -1047,9 +1048,8 @@ retried for %s times. Aborting",
         S3 upload process, raising a `RuntimeError` if the retries are exhausted without success.
 
         Args:
-            stream_url (str): The URL of the file to be streamed and uploaded.
+            request (requests.Request): Prepared HTTP request pointing to the source file URL to stream from.
             trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
-            auth (Any): Authentication credentials for the HTTP request (if required).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
             max_requests_per_minute (int | None): Optional maximum number of HTTP requests per minute for the domain.
@@ -1200,7 +1200,7 @@ retried for %s times. Aborting",
         Upload a file from an external S3 bucket to an S3 bucket.
 
         Args:
-            stream_url (str): Source URL for the item to upload (contains bucket name and item key).
+            source_url (str): Source S3 URL of the form 's3://bucket/key' to stream from.
             source_endpoint_url (str): Endpoint URL of the source S3 bucket.
             source_access_key (str): Access key to the external S3 bucket.
             source_secret_key (str): Secret key to the external S3 bucket.

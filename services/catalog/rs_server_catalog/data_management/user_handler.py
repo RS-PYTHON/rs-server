@@ -284,8 +284,8 @@ def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
     so the user can access them correctly
 
     Args:
-        object (dict): The collection
-
+        object_content (dict): The STAC object (item or collection) whose links need to be adapted.
+        current_user (str): The currently connected user identifier (used as fallback owner).
     Returns:
         dict: The collection passed in parameter with adapted links
     """
@@ -319,9 +319,9 @@ def adapt_links(content: dict, object_name: str, current_user: str = "", current
     Args:
         content (dict): The response content from the middleware
         'call_next' loaded in json format.
-        current_user (str): The user id that is currently connected.
-        current_collection (str): The current collection name.
         object_name (str): Type of object we want to also update.
+        current_user (str): The user id that is currently connected.
+        current_collection_id (str): The collection ID used to rewrite links outside the object list.
 
     Returns:
         dict: The content passed in parameter with adapted links

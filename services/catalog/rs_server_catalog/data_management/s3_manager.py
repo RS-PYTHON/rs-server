@@ -98,7 +98,7 @@ class S3Manager:
         to avoid orphaned catalog-bucket objects.
 
         Args:
-            content: STAC item-like payload containing asset hrefs.
+            content (dict): Files to delete
         """
         if self.is_catalog_local_mode or (not hasattr(content, "get")):
             logger.debug(

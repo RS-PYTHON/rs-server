@@ -282,6 +282,25 @@ def test_build_users_data_map(mocker):
             },
         ),
         (
+            "copernicus-s3",
+            {"keycloak_roles": ["rs_catalog_copernicus:ax___fro_ax_download"]},
+            {
+                "read": [],
+                "read_download": sorted(
+                    [
+                        "prip-rs-sentinel-3-s03-aux/copernicus/ax___fro_ax/",
+                        "rspython-ops-catalog/copernicus-s3/*/",
+                        "rspython-ops-catalog/copernicus/ax___fro_ax/",
+                    ],
+                ),
+                "write_download": sorted(
+                    [
+                        "rspython-ops-catalog/copernicus-s3/*/",
+                    ],
+                ),
+            },
+        ),
+        (
             "emilie",
             {"keycloak_roles": ["rs_catalog_emilie:s1-aux_download"]},
             {

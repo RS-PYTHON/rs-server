@@ -45,6 +45,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
         user_id: user id in keycloak
         username: username in keycloak
         iam_roles: user iam roles in keycloak
+        user_attributes (dict[str, Any]): Additional Keycloak user attributes to include in the mocked token.
         enabled: is the user enabled in keycloak ?
         assert_success: is the login process expected to success ?
     """

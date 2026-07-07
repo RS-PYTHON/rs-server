@@ -97,6 +97,8 @@ def prepare_data(external_auth_config: StationExternalAuthenticationConfig, call
     Args:
         external_auth_config (StationExternalAuthenticationConfig): Configuration object containing
             authentication details.
+        call_refresh (bool): If True, prepare a refresh-token grant request; otherwise prepare
+            a new password/credential grant request.
 
     Returns:
         Dict[str, str]: Dictionary containing the prepared data for the request.
@@ -228,9 +230,7 @@ def get_station_token(external_auth_config: StationExternalAuthenticationConfig,
     Args:
         external_auth_config (StationExternalAuthenticationConfig): The configuration object loaded
         from the rs-server.yaml file.
-        token_var (dask.distributed.Variable): variable shared between all workers containing
-        information of the current token used to request data on the current station
-
+        original_token_dict (dict): The current token dictionary (empty if no token exists yet).
     Returns:
         str: The token as string.
 
