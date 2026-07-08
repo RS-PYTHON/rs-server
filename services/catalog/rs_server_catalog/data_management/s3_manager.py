@@ -47,7 +47,13 @@ logger = Logging.default(__name__)
 
 
 class S3Manager:
-    """Tool class to handle all operations on S3 bucket."""
+    """
+    Helper for catalog S3 operations.
+
+    The catalog uses S3 checks during item publication, presigned URL generation
+    for downloads, checksum enrichment, and cleanup after catalog mutations.
+    Local catalog mode intentionally short-circuits most S3 interactions.
+    """
 
     def __init__(self, s3_credentials: S3Credentials):
         """
@@ -59,6 +65,11 @@ class S3Manager:
         self.s3_handler: S3StorageHandler = self._get_s3_handler(s3_credentials)
         # If we are in local mode, operations on S3 bucket will be skipped
         self.is_catalog_local_mode = int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)) == 1
+        logger.debug(
+            "S3Manager initialized; local_catalog_mode=%s, handler_created=%s",
+            self.is_catalog_local_mode,
+            bool(self.s3_handler),
+        )
 
     def _get_s3_handler(self, s3_credentials: S3Credentials) -> S3StorageHandler:
         """
@@ -70,6 +81,7 @@ class S3Manager:
             S3StorageHandler: S3 handler
         """
         try:
+            logger.debug("Creating S3 handler for catalog operation")
             s3_handler = S3StorageHandler(s3_credentials)
         except RuntimeError:
             logger.warning(f"Failed to create the s3 handler: {traceback.format_exc()}")
@@ -78,23 +90,35 @@ class S3Manager:
         return s3_handler
 
     def clear_catalog_bucket(self, content: dict) -> None:
-        """Used to clear specific files from catalog bucket.
+        """
+        Clear files referenced by a rejected catalog payload.
+
+        This is used when stac-fastapi returns an error after middleware already
+        prepared/staged asset paths. The method best-effort deletes those files
+        to avoid orphaned catalog-bucket objects.
 
         Args:
             content (dict): Files to delete
-            s3_handler (S3StorageHandler): S3 handler to use. If None given, will do nothing
         """
         if self.is_catalog_local_mode or (not hasattr(content, "get")):
+            logger.debug(
+                "Skipping catalog bucket clear; local_mode=%s, valid_content=%s",
+                self.is_catalog_local_mode,
+                hasattr(content, "get"),
+            )
             return
+        logger.info("Clearing catalog bucket objects for item %s", content.get("id"))
         for asset in content.get("assets", {}):
-            # Retrieve bucket name from config using what's in content
+            # Bucket resolution mirrors publication logic so cleanup targets the
+            # same physical bucket chosen for this owner/collection/type.
             item_owner = content["properties"].get("owner", "")
             item_collection = content.get("collection", "").removeprefix(f"{item_owner}_")
             item_eopf_type = content["properties"].get("eopf:type", "")
             bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
-            # For catalog bucket, data is already stored into href field (from an asset)
+            # Asset hrefs are already catalog-bucket paths at this stage.
             file_key = content["assets"][asset]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
+                logger.debug("Deleting catalog bucket asset %s from bucket=%s key=%s", asset, bucket_name, file_key)
                 self.s3_handler.delete_key_from_s3(bucket_name, file_key)
 
     def check_s3_key(self, item: dict, asset_name: str, s3_key: str) -> tuple[bool, int]:
@@ -114,13 +138,21 @@ class S3Manager:
                         if the S3 paths do not match, or if there is an error checking the key.
         """
         if not item or self.is_catalog_local_mode:
+            logger.debug(
+                "Skipping S3 key check for asset %s; item_exists=%s, local_mode=%s",
+                asset_name,
+                bool(item),
+                self.is_catalog_local_mode,
+            )
             return False, -1
         # update an item
         existing_asset = item["assets"].get(asset_name)
         if not existing_asset:
+            logger.debug("Asset %s is not present in existing item %s", asset_name, item.get("id"))
             return False, -1
 
-        # check if the new s3_href is the same as the existing one
+        # For updates, changing an existing asset path would leave the old object
+        # ownership ambiguous, so only same-path updates are accepted.
         try:
             item_s3_path = existing_asset["href"]
         except KeyError as exc:
@@ -129,6 +161,13 @@ class S3Manager:
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
         if item_s3_path != s3_key:
+            logger.error(
+                "Rejected asset path change for item %s asset %s: existing=%s new=%s",
+                item.get("id"),
+                asset_name,
+                item_s3_path,
+                s3_key,
+            )
             raise HTTPException(
                 detail=(
                     f"Received an updated path for the asset {asset_name} of item {item['id']}. "
@@ -141,10 +180,13 @@ class S3Manager:
         bucket = s3_key_array[2]
         key_path = "/".join(s3_key_array[3:])
 
-        # check the presence of the key
+        # Once the path is validated, ask object storage if the key exists and
+        # retrieve its size for diagnostics and future metadata use.
         try:
+            logger.debug("Checking S3 key existence for asset %s: bucket=%s key=%s", asset_name, bucket, key_path)
             s3_key_exists, size = self.s3_handler.check_s3_key_on_bucket(bucket, key_path)
             if not s3_key_exists:
+                logger.info("S3 key missing for asset %s: bucket=%s key=%s", asset_name, bucket, key_path)
                 return False, -1
                 # raise HTTPException(
                 #     detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
@@ -152,6 +194,7 @@ class S3Manager:
                 # )
             return True, size
         except RuntimeError as rte:
+            logger.exception("S3 key check failed for asset %s and key %s: %s", asset_name, s3_key, rte)
             raise HTTPException(
                 detail=f"When checking the presence of the {s3_key} key, an error has been raised: {rte}",
                 status_code=HTTP_400_BAD_REQUEST,
@@ -164,7 +207,12 @@ class S3Manager:
         request_ids: dict,
         item: dict,
     ) -> dict:
-        """Update the JSON body of a feature with new stac extensions and owner information.
+        """
+        Update a STAC item before it is forwarded to pgstac.
+
+        The method enforces create/update semantics, adds RS Server-required STAC
+        extensions, stores ownership in properties, and rewrites the collection id
+        to the internal owner-prefixed form used by pgstac.
 
         Args:
             content (dict): The content to update.
@@ -173,14 +221,17 @@ class S3Manager:
             item (dict): The item from the catalog (if exists) to update.
 
         Returns:
-            dict: The updated content.
-            list: List of files to delete from the S3 bucket
-
-
+            The updated item body.
         """
         collection_ids = request_ids.get("collection_ids", [])
         user = request_ids.get("owner_id")
         logger.debug(f"Update item for user: {user}")
+        logger.info(
+            "Updating STAC item publication metadata for item %s; owner=%s, collections=%s",
+            content.get("id"),
+            user,
+            collection_ids,
+        )
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
@@ -189,7 +240,8 @@ class S3Manager:
         collection_id = collection_ids[0]
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
-        # 3 - include new stac extensions if not present
+        # Ensure catalog items always carry the extensions that downstream
+        # response/download/checksum logic expects.
         for new_stac_extension in [
             "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
@@ -197,15 +249,23 @@ class S3Manager:
         ]:
             if new_stac_extension not in content["stac_extensions"]:
                 content["stac_extensions"].append(new_stac_extension)
+                logger.debug("Added STAC extension %s to item %s", new_stac_extension, content.get("id"))
 
-        # 5 - add owner data
+        # pgstac stores collections globally, so collection ids are internally
+        # namespaced by owner while the public API hides that prefix.
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
+        logger.debug("Updated item %s collection to %s", content.get("id"), content.get("collection"))
         logger.debug(f"The updated item for user: {user} ended")
         return content
 
     def generate_presigned_url(self, content: dict, path: str) -> tuple[str, int]:
-        """This function is used to generate a time-limited download url
+        """
+        Generate a time-limited S3 download URL for a catalog asset.
+
+        The requested asset id is extracted from the download route. The returned
+        URL is intended for an HTTP redirect and should not be logged because it
+        contains temporary access credentials.
 
         Args:
             content (dict): STAC description of the item to generate an URL for
@@ -215,8 +275,8 @@ class S3Manager:
             str: Presigned URL
             int: HTTP return code
         """
-        # Assume that pgstac already selected the correct asset id
-        # just check type, generate and return url
+        # pgstac has already resolved the item; the route tail selects the asset
+        # for which we need to produce the redirect URL.
         path_splitted = path.split("/")
         asset_id = path_splitted[-1]
         item_id = path_splitted[-3]
@@ -225,9 +285,18 @@ class S3Manager:
         item_collection = content.get("collection", "").removeprefix(f"{item_owner}_")
         item_eopf_type = content["properties"].get("eopf:type", "")
         bucket_name = get_bucket_name_from_config(item_owner, item_collection, item_eopf_type)
+        logger.info("Generating presigned URL for item %s asset %s", item_id, asset_id)
+        logger.debug(
+            "Presigned URL context: owner=%s collection=%s bucket=%s expiration=%s",
+            item_owner,
+            item_collection,
+            bucket_name,
+            PRESIGNED_URL_EXPIRATION_TIME,
+        )
         try:
             s3_path = content["assets"][asset_id]["href"].removeprefix(f"s3://{bucket_name}/")
         except KeyError:
+            logger.warning("Asset %s not found while generating presigned URL for item %s", asset_id, item_id)
             return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
             if not self.s3_handler:
@@ -241,7 +310,9 @@ class S3Manager:
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except botocore.exceptions.ClientError:
+            logger.exception("Failed to generate presigned URL for item %s asset %s", item_id, asset_id)
             return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
+        logger.info("Generated presigned URL for item %s asset %s", item_id, asset_id)
         return response, HTTP_302_FOUND
 
     def check_if_item_can_be_published(self, content: dict) -> bool:
@@ -263,15 +334,23 @@ class S3Manager:
         Notes:
             - Handles exceptions raised by `check_s3_key` and logs errors without stopping iteration.
             - For folder/prefix assets, the size returned is ignored (-1), but existence is still validated.
+            - Cheap local validation runs before parallel S3 checks so invalid payloads fail fast.
         """
         # (don't do anything if in local mode)
         if self.is_catalog_local_mode:
+            logger.debug("Skipping item publication S3 checks in local catalog mode")
             return True
 
         user = content["properties"].get("owner", "")
         collection_id = content.get("collection", "").removeprefix(f"{user}_")
         item_eopf_type = content["properties"].get("eopf:type", "")
         bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
+        logger.info(
+            "Checking S3 availability for item %s before publication; bucket=%s",
+            content.get("id"),
+            bucket_name,
+        )
+        logger.debug("Publication S3 check input item: %s", content)
         exist_list = []
         assets_to_check = []
 
@@ -294,6 +373,7 @@ class S3Manager:
 
             # Keep only the assets that require a real S3 existence check.
             assets_to_check.append((asset_name, s3_key))
+            logger.debug("Asset %s queued for S3 publication check: %s", asset_name, s3_key)
 
         def _check_asset(asset: tuple[str, str]) -> bool:
             # This helper runs inside the thread pool so each asset can be checked
@@ -312,20 +392,30 @@ class S3Manager:
             # so the best low-risk optimization here is to fan out the checks in parallel.
             # The number of workers is capped to avoid overwhelming the S3 endpoint.
             max_workers = min(len(assets_to_check), max(1, PUBLISH_CHECK_MAX_WORKERS))
+            logger.debug("Checking %d asset(s) with %d S3 worker(s)", len(assets_to_check), max_workers)
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 exist_list.extend(executor.map(_check_asset, assets_to_check))
 
-        return all(exist_list)
+        can_publish = all(exist_list)
+        logger.info("S3 availability check for item %s finished: can_publish=%s", content.get("id"), can_publish)
+        return can_publish
 
     def update_assets_checksums(self, content: dict) -> dict:
-        """Update each asset with the checksum returned by S3 GetObjectAttributes."""
+        """
+        Update each asset with checksum data returned by S3 GetObjectAttributes.
+
+        Missing checksum metadata is non-fatal: publication can continue because
+        object presence was already checked separately.
+        """
         if self.is_catalog_local_mode:
+            logger.debug("Skipping checksum update in local catalog mode")
             return content
 
         user = content["properties"].get("owner", "")
         collection_id = content.get("collection", "").removeprefix(f"{user}_")
         item_eopf_type = content["properties"].get("eopf:type", "")
         bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
+        logger.info("Updating asset checksums for item %s; bucket=%s", content.get("id"), bucket_name)
 
         for asset_name, asset_info in content.get("assets", {}).items():
             href = asset_info.get("href")
@@ -335,6 +425,7 @@ class S3Manager:
 
             key = href.removeprefix(f"s3://{bucket_name}/")
             try:
+                logger.debug("Fetching checksum attributes for asset %s key=%s", asset_name, key)
                 object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
             except RuntimeError as error:
                 logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
@@ -350,12 +441,18 @@ class S3Manager:
             for checksum_key, checksum_value in checksum.items():
                 if checksum_key.startswith("Checksum") and checksum_value:
                     asset_info["file:checksum"] = checksum_value
+                    logger.debug("Updated checksum for asset %s using %s", asset_name, checksum_key)
                     break
 
         return content
 
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
-        """Used to clear specific files from temporary bucket or from catalog bucket.
+        """
+        Delete S3 files collected during catalog request processing.
+
+        Deletion happens after the catalog mutation succeeds. Failures are logged
+        but do not roll back the catalog response, because a secondary object
+        storage lifecycle can still clean up orphaned objects.
 
         Args:
             s3_files_to_be_deleted (list[str]): list of files to delete from the S3 bucket
@@ -371,7 +468,10 @@ class S3Manager:
             return False
 
         try:
+            logger.info("Deleting %d S3 file(s) after catalog operation", len(s3_files_to_be_deleted))
+            logger.debug("S3 files scheduled for deletion: %s", s3_files_to_be_deleted)
             await self.s3_handler.adelete_keys_from_s3(s3_files_to_be_deleted)
+            logger.info("Finished deleting S3 files after catalog operation")
         except RuntimeError as rte:
             logger.exception(
                 f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",

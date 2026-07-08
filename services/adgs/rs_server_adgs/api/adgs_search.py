@@ -133,6 +133,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific AUXIP collection and access type.
 
     Args:
+        request (Request): The incoming HTTP request used for authentication checks.
         collection_id (str): Used to find the AUXIP station ("ADGS1, ADGS2")
                             from the RSPY_ADGS_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
@@ -236,8 +237,16 @@ async def get_adgs_collection_items(
     the items based on defined query parameters.
 
     Args:
+        request (Request): The incoming HTTP request used for authentication and routing.
         collection_id (str): AUXIP collection ID. Must be a valid collection identifier
                              (e.g., 'ins_s1').
+        bbox (BBoxType): Bounding box spatial filter, as [west, south, east, north] coordinates.
+        datetime (DateTimeType): Temporal filter as an RFC 3339 timestamp or interval.
+        filter_ (FilterType): CQL2 filter expression to further restrict results.
+        filter_lang (FilterLangType): Language for the CQL2 filter, either "cql2-text" or "cql2-json".
+        sortby (SortByType): Field and direction to sort results by.
+        limit (LimitType): Maximum number of items to return per page.
+        page (PageType): 1-based page index for pagination.
 
     Returns:
         list[dict]: A FeatureCollection of items belonging to the specified collection, or an
@@ -283,9 +292,10 @@ async def get_adgs_collection_specific_item(
     validate access and return item information.
 
     Args:
-    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+        request (Request): The incoming HTTP request used for authentication and routing.
+        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
             (e.g., 'ins_s1').
-    - item_id (str): AUXIP item ID. Must be a valid item identifier
+        item_id (str): AUXIP item ID. Must be a valid item identifier
             (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
 
     Returns:
@@ -360,6 +370,8 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException: If an invalid station identifier is provided (`CreateProviderFailed`).
         HTTPException: If there is a connection error with the station (`requests.exceptions.ConnectionError`).
         HTTPException: If there is a general failure during the process.
+        Exception: Re-raised directly if the caught exception is already an HTTPException;
+            all other exceptions are wrapped in a new HTTPException(503).
     """
     try:
         products = adgs_retriever.init_adgs_provider(station).search(

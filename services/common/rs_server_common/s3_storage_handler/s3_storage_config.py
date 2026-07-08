@@ -71,8 +71,6 @@ def get_storage_settings_from_config(
         owner (str): Owner of the file to upload.
         collection (str): Collection of the file to upload.
         eopf_type (str): 'eopf:type' of the file to upload.
-        config_file_path (str, optional): Path to the config file, if None the environment variable will be used.
-
     Returns:
         tuple: Expiration delay and bucket name for these parameters.
     """
@@ -146,8 +144,6 @@ def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str
         owner (str): Owner of the file to upload.
         collection (str): Collection of the file to upload.
         eopf_type (str): 'eopf:type' of the file to upload.
-        config_file_path (str, optional): Path to the config file, if None the environment variable will be used.
-
     Returns:
         int: Expiration delay (usually in days).
 

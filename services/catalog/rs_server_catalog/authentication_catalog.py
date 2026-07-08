@@ -37,6 +37,10 @@ def get_authorisation(
     """
     Check if the user is authorized to access collections.
 
+    Authorization roles follow the pattern
+    `rs_catalog_<owner_id>:<collection_id>_<read|write|download>`. Wildcards are
+    accepted for owner or collection. In local mode, authorization is bypassed.
+
     Args:
         requested_col_ids (list): IDs of the requested collections.
         auth_roles (list): The list of authorisations for the user_login.
@@ -51,15 +55,28 @@ def get_authorisation(
     """
     # No authorization needed in local mode
     if settings.LOCAL_MODE:
+        logger.debug(
+            "Catalog authorization bypassed in local mode for user=%s owner=%s collections=%s action=%s",
+            user_login,
+            requested_owner_id,
+            requested_col_ids,
+            requested_action,
+        )
         return True
 
     # The UAC/Keycloak user (who is also the owner of the api key and oauth2 cookie)
     # always has all the rights on all the collections he owns.
     if user_login == requested_owner_id:
+        logger.info(
+            "Catalog authorization granted because user owns requested collections; user=%s collections=%s action=%s",
+            user_login,
+            requested_col_ids,
+            requested_action,
+        )
         return True
 
-    # Parse authorization roles to retrieve the role owner_id, collection_id and action.
-    # Role format is: rs_catalog_<owner_id>:<collection_id>_<read|write|download>
+    # Parse only catalog roles. Other roles may exist in the token and are
+    # ignored here so authorization decisions stay scoped to the catalog.
     auth_role_pattern = (
         r"rs_catalog_(?P<owner_id>.*(?=:)):"  # Group owner_id
         r"(?P<collection_id>.+)_"  # Group collection_id
@@ -70,6 +87,14 @@ def get_authorisation(
     for role in auth_roles:
         if match := re.match(auth_role_pattern, role):
             parsed_auth_roles.append(match.groupdict())
+    logger.debug(
+        "Checking catalog authorization; user=%s owner=%s collections=%s action=%s parsed_roles=%s",
+        user_login,
+        requested_owner_id,
+        requested_col_ids,
+        requested_action,
+        parsed_auth_roles,
+    )
 
     # For each requested collection
     for _requested_col_id in requested_col_ids:
@@ -78,7 +103,8 @@ def get_authorisation(
         requested_col_ok = False
         for auth_role in parsed_auth_roles:
 
-            # Remove the owner prefix from the requested collection id, if any
+            # Some callers already pass pgstac collection ids (`owner_collection`).
+            # Strip that prefix before matching against public role collection ids.
             if owner_prefix:
                 requested_col_id = _requested_col_id.removeprefix(f"{requested_owner_id}_")
             else:
@@ -101,6 +127,13 @@ def get_authorisation(
         # The user has no role that authorizes him to request this collection.
         # Return False if the user is not authorized for at least one collection.
         if not requested_col_ok:
+            logger.warning(
+                "Catalog authorization denied; user=%s owner=%s collection=%s action=%s",
+                user_login,
+                requested_owner_id,
+                _requested_col_id,
+                requested_action,
+            )
             if raise_if_unauthorized:
                 requested_roles = [
                     f"rs_catalog_{requested_owner_id}:{msg_col_id}_{requested_action}"
@@ -114,6 +147,13 @@ def get_authorisation(
             return False
 
     # Return True if the user is authorized for all collections
+    logger.info(
+        "Catalog authorization granted; user=%s owner=%s collections=%s action=%s",
+        user_login,
+        requested_owner_id,
+        requested_col_ids,
+        requested_action,
+    )
     return True
 
 
@@ -121,15 +161,26 @@ def check_user_authorization(request_ids: dict) -> None:
     """
     Checks that current user/owner is allowed to do operations on catalog objects.
 
+    The request middleware may not know the owner until the body is inspected.
+    This helper resolves a missing owner first, then enforces write access in
+    cluster mode.
+
     Raises:
         HTTPException: When the user doesn't have the expected authorizations
     """
     # Retrieve owner ID and check authorizations
     if not request_ids["owner_id"]:
         request_ids["owner_id"] = get_user(None, request_ids["user_login"])
+        logger.debug("Resolved missing owner_id to %s for request ids", request_ids["owner_id"])
     # If we are in cluster mode and the user_login is not authorized
     # to put/post/patch raise a HTTP_401_UNAUTHORIZED status.
     if settings.CLUSTER_MODE:
+        logger.info(
+            "Checking catalog write authorization for user=%s owner=%s collections=%s",
+            request_ids["user_login"],
+            request_ids["owner_id"],
+            request_ids["collection_ids"],
+        )
         get_authorisation(
             request_ids["collection_ids"],
             request_ids["auth_roles"],
@@ -138,10 +189,16 @@ def check_user_authorization(request_ids: dict) -> None:
             request_ids["user_login"],
             raise_if_unauthorized=True,
         )
+    else:
+        logger.debug("Catalog write authorization skipped outside cluster mode")
 
 
 def get_all_accessible_collections(collections: dict, auth_roles: list, user_login: str) -> list[dict]:
     """Return the list of all collections accessible by the user calling it.
+
+    In cluster mode, the landing page and `/collections` response must hide
+    collections the caller cannot read. Local mode is handled by
+    `get_authorisation`.
 
     Args:
         collections (dict): List of all collections.
@@ -164,6 +221,12 @@ def get_all_accessible_collections(collections: dict, auth_roles: list, user_log
             owner_prefix=True,
         )
     ]
+    logger.info(
+        "User %s can access %d/%d catalog collection(s)",
+        user_login,
+        len(accessible_collections),
+        len(collections),
+    )
 
     # Return results, sorted by <owner>_<collection_id>
     return sorted(accessible_collections, key=lambda col: col["id"])

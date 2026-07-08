@@ -45,6 +45,7 @@ class TestStagingCatalog:
         Args:
             mocker: The mocker fixture to patch methods and objects during tests.
             staging_instance (Staging): An instance of the Staging class, pre-initialized for testing.
+            staging_inputs: pytest fixture providing the staging input data (collection and features).
         """
         # Setting up the catalog_url and headers
         staging_instance.catalog_url = "https://test_rspy_catalog_url.com"

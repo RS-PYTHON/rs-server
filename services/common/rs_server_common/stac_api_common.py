@@ -795,7 +795,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             odata_entity (dict): The OData entity to evaluate.
             collections (list[dict]): A list of collection configurations,
             each potentially containing query criteria.
-
         Returns:
             str | None: The ID of the first matching collection, or None if no match is found.
         """
@@ -1070,6 +1069,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         Args:
             value1 (Any): The first list, or a comma-separated string representing it.
             value2 (Any): The second list, or a comma-separated string representing it.
+            mode (str): Resolution strategy – "union" to merge both lists, "intersection" to keep only common elements.
 
         Returns:
             tuple[Any, bool]: A tuple containing the intersected list as a comma-separated string,
@@ -1381,6 +1381,8 @@ def create_stac_collection(
         stac_mapper (dict): The mapping dictionary for converting EOProduct data to STAC properties.
         collection_provider (Callable[[dict], str | None]): optional function that determines STAC collection
                                                             for a given OData entity
+        external_ids_scheme (ServiceRole | None): Optional service role used to tag STAC item
+            external IDs (e.g., "auxip", "cadip", "prip").
 
     Returns:
         dict: The STAC feature collection containing features for each EOProduct.
