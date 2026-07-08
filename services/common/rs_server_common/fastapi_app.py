@@ -42,7 +42,6 @@ from stac_fastapi.api.models import create_get_request_model, create_post_reques
 from stac_fastapi.api.openapi import update_openapi
 from stac_fastapi.api.routes import add_route_dependencies
 from stac_fastapi.extensions import (
-    CollectionSearchExtension,
     FieldsExtension,
     FilterExtension,
     PaginationExtension,
@@ -115,7 +114,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         FieldsExtension(),
         FilterExtension(client=FiltersClient()),
         PaginationExtension(),
-        CollectionSearchExtension(),
         # BulkTransactionExtension(client=BulkTransactionsClient()),
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
