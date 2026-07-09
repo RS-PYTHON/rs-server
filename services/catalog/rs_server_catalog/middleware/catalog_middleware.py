@@ -46,7 +46,12 @@ logger = Logging.default(__name__)
 
 
 class CatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """The user catalog middleware."""
+    """
+    Middleware entry point for the user-aware catalog facade.
+
+    A fresh UserCatalog handler is created for each request so mutable
+    `request_ids` state is never shared across concurrent requests.
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Redirect the user catalog specific endpoint and adapt the response content."""
@@ -56,7 +61,13 @@ class CatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-m
 
 
 class UserCatalog:  # pylint: disable=too-few-public-methods
-    """The user catalog middleware handler."""
+    """
+    Per-request catalog middleware handler.
+
+    It collects caller/owner/collection/item identifiers, rewrites the incoming
+    request to the internal pgstac route shape, delegates to stac-fastapi, then
+    rewrites the response back to the public RS Server catalog API.
+    """
 
     def __init__(self, client: CoreCrudClient):
         """Constructor, called from the middleware"""
@@ -71,6 +82,11 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         """
         Redirect the user catalog specific endpoint and adapt the response content.
 
+        The dispatch flow has three phases:
+        1. recover authentication and request identifiers,
+        2. let CatalogRequestManager rewrite/authorize the request,
+        3. let CatalogResponseManager adapt the backend response and side effects.
+
         Args:
             request (Request): Initial request
             call_next: next call to apply
@@ -78,8 +94,15 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         Returns:
             response (Response): Response to the current request
         """
+        # Read mutable request bodies once at middleware level. The request
+        # manager can later replace Starlette's cached body/json if it rewrites
+        # owner, collection, timestamps or filters.
         request_body = None if request.method not in ["PATCH", "POST", "PUT"] else await request.json()
         auth_roles = user_login = owner_id = None
+        logger.info("Catalog request received: %s %s", request.method, request.url.path)
+        logger.debug("Catalog request query params: %s", dict(request.query_params))
+        if request_body is not None:
+            logger.debug("Catalog request body for %s %s: %s", request.method, request.url.path, request_body)
 
         # ---------- Management of  authentification (retrieve user_login + default owner_id)
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
@@ -95,6 +118,7 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
             except (NameError, AttributeError):
                 auth_roles = []
                 user_login = get_user(None, None)  # Get default local or cluster user
+                logger.debug("Catalog request has no authenticated state; using fallback user %s", user_login)
         elif common_settings.LOCAL_MODE:
             user_login = get_user(None, None)
         owner_id = ""  # Default owner_id is empty
@@ -103,7 +127,8 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         )
 
         # ---------- Request rerouting
-        # Dictionary to easily access main data from the request
+        # Dictionary to carry the identifiers recovered from auth/path/body
+        # through request and response processing.
         self.request_ids = {
             "auth_roles": auth_roles,
             "user_login": user_login,
@@ -113,20 +138,31 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
+            logger.error("Invalid catalog endpoint for request %s %s", request.method, request.url.path)
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid endpoint.")
         logger.debug(f"path = {request.scope['path']} | requests_ids = {self.request_ids}")
+        logger.info(
+            "Catalog request routed: %s %s -> %s; owner=%s, collections=%s, item=%s",
+            request.method,
+            request.url.path,
+            request.scope["path"],
+            self.request_ids["owner_id"],
+            self.request_ids["collection_ids"],
+            self.request_ids["item_id"],
+        )
 
         # Ensure that user_login is not null after rerouting
         if not self.request_ids["user_login"]:
+            logger.error("Catalog request has no user_login after rerouting: %s", self.request_ids)
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="user_login is not defined !",
             )
 
         # ---------- Body data recovery
-        # Recover user and collection id with the ones provided in the request body
-        # (if the corresponding parameters have not been recovered from the url)
-        # This is available in POST/PUT/PATCH methods only
+        # Some endpoints carry owner/collection/item identifiers only in the body
+        # (for example POST collection or POST item). Fill missing values before
+        # authorization and route-specific rewriting.
         if request_body:
             # Edit owner_id with the corresponding body content if exist
             if not self.request_ids["owner_id"]:
@@ -140,21 +176,40 @@ class UserCatalog:  # pylint: disable=too-few-public-methods
 
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
                 self.request_ids["item_id"] = request_body.get("id")
+            logger.debug("Catalog request ids after body recovery: %s", self.request_ids)
 
         # ---------- Apply specific changes for each endpoint
-
         request_manager = CatalogRequestManager(self.client, self.request_ids)
         request = await request_manager.manage_requests(request)
         # If the request manager returns a response, it usually means the user is not authorized
         # to do the operation received, so we directly return the response
         if isinstance(request, Response):
+            logger.info(
+                "Catalog request %s %s returned early with status %s",
+                request_manager.request_ids,
+                getattr(request, "media_type", None),
+                request.status_code,
+            )
             return request
 
         response = await call_next(request)
+        logger.info(
+            "Catalog backend response for %s %s has status %s",
+            request.method,
+            request.scope["path"],
+            response.status_code,
+        )
 
         response_manager = CatalogResponseManager(
             request_manager.client,
             request_manager.request_ids,
             request_manager.s3_files_to_be_deleted,
         )
-        return await response_manager.manage_responses(request, cast(StreamingResponse, response))
+        managed_response = await response_manager.manage_responses(request, cast(StreamingResponse, response))
+        logger.info(
+            "Catalog response completed for %s %s with status %s",
+            request.method,
+            request.scope["path"],
+            managed_response.status_code,
+        )
+        return managed_response

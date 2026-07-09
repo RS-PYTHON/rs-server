@@ -85,7 +85,7 @@ from shapely.geometry import (
     shape,
 )
 from stac_fastapi.api.models import Limit
-from stac_fastapi.extensions.core.filter.request import FilterLang
+from stac_fastapi.extensions.filter.request import FilterLang
 from stac_fastapi.types.search import str2bbox
 from stac_pydantic.shared import BBox
 
@@ -296,7 +296,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         query = query.strip()
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
-        if query == "SELECT * FROM all_collections();":
+        if query == "SELECT * FROM collection_search($1::text::jsonb);":
             all_collections = filter_allowed_collections(self.all_collections(), self.service, self.request)
             for collection in all_collections:
                 # Add summaries for each collection that has query
@@ -304,7 +304,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # Because of that, we do not perform additional checks for existing summaries
                 if (query := collection.get("query")) and (summaries := build_summaries(self.service, query)):
                     collection["summaries"] = summaries
-            return all_collections
+            collections: dict[str, list] = {"collections": all_collections, "links": []}
+            return collections
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
         if query == "SELECT * FROM get_collection($1::text);":

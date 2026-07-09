@@ -41,7 +41,7 @@ from stac_fastapi.api.middleware import ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.api.openapi import update_openapi
 from stac_fastapi.api.routes import add_route_dependencies
-from stac_fastapi.extensions.core import (
+from stac_fastapi.extensions import (
     FieldsExtension,
     FilterExtension,
     PaginationExtension,
