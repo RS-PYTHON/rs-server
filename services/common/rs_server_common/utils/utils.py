@@ -243,11 +243,7 @@ def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | Non
 
     try:
         if platform:
-            config = next(
-                satellite[platform]
-                for satellite in data["satellites"]
-                if platform in satellite
-            )
+            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
             platform_short_name = config.get("constellation")
             platform_serial_identifier = config.get("serialid")
 
