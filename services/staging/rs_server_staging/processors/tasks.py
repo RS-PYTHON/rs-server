@@ -212,7 +212,8 @@ def prepare_streaming_tasks(
 
     assets_info: list[AssetInfo] = []
 
-    for asset_name, asset_content in list(feature.assets.items()):
+    for original_asset_name, asset_content in list(feature.assets.items()):
+        asset_name = original_asset_name
         if not asset_content.href or not asset_name:
             logger.error("Missing href or title in asset dictionary")
             return None
@@ -254,6 +255,10 @@ def prepare_streaming_tasks(
         # Mutate the feature in place so the later catalog POST/PUT references
         # the object that the Dask task is about to create.
         asset_content.href = f"s3://{s3_bucket_name}/{s3_obj_path}"
+        if asset_name != original_asset_name:
+            # The asset was renamed to its file:local_path: drop the original
+            # key so the asset is not published twice under both names.
+            del feature.assets[original_asset_name]
         feature.assets[asset_name] = asset_content
     logger.info("Prepared %d streaming task(s) for feature %s", len(assets_info), feature.id)
     return assets_info
