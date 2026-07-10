@@ -277,6 +277,43 @@ class TestPrepareStreaming:
         assert feature.assets["asset1"].href == f"s3://{bucket}/staging_user/{catalog_collection}/{feature.id}/asset1"
         assert feature.assets["asset2"].href == f"s3://{bucket}/staging_user/{catalog_collection}/{feature.id}/asset2"
 
+    def test_prepare_streaming_tasks_named_assets_no_duplicate(self, mocker):
+        """Test that with named_assets=True, an asset renamed to its file:local_path
+        replaces the original asset key instead of being duplicated."""
+        catalog_collection = "test_collection"
+        feature = mocker.Mock()
+        feature.id = "feature_id"
+        feature.properties = {}
+        local_path = "S1D_IW_ETA__AXDV_feature.SAFE.zip"
+        feature.assets = {
+            "product": Asset(**{"href": "https://example.com/product", "file:local_path": local_path}),
+            "thumbnail": Asset(href="https://example.com/thumbnail"),
+        }
+
+        result = prepare_streaming_tasks(catalog_collection, feature, "staging_user", named_assets=True)
+
+        bucket = "rspython-ops-catalog-all-production"
+        expected_assets_info = [
+            AssetInfo(
+                "https://example.com/product",
+                f"staging_user/{catalog_collection}/{feature.id}/{local_path}",
+                bucket,
+            ),
+            AssetInfo(
+                "https://example.com/thumbnail",
+                f"staging_user/{catalog_collection}/{feature.id}/thumbnail",
+                bucket,
+            ),
+        ]
+        assert result == expected_assets_info
+
+        # The renamed asset must replace the original key: no duplicated asset
+        assert set(feature.assets.keys()) == {local_path, "thumbnail"}
+        assert (
+            feature.assets[local_path].href
+            == f"s3://{bucket}/staging_user/{catalog_collection}/{feature.id}/{local_path}"
+        )
+
     def test_prepare_streaming_tasks_with_s3_asset_all_valid(self, mocker):
         """Test prepare_streaming_tasks when all assets are valid and one asset needs to be staged from external s3."""
         # Patch credentials retrieval (for s3 asset)
