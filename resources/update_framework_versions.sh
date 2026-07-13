@@ -29,8 +29,8 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 PYTHON_VERSION=3.13.12
 PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
-DASK_TAG_STAGING=2026.3.0
-DASK_GATEWAY_TAG=2025.4.0
+DASK_TAG_STAGING=2026.7.0
+DASK_GATEWAY_TAG=2026.3.0
 PREFECT_TAG=3.6.20
 PREFECT_AWS_TAG=0.7.5
 JUPYTER_HUB_VERSION=5.4.3
@@ -40,8 +40,8 @@ JUPYTER_HUB_VERSION=5.4.3
 PYTHON_VERSION_OLD=3.13.11
 PYTHON_VERSION_DPR_OLD=3.11.7
 DASK_TAG_OLD=2024.5.2
-DASK_TAG_STAGING_OLD=2026.1.2
-DASK_GATEWAY_TAG_OLD=2024.1.0
+DASK_TAG_STAGING_OLD=2026.3.0
+DASK_GATEWAY_TAG_OLD=2025.4.0
 PREFECT_TAG_OLD=3.6.12
 PREFECT_AWS_TAG_OLD=0.7.4
 JUPYTER_HUB_VERSION_OLD=5.4.3
@@ -102,8 +102,6 @@ all_files+=($(_realpath rs-testmeans/src/ADGS/Dockerfile))
 all_files+=($(_realpath rs-testmeans/src/PRIP/Dockerfile))
 # [ghcr.io/rs-python/rs-testmeans_lta-station-mock]
 all_files+=($(_realpath rs-testmeans/src/LTA/Dockerfile))
-# [ghcr.io/rs-python/rs-testmeans_dpr-station-mock]
-all_files+=($(_realpath rs-testmeans/src/DPR/Dockerfile))
 # [ghcr.io/rs-python/rs-testmeans_cadip-station-mock]
 all_files+=($(_realpath rs-testmeans/src/CADIP/Dockerfile))
 
@@ -153,9 +151,9 @@ all_cluster_files+=($(_realpath rs-server-deployment/apps/01-dask-cluster-stagin
 all_cluster_files+=($(_realpath rs-workflow-env/apps/dask-gateway/kustomization.yaml))
 all_cluster_files+=($(_realpath rs-workflow-env/apps/dask-gateway/values.yaml))
 all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-server/values.yaml))
-all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-eopf/values.yaml))
-all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-general/values.yaml))
-all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-staging/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-integrated/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-monitoring/values.yaml))
+all_cluster_files+=($(_realpath rs-workflow-env/apps/prefect3-worker-sandbox/values.yaml))
 all_cluster_files+=($(_realpath rs-workflow-env/NOTICE.md))
 
 # For each file and variable to update
