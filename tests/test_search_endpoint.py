@@ -1454,7 +1454,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.888Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
+                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.888Z"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1462,8 +1462,8 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
-                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
+                "(ContentDate/Start gt 2018-02-12T23:20:50.000Z or ContentDate/Start eq 2018-02-12T23:20:50.000Z) and "
+                "(ContentDate/End lt 2019-02-12T23:20:50.001Z or ContentDate/End eq 2019-02-12T23:20:50.001Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1471,15 +1471,15 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
+                "(ContentDate/Start gt 2018-02-12T23:20:50.000Z or ContentDate/Start eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
+                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
+                "(ContentDate/End lt 2018-02-12T23:20:50.000Z or ContentDate/End eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1500,7 +1500,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.000Z&$orderby="
                 "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -2123,7 +2123,7 @@ def test_search_parameters(
         }
     else:
         raise NotImplementedError
-    hardcoded_date = "2020-01-01T00:00:00.000Z/2022-01-01T00:00:00.000Z"
+    hardcoded_date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
     hardcoded_limit = 10
     mocked_collections = [
         {"id": "col1", **collection},
@@ -2272,19 +2272,21 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"Name in {uids} and "
-                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
-                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max})"
+                    "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
+                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"Name in {uids} and "
                     "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
-                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
-                    "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) "
-                    "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
-                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation})"
+                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) and "
+                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) and "
+                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
+                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation}) and "
+                    "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
+                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:
@@ -2488,7 +2490,9 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'A')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2514,7 +2518,9 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'A')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2527,7 +2533,9 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'A')"
             "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2540,7 +2548,9 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'A')"
             "&$orderby=PublicationDate desc&$top=5&$skip=0&$expand=Attributes",
         ),
         (
@@ -2553,7 +2563,9 @@ def test_search_parameters(
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
-            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+            "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            "att/OData.CSC.StringAttribute/Value eq 'A')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -2606,7 +2618,6 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
     spy_search = mocker.spy(Provider, "search")
 
     responses.add(responses.GET, expected_odata, status=200, json=prip_response)
-
     r = client.get(url, params=collection_params)
     assert r.status_code == status.HTTP_200_OK, r.text
     urls: list[str] = [str(getattr(c.request, "url", "") or "") for c in responses.calls]
