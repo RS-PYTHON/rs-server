@@ -6538,6 +6538,46 @@
         }
       }
     },
+    "/dpr/jobs/{job_id}/logs": {
+      "get": {
+        "tags": [
+          "Processing service"
+        ],
+        "summary": "Get Job Logs Endpoint",
+        "description": "Used to stream logs of a processing job.",
+        "operationId": "get_job_logs_endpoint_dpr_jobs__job_id__logs_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dpr/jobs/{job_id}": {
       "get": {
         "tags": [
