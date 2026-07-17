@@ -462,6 +462,7 @@ class S3StorageHandler:
 
             deleted_keys = 0
             chunks_count = 0
+            had_any_retry = False
 
             for bucket, file_keys in buckets_collection.items():
                 file_keys_list = sorted(file_keys)
@@ -473,8 +474,9 @@ class S3StorageHandler:
                         max_retries,
                     )
                     deleted_keys += deleted_count
+                    had_any_retry = had_any_retry or had_retry
 
-            if had_retry:
+            if had_any_retry:
                 remaining_keys = self.count_remaining_delete_targets(keys)
                 if remaining_keys:
                     raise RuntimeError(f"{remaining_keys} S3 key(s) remain after delete operation")

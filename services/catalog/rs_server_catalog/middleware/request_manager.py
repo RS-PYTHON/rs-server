@@ -17,6 +17,7 @@
 import copy
 import getpass
 import json
+import os
 from collections.abc import Callable
 from functools import lru_cache
 from typing import Any, cast
@@ -57,9 +58,14 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 logger = Logging.default(__name__)
+
+# Number of complete S3 cleanup retries before a catalog DELETE reaches pgSTAC.
+# A value of 1 means one retry after the initial cleanup attempt.
+CATALOG_DELETE_MAX_RETRIES = max(0, int(os.environ.get("RSPY_CATALOG_DELETE_MAX_RETRIES", "0")))
 
 
 def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[str, Any]:
@@ -263,8 +269,8 @@ class CatalogRequestManager:
     Pre-process catalog requests before they are routed to stac-fastapi.
 
     Responsibilities include owner/collection authorization, frontend-to-pgstac
-    route/body/query rewriting, S3 publication validation, and collecting S3
-    keys that must be deleted after successful catalog mutations.
+    route/body/query rewriting, S3 publication validation, and deleting S3
+    assets before DELETE mutations reach pgstac.
     """
 
     def __init__(self, client: CoreCrudClient, request_ids: dict[Any, Any]):
@@ -360,8 +366,8 @@ class CatalogRequestManager:
         Build the S3 cleanup list for DELETE requests.
 
         Collection deletes require scanning all items in the collection, while
-        item deletes only need the requested item. Actual S3 deletion is deferred
-        until the catalog response confirms that pgstac deletion succeeded.
+        item deletes only need the requested item. The resulting list is deleted
+        before the request is forwarded to pgstac.
         """
         logger.info(
             "Building S3 deletion list for owner=%s collections=%s item=%s",
@@ -411,7 +417,10 @@ class CatalogRequestManager:
                 return
             except KeyError as e:
                 logger.error(f"Failed to build the list of items to be deleted due to missing key: {e}")
-                return
+                raise HTTPException(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to prepare S3 cleanup; catalog metadata was not deleted.",
+                ) from e
             logger.debug(f"Found {len(items)} items: {items}")
             try:
                 for item in items:
@@ -425,7 +434,10 @@ class CatalogRequestManager:
                 logger.error(
                     f"Failed to build the list of S3 files to be deleted due to missing key in dictionary: {e}",
                 )
-                return
+                raise HTTPException(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to prepare S3 cleanup; catalog metadata was not deleted.",
+                ) from e
             logger.info(
                 "Successfully built the list of S3 files to be deleted. "
                 f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
@@ -711,7 +723,43 @@ field is not permitted also."
 collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
-        await self.build_filelist_to_be_deleted(request)
+        max_attempts = CATALOG_DELETE_MAX_RETRIES + 1
+        for attempt in range(1, max_attempts + 1):
+            # Rebuild from catalog metadata on every outer attempt. A previous
+            # S3 attempt may have deleted only part of a large asset prefix.
+            self.s3_files_to_be_deleted.clear()
+            await self.build_filelist_to_be_deleted(request)
+            try:
+                logger.info(
+                    "Deleting %d S3 asset target(s) before catalog metadata for %s "
+                    "(outer attempt %d/%d)",
+                    len(self.s3_files_to_be_deleted),
+                    request.scope["path"],
+                    attempt,
+                    max_attempts,
+                )
+                await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
+                break
+            except RuntimeError as exc:
+                if attempt >= max_attempts:
+                    logger.exception(
+                        "S3 cleanup failed before catalog DELETE for %s after %d outer attempt(s)",
+                        request.scope["path"],
+                        max_attempts,
+                    )
+                    raise HTTPException(
+                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to delete S3 assets; catalog metadata was not deleted.",
+                    ) from exc
+                logger.warning(
+                    "S3 cleanup attempt %d/%d failed for %s: %s. Rebuilding targets and retrying from scratch.",
+                    attempt,
+                    max_attempts,
+                    request.scope["path"],
+                    exc,
+                )
+
+        self.s3_files_to_be_deleted.clear()
         logger.info("Delete request authorized for %s", request.scope["path"])
         return True
 
