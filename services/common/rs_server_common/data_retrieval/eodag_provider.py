@@ -212,6 +212,40 @@ class EodagProvider(Provider):
                 },
             )
 
+        date_time = kwargs.pop("DatetimeStart", None)
+        if date_time:
+            fixed = start = end = None
+
+            if isinstance(date_time, str):
+                # Interval: "start/end"
+                if "/" in date_time:
+                    start, end = date_time.split("/", 1)
+                else:
+                    # Single instant
+                    fixed = date_time
+
+            else:
+                # Tuple/list: (fixed, start, end)
+                fixed, start, end = (str(date) if date else None for date in date_time)
+
+            mapped_search_args.update(
+                {
+                    "DatetimeStart": fixed,
+                    "Start": start,
+                    "End": end,
+                },
+            )
+
+        start_time = kwargs.pop("Start", None)
+        end_time = kwargs.pop("End", None)
+        if start_time and end_time:
+            mapped_search_args["Start"] = start_time
+            mapped_search_args["End"] = end_time
+        elif start_time:
+            mapped_search_args["DatetimeStart"] = start_time
+        elif end_time:
+            mapped_search_args["DatetimeEnd"] = end_time
+
         for op in temporal_operations:
             if query := kwargs.pop(op, None):
                 mapped_search_args[op] = query

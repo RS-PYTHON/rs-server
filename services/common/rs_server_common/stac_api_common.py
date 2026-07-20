@@ -97,7 +97,7 @@ DEFAULT_STAC_VERSION = "1.1.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
-DATE_INTERVAL_KEYS = ["PublicationDate"]
+DATE_INTERVAL_KEYS = ["PublicationDate", "ContentDate/Start", "ContentDate/End"]
 COMMA_SEPARATED_LISTS_KEYS = ["platformSerialIdentifier", "platformShortName", "Satellite", "productType", "SessionId"]
 
 # Type hints
@@ -483,7 +483,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             try:
                 validate_inputs_format(datetime, raise_errors=True)
                 if self.auxip:
-                    stac_params["created"] = datetime
+                    stac_params["datetime"] = datetime
                 elif self.cadip or self.prip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
@@ -1441,13 +1441,16 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
     def get_sort_key(item):
         # Check if the attribute exists in properties, else use item directly
         if hasattr(item.properties, attribute.replace("properties.", "")):
-            return getattr(item.properties, attribute.replace("properties.", ""))
+            value = getattr(item.properties, attribute.replace("properties.", ""))
+            return (value is None, value)
         if hasattr(item, attribute):
-            return getattr(item, attribute)
+            value = getattr(item, attribute)
+            return (value is None, value)
         # Otherwise, check if the attribute exists in any asset
         for asset in item.assets.values():
             if hasattr(asset, attribute):
-                return getattr(asset, attribute)
+                value = getattr(asset, attribute)
+                return (value is None, value)
         raise AttributeError(f"Attribute '{attribute}' not found in item")
 
     # Sort the features
