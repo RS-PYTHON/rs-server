@@ -78,6 +78,9 @@ adgs:
       DatetimeStart:
       - null
       - $.ContentDate.Start
+      DatetimeEnd:
+      - null
+      - $.ContentDate.End
       Start:
       - null
       - $.ContentDate.Start
@@ -93,6 +96,9 @@ adgs:
       ChecksumValue:
       - null
       - '{$.Checksum[0].Value#to_lower}'
+      created:
+      - null
+      - $.OriginDate
       attr_ptype:
       - null
       - $.attr_ptype
@@ -141,6 +147,7 @@ adgs:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - OriginDate eq {OriginDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
@@ -157,9 +164,11 @@ adgs:
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
-          - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start
+            eq {Start#to_iso_utc_datetime})
+          - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
+          - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
@@ -260,6 +269,9 @@ adgs2:
       DatetimeStart:
       - null
       - $.ContentDate.Start
+      DatetimeEnd:
+      - null
+      - $.ContentDate.End
       Start:
       - null
       - $.ContentDate.Start
@@ -275,6 +287,9 @@ adgs2:
       ChecksumValue:
       - null
       - '{$.Checksum[0].Value#to_lower}'
+      created:
+      - null
+      - $.OriginDate
       attr_ptype:
       - null
       - $.attr_ptype
@@ -323,6 +338,7 @@ adgs2:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - OriginDate eq {OriginDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
@@ -339,9 +355,11 @@ adgs2:
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
-          - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
+          - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start
+            eq {Start#to_iso_utc_datetime})
+          - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
+          - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'

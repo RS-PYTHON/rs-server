@@ -227,42 +227,51 @@ def map_stac_platform() -> dict:
 
 def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
     """
-    Custom function for ADGS/PRIP, to read constellation mapper and return propper
+    Custom function for ADGS/PRIP, to read constellation mapper and return proper
     values for platform and serial.
-    Eodag maps this values to platformShortName, platformSerialIdentifier
+    Eodag maps these values to platformShortName, platformSerialIdentifier.
 
     Input: platform = sentinel-1a       Output: sentinel-1, A
     Input: platform = sentinel-5P       Output: sentinel-5p, None
     Input: constellation = sentinel-1   Output: sentinel-1, None
+    Input: platform = sentinel-3b,
+           constellation = sentinel-3   Output: sentinel-3, B
     """
     data = map_stac_platform()
     platform_short_name: str | None = None
     platform_serial_identifier: str | None = None
+
     try:
         if platform:
             config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
-            platform_short_name = config.get("constellation", None)
-            platform_serial_identifier = config.get("serialid", None)
+            platform_short_name = config.get("constellation")
+            platform_serial_identifier = config.get("serialid")
+
         if constellation:
             if platform_short_name and platform_short_name != constellation:
-                # Inconsistent combination of platform / constellation case
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="Invalid combination of platform-constellation",
                 )
+
             if any(
                 satellite[list(satellite.keys())[0]]["constellation"] == constellation
                 for satellite in data["satellites"]
             ):
                 platform_short_name = constellation
-                platform_serial_identifier = None
             else:
                 raise KeyError
+
+        # Only a constellation was provided.
+        if constellation and not platform:
+            platform_serial_identifier = None
+
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Cannot map platform/constellation",
         ) from exc
+
     return platform_short_name, platform_serial_identifier
 
 
