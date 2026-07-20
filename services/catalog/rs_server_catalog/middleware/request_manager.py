@@ -731,8 +731,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             await self.build_filelist_to_be_deleted(request)
             try:
                 logger.info(
-                    "Deleting %d S3 asset target(s) before catalog metadata for %s "
-                    "(outer attempt %d/%d)",
+                    "Deleting %d S3 asset target(s) before catalog metadata for %s (outer attempt %d/%d)",
                     len(self.s3_files_to_be_deleted),
                     request.scope["path"],
                     attempt,

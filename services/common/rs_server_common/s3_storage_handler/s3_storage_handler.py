@@ -401,7 +401,7 @@ class S3StorageHandler:
                 self.logger.warning("%s. Retrying in %s seconds.", message, S3_RETRY_TIMEOUT)
                 self.wait_timeout(S3_RETRY_TIMEOUT)
 
-            except Exception as error:
+            except Exception as error:  # pylint: disable=broad-exception-caught
                 if attempt >= max_retries:
                     raise
                 self.disconnect_s3()
@@ -423,9 +423,7 @@ class S3StorageHandler:
         remaining_keys: set[tuple[str, str]] = set()
         for s3_uri in keys:
             bucket, key = self.parse_s3_uri(s3_uri)
-            remaining_keys.update(
-                (bucket, object_key) for object_key in self.list_s3_delete_target_keys(bucket, key)
-            )
+            remaining_keys.update((bucket, object_key) for object_key in self.list_s3_delete_target_keys(bucket, key))
         return len(remaining_keys)
 
     def delete_keys_from_s3(  # pylint: disable=too-many-branches,too-many-nested-blocks
