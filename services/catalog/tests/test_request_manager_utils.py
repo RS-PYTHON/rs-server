@@ -16,6 +16,8 @@
 
 import json
 
+import pytest
+from fastapi import HTTPException
 from rs_server_catalog.middleware import request_manager as rm
 
 
@@ -144,3 +146,43 @@ def test_normalize_external_ids_filter_value_no_change():
     assert changed is False
     assert lang == "cql2-json"
     assert normalized == raw_filter
+
+
+@pytest.mark.asyncio
+async def test_manage_delete_request_s3_cleanup_retries_exhausted(mocker):
+    """Return HTTP 500 after the retry of an S3 cleanup failure is exhausted."""
+    request_path = "/catalog/collections/owner_collection/items/item"
+    request = mocker.Mock(scope={"path": request_path})
+    manager = rm.CatalogRequestManager(
+        mocker.Mock(),
+        {"owner_id": "owner", "collection_ids": ["collection"], "item_id": "item"},
+    )
+    manager.build_filelist_to_be_deleted = mocker.AsyncMock()
+    # Fail both attempts to cover the retry warning and final HTTP 500 response.
+    cleanup_error = RuntimeError("cleanup failed")
+    delete_s3_files = mocker.AsyncMock(side_effect=cleanup_error)
+    manager.s3_manager = mocker.Mock(return_value=mocker.Mock(delete_s3_files=delete_s3_files))
+    mocker.patch.object(rm, "CATALOG_DELETE_MAX_RETRIES", 1)
+    mocker.patch.object(rm.common_settings, "CLUSTER_MODE", False)
+    mock_logger = mocker.patch.object(rm, "logger")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await manager.manage_delete_request(request)
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Failed to delete S3 assets; catalog metadata was not deleted."
+    # Cleanup targets are rebuilt before every complete retry.
+    assert manager.build_filelist_to_be_deleted.await_count == 2
+    assert delete_s3_files.await_count == 2
+    mock_logger.warning.assert_called_once_with(
+        "S3 cleanup attempt %d/%d failed for %s: %s. Rebuilding targets and retrying from scratch.",
+        1,
+        2,
+        request_path,
+        cleanup_error,
+    )
+    mock_logger.exception.assert_called_once_with(
+        "S3 cleanup failed before catalog DELETE for %s after %d outer attempt(s)",
+        request_path,
+        2,
+    )

@@ -341,8 +341,10 @@ class S3StorageHandler:
     def parse_s3_uri(s3_uri: str) -> tuple[str, str]:
         """Parse an s3://bucket/key URI into bucket and key."""
         parsed = urlparse(s3_uri)
+        # A delete target must include both the S3 scheme and a bucket name.
         if parsed.scheme != "s3" or not parsed.netloc:
             raise RuntimeError(f"Invalid S3 URI: {s3_uri}")
+        # Object keys are passed to boto3 without the URI path's leading slash.
         key = parsed.path.lstrip("/")
         if not key:
             raise RuntimeError(f"Invalid S3 URI without object key/prefix: {s3_uri}")
@@ -360,9 +362,11 @@ class S3StorageHandler:
         Zarr assets are directory-like prefixes. For normal keys, prefer exact object deletion to avoid
         prefix collisions such as ``0.1`` also matching ``0.10``.
         """
+        # Directory-like assets must be expanded into their concrete objects.
         if self.should_delete_as_prefix(key):
             return self.list_s3_files_obj(bucket, key.rstrip("/") + "/")
 
+        # Prefer an exact object match to avoid deleting similarly named prefixes.
         try:
             self.s3_client.head_object(Bucket=bucket, Key=key)
             return [key]
@@ -370,10 +374,12 @@ class S3StorageHandler:
             if not self.is_s3_not_found_error(error):
                 raise
 
+        # If no exact object exists, treat the target as a prefix.
         return self.list_s3_files_obj(bucket, key.rstrip("/") + "/")
 
     def delete_objects_chunk(self, bucket: str, keys: list[str], max_retries: int) -> tuple[int, bool]:
         """Delete up to MAX_DELETE_FILES keys and retry transient/partial failures."""
+        # Keep a separate list so partial retries do not modify the caller's input.
         pending_keys = list(keys)
         attempt = 0
         had_retry = False
@@ -396,6 +402,7 @@ class S3StorageHandler:
                 if attempt >= max_retries:
                     raise RuntimeError(message)
 
+                # Retry only the keys explicitly reported as failed by S3.
                 pending_keys = failed_keys
                 had_retry = True
                 self.logger.warning("%s. Retrying in %s seconds.", message, S3_RETRY_TIMEOUT)
@@ -404,6 +411,7 @@ class S3StorageHandler:
             except Exception as error:  # pylint: disable=broad-exception-caught
                 if attempt >= max_retries:
                     raise
+                # Reconnect before retrying the current pending set.
                 self.disconnect_s3()
                 had_retry = True
                 self.logger.warning(
@@ -420,6 +428,7 @@ class S3StorageHandler:
 
     def count_remaining_delete_targets(self, keys: list[str]) -> int:
         """Return the number of still-existing keys for the original delete targets."""
+        # Bucket/key pairs deduplicate objects coming from overlapping targets.
         remaining_keys: set[tuple[str, str]] = set()
         for s3_uri in keys:
             bucket, key = self.parse_s3_uri(s3_uri)
