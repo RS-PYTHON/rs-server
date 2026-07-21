@@ -904,7 +904,7 @@ class Staging(
         self.logger.debug("Retrieved S3 credentials object for job %s", self.job_id)
 
         # Prepare environment to trace dask tasks with opentelemetry.
-        task_env = self._prepare_env_with_trace_context(catalog_collection)
+        task_env = self._prepare_env_with_trace_context()
 
         # prevent submitting more tasks than necessary.
         # this can occur when the number of tasks that can run in parallel
@@ -978,7 +978,7 @@ class Staging(
         self.unsubscribe_refresh_tokens(refresh_tokens)
         self.logger.info("Tasks monitoring finished")
 
-    def _prepare_env_with_trace_context(self, catalog_collection: str) -> dict[str, str]:
+    def _prepare_env_with_trace_context(self) -> dict[str, str]:
         """
         Prepare environment to trace dask tasks with opentelemetry.
 

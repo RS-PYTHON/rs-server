@@ -63,6 +63,7 @@ class TestStreaming:
 
         assert (
             streaming_task(
+                task_env={},
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
@@ -90,6 +91,7 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
+                task_env={},
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
@@ -119,6 +121,7 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
+                task_env={},
                 asset_info=test_asset_info,
                 config=config,
                 auth=TokenAuth("fake_token"),
