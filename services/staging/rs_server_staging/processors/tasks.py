@@ -14,10 +14,12 @@
 
 """Tasks used in processors."""
 
+import json
 import logging
 import os
 from urllib.parse import urlparse
 
+from opentelemetry import context, propagate, trace
 from rs_server_common.authentication.authentication_to_external import (
     ServiceNotFound,
     load_external_auth_config_by_domain,
@@ -34,6 +36,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3_RETRY_TIMEOUT,
     S3StorageHandler,
 )
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
 from rs_server_staging.utils.asset_info import (
@@ -46,13 +49,77 @@ from rs_server_staging.utils.rspy_models import Feature
 logger = Logging.default(__name__)
 
 
-def streaming_task(  # pylint: disable=R0913, R0917
+def restore_context_from_env():
+    """Restore an OpenTelemetry context propagated through environment variables.
+
+    This function reads the ``OTEL_TRACE_CONTEXT`` environment variable,
+    which is expected to contain a JSON-encoded carrier produced by
+    ``opentelemetry.propagate.inject`` in a parent process. The context
+    is extracted and attached to the current execution context so that
+    spans created in this process continue the existing trace.
+    """
+    carrier_json = os.environ.get("OTEL_TRACE_CONTEXT")
+    if not carrier_json:
+        return
+    context.attach(propagate.extract(json.loads(carrier_json)))
+
+
+def streaming_task(task_env: dict[str, str], *args, **kwargs):
+    """
+    This method is run from the dask pod.
+    Init the opentelemetry context before calling the main task method.
+
+    Attributes:
+        task_env: env variables coming from the caller
+    """
+    # Copy env vars from the caller
+    keys = [
+        "OTEL_SERVICE_NAME",
+        "OTEL_TRACE_CONTEXT",
+        "TEMPO_ENDPOINT",
+        "TRACEPARENT",
+        "TRACESTATE",
+    ]
+
+    # Copy our environment variables
+    for key in keys:
+        if value := task_env.get(key):
+            os.environ[key] = value
+    # Copy all OpenTelemetry environment variables
+    for key, value in task_env.items():
+        if key.startswith("OTEL_"):
+            os.environ[key] = value
+
+    # Debug gRPC Connectivity
+    # https://opentelemetry.io/docs/zero-code/python/troubleshooting/#grpc-connectivity
+    # os.environ["GRPC_VERBOSITY"] = "debug"
+    # os.environ["GRPC_TRACE"] = "http,call_error,connectivity_state"
+
+    # Never trace http response body, because it's the downloaded streamed content
+    # and it's probably too big to be traced in otel
+    os.environ["OTEL_PYTHON_REQUESTS_TRACE_BODY"] = "0"
+
+    # Init opentelemetry
+    init_opentelemetry.init_traces(None, os.environ["OTEL_SERVICE_NAME"])
+
+    # Restore OpenTelemetry context
+    restore_context_from_env()
+
+    # Call the main task method from an opentelemetry span
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("streaming_task"):
+        return _streaming_task_otel(*args, **kwargs)
+
+
+def _streaming_task_otel(  # pylint: disable=R0913, R0917
     asset_info: AssetInfo,
     config: ExternalAuthenticationConfig | None,
     auth: str | None,
     s3_credentials: S3Credentials,
 ):
     """
+    This method is run from the dask pod.
+
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
     This function downloads a file from the specified `product_url` using provided
