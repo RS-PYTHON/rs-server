@@ -1377,7 +1377,7 @@ class Staging(
         try:
             with init_opentelemetry.start_span(
                 __name__,
-                f"[{self.staging_user}:{catalog_collection}] manage_dask_tasks",
+                f"[{self.staging_user}:{catalog_collection}] staging_dask_tasks",
             ):
                 await asyncio.to_thread(
                     self.manage_dask_tasks,
