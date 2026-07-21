@@ -1144,11 +1144,14 @@ retried for %s times. Aborting",
         except Exception as e:
             message = f"Failed to stream the file from {request.url} to s3://{bucket}/{key}: {traceback.format_exc()}"
 
-            connection_error = type(e) in [
-                requests.exceptions.RequestException,
-                botocore.client.ClientError,
-                botocore.exceptions.BotoCoreError,
-            ]
+            connection_error = isinstance(
+                e,
+                (
+                    requests.exceptions.RequestException,
+                    botocore.client.ClientError,
+                    botocore.exceptions.BotoCoreError,
+                ),
+            )
             if not connection_error:
                 message = f"General exception.\n{message}"
 
