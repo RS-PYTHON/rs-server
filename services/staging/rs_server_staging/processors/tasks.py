@@ -95,6 +95,10 @@ def streaming_task(task_env: dict[str, str], *args, **kwargs):
     # os.environ["GRPC_VERBOSITY"] = "debug"
     # os.environ["GRPC_TRACE"] = "http,call_error,connectivity_state"
 
+    # Never trace http response body, because it's the downloaded streamed content
+    # and it's probably too big to be traced in otel
+    os.environ["OTEL_PYTHON_REQUESTS_TRACE_BODY"] = "0"
+
     # Init opentelemetry
     init_opentelemetry.init_traces(None, os.environ["OTEL_SERVICE_NAME"])
 

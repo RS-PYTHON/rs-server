@@ -906,18 +906,6 @@ class Staging(
         # Prepare environment to trace dask tasks with opentelemetry.
         task_env = self._prepare_env_with_trace_context(catalog_collection)
 
-        # # TEMP !!
-        # from importlib import reload
-        # import sys
-        # def reload_uploaded():
-        #     reloaded = []
-        #     for module in list(sys.modules.values()):
-        #         if "rs_server" in module.__name__:
-        #             reload(module)
-        #             reloaded.append(module.__name__)
-        #     return f"Reloaded: {reloaded}"
-        # self.logger.debug(json.dumps(client.run(reload_uploaded), indent=2))
-
         # prevent submitting more tasks than necessary.
         # this can occur when the number of tasks that can run in parallel
         # exceeds the actual number of tasks intended for submission.
@@ -1387,7 +1375,10 @@ class Staging(
         # loop remains responsive while `as_completed` waits for task results.
         self.logger.debug("Starting tasks monitoring thread")
         try:
-            with init_opentelemetry.start_span(__name__, f"[{catalog_collection}] manage_dask_tasks"):
+            with init_opentelemetry.start_span(
+                __name__,
+                f"[{self.staging_user}:{catalog_collection}] manage_dask_tasks",
+            ):
                 await asyncio.to_thread(
                     self.manage_dask_tasks,
                     dask_client,
