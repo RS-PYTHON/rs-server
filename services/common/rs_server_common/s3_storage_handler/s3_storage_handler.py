@@ -15,7 +15,6 @@
 """Set of functions to connect to an S3 endpoint and run various operations."""
 
 import asyncio
-import concurrent.futures
 import io
 import logging
 import ntpath
@@ -332,6 +331,110 @@ class S3StorageHandler:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
 
+    @staticmethod
+    def is_s3_not_found_error(error: botocore.client.ClientError) -> bool:
+        """Return True if the S3 client error is a key-not-found response."""
+        error_code = error.response.get("Error", {}).get("Code")
+        return error_code in ("404", "NoSuchKey", "NotFound", S3_ERR_NOT_FOUND)
+
+    @staticmethod
+    def parse_s3_uri(s3_uri: str) -> tuple[str, str]:
+        """Parse an s3://bucket/key URI into bucket and key."""
+        parsed = urlparse(s3_uri)
+        # A delete target must include both the S3 scheme and a bucket name.
+        if parsed.scheme != "s3" or not parsed.netloc:
+            raise RuntimeError(f"Invalid S3 URI: {s3_uri}")
+        # Object keys are passed to boto3 without the URI path's leading slash.
+        key = parsed.path.lstrip("/")
+        if not key:
+            raise RuntimeError(f"Invalid S3 URI without object key/prefix: {s3_uri}")
+        return parsed.netloc, key
+
+    @staticmethod
+    def should_delete_as_prefix(key: str) -> bool:
+        """Return True for directory-like keys that should be listed as prefixes."""
+        return key.endswith("/") or key.endswith(".zarr")
+
+    def list_s3_delete_target_keys(self, bucket: str, key: str) -> list[str]:
+        """
+        Resolve one delete target to concrete object keys.
+
+        Zarr assets are directory-like prefixes. For normal keys, prefer exact object deletion to avoid
+        prefix collisions such as ``0.1`` also matching ``0.10``.
+        """
+        # Directory-like assets must be expanded into their concrete objects.
+        if self.should_delete_as_prefix(key):
+            return self.list_s3_files_obj(bucket, key.rstrip("/") + "/")
+
+        # Prefer an exact object match to avoid deleting similarly named prefixes.
+        try:
+            self.s3_client.head_object(Bucket=bucket, Key=key)
+            return [key]
+        except botocore.client.ClientError as error:
+            if not self.is_s3_not_found_error(error):
+                raise
+
+        # If no exact object exists, treat the target as a prefix.
+        return self.list_s3_files_obj(bucket, key.rstrip("/") + "/")
+
+    def delete_objects_batch(self, bucket: str, keys: list[str], max_retries: int) -> tuple[int, bool]:
+        """Delete up to MAX_DELETE_FILES keys and retry transient/partial failures."""
+        # Keep a separate list so partial retries do not modify the caller's input.
+        pending_keys = list(keys)
+        attempt = 0
+        had_retry = False
+
+        while pending_keys:
+            attempt += 1
+            try:
+                response = self.s3_client.delete_objects(
+                    Bucket=bucket,
+                    Delete={"Objects": [{"Key": key} for key in pending_keys], "Quiet": True},
+                )
+                errors = response.get("Errors", [])
+                if not errors:
+                    return len(keys), had_retry
+
+                failed_keys = [error["Key"] for error in errors if error.get("Key")]
+                if not failed_keys:
+                    raise RuntimeError(f"Failed to delete key(s) from bucket {bucket}: {errors}")
+                message = f"Failed to delete {len(failed_keys)} key(s) from bucket {bucket}: {errors}"
+                if attempt >= max_retries:
+                    raise RuntimeError(message)
+
+                # Retry only the keys explicitly reported as failed by S3.
+                pending_keys = failed_keys
+                had_retry = True
+                self.logger.warning("%s. Retrying in %s seconds.", message, S3_RETRY_TIMEOUT)
+                self.wait_timeout(S3_RETRY_TIMEOUT)
+
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                if attempt >= max_retries:
+                    raise
+                # Reconnect before retrying the current pending set.
+                self.disconnect_s3()
+                had_retry = True
+                self.logger.warning(
+                    "Failed to delete %d key(s) from bucket %s: %s. Retrying in %s seconds.",
+                    len(pending_keys),
+                    bucket,
+                    error,
+                    S3_RETRY_TIMEOUT,
+                )
+                self.wait_timeout(S3_RETRY_TIMEOUT)
+                self.connect_s3()
+
+        return len(keys), had_retry
+
+    def count_remaining_delete_targets(self, keys: list[str]) -> int:
+        """Return the number of still-existing keys for the original delete targets."""
+        # Bucket/key pairs deduplicate objects coming from overlapping targets.
+        remaining_keys: set[tuple[str, str]] = set()
+        for s3_uri in keys:
+            bucket, key = self.parse_s3_uri(s3_uri)
+            remaining_keys.update((bucket, object_key) for object_key in self.list_s3_delete_target_keys(bucket, key))
+        return len(remaining_keys)
+
     def delete_keys_from_s3(  # pylint: disable=too-many-branches,too-many-nested-blocks
         self,
         keys: list[str],
@@ -340,7 +443,7 @@ class S3StorageHandler:
         """Delete a list of keys from the S3 location.
         The functionality implies a retry mechanism at the application level, which is different
         than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config.
-        It gets recursively all the files from the list of keys and builts another list of keys to delete.
+        It expands prefixes once, then deletes concrete object keys in S3 multi-delete batches.
         Args:
             keys (list[str]): The S3 object keys.
             max_retries (int): The maximum number of retries.
@@ -350,86 +453,59 @@ class S3StorageHandler:
         if keys is None:
             raise RuntimeError("Input error for deleting the files")
 
-        attempt = 0
-        # NOTE: don't check if the files exist on the bucket.
-        # If they don't exist, nothing happens, we don't have any error from boto3
-        while True:
-            try:
-                self.connect_s3()
-                buckets_collection: dict[str, list[str]] = defaultdict(list)
+        try:
+            self.connect_s3()
+            buckets_collection: dict[str, set[str]] = defaultdict(set)
 
-                # Recursively expand all folders to get all files
-                for key in keys:
-                    parsed = urlparse(key)
-                    bucket = parsed.netloc
-                    path = parsed.path.strip("/")
+            for s3_uri in keys:
+                bucket, path = self.parse_s3_uri(s3_uri)
+                for object_key in self.list_s3_delete_target_keys(bucket, path):
+                    buckets_collection[bucket].add(object_key)
 
-                    # Use a queue to handle recursive expansion
-                    to_process = [path]
-                    processed = set()
-
-                    while to_process:
-                        current_path = to_process.pop(0)
-
-                        # Avoid processing the same path twice
-                        if current_path in processed:
-                            continue
-                        processed.add(current_path)
-
-                        # List all items at this path
-                        s3_files = self.list_s3_files_obj(bucket, current_path)
-
-                        # If list returns a single item that matches the current path, it's a file
-                        if len(s3_files) == 1 and current_path == s3_files[0]:
-                            # It's a file, add it to the collection
-                            buckets_collection[bucket].append(s3_files[0])
-                        elif len(s3_files) == 0:
-                            # Path doesn't exist, skip it
-                            continue
-                        else:
-                            # It's a folder or prefix - the returned items are the contents
-                            # Add all returned items to the queue for processing
-                            for s3_file in s3_files:
-                                if s3_file not in processed:
-                                    to_process.append(s3_file)
-
-                # Delete all collected files
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = []
-                    for bucket, file_keys in buckets_collection.items():
-                        # Convert the key values into a dict
-                        key_dict = [{"Key": key} for key in file_keys]
-
-                        # Split into chunks of MAX_DELETE_FILES
-                        futures.extend(
-                            [
-                                executor.submit(
-                                    self.s3_client.delete_objects,
-                                    Bucket=bucket,
-                                    Delete={"Objects": key_dict[i : i + MAX_DELETE_FILES], "Quiet": True},
-                                )
-                                for i in range(0, len(file_keys), MAX_DELETE_FILES)
-                            ],
-                        )
-
-                    for future in concurrent.futures.as_completed(futures):
-                        future.result()
-
-                # If everything went OK, exit the function
-                self.logger.info("The files were deleted successfully")
+            total_keys = sum(len(file_keys) for file_keys in buckets_collection.values())
+            if not total_keys:
+                self.logger.info("No S3 keys found for deletion")
                 return
 
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                attempt += 1
-                message = f"Failed to delete keys:\n{traceback.format_exc()}"
-                if attempt < max_retries:
-                    # keep retrying
-                    self.disconnect_s3()
-                    self.logger.error(f"{message}\nRetrying in {S3_RETRY_TIMEOUT} seconds.")
-                    self.wait_timeout(S3_RETRY_TIMEOUT)
-                else:
-                    self.logger.exception(message)
-                    raise RuntimeError(message) from e
+            deleted_keys = 0
+            batches_count = 0
+            had_any_retry = False
+
+            # Split each bucket's keys into S3 multi-delete batches.
+            for bucket, file_keys in buckets_collection.items():
+                # Keep batch composition deterministic for reproducible retries and logs.
+                file_keys_list = sorted(file_keys)
+                for index in range(0, len(file_keys_list), MAX_DELETE_FILES):
+                    batches_count += 1
+                    deleted_count, had_retry = self.delete_objects_batch(
+                        bucket,
+                        file_keys_list[index : index + MAX_DELETE_FILES],
+                        max_retries,
+                    )
+                    deleted_keys += deleted_count
+                    # had_retry is per batch; accumulate it to trigger final verification after any retry.
+                    had_any_retry = had_any_retry or had_retry
+
+            if had_any_retry:
+                remaining_keys = self.count_remaining_delete_targets(keys)
+                if remaining_keys:
+                    # Propagate the failure; catalog DELETE catches it and starts its outer cleanup retry.
+                    raise RuntimeError(f"{remaining_keys} S3 key(s) remain after delete operation")
+
+            self.logger.info(
+                "The files were deleted successfully: requested_targets=%d expanded_keys=%d "
+                "deleted_keys=%d batches=%d",
+                len(keys),
+                total_keys,
+                deleted_keys,
+                batches_count,
+            )
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            message = f"Failed to delete S3 keys: {e}"
+            self.logger.error(message)
+            self.logger.debug("S3 delete traceback", exc_info=True)
+            raise RuntimeError(message) from e
 
     async def adelete_keys_from_s3(self, *args, **kwargs):
         """Async version of delete_files_from_s3. Call sync function in a separate thread."""
