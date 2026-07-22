@@ -21,7 +21,6 @@ import ntpath
 import os
 import threading
 import time
-import traceback
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -377,7 +376,7 @@ class S3StorageHandler:
         # If no exact object exists, treat the target as a prefix.
         return self.list_s3_files_obj(bucket, key.rstrip("/") + "/")
 
-    def delete_objects_chunk(self, bucket: str, keys: list[str], max_retries: int) -> tuple[int, bool]:
+    def delete_objects_batch(self, bucket: str, keys: list[str], max_retries: int) -> tuple[int, bool]:
         """Delete up to MAX_DELETE_FILES keys and retry transient/partial failures."""
         # Keep a separate list so partial retries do not modify the caller's input.
         pending_keys = list(keys)
@@ -443,7 +442,7 @@ class S3StorageHandler:
         """Delete a list of keys from the S3 location.
         The functionality implies a retry mechanism at the application level, which is different
         than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config.
-        It expands prefixes once, then deletes concrete object keys in S3 multi-delete chunks.
+        It expands prefixes once, then deletes concrete object keys in S3 multi-delete batches.
         Args:
             keys (list[str]): The S3 object keys.
             max_retries (int): The maximum number of retries.
@@ -468,38 +467,43 @@ class S3StorageHandler:
                 return
 
             deleted_keys = 0
-            chunks_count = 0
+            batches_count = 0
             had_any_retry = False
 
+            # Split each bucket's keys into S3 multi-delete batches.
             for bucket, file_keys in buckets_collection.items():
+                # Keep batch composition deterministic for reproducible retries and logs.
                 file_keys_list = sorted(file_keys)
                 for index in range(0, len(file_keys_list), MAX_DELETE_FILES):
-                    chunks_count += 1
-                    deleted_count, had_retry = self.delete_objects_chunk(
+                    batches_count += 1
+                    deleted_count, had_retry = self.delete_objects_batch(
                         bucket,
                         file_keys_list[index : index + MAX_DELETE_FILES],
                         max_retries,
                     )
                     deleted_keys += deleted_count
+                    # had_retry is per batch; accumulate it to trigger final verification after any retry.
                     had_any_retry = had_any_retry or had_retry
 
             if had_any_retry:
                 remaining_keys = self.count_remaining_delete_targets(keys)
                 if remaining_keys:
+                    # Propagate the failure; catalog DELETE catches it and starts its outer cleanup retry.
                     raise RuntimeError(f"{remaining_keys} S3 key(s) remain after delete operation")
 
             self.logger.info(
                 "The files were deleted successfully: requested_targets=%d expanded_keys=%d "
-                "deleted_keys=%d chunks=%d",
+                "deleted_keys=%d batches=%d",
                 len(keys),
                 total_keys,
                 deleted_keys,
-                chunks_count,
+                batches_count,
             )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            message = f"Failed to delete keys:\n{traceback.format_exc()}"
-            self.logger.exception(message)
+            message = f"Failed to delete S3 keys: {e}"
+            self.logger.error(message)
+            self.logger.debug("S3 delete traceback", exc_info=True)
             raise RuntimeError(message) from e
 
     async def adelete_keys_from_s3(self, *args, **kwargs):

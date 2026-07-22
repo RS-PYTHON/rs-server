@@ -723,6 +723,7 @@ field is not permitted also."
 collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
+        # Retry count excludes the initial attempt; range's upper bound is exclusive.
         max_attempts = CATALOG_DELETE_MAX_RETRIES + 1
         for attempt in range(1, max_attempts + 1):
             # Rebuild from catalog metadata on every outer attempt. A previous
