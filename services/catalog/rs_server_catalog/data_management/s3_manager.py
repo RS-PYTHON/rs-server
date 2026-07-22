@@ -450,30 +450,32 @@ class S3Manager:
         """
         Delete S3 files collected during catalog request processing.
 
-        Deletion happens after the catalog mutation succeeds. Failures are logged
-        but do not roll back the catalog response, because a secondary object
-        storage lifecycle can still clean up orphaned objects.
+        Delete the requested S3 files and propagate cleanup failures. Catalog
+        DELETE invokes this method before deleting catalog metadata.
 
         Args:
             s3_files_to_be_deleted (list[str]): list of files to delete from the S3 bucket
 
         Returns:
-            bool: True is deletion was successful, False otherwise
+            bool: True when deletion completes successfully.
+
+        Raises:
+            RuntimeError: If the S3 handler is unavailable or cleanup fails.
         """
         if not s3_files_to_be_deleted:
             logger.info("No files to be deleted from bucket")
             return True
         if not self.s3_handler:
+            message = "Failed to create the s3 handler when trying to delete the s3 files"
             logger.error("Failed to create the s3 handler when trying to delete the s3 files")
-            return False
+            raise RuntimeError(message)
 
         try:
-            logger.info("Deleting %d S3 file(s) after catalog operation", len(s3_files_to_be_deleted))
+            logger.info("Deleting %d S3 file(s) for catalog operation", len(s3_files_to_be_deleted))
             logger.debug("S3 files scheduled for deletion: %s", s3_files_to_be_deleted)
             await self.s3_handler.adelete_keys_from_s3(s3_files_to_be_deleted)
-            logger.info("Finished deleting S3 files after catalog operation")
+            logger.info("Finished deleting S3 files for catalog operation")
         except RuntimeError as rte:
-            logger.exception(
-                f"Failed to delete file from s3 bucket. Reason: {rte}. However, the process will still continue !",
-            )
+            logger.exception("Failed to delete S3 files for catalog operation: %s", rte)
+            raise
         return True

@@ -167,9 +167,9 @@ class TestDeleteS3Files:
         mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
         mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler", return_value=None)
 
-        result = await S3Manager(s3_manager).delete_s3_files(["s3://bucket_name/path/to/file"])
+        with pytest.raises(RuntimeError, match="Failed to create the s3 handler"):
+            await S3Manager(s3_manager).delete_s3_files(["s3://bucket_name/path/to/file"])
 
-        assert result is False
         mock_logger.error.assert_called_once_with("Failed to create the s3 handler when trying to delete the s3 files")
 
     @pytest.mark.asyncio
@@ -195,14 +195,16 @@ class TestDeleteS3Files:
         mock_get_s3_handler = mocker.patch("rs_server_catalog.data_management.s3_manager.S3Manager._get_s3_handler")
         mocker.patch("rs_server_catalog.utils.is_s3_path", return_value=True)
         mock_s3_handler = mocker.Mock()
-        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Deletion failed"))
+        deletion_error = RuntimeError("Deletion failed")
+        mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=deletion_error)
         mock_get_s3_handler.return_value = mock_s3_handler
         ftbd = "s3://bucket_name/path/to/file"
-        result = await S3Manager(s3_manager).delete_s3_files([ftbd])
+        with pytest.raises(RuntimeError, match="Deletion failed"):
+            await S3Manager(s3_manager).delete_s3_files([ftbd])
 
-        assert result is True  # Function should continue even if deletion fails
         mock_logger.exception.assert_called_once_with(
-            "Failed to delete file from s3 bucket. Reason: Deletion failed. However, the process will still continue !",
+            "Failed to delete S3 files for catalog operation: %s",
+            deletion_error,
         )
 
     @pytest.mark.asyncio
@@ -213,16 +215,16 @@ class TestDeleteS3Files:
         mock_s3_handler = mocker.Mock()
         mock_s3_handler.adelete_keys_from_s3 = mocker.AsyncMock(side_effect=RuntimeError("Test failure"))
 
-        manager = S3Manager(s3_manager)
+        manager = s3_manager
         manager.s3_handler = mock_s3_handler
 
         files_to_delete = ["s3://bucket/file1.txt"]
 
         mock_logger = mocker.patch("rs_server_catalog.data_management.s3_manager.logger")
 
-        result = await manager.delete_s3_files(files_to_delete)
+        with pytest.raises(RuntimeError, match="Test failure"):
+            await manager.delete_s3_files(files_to_delete)
 
-        assert result is True
         mock_logger.exception.assert_called_once()
 
 
