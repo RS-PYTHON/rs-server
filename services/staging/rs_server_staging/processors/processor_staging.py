@@ -16,6 +16,7 @@
 
 import asyncio  # for handling asynchronous tasks
 import getpass
+import json
 import os
 import re
 import threading
@@ -34,6 +35,7 @@ from dask.distributed import (
 from dask_gateway import Gateway
 from dask_gateway.auth import BasicAuth, JupyterHubAuth
 from fastapi import HTTPException
+from opentelemetry.propagate import inject
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.postgresql import (
     PostgreSQLManager,  # pylint: disable=C0302
@@ -55,6 +57,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.settings import LOCAL_MODE
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
 from rs_server_staging.processors.authentication import (
@@ -825,15 +828,17 @@ class Staging(
 
     def submit_dask_task(
         self,
+        task_env: dict[str, str],
         client: Client,
         asset: AssetInfo,
         refresh_tokens: dict[str, RefreshTokenData],
         s3_credentials: S3Credentials,
         try_token_refresh: bool = False,
     ) -> Future:
-        """Refresh the access token if needed and submit the streaming task to Dask."""
-        refresh_token = refresh_tokens.get(asset.domain, None)
+        """Submit the streaming task to Dask."""
+
         # refresh the token if needed
+        refresh_token = refresh_tokens.get(asset.domain, None)
         self.logger.debug(
             "Submitting Dask streaming task for job %s; asset=%s, bucket=%s, domain=%s, refresh=%s",
             self.job_id,
@@ -844,8 +849,10 @@ class Staging(
         )
         if refresh_token and try_token_refresh and not update_station_token(refresh_token, self.logger):
             raise RuntimeError(f"Could not retrieve or refresh the token for {asset}")
+
         return client.submit(
             streaming_task,
+            task_env,
             asset,
             refresh_token.config if refresh_token else None,
             TokenAuth(refresh_token.get_access_token()) if refresh_token else None,
@@ -896,6 +903,9 @@ class Staging(
         s3_credentials = authentication.get_s3_credentials(self.request)
         self.logger.debug("Retrieved S3 credentials object for job %s", self.job_id)
 
+        # Prepare environment to trace dask tasks with opentelemetry.
+        task_env = self._prepare_env_with_trace_context()
+
         # prevent submitting more tasks than necessary.
         # this can occur when the number of tasks that can run in parallel
         # exceeds the actual number of tasks intended for submission.
@@ -912,7 +922,7 @@ class Staging(
         try:
             # initial dataset
             initial_batch_tasks = {
-                self.submit_dask_task(client, next(data_iter), refresh_tokens, s3_credentials)
+                self.submit_dask_task(task_env, client, next(data_iter), refresh_tokens, s3_credentials)
                 for _ in range(max_parallel_tasks)
             }
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -943,7 +953,7 @@ class Staging(
                 # Submit a new task if available and no errors occurred
                 try:
                     next_asset = next(data_iter)
-                    tasks.add(self.submit_dask_task(client, next_asset, refresh_tokens, s3_credentials, True))
+                    tasks.add(self.submit_dask_task(task_env, client, next_asset, refresh_tokens, s3_credentials, True))
                     self.logger.debug("Queued next asset %s for job %s", next_asset.s3_file, self.job_id)
                 except StopIteration:
                     self.logger.debug("No more Dask tasks to queue for job %s", self.job_id)
@@ -967,6 +977,35 @@ class Staging(
         # Update the subscribers for token refreshment
         self.unsubscribe_refresh_tokens(refresh_tokens)
         self.logger.info("Tasks monitoring finished")
+
+    def _prepare_env_with_trace_context(self) -> dict[str, str]:
+        """
+        Prepare environment to trace dask tasks with opentelemetry.
+
+        https://oneuptime.com/blog/post/2026-02-06-trace-python-subprocess-calls-opentelemetry/view#context-propagation-to-child-processes
+        https://opentelemetry.io/docs/languages/python/propagation/#manual-context-propagation
+
+        Args:
+            catalog_collection (str): The catalog collection name for storing processed features.
+        """
+        env = os.environ.copy()
+
+        # Inject trace context into environment variables
+        carrier: dict[str, str] = {}
+        inject(carrier)
+
+        self.logger.info(f"OpenTelemetry carrier: {carrier!r}")
+
+        # Convert carrier to environment variables
+        if "traceparent" in carrier:
+            env["TRACEPARENT"] = carrier["traceparent"]
+        if "tracestate" in carrier:
+            env["TRACESTATE"] = carrier["tracestate"]
+
+        # Also pass as JSON for scripts that can parse it
+        env["OTEL_TRACE_CONTEXT"] = json.dumps(carrier)
+
+        return env
 
     def dask_cluster_connect(
         self,
@@ -1336,12 +1375,16 @@ class Staging(
         # loop remains responsive while `as_completed` waits for task results.
         self.logger.debug("Starting tasks monitoring thread")
         try:
-            await asyncio.to_thread(
-                self.manage_dask_tasks,
-                dask_client,
-                catalog_collection,
-                refresh_tokens,
-            )
+            with init_opentelemetry.start_span(
+                __name__,
+                f"[{self.staging_user}:{catalog_collection}] staging_dask_tasks",
+            ):
+                await asyncio.to_thread(
+                    self.manage_dask_tasks,
+                    dask_client,
+                    catalog_collection,
+                    refresh_tokens,
+                )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception("Task monitoring thread failed for job %s: %s", self.job_id, e)
             self.log_job_execution(JobStatus.failed, 0, f"Error from tasks monitoring thread: {e}")

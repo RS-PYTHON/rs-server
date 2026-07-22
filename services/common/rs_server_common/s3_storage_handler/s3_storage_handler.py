@@ -1141,20 +1141,24 @@ retried for %s times. Aborting",
                         )
                     self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
                     break
-        except (
-            requests.exceptions.RequestException,
-            botocore.client.ClientError,
-            botocore.exceptions.BotoCoreError,
-        ) as e:
-            self.logger.exception(f"Failed to stream the file from {request.url} to s3://{bucket}/{key}: {e}.")
-            raise ConnectionError(f"Failed to stream the file from {request.url} to s3://{bucket}/{key}: {e}.") from e
         except Exception as e:
-            self.logger.exception(
-                f"General exception.\nFailed to stream the file from {request.url} to s3://{bucket}/{key}: {e}",
+            message = f"Failed to stream the file from {request.url} to s3://{bucket}/{key}: {traceback.format_exc()}"
+
+            connection_error = isinstance(
+                e,
+                (
+                    requests.exceptions.RequestException,
+                    botocore.client.ClientError,
+                    botocore.exceptions.BotoCoreError,
+                ),
             )
-            raise RuntimeError(
-                f"General exception.\nFailed to stream the file from {request.url} to s3://{bucket}/{key}: {e}",
-            ) from e
+            if not connection_error:
+                message = f"General exception.\n{message}"
+
+            self.logger.exception(message)
+            if connection_error:
+                raise ConnectionError(message) from e
+            raise RuntimeError(message) from e
 
     def s3_streaming_from_http(
         self,

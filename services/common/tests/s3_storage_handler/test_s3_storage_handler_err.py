@@ -83,6 +83,8 @@ def test_get_keys_from_s3_download_fail(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
     requests.post("http://localhost:5001/moto-api/reset", timeout=5)
+
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
 
     config = GetKeysFromS3Config(
@@ -142,6 +144,8 @@ def test_put_files_to_s3_upload_fail(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
     requests.post("http://localhost:5001/moto-api/reset", timeout=5)
+
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
 
     config = PutFilesToS3Config(
@@ -185,6 +189,8 @@ def test_transfer_from_s3_to_s3_fail(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
     requests.post("http://localhost:5001/moto-api/reset", timeout=5)
+
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     s3_handler.s3_client.create_bucket(Bucket=bucket_src)
     s3_handler.s3_client.create_bucket(Bucket=bucket_src)
@@ -249,6 +255,8 @@ def test_delete_key_from_s3_fail(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
     requests.post("http://localhost:5001/moto-api/reset", timeout=5)
+
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     # test when there is no file to be deleted
     with pytest.raises(RuntimeError) as exc:
@@ -327,6 +335,7 @@ def test_s3_streaming_upload_fail(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
 
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     # prepare a bucket for tests
     bucket = "s3-bucket-streaming"
@@ -387,6 +396,7 @@ def test_check_s3_key_on_bucket_forbidden(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
 
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     # prepare a bucket for tests
     bucket = "some_s3"
@@ -413,6 +423,7 @@ def test_check_s3_key_on_bucket_not_found(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
 
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     # prepare a bucket for tests
     bucket = "some_s3"
@@ -443,6 +454,7 @@ def test_check_s3_key_on_bucket_unchecked_client_error(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
 
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     # prepare a bucket for tests
     bucket = "some_s3"
@@ -473,6 +485,7 @@ def test_check_s3_key_on_bucket_unchecked_client_error(mocker):
 
 def test_check_s3_key_on_bucket_connection_error(mocker):
     """Test case for connection error when accessing S3 bucket."""
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     bucket = "some_s3"
     s3_key = "test_key.tst"
@@ -498,6 +511,7 @@ def test_check_s3_key_on_bucket_general_exception(mocker):
     server = ThreadedMotoServer(port=5001)
     server.start()
 
+    export_aws_credentials()
     s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
     bucket = "some_s3"
     s3_handler.s3_client.create_bucket(Bucket=bucket)
