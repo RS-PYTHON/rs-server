@@ -1016,7 +1016,11 @@ class Staging(
                 progress = min(99, downloaded_bytes * 100 // total_bytes)
                 if progress > last_reported_progress["value"]:
                     last_reported_progress["value"] = progress
-                    self.log_job_execution(JobStatus.running, progress, "In progress")
+                    self.log_job_execution(
+                        JobStatus.running,
+                        progress,
+                        f"Downloaded {downloaded_bytes} / {total_bytes} bytes",
+                    )
 
         progress_queue = None
         progress_stop_event = threading.Event()
