@@ -185,11 +185,15 @@ class EodagProvider(Provider):
             self._handle_multiple_values(mapped_search_args, session_id, "SessionId", "SessionIds")
 
         if names := kwargs.pop("Name", None):
-            # Map name to the appropriate eodag parameter
-            if isinstance(names, list) and len(names) > 1:
-                self._handle_multiple_values(mapped_search_args, names, "Name", "Names")
-            else:
+            if len(names) == 1:
+                # Don't use _handle_multiple_values here because the Name template
+                # already adds the quotes.
                 mapped_search_args["Name"] = names[0]
+            else:
+                mapped_search_args["NameContains"] = " or ".join(
+                    f"contains(Name,'{name}')"
+                    for name in names
+                )
 
         if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
