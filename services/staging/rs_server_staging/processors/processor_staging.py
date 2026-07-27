@@ -34,7 +34,9 @@ from dask.distributed import (
     Client,
     Future,
     LocalCluster,
-    Queue as DaskQueue,
+)
+from dask.distributed import Queue as DaskQueue
+from dask.distributed import (
     as_completed,
 )
 from dask_gateway import Gateway
@@ -837,7 +839,7 @@ class Staging(
         return size_bytes is not None and size_bytes >= 0
 
     @staticmethod
-    def coerce_content_length(value: object, asset: AssetInfo) -> int:
+    def coerce_content_length(value: str | int | None, asset: AssetInfo) -> int:
         """Validate a provider size before including it in the job total."""
         if value is None:
             raise RuntimeError(f"Missing Content-Length for source asset {asset.product_url}")
@@ -1036,7 +1038,7 @@ class Staging(
                         f"Downloaded {downloaded_bytes} / {total_bytes} bytes",
                     )
 
-        progress_queue = None
+        progress_queue: DaskQueue | None = None
         progress_stop_event = threading.Event()
         progress_thread = None
 
@@ -1047,11 +1049,11 @@ class Staging(
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 self.logger.warning("Could not create Dask progress queue. Falling back to task completion: %s", exc)
 
-        def monitor_progress_queue():
+        def monitor_progress_queue(queue: DaskQueue):
             """Consume worker byte deltas while submitted futures are running."""
             while not progress_stop_event.is_set():
                 try:
-                    message = progress_queue.get(timeout=1)
+                    message = queue.get(timeout=1)
                 except (Empty, TimeoutError):
                     continue
                 except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -1083,6 +1085,7 @@ class Staging(
         if progress_queue:
             progress_thread = threading.Thread(
                 target=monitor_progress_queue,
+                args=(progress_queue,),
                 name=f"staging-progress-{self.job_id}",
                 daemon=True,
             )

@@ -105,6 +105,7 @@ class DownloadProgressStream:
         self._download_progress_callback = download_progress_callback
 
     def read(self, *args: Any, **kwargs: Any) -> Any:
+        """Read one block and report its size to the progress callback."""
         chunk = self._stream.read(*args, **kwargs)
         if chunk and self._download_progress_callback:
             self._download_progress_callback(len(chunk))
