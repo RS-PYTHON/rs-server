@@ -225,7 +225,7 @@ class CatalogResponseManager:
             response = await self.manage_put_post_response(request, streaming_response)
         elif request.method == "DELETE" and self.request_ids["owner_id"]:
             logger.debug("Dispatching catalog delete response manager")
-            response = await self.manage_delete_response(request, streaming_response, self.request_ids["owner_id"])
+            response = await self.manage_delete_response(streaming_response, self.request_ids["owner_id"])
 
         logger.info(
             "Managed catalog response for %s %s; final_status=%s",
@@ -598,16 +598,15 @@ class CatalogResponseManager:
         media_type = "application/geo+json" if "/items" in request.scope["path"] else None
         return JSONResponse(response_content, response.status_code, headers_minus_content_length(response), media_type)
 
-    async def manage_delete_response(self, request: Request, response: StreamingResponse, user: str) -> Response:
+    async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """
-        Adapt DELETE responses and run deferred S3 cleanup.
+        Adapt a successful DELETE response.
 
         pgstac returns internal owner-prefixed collection ids. The public
-        response removes that prefix, then deletes the S3 files collected during
-        request pre-processing now that catalog deletion succeeded.
+        response removes that prefix. S3 cleanup has already completed during
+        request pre-processing, before the DELETE was forwarded to pgstac.
 
         Args:
-            request (Request): The original HTTP request from the client.
             response (StreamingResponse): The client response.
             user (str): The owner id.
 
@@ -615,15 +614,9 @@ class CatalogResponseManager:
             JSONResponse: The new response with the updated collection name.
         """
         response_content = await read_streaming_response(response)
-        logger.info(
-            "Managing delete response for owner=%s; scheduled_s3_files=%d",
-            user,
-            len(self.s3_files_to_be_deleted),
-        )
+        logger.info("Managing delete response for owner=%s", user)
         logger.debug("Delete response content before adaptation: %s", response_content)
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
-        await self.s3_manager(request).delete_s3_files(self.s3_files_to_be_deleted)
-        self.s3_files_to_be_deleted.clear()
-        logger.info("Finished delete response cleanup for owner=%s", user)
+        logger.info("Finished adapting delete response for owner=%s", user)
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))

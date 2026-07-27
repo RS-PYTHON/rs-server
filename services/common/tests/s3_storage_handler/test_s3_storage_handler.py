@@ -967,8 +967,8 @@ async def test_delete_key_from_s3(mocker, single_file: bool):
             else:
                 spy = mocker.spy(s3_handler.s3_client, "delete_objects")
                 await s3_handler.adelete_keys_from_s3(keys_to_be_deleted)
-                # The actual number of calls depends on chunking.
-                # 21 files, chunk 10 -> 3 calls (10, 10, 1)
+                # The actual number of calls depends on batching.
+                # 21 files, batch 10 -> 3 calls (10, 10, 1)
                 assert spy.call_count == 3
         except RuntimeError:
             assert False, "s3_handler.delete_file(s)_from_s3 raised exception !"
@@ -1024,6 +1024,35 @@ async def test_delete_key_from_s3(mocker, single_file: bool):
 
     finally:
         server.stop()
+
+
+@pytest.mark.unit
+def test_delete_objects_batch_retries_only_failed_keys(mocker):
+    """Retry only failed keys and propagate malformed or exhausted partial failures."""
+    s3_handler = mocker.MagicMock()
+    bucket = "some_s3"
+    keys = ["deleted.txt", "retry.txt"]
+    # First shrink the pending set, then cover malformed and exhausted partial failures.
+    s3_handler.s3_client.delete_objects.side_effect = [
+        {"Errors": [{"Key": "retry.txt", "Code": "InternalError"}]},
+        {"Errors": [{"Code": "InternalError"}]},
+        {"Errors": [{"Key": "retry.txt", "Code": "InternalError"}]},
+    ]
+
+    with pytest.raises(RuntimeError, match="Failed to delete 1 key"):
+        S3StorageHandler.delete_objects_batch(s3_handler, bucket, keys, max_retries=3)
+
+    # Only the key reported as failed is sent again after the first attempt.
+    assert s3_handler.s3_client.delete_objects.call_args_list == [
+        mocker.call(
+            Bucket=bucket,
+            Delete={"Objects": [{"Key": "deleted.txt"}, {"Key": "retry.txt"}], "Quiet": True},
+        ),
+        mocker.call(Bucket=bucket, Delete={"Objects": [{"Key": "retry.txt"}], "Quiet": True}),
+        mocker.call(Bucket=bucket, Delete={"Objects": [{"Key": "retry.txt"}], "Quiet": True}),
+    ]
+    assert s3_handler.logger.warning.call_count == 2
+    assert s3_handler.wait_timeout.call_count == 2
 
 
 @pytest.mark.unit

@@ -388,6 +388,14 @@ jobs:
           # Run the rs-demo local mode using the newly created docker images
           ./test-rs-demo.sh
 
+      - name: Upload executed notebooks
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: notebook-outputs
+          path: local-mode/notebook-outputs/
+          if-no-files-found: ignore
+
       # If we used a temp docker tag, and only if the tests succeeded, then
       # we tag the images with the real tags and push them.
       - name: Tag and push Docker images
