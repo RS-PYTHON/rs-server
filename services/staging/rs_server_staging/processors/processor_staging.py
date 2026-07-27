@@ -832,13 +832,13 @@ class Staging(
                 refresh_token.unsubscribe(self.logger)
 
     @staticmethod
-    def _valid_asset_size(size_bytes: int | None) -> bool:
-        """Return True when an asset size was already resolved."""
+    def valid_asset_size(size_bytes: int | None) -> bool:
+        """Return whether the source size is known and non-negative."""
         return size_bytes is not None and size_bytes >= 0
 
     @staticmethod
-    def _coerce_content_length(value: object, asset: AssetInfo) -> int:
-        """Convert a Content-Length-like value to a valid byte size."""
+    def coerce_content_length(value: object, asset: AssetInfo) -> int:
+        """Validate a provider size before including it in the job total."""
         if value is None:
             raise RuntimeError(f"Missing Content-Length for source asset {asset.product_url}")
         if isinstance(value, bool):
@@ -851,7 +851,7 @@ class Staging(
             raise RuntimeError(f"Invalid negative Content-Length for source asset {asset.product_url}: {value!r}")
         return size_bytes
 
-    def _resolve_http_asset_size(
+    def resolve_http_asset_size(
         self,
         asset: AssetInfo,
         refresh_tokens: dict[str, RefreshTokenData],
@@ -870,9 +870,9 @@ class Staging(
             raise RuntimeError(
                 f"Failed to retrieve Content-Length for source asset {asset.product_url}: {exc}",
             ) from exc
-        return self._coerce_content_length(response.headers.get("Content-Length"), asset)
+        return self.coerce_content_length(response.headers.get("Content-Length"), asset)
 
-    def _resolve_s3_asset_size(self, asset: AssetInfo) -> int:
+    def resolve_s3_asset_size(self, asset: AssetInfo) -> int:
         """Resolve an external S3 source size using HeadObject and ContentLength."""
         source_url = urlparse(asset.product_url)
         source_bucket = source_url.netloc
@@ -891,19 +891,19 @@ class Staging(
             response = source_s3_client.head_object(Bucket=source_bucket, Key=source_key)
         except (botocore.exceptions.BotoCoreError, botocore.exceptions.ClientError) as exc:
             raise RuntimeError(f"Failed to retrieve ContentLength for source asset {asset.product_url}: {exc}") from exc
-        return self._coerce_content_length(response.get("ContentLength"), asset)
+        return self.coerce_content_length(response.get("ContentLength"), asset)
 
     def resolve_asset_sizes(self, refresh_tokens: dict[str, RefreshTokenData]):
-        """Resolve all missing source asset sizes before sending tasks to Dask."""
+        """Query the provider only for sizes missing from STAC metadata."""
         for asset in self.assets_info:
-            if self._valid_asset_size(asset.size_bytes):
+            if self.valid_asset_size(asset.size_bytes):
                 continue
 
             scheme = urlparse(asset.product_url).scheme
             if asset.origin_service == "s3" or scheme == "s3":
-                asset.size_bytes = self._resolve_s3_asset_size(asset)
+                asset.size_bytes = self.resolve_s3_asset_size(asset)
             elif scheme in {"http", "https"}:
-                asset.size_bytes = self._resolve_http_asset_size(asset, refresh_tokens)
+                asset.size_bytes = self.resolve_http_asset_size(asset, refresh_tokens)
             else:
                 raise RuntimeError(
                     f"Cannot determine the size of source asset {asset.product_url!r}: "
@@ -994,6 +994,7 @@ class Staging(
         # Prepare environment to trace Dask tasks with OpenTelemetry.
         task_env = self._prepare_env_with_trace_context()
 
+        # Track assets independently so parallel workers and retries cannot double-count bytes.
         asset_sizes = {asset.s3_file: asset.size_bytes or 0 for asset in self.assets_info}
         asset_progress = {asset.s3_file: 0 for asset in self.assets_info}
         total_bytes = sum(asset_sizes.values())
@@ -1013,8 +1014,10 @@ class Staging(
             with progress_lock:
                 asset_size = asset_sizes.get(asset_key, 0)
                 if reset:
+                    # Each attempt starts at byte zero; remove progress from a failed attempt.
                     asset_progress[asset_key] = 0
                 elif complete:
+                    # A successful future confirms that the full source asset was streamed.
                     asset_progress[asset_key] = asset_size
                 else:
                     asset_progress[asset_key] = min(
@@ -1023,6 +1026,7 @@ class Staging(
                     )
 
                 downloaded_bytes = sum(asset_progress.values())
+                # Integer arithmetic avoids rounding drift; 100 is reserved for final success.
                 progress = min(99, downloaded_bytes * 100 // total_bytes)
                 if progress > last_reported_progress["value"]:
                     last_reported_progress["value"] = progress
@@ -1038,12 +1042,13 @@ class Staging(
 
         if total_bytes > 0:
             try:
+                # Share this scheduler-backed proxy with every worker and the local monitor.
                 progress_queue = DaskQueue(name=f"staging-progress-{self.job_id}", client=client)
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 self.logger.warning("Could not create Dask progress queue. Falling back to task completion: %s", exc)
 
         def monitor_progress_queue():
-            """Drain byte increments reported by Dask workers."""
+            """Consume worker byte deltas while submitted futures are running."""
             while not progress_stop_event.is_set():
                 try:
                     message = progress_queue.get(timeout=1)
@@ -1065,6 +1070,7 @@ class Staging(
                     record_asset_progress(asset_key, bytes_delta=message["bytes"])
 
         def stop_progress_monitor():
+            """Stop the listener and release its scheduler-backed queue."""
             progress_stop_event.set()
             if progress_thread and progress_thread.is_alive():
                 progress_thread.join(timeout=5)
@@ -1099,6 +1105,7 @@ class Staging(
 
         def submit_next_task(try_token_refresh: bool = False) -> Future:
             asset = next(data_iter)
+            # Dask serializes the existing Queue proxy, keeping both ends on the same queue.
             future = self.submit_dask_task(
                 task_env,
                 client,
@@ -1151,6 +1158,7 @@ class Staging(
                     next_asset = future_to_asset[next_task]
                     self.logger.debug("Queued next asset %s for job %s", next_asset.s3_file, self.job_id)
                 except StopIteration:
+                    # Scheduling is exhausted, but active futures can still report progress.
                     self.logger.debug("No more Dask tasks to queue for job %s", self.job_id)
             except Exception as task_e:  # pylint: disable=broad-exception-caught
                 self.logger.error("Task failed with exception: %s", task_e)
@@ -1165,6 +1173,7 @@ class Staging(
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
 
+        # The as_completed loop exits only after every dynamically added future finishes.
         stop_progress_monitor()
 
         if not self.publish_processed_features(catalog_collection, refresh_tokens):

@@ -49,8 +49,8 @@ from rs_server_staging.utils.rspy_models import Feature
 logger = Logging.default(__name__)
 
 
-def _asset_size_from_metadata(asset_content: dict, asset_name: str) -> int | None:
-    """Return the STAC file:size value when it is available and valid."""
+def asset_size_from_metadata(asset_content: dict, asset_name: str) -> int | None:
+    """Return a validated STAC file:size, or None when absent, to keep job totals reliable."""
     asset_size = asset_content.get("file:size")
     if asset_size is None:
         return None
@@ -65,8 +65,8 @@ def _asset_size_from_metadata(asset_content: dict, asset_name: str) -> int | Non
     return size_bytes
 
 
-def _report_streaming_progress(progress_queue, asset_key: str, message: dict, logger_dask: logging.Logger):
-    """Best-effort progress report from a Dask worker to the staging monitor."""
+def report_streaming_progress(progress_queue, asset_key: str, message: dict, logger_dask: logging.Logger):
+    """Send a Dask progress event without failing the transfer if reporting fails."""
     if progress_queue is None:
         return
     try:
@@ -202,10 +202,12 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
     attempt = 0
     while attempt < max_retries:
         try:
-            _report_streaming_progress(progress_queue, s3_file, {"reset": True}, logger_dask)
+            # A retry restarts the source stream, so discard bytes from the failed attempt.
+            report_streaming_progress(progress_queue, s3_file, {"reset": True}, logger_dask)
 
             def download_progress_callback(bytes_amount: int):
-                _report_streaming_progress(
+                """Report each provider-stream read as a byte delta."""
+                report_streaming_progress(
                     progress_queue,
                     s3_file,
                     {"bytes": int(bytes_amount)},
@@ -360,7 +362,7 @@ def prepare_streaming_tasks(
             # Non-S3 origins are streamed through the station auth path.
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
-        asset_info.size_bytes = _asset_size_from_metadata(asset_metadata, asset_name)
+        asset_info.size_bytes = asset_size_from_metadata(asset_metadata, asset_name)
         assets_info.append(asset_info)
         # Mutate the feature in place so the later catalog POST/PUT references
         # the object that the Dask task is about to create.
@@ -454,7 +456,7 @@ def create_asset_info_with_s3_auth(
         external_s3_access_key=s3_authentication_config.access_key,
         external_s3_secret_key=s3_authentication_config.secret_key,
         trusted_domains=s3_authentication_config.trusted_domains,
-        size_bytes=_asset_size_from_metadata(asset_content, asset_name),
+        size_bytes=asset_size_from_metadata(asset_content, asset_name),
     )
 
 

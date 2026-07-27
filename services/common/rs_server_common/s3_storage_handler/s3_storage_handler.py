@@ -98,7 +98,7 @@ DOMAIN_RATE_LIMITER = DomainRateLimiter()
 
 
 class DownloadProgressStream:
-    """File-like wrapper that reports bytes read from the source stream."""
+    """Wrap a provider stream and report each block read by boto3."""
 
     def __init__(self, stream: Any, download_progress_callback: Callable[[int], None] | None):
         self._stream = stream
@@ -1229,6 +1229,7 @@ retried for %s times. Aborting",
                     # Default chunksize is set to 64Kb, can be manually increased
                     chunk_size = 64 * 1024  # 64kb
                     with response.raw as data_stream:
+                        # Measure provider reads before boto3 uploads each block to the destination.
                         source_stream = DownloadProgressStream(data_stream, download_progress_callback)
                         self.s3_client.upload_fileobj(
                             source_stream,
