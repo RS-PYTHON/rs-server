@@ -914,38 +914,6 @@ class Staging(
 
             self.logger.info("Resolved size for source asset %s: %s bytes", asset.product_url, asset.size_bytes)
 
-    def dask_workers_support_progress(self, client: Client) -> bool:
-        """Return whether every worker accepts the optional progress queue."""
-
-        def worker_supports_progress() -> bool:
-            """Inspect the staging task installed in this worker."""
-            from inspect import signature  # pylint: disable=import-outside-toplevel
-
-            from rs_server_staging.processors import tasks as worker_tasks  # pylint: disable=import-outside-toplevel
-
-            worker_task = getattr(worker_tasks, "_streaming_task_otel", None)
-            if worker_task is None:
-                return False
-            try:
-                return "progress_queue" in signature(worker_task).parameters
-            except (TypeError, ValueError):
-                return False
-
-        try:
-            support_by_worker = client.run(worker_supports_progress)
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self.logger.warning("Could not check Dask workers for staging progress support: %s", exc)
-            return False
-
-        unsupported_workers = [worker for worker, supported in support_by_worker.items() if not supported]
-        if not support_by_worker or unsupported_workers:
-            self.logger.warning(
-                "Dask workers without staging progress support: %s. Falling back to task completion progress.",
-                unsupported_workers or "all",
-            )
-            return False
-        return True
-
     def submit_dask_task(
         self,
         task_env: dict[str, str],
@@ -971,17 +939,15 @@ class Staging(
         if refresh_token and try_token_refresh and not update_station_token(refresh_token, self.logger):
             raise RuntimeError(f"Could not retrieve or refresh the token for {asset}")
 
-        task_args = (
+        return client.submit(
+            streaming_task,
             task_env,
             asset,
             refresh_token.config if refresh_token else None,
             TokenAuth(refresh_token.get_access_token()) if refresh_token else None,
             s3_credentials,
+            progress_queue,
         )
-        if progress_queue is None:
-            # Older workers expose the four-argument task, so omit the optional argument entirely.
-            return client.submit(streaming_task, *task_args)
-        return client.submit(streaming_task, *task_args, progress_queue)
 
     def manage_dask_tasks(
         self,
@@ -1076,7 +1042,7 @@ class Staging(
         progress_stop_event = threading.Event()
         progress_thread = None
 
-        if total_bytes > 0 and self.dask_workers_support_progress(client):
+        if total_bytes > 0:
             try:
                 # Share this scheduler-backed proxy with every worker and the local monitor.
                 progress_queue = DaskQueue(name=f"staging-progress-{self.job_id}", client=client)
