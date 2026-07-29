@@ -188,9 +188,7 @@ class TestCatalogPublishFeature:
         """
         with patch(
             "rs_server_catalog.data_management.timestamps_extension.set_timestamps_for_creation",
-        ) as mock_creation, patch(
-            "rs_server_catalog.data_management.timestamps_extension.set_timestamps_for_insertion",
-        ) as mock_insertion:
+        ) as mock_creation:
 
             # Define the mock behavior to set 'published' = None
             def mock_creation_behavior(item):
