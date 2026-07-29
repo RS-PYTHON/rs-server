@@ -60,9 +60,6 @@ adgs:
       Name:
       - null
       - $.Name
-      Names:
-      - null
-      - $.Name
       ContentLength:
       - null
       - $.ContentLength
@@ -141,7 +138,6 @@ adgs:
           - contains(Name, '{Name}')
           - Id eq {externalIds}
           - Id in ({externalIdss})
-          - Name in ({Names})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -169,6 +165,7 @@ adgs:
             eq {Start#to_iso_utc_datetime})
           - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
           - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
+          - '{NameContains}'
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
@@ -251,9 +248,6 @@ adgs2:
       Name:
       - null
       - $.Name
-      Names:
-      - null
-      - $.Name
       ContentLength:
       - null
       - $.ContentLength
@@ -332,7 +326,6 @@ adgs2:
           - contains(Name, '{Name}')
           - Id eq {externalIds}
           - Id in ({externalIdss})
-          - Name in ({Names})
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
@@ -360,6 +353,7 @@ adgs2:
             eq {Start#to_iso_utc_datetime})
           - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
           - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
+          - '{NameContains}'
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'

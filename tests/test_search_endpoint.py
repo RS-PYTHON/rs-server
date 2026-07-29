@@ -2268,17 +2268,18 @@ def test_search_parameters(
             # TODO after fixing rs-server, these parameters should appear in the OData request:
             #  - sortBy (RSPY-131)
             if adgs:
-                uids = f"('{user_ids.split(',', 1)[0]}','{user_ids.split(',', 1)[1]}')"
+                uids = user_ids.split(",")
+                name_filter = " or ".join(f"contains(Name,'{uid}')" for uid in uids)
+
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
-                    f"Name in {uids} and "
                     "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
-                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max})"
+                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max}) and "
+                    f"{name_filter}"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
-                    f"Name in {uids} and "
                     "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
                     "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) and "
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
@@ -2286,7 +2287,8 @@ def test_search_parameters(
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation}) and "
                     "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
-                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max})"
+                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max}) and "
+                    f"{name_filter}"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:
