@@ -186,7 +186,7 @@ class TestStagingCatalog:
         staging_instance: Staging,
         staging_inputs: dict,
     ):
-        """Expired catalog items should keep the input feature assets for restaging."""
+        """Expired catalog items (unpublished flag set) should keep input assets for restaging."""
         staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
 
         mock_response = mocker.Mock()
@@ -210,7 +210,49 @@ class TestStagingCatalog:
         assert result is True
         assert [feature.id for feature in staging_instance.expired_items] == ["1"]
         assert "asset1" in staging_instance.expired_items[0].assets
-        assert [feature.id for feature in staging_instance.stream_list] == ["2", "1"]
+        assert sorted(feature.id for feature in staging_instance.stream_list) == ["1", "2"]
+
+    @pytest.mark.asyncio
+    async def test_check_catalog_restages_items_with_empty_assets_no_unpublished(
+        self,
+        mocker,
+        staging_instance: Staging,
+        staging_inputs: dict,
+    ):
+        """Items whose assets were wiped by DataLifecycle (empty dict, no unpublished) must be restaged.
+
+        The DataLifecycle can clear the assets dict without immediately setting 'unpublished'.
+        In that state the item must still be detected as needing re-staging.
+        """
+        staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
+
+        # Feature "1" -> empty assets, no 'unpublished' property -> must be restaged via PUT
+        # Feature "2" -> not present in the catalog at all -> must be staged fresh via POST
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "id": "1",
+                    "assets": {},
+                    "properties": {},  # no 'unpublished' field
+                },
+            ],
+        }
+        mock_response.raise_for_status = mocker.Mock()
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        mocker.patch("httpx.AsyncClient.get", return_value=mock_response)
+        mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
+
+        result = await self._call_check_catalog(staging_instance, staging_inputs)
+
+        assert result is True
+        # Feature "1" must be marked as expired (will be updated via PUT)
+        assert [feature.id for feature in staging_instance.expired_items] == ["1"]
+        # Input assets must be preserved on the expired feature for re-downloading
+        assert "asset1" in staging_instance.expired_items[0].assets
+        # Both features end up in the stream list: "2" as a new item, "1" as an expired one
+        assert sorted(feature.id for feature in staging_instance.stream_list) == ["1", "2"]
 
 
 class TestStagingPublishCatalog:
