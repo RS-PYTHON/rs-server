@@ -187,7 +187,7 @@ jobs:
     steps:
       - id: set-binary-env
         name: Call action 'set-binary-env'
-        uses: RS-PYTHON/actions/.github/actions/set-binary-env@feat-rspy1108/jupyter-cicd
+        uses: RS-PYTHON/actions/.github/actions/set-binary-env@develop
         with:
           wheel_version_name: ${{ needs.build-wheels.outputs.version_name }}
           add_docker_tags: ${{ inputs.add_docker_tags }}
