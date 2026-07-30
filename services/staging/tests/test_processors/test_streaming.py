@@ -254,8 +254,8 @@ class TestPrepareStreaming:
         feature = mocker.Mock()
         feature.id = "feature_id"
         feature.assets = {
-            "asset1": mocker.Mock(href="https://example.com/asset1"),
-            "asset2": mocker.Mock(href="https://example.com/asset2"),
+            "asset1": Asset(href="https://example.com/asset1"),
+            "asset2": Asset(href="https://example.com/asset2"),
         }
 
         result = prepare_streaming_tasks(catalog_collection, feature, "staging_user")
@@ -289,7 +289,9 @@ class TestPrepareStreaming:
         feature.properties = {}
         local_path = "S1D_IW_ETA__AXDV_feature.SAFE.zip"
         feature.assets = {
-            "product": Asset(**{"href": "https://example.com/product", "file:local_path": local_path}),
+            "product": Asset.model_validate(
+                {"href": "https://example.com/product", "file:local_path": local_path},
+            ),
             "thumbnail": Asset(href="https://example.com/thumbnail"),
         }
 
@@ -333,7 +335,7 @@ class TestPrepareStreaming:
         catalog_collection = "test_collection"
         feature = mocker.Mock()
         feature.id = "feature_id"
-        feature.assets = {"asset1": mocker.Mock(href="https://example.com/asset1"), "asset2": s3_asset}
+        feature.assets = {"asset1": Asset(href="https://example.com/asset1"), "asset2": s3_asset}
 
         # Add expected storage schemes to Feature
         storage_schemes = {
@@ -467,6 +469,7 @@ class TestPrepareStreaming:
             external_s3_endpoint_url="https://some.domain.test",
             external_s3_access_key="correct_access",
             external_s3_secret_key="correct_secret",
+            size_bytes=1,
         )
 
         assert (

@@ -873,6 +873,20 @@ class TestStagingMainExecution:
         # Mock manage_dask_tasks
         mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks")
 
+        # Execute the mocked task manager inline to avoid creating an executor thread in this unit test.
+        async def execute_inline(function, *args):
+            return function(*args)
+
+        # Keep asyncio.to_thread's awaitable contract while making execution deterministic.
+        mocker.patch(
+            "rs_server_staging.processors.processor_staging.asyncio.to_thread",
+            side_effect=execute_inline,
+        )
+
+        # Asset sizes are already known, so the workflow can proceed to task monitoring.
+        for asset in staging_instance.assets_info:
+            asset.size_bytes = 1
+
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
 
