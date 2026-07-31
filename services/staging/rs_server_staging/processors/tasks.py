@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+import time
 from urllib.parse import urlparse
 
 from opentelemetry import context, propagate, trace
@@ -47,6 +48,8 @@ from rs_server_staging.utils.asset_info import (
 from rs_server_staging.utils.rspy_models import Feature
 
 logger = Logging.default(__name__)
+
+PROGRESS_REPORT_INTERVAL_SECONDS = 2
 
 
 def asset_size_from_metadata(asset_content: dict, asset_name: str) -> int | None:
@@ -205,14 +208,30 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
             # A retry restarts the source stream, so discard bytes from the failed attempt.
             report_streaming_progress(progress_queue, s3_file, {"reset": True}, logger_dask)
 
-            def download_progress_callback(bytes_amount: int):
-                """Report each provider-stream read as a byte delta."""
+            pending_progress_bytes = 0
+            last_progress_reported_at = time.monotonic()
+
+            def flush_download_progress():
+                """Send all byte increments accumulated since the previous report."""
+                nonlocal pending_progress_bytes, last_progress_reported_at
+                if pending_progress_bytes <= 0:
+                    return
                 report_streaming_progress(
                     progress_queue,
                     s3_file,
-                    {"bytes": int(bytes_amount)},
+                    {"bytes": pending_progress_bytes},
                     logger_dask,
                 )
+                pending_progress_bytes = 0
+                last_progress_reported_at = time.monotonic()
+
+            def download_progress_callback(bytes_amount: int):
+                """Accumulate provider reads and periodically report their byte delta."""
+                nonlocal pending_progress_bytes
+                pending_progress_bytes += max(int(bytes_amount), 0)
+                elapsed = time.monotonic() - last_progress_reported_at
+                if elapsed >= PROGRESS_REPORT_INTERVAL_SECONDS:
+                    flush_download_progress()
 
             # Create the handler inside the retry loop because failed streaming
             # attempts can leave connections in an uncertain state.
@@ -246,6 +265,8 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
                     download_progress_callback,
                 )
 
+            # Short or fast transfers may not reach a reporting interval.
+            flush_download_progress()
             s3_handler.disconnect_s3()
             logger_dask.debug("Disconnected S3 handler after streaming %s", s3_file)
             break

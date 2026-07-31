@@ -898,15 +898,18 @@ class Staging(
     def resolve_asset_sizes(self, refresh_tokens: dict[str, RefreshTokenData]):
         """Query the provider only for sizes missing from STAC metadata."""
         for asset in self.assets_info:
+            # Prefer a validated STAC file:size and avoid an unnecessary provider request.
             if self.valid_asset_size(asset.size_bytes):
                 continue
 
+            # Fall back to the metadata operation supported by the source protocol.
             scheme = urlparse(asset.product_url).scheme
             if asset.origin_service == "s3" or scheme == "s3":
                 asset.size_bytes = self.resolve_s3_asset_size(asset)
             elif scheme in {"http", "https"}:
                 asset.size_bytes = self.resolve_http_asset_size(asset, refresh_tokens)
             else:
+                # Without a source size, a reliable byte-weighted job total cannot be computed.
                 raise RuntimeError(
                     f"Cannot determine the size of source asset {asset.product_url!r}: "
                     f"unsupported scheme {scheme!r} and no STAC file:size was provided.",
@@ -1579,6 +1582,7 @@ class Staging(
             self.logger.error(f"Failed to start the staging process: {rte}")
             return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {rte}")
 
+        # Resolve every source size before submission so progress can use a byte-weighted job total.
         try:
             self.resolve_asset_sizes(refresh_tokens)
         except RuntimeError as rte:
