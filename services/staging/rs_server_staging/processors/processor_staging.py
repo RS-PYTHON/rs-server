@@ -1038,7 +1038,7 @@ class Staging(
                     self.log_job_execution(
                         JobStatus.running,
                         progress,
-                        f"Downloaded {downloaded_bytes} / {total_bytes} bytes",
+                        f"Downloaded {downloaded_bytes / (1024**2):.2f} / {total_bytes / (1024**2):.2f} MiB",
                     )
 
         progress_queue: DaskQueue | None = None
