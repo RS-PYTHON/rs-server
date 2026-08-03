@@ -627,11 +627,11 @@ field is not permitted also."
                         content = timestamps_extension.set_timestamps_for_insertion(content)
                         logger.debug("Set creation/insertion timestamps for item %s", content.get("id"))
                     else:  # PUT
-                        published = expires = ""
+                        published = ""
                         if item and item.get("properties"):
                             published = item["properties"].get("published", "")
-                            expires = item["properties"].get("expires", "")
-                        if not published and not expires:
+                        logger.debug("Got published = %s", published)
+                        if not published:
                             raise HTTPException(
                                 status_code=HTTP_400_BAD_REQUEST,
                                 detail=f"Item {content['id']} not found.",
@@ -639,7 +639,6 @@ field is not permitted also."
                         content = timestamps_extension.set_timestamps_for_update(
                             content,
                             original_published=published,
-                            original_expires=expires,
                         )
                         logger.debug("Set update timestamps for item %s", content.get("id"))
                 if hasattr(content, "status_code"):

@@ -57,7 +57,7 @@ def set_timestamps_for_insertion(item: dict) -> dict:
     return item
 
 
-def set_timestamps_for_update(item: dict, original_published: str, original_expires: str) -> dict:
+def set_timestamps_for_update(item: dict, original_published: str) -> dict:
     """This function set the timestamps for an item update.
     It will update the 'updated' timestamp along with the 'expires' and 'published' ones
     with the values given.
@@ -65,13 +65,13 @@ def set_timestamps_for_update(item: dict, original_published: str, original_expi
     Args:
         item (dict): The item to be updated.
         original_published (str): Original 'published' timestamp to set.
-        original_expires (str): Original 'expires' timestamp to set.
 
     Returns:
         dict: The updated item.
     """
-    item = set_updated_timestamp_to_now(item, is_item=True)
-    item["properties"].setdefault("expires", original_expires)
+    # The `expires` field is set in `set_timestamps_for_insertion`. The value should be
+    # updated to the current time, as the item is now updated.
+    item = set_timestamps_for_insertion(item)
     item["properties"].setdefault("published", original_published)
     return item
 

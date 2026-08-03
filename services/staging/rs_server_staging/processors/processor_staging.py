@@ -636,8 +636,10 @@ class Staging(
                 self.logger.debug(f"Session {item.get('id')} has {len(item.get('assets'))} assets")
 
             self.create_streaming_list(features, item_collection)
-            # Keep the input features for unpublished catalog items: expired catalog entries may no longer
-            # have assets, while the input features still contain the source assets that will be restaged.
+            # Keep the input features for catalog items that have been logically expired or whose
+            # asset payload has been removed by the catalog lifecycle: those items still exist in the
+            # collection, but they are no longer downloadable and must be restaged and updated.
+            # IMPORTANT: the responsability for updating the `expires` and `updated` fields should be on catalog side.
             self.expired_items = [
                 item
                 for item in features
@@ -645,11 +647,13 @@ class Staging(
                 in {
                     catalog_item["id"]
                     for catalog_item in item_collection.get("features", [])
-                    if catalog_item.get("properties", {}).get("unpublished")
+                    if catalog_item.get("properties", {}).get("unpublished") or not catalog_item.get("assets")
                 }
             ]
-            # Expired catalog items must also go through the streaming flow alongside new items.
-            self.stream_list.extend(self.expired_items)
+            # Expired / assetless catalog items must also go through the streaming flow alongside new items.
+            for item in self.expired_items:
+                if item not in self.stream_list:
+                    self.stream_list.append(item)
             self.logger.info(
                 "Catalog check finished for job %s; new_items=%d, expired_items=%d",
                 self.job_id,
