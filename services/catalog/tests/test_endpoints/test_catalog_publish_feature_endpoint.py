@@ -19,9 +19,12 @@
 import copy
 import json
 import time
+from datetime import datetime
 from unittest.mock import patch
 
 import fastapi
+
+DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 class TestCatalogPublishFeature:
@@ -138,7 +141,6 @@ class TestCatalogPublishFeature:
 
         content = json.loads(feature_post_response.content)
         first_published_date = content["properties"]["published"]
-        first_expires_date = content["properties"]["expires"]
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
@@ -159,16 +161,21 @@ class TestCatalogPublishFeature:
         # Test that "updated" field is correctly updated.
         assert updated_timestamp != new_updated_timestamp
 
-        # Test that "published" and "expires" field are inchanged after the update.
+        # Test that "published" is the same after the update.
         assert content["properties"]["published"] == first_published_date
-        assert content["properties"]["expires"] == first_expires_date
+        # Test that "expires" field has been updated.
+        published_date = datetime.strptime(content["properties"]["published"], DATE_FORMAT)
+        expiration_date = datetime.strptime(content["properties"]["expires"], DATE_FORMAT)
+        date_diff = expiration_date.date() - published_date.date()
+
+        assert date_diff.days == 30
 
         assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
         # client.delete("/catalog/collections/fixture_owner:fixture_collection")
         deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
         assert deletion.status_code == fastapi.status.HTTP_200_OK
 
-    def test_update_timestamp_feature_with_no_publish_and_no_expires(  # pylint: disable=too-many-locals
+    def test_update_timestamp_feature_with_no_publish(  # pylint: disable=too-many-locals
         self,
         init_buckets,
         client,
@@ -177,27 +184,19 @@ class TestCatalogPublishFeature:
     ):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
-        item with no published and no expires in properties
+        item with no published in properties
         """
         with patch(
             "rs_server_catalog.data_management.timestamps_extension.set_timestamps_for_creation",
-        ) as mock_creation, patch(
-            "rs_server_catalog.data_management.timestamps_extension.set_timestamps_for_insertion",
-        ) as mock_insertion:
+        ) as mock_creation:
 
-            # Define the mock behavior to set 'published' = None and 'expired' = None
+            # Define the mock behavior to set 'published' = None
             def mock_creation_behavior(item):
                 item = item.copy()
                 item["properties"]["published"] = None
                 return item
 
-            def mock_insertion_behavior(item):
-                item = item.copy()
-                item["properties"]["expires"] = None
-                return item
-
             mock_creation.side_effect = mock_creation_behavior
-            mock_insertion.side_effect = mock_insertion_behavior
             # Change correct feature collection id to match with minimal collection and post it
             a_correct_feature["collection"] = "fixture_collection"
             # Post the correct feature to catalog
