@@ -69,6 +69,8 @@ def set_timestamps_for_update(item: dict, original_published: str) -> dict:
     Returns:
         dict: The updated item.
     """
+    # The `expires` field is set in `set_timestamps_for_insertion`. The value should be
+    # updated to the current time, as the item is now updated.
     item = set_timestamps_for_insertion(item)
     item["properties"].setdefault("published", original_published)
     return item
