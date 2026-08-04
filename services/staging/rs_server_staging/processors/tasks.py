@@ -49,6 +49,7 @@ from rs_server_staging.utils.rspy_models import Feature
 
 logger = Logging.default(__name__)
 
+# Minimum delay between periodic progress updates sent to the Dask queue.
 PROGRESS_REPORT_INTERVAL_SECONDS = 2
 
 

@@ -666,6 +666,57 @@ class TestStagingMainExecution:
         # Check that feature publish method was called.
         mock_publish_feature.assert_called()
 
+    def test_manage_dask_tasks_records_asset_progress(self, mocker, staging_instance: Staging, client):
+        """Aggregate queue byte events and task completion into monotonic job progress."""
+        asset = AssetInfo("https://provider.example/product.zip", "product.zip", "bucket", size_bytes=100)
+        staging_instance.assets_info = [asset]
+        task = mocker.Mock(key="task")
+        task.result.return_value = asset.s3_file
+        client.nthreads.return_value = {"worker": 1}
+
+        progress_queue = mocker.Mock()
+        # Simulate one increment, a retry reset, and a new increment.
+        progress_queue.get.side_effect = [
+            {"asset": asset.s3_file, "bytes": 25},
+            {"asset": asset.s3_file, "reset": True},
+            {"asset": asset.s3_file, "bytes": 40},
+            RuntimeError("queue stopped"),
+        ]
+        mocker.patch("rs_server_staging.processors.processor_staging.DaskQueue", return_value=progress_queue)
+
+        def create_progress_thread(*, target, args, **_kwargs):
+            # Consume the queue deterministically without starting a real thread.
+            progress_thread = mocker.Mock()
+            progress_thread.start.side_effect = lambda: target(*args)
+            progress_thread.is_alive.return_value = False
+            return progress_thread
+
+        mocker.patch(
+            "rs_server_staging.processors.processor_staging.threading.Thread",
+            side_effect=create_progress_thread,
+        )
+        mocker.patch(
+            "rs_server_staging.processors.processor_staging.authentication.get_s3_credentials",
+            return_value=mocker.Mock(),
+        )
+        mocker.patch.object(staging_instance, "_prepare_env_with_trace_context", return_value={})
+        mocker.patch.object(staging_instance, "submit_dask_task", return_value=task)
+        mocker.patch("rs_server_staging.processors.processor_staging.as_completed", return_value=[task])
+        mocker.patch.object(staging_instance, "publish_processed_features", return_value=True)
+        mocker.patch.object(staging_instance, "unsubscribe_refresh_tokens")
+        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+
+        staging_instance.manage_dask_tasks(client, "test_collection", {})
+
+        reported_progress = [
+            progress_call.args[1]
+            for progress_call in mock_log_job.call_args_list
+            if progress_call.args[0] == JobStatus.running
+        ]
+        assert reported_progress == [25, 40, 99]
+        mock_log_job.assert_called_with(JobStatus.successful, 100, "Finished")
+        progress_queue.close.assert_called_once_with()
+
     def test_manage_dask_tasks_failure(self, mocker, staging_instance: Staging, client):
         """Test handling callbacks when error on one task"""
         task1 = mocker.Mock()
