@@ -34,6 +34,7 @@ from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     SLEEP_TIME,
     DomainRateLimiter,
+    DownloadProgressStream,
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
@@ -50,6 +51,21 @@ from .helpers import (  # pylint: disable=no-name-in-module
 
 FULL_FOLDER = RESOURCES_FOLDER / "s3" / "full_s3_storage_handler_test"
 SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
+
+
+@pytest.mark.unit
+def test_download_progress_stream_reports_chunk_size(mocker):
+    """Report the size of each chunk read from the wrapped provider stream."""
+    # Simulate one five-byte chunk returned by the provider.
+    provider_stream = mocker.Mock()
+    provider_stream.read.return_value = b"chunk"
+    download_progress_callback = mocker.Mock()
+    progress_stream = DownloadProgressStream(provider_stream, download_progress_callback)
+
+    assert progress_stream.read(5) == b"chunk"
+    provider_stream.read.assert_called_once_with(5)
+    # Progress must match the number of bytes actually read.
+    download_progress_callback.assert_called_once_with(5)
 
 
 @pytest.mark.unit

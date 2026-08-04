@@ -43,8 +43,10 @@ class TestAssetSizeResolution:
         ("content_length", "error_message"),
         [
             (None, "Missing Content-Length"),
+            # Boolean values must not be accepted as integers.
             (True, "Invalid Content-Length"),
             ("not-a-number", "Invalid Content-Length"),
+            # Exercise the TypeError path raised by int().
             ([], "Invalid Content-Length"),
             (-1, "Invalid negative Content-Length"),
         ],
@@ -84,6 +86,7 @@ class TestAssetSizeResolution:
             allow_redirects=True,
             timeout=60,
         )
+        # Inspect optional authentication separately from the shared HEAD arguments.
         auth = head_mock.call_args.kwargs["auth"]
         if use_refresh_token:
             assert isinstance(auth, TokenAuth)
@@ -177,7 +180,9 @@ class TestAssetSizeResolution:
     @pytest.mark.parametrize(
         ("product_url", "origin_service", "resolver_name"),
         [
+            # Explicit S3 origin takes precedence over the URL scheme.
             ("https://provider.example/product.bin", "s3", "resolve_s3_asset_size"),
+            # The S3 scheme is sufficient when the origin is not marked as S3.
             ("s3://source-bucket/product.bin", "http", "resolve_s3_asset_size"),
             ("http://provider.example/product.bin", "http", "resolve_http_asset_size"),
             ("https://provider.example/product.bin", "http", "resolve_http_asset_size"),
