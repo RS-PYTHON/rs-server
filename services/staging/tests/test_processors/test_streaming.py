@@ -16,6 +16,7 @@
 """Test module for streaming tasks."""
 
 import os
+from unittest.mock import call
 
 import pytest
 import yaml
@@ -29,6 +30,7 @@ from rs_server_staging.processors.tasks import (
     create_asset_info_with_s3_auth,
     find_credentials_for_external_s3_storage,
     prepare_streaming_tasks,
+    report_streaming_progress,
     streaming_task,
 )
 from rs_server_staging.utils.asset_info import (
@@ -44,6 +46,61 @@ from stac_pydantic.shared import Asset
 
 class TestStreaming:
     """Test class for Staging processor"""
+
+    def test_report_streaming_progress_queue_failure(self, mocker):
+        """Log a warning without propagating progress queue failures."""
+        progress_queue = mocker.Mock()
+        # Simulate a failure while publishing the progress event.
+        queue_error = RuntimeError("queue unavailable")
+        progress_queue.put.side_effect = queue_error
+        logger_dask = mocker.Mock()
+
+        # The transfer must continue and the failure must be logged.
+        report_streaming_progress(progress_queue, "path/product.zip", {"bytes_delta": 42}, logger_dask)
+
+        progress_queue.put.assert_called_once_with(
+            {"asset": "path/product.zip", "bytes_delta": 42},
+        )
+        logger_dask.warning.assert_called_once_with(
+            "Failed to report staging progress for %s: %s",
+            "path/product.zip",
+            queue_error,
+        )
+
+    def test_download_progress_callback_reports_streamed_bytes(self, mocker, config):
+        """Report bytes received by the HTTP streaming progress callback."""
+        s3_key = "s3_path/file.zip"
+        asset_info = AssetInfo("https://example.com/product.zip", s3_key, "bucket")
+        s3_credentials = S3Credentials("fake_access_key", "fake_secret_key", "fake_endpoint", "fake_region")
+        progress_queue = mocker.Mock()
+        mock_s3_handler = mocker.Mock()
+
+        def stream_with_progress(*args):
+            # Simulate the HTTP stream reading one chunk.
+            download_progress_callback = args[-1]
+            download_progress_callback(42)
+            return s3_key
+
+        mock_s3_handler.s3_streaming_from_http.side_effect = stream_with_progress
+        mocker.patch("rs_server_staging.processors.tasks.S3StorageHandler", return_value=mock_s3_handler)
+
+        result = streaming_task(
+            task_env={},
+            asset_info=asset_info,
+            config=config,
+            auth=TokenAuth("fake_token"),
+            s3_credentials=s3_credentials,
+            progress_queue=progress_queue,
+        )
+
+        assert result == s3_key
+        # The reset event is followed by the accumulated chunk size.
+        progress_queue.put.assert_has_calls(
+            [
+                call({"asset": s3_key, "reset": True}),
+                call({"asset": s3_key, "bytes": 42}),
+            ],
+        )
 
     def test_streaming_task(
         self,
@@ -254,8 +311,8 @@ class TestPrepareStreaming:
         feature = mocker.Mock()
         feature.id = "feature_id"
         feature.assets = {
-            "asset1": mocker.Mock(href="https://example.com/asset1"),
-            "asset2": mocker.Mock(href="https://example.com/asset2"),
+            "asset1": Asset(href="https://example.com/asset1"),
+            "asset2": Asset(href="https://example.com/asset2"),
         }
 
         result = prepare_streaming_tasks(catalog_collection, feature, "staging_user")
@@ -289,7 +346,9 @@ class TestPrepareStreaming:
         feature.properties = {}
         local_path = "S1D_IW_ETA__AXDV_feature.SAFE.zip"
         feature.assets = {
-            "product": Asset(**{"href": "https://example.com/product", "file:local_path": local_path}),
+            "product": Asset.model_validate(
+                {"href": "https://example.com/product", "file:local_path": local_path},
+            ),
             "thumbnail": Asset(href="https://example.com/thumbnail"),
         }
 
@@ -333,7 +392,7 @@ class TestPrepareStreaming:
         catalog_collection = "test_collection"
         feature = mocker.Mock()
         feature.id = "feature_id"
-        feature.assets = {"asset1": mocker.Mock(href="https://example.com/asset1"), "asset2": s3_asset}
+        feature.assets = {"asset1": Asset(href="https://example.com/asset1"), "asset2": s3_asset}
 
         # Add expected storage schemes to Feature
         storage_schemes = {
@@ -467,6 +526,7 @@ class TestPrepareStreaming:
             external_s3_endpoint_url="https://some.domain.test",
             external_s3_access_key="correct_access",
             external_s3_secret_key="correct_secret",
+            size_bytes=1,
         )
 
         assert (

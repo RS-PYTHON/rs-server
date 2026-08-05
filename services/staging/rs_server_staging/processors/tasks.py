@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+import time
 from urllib.parse import urlparse
 
 from opentelemetry import context, propagate, trace
@@ -47,6 +48,35 @@ from rs_server_staging.utils.asset_info import (
 from rs_server_staging.utils.rspy_models import Feature
 
 logger = Logging.default(__name__)
+
+# Minimum delay between periodic progress updates sent to the Dask queue.
+PROGRESS_REPORT_INTERVAL_SECONDS = 2
+
+
+def asset_size_from_metadata(asset_content: dict, asset_name: str) -> int | None:
+    """Return a validated STAC file:size, or None when absent, to keep job totals reliable."""
+    asset_size = asset_content.get("file:size")
+    if asset_size is None:
+        return None
+    if isinstance(asset_size, bool):
+        raise ValueError(f"Invalid file:size value for asset {asset_name}: {asset_size!r}")
+    try:
+        size_bytes = int(asset_size)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid file:size value for asset {asset_name}: {asset_size!r}") from exc
+    if size_bytes < 0:
+        raise ValueError(f"Invalid negative file:size value for asset {asset_name}: {asset_size!r}")
+    return size_bytes
+
+
+def report_streaming_progress(progress_queue, asset_key: str, message: dict, logger_dask: logging.Logger):
+    """Send a Dask progress event without failing the transfer if reporting fails."""
+    if progress_queue is None:
+        return
+    try:
+        progress_queue.put({"asset": asset_key, **message})
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger_dask.warning("Failed to report staging progress for %s: %s", asset_key, exc)
 
 
 def restore_context_from_env():
@@ -116,6 +146,7 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
     config: ExternalAuthenticationConfig | None,
     auth: str | None,
     s3_credentials: S3Credentials,
+    progress_queue=None,
 ):
     """
     This method is run from the dask pod.
@@ -136,6 +167,7 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
             the list of trusted domains
         auth (str): Optional station token. This has to be refreshed from the caller
         s3_credentials: S3 object storage credentials
+        progress_queue: Optional Dask queue used to report streamed byte increments.
     Returns:
         str: The S3 file path where the file was uploaded.
 
@@ -174,6 +206,34 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
     attempt = 0
     while attempt < max_retries:
         try:
+            # A retry restarts the source stream, so discard bytes from the failed attempt.
+            report_streaming_progress(progress_queue, s3_file, {"reset": True}, logger_dask)
+
+            pending_progress_bytes = 0
+            last_progress_reported_at = time.monotonic()
+
+            def flush_download_progress():
+                """Send all byte increments accumulated since the previous report."""
+                nonlocal pending_progress_bytes, last_progress_reported_at
+                if pending_progress_bytes <= 0:
+                    return
+                report_streaming_progress(
+                    progress_queue,
+                    s3_file,
+                    {"bytes": pending_progress_bytes},
+                    logger_dask,
+                )
+                pending_progress_bytes = 0
+                last_progress_reported_at = time.monotonic()
+
+            def download_progress_callback(bytes_amount: int):
+                """Accumulate provider reads and periodically report their byte delta."""
+                nonlocal pending_progress_bytes
+                pending_progress_bytes += max(int(bytes_amount), 0)
+                elapsed = time.monotonic() - last_progress_reported_at
+                if elapsed >= PROGRESS_REPORT_INTERVAL_SECONDS:
+                    flush_download_progress()
+
             # Create the handler inside the retry loop because failed streaming
             # attempts can leave connections in an uncertain state.
             logger_dask.debug("%s: Creating the s3_handler (attempt %d/%d)", s3_file, attempt + 1, max_retries)
@@ -190,6 +250,7 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
                     bucket,
                     s3_file,
                     asset_info.trusted_domains,
+                    download_progress_callback,
                 )
             else:
                 # HTTP/FTP-like sources rely on the station auth config and
@@ -202,8 +263,11 @@ def _streaming_task_otel(  # pylint: disable=R0913, R0917
                     bucket,
                     s3_file,
                     config.max_requests_per_minute if config else None,
+                    download_progress_callback,
                 )
 
+            # Short or fast transfers may not reach a reporting interval.
+            flush_download_progress()
             s3_handler.disconnect_s3()
             logger_dask.debug("Disconnected S3 handler after streaming %s", s3_file)
             break
@@ -285,6 +349,8 @@ def prepare_streaming_tasks(
             logger.error("Missing href or title in asset dictionary")
             return None
 
+        asset_metadata = asset_content.to_dict()
+
         # The final object key is deterministic and includes the staging user,
         # collection, item id and asset name so cleanup and catalog publication can
         # reconstruct the same object identity from logs.
@@ -292,7 +358,7 @@ def prepare_streaming_tasks(
             # if named_assets is True and file:local_path exists in the asset content,
             # use it as asset name instead of the key in the assets dict
             # otherwise, the asset name will be the key in the assets dict, as before
-            asset_name = asset_content.to_dict().get("file:local_path", asset_name)
+            asset_name = asset_metadata.get("file:local_path", asset_name)
         s3_obj_path = f"{staging_user}/{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
 
         origin_service = urlparse(asset_content.href).scheme
@@ -310,7 +376,7 @@ def prepare_streaming_tasks(
             asset_info = create_asset_info_with_s3_auth(
                 feature,
                 asset_name,
-                asset_content.model_dump(),
+                asset_metadata,
                 s3_obj_path,
                 s3_bucket_name,
             )
@@ -318,6 +384,7 @@ def prepare_streaming_tasks(
             # Non-S3 origins are streamed through the station auth path.
             asset_info = AssetInfo(product_url=asset_content.href, s3_file=s3_obj_path, s3_bucket=s3_bucket_name)
 
+        asset_info.size_bytes = asset_size_from_metadata(asset_metadata, asset_name)
         assets_info.append(asset_info)
         # Mutate the feature in place so the later catalog POST/PUT references
         # the object that the Dask task is about to create.
@@ -411,6 +478,7 @@ def create_asset_info_with_s3_auth(
         external_s3_access_key=s3_authentication_config.access_key,
         external_s3_secret_key=s3_authentication_config.secret_key,
         trusted_domains=s3_authentication_config.trusted_domains,
+        size_bytes=asset_size_from_metadata(asset_content, asset_name),
     )
 
 

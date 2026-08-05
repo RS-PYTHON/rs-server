@@ -31,6 +31,7 @@ class AssetInfo:  # pylint: disable=too-many-instance-attributes
             When service is s3, access_key and secret_key are needed
         external_s3_access_key (str): Access key for staging from an external S3
         external_s3_secret_key (str): Secret key for staging from an external S3
+        size_bytes (int | None): Source size in bytes, or None until it is resolved.
     """
 
     product_url: str
@@ -41,6 +42,7 @@ class AssetInfo:  # pylint: disable=too-many-instance-attributes
     external_s3_access_key: str = ""
     external_s3_secret_key: str = ""
     trusted_domains: list[str] | None = None
+    size_bytes: int | None = None
 
     @property
     def domain(self) -> str | None:

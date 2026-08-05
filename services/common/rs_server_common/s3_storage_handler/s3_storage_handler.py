@@ -23,6 +23,7 @@ import threading
 import time
 import traceback
 from collections import defaultdict, deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -94,6 +95,24 @@ class DomainRateLimiter:
 
 
 DOMAIN_RATE_LIMITER = DomainRateLimiter()
+
+
+class DownloadProgressStream:
+    """Wrap a provider stream and report each block read by boto3."""
+
+    def __init__(self, stream: Any, download_progress_callback: Callable[[int], None] | None):
+        self._stream = stream
+        self._download_progress_callback = download_progress_callback
+
+    def read(self, *args: Any, **kwargs: Any) -> Any:
+        """Read one block and report its size to the progress callback."""
+        chunk = self._stream.read(*args, **kwargs)
+        if chunk and self._download_progress_callback:
+            self._download_progress_callback(len(chunk))
+        return chunk
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._stream, name)
 
 
 # pylint: disable=too-many-lines
@@ -1114,6 +1133,7 @@ retried for %s times. Aborting",
         bucket: str,
         key: str,
         max_requests_per_minute: int | None = None,
+        download_progress_callback: Callable[[int], None] | None = None,
     ):
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
@@ -1129,6 +1149,7 @@ retried for %s times. Aborting",
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
             max_requests_per_minute (int | None): Optional maximum number of HTTP requests per minute for the domain.
+            download_progress_callback: Optional callback called with source byte increments as the stream is read.
 
         Raises:
             ConnectionError: If there is a failure due to the HTTP request or the S3 upload
@@ -1209,8 +1230,10 @@ retried for %s times. Aborting",
                     # Default chunksize is set to 64Kb, can be manually increased
                     chunk_size = 64 * 1024  # 64kb
                     with response.raw as data_stream:
+                        # Measure provider reads before boto3 uploads each block to the destination.
+                        source_stream = DownloadProgressStream(data_stream, download_progress_callback)
                         self.s3_client.upload_fileobj(
-                            data_stream,
+                            source_stream,
                             bucket,
                             key,
                             Config=boto3.s3.transfer.TransferConfig(multipart_threshold=chunk_size * 2),
@@ -1244,6 +1267,7 @@ retried for %s times. Aborting",
         bucket: str,
         key: str,
         max_requests_per_minute: int | None = None,
+        download_progress_callback: Callable[[int], None] | None = None,
     ):
         """
         Upload a file from an http source to an S3 bucket.
@@ -1255,6 +1279,7 @@ retried for %s times. Aborting",
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
             max_requests_per_minute (int | None): Optional maximum number of HTTP requests per minute for the domain.
+            download_progress_callback: Optional callback called with source byte increments as the stream is read.
         """
         # Prepare the request
         request = requests.Request(
@@ -1264,7 +1289,14 @@ retried for %s times. Aborting",
         )
 
         # Start streaming with formatted request
-        self.s3_streaming_upload(request, trusted_domains, bucket, key, max_requests_per_minute)
+        self.s3_streaming_upload(
+            request,
+            trusted_domains,
+            bucket,
+            key,
+            max_requests_per_minute,
+            download_progress_callback,
+        )
 
     def s3_streaming_from_s3(
         self,
@@ -1275,6 +1307,7 @@ retried for %s times. Aborting",
         destination_bucket: str,
         destination_key: str,
         trusted_domains: list[str],
+        download_progress_callback: Callable[[int], None] | None = None,
     ):
         """
         Upload a file from an external S3 bucket to an S3 bucket.
@@ -1287,6 +1320,7 @@ retried for %s times. Aborting",
             destination_bucket (str): The name of the target S3 bucket.
             destination_key (str): The S3 object key (file path) to store the streamed file.
             trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+            download_progress_callback: Optional callback called with source byte increments as the stream is read.
         """
         # Format input values
         if not source_url.startswith("s3://"):
@@ -1323,7 +1357,13 @@ retried for %s times. Aborting",
         )
 
         # Start streaming with formatted request
-        self.s3_streaming_upload(request, trusted_domains, destination_bucket, destination_key)
+        self.s3_streaming_upload(
+            request,
+            trusted_domains,
+            destination_bucket,
+            destination_key,
+            download_progress_callback=download_progress_callback,
+        )
 
     @staticmethod
     def parse_ftps_path(url: str) -> tuple[str, str]:
