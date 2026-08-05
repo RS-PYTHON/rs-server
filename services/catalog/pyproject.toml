@@ -52,6 +52,10 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
 rs-server-common = "*"
+# pypgstac cannot be update to 0.9.11 / 0.9.12 because of restrictive upper bound on cachetools
+# see https://github.com/stac-utils/pgstac/pull/421
+# but now pypgstac is deprecated, see https://github.com/stac-utils/pgstac/blob/main/docs/src/pypgstac.md
+# it should be replaced by https://pypi.org/project/pypgstac-rs which does not exist yet as of 2026-08-06
 pypgstac = {extras = ["psycopg"], version = "^0.9.10"}
 xmltodict = "^1.0.2"
 

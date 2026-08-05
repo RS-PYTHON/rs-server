@@ -151,7 +151,7 @@ shapely_to_geojson_cls = {
 class Queryables(BaseModel):
     """
     BaseModel used to describe queryable holder.
-    See: site-packages/pypgstac/migrations/pgstac.0.9.10.sql
+    See: site-packages/pypgstac/migrations/pgstac.0.9.12.sql
     """
 
     id: str = Field("", alias="$id")
