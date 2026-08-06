@@ -16,7 +16,7 @@
 # Build, customize and deploy the latest STAC browser version
 
 set -euo pipefail
-#set -x
+set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
@@ -36,6 +36,11 @@ else
     cd "stac-browser"
 fi
 
+# Checkout on latest stac-browser tag to get the version
+git fetch --tags
+version=$(git describe --tags $(git rev-list --tags --max-count=1))
+git checkout "$version"
+
 registry="ghcr.io/rs-python/stac-browser"
 
 # Set labels based on the Open Containers Initiative (OCI):
@@ -46,13 +51,10 @@ LABEL org.opencontainers.image.ref.name="$registry"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/deploy_stac_browser.sh"
 EOF
 
-# Docker image tag = 'last commit hash'.'last commit date'
-tag="$(git rev-parse --short HEAD).$(git log -1 --format="%at" | xargs -I{} date -d @{} +%Y-%m-%d)"
-
-# Build Docker image with tag + latest. It will be pushed to the rs-server registry.
-docker build -t "${registry}:latest" -t "${registry}:${tag}" .
+# Build Docker image with version + latest. It will be pushed to the rs-server registry.
+docker build -t "${registry}:latest" -t "${registry}:${version}" .
 
 # Push the images
 docker login https://ghcr.io/v2/rs-python
 docker push "${registry}:latest"
-docker push "${registry}:${tag}"
+docker push "${registry}:${version}"
