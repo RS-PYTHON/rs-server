@@ -23,12 +23,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ]
+        }
       }
     },
     "/auxip/collections/{collection_id}/queryables": {
@@ -39,11 +34,6 @@
         "summary": "Collection Queryables",
         "description": "Endpoint.",
         "operationId": "Collection_Queryables_auxip_collections__collection_id__queryables_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -986,12 +976,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ]
+        }
       }
     },
     "/cadip/collections/{collection_id}/queryables": {
@@ -1002,11 +987,6 @@
         "summary": "Collection Queryables",
         "description": "Endpoint.",
         "operationId": "Collection_Queryables_cadip_collections__collection_id__queryables_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -1906,12 +1886,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ]
+        }
       }
     },
     "/prip/collections/{collection_id}/queryables": {
@@ -1922,11 +1897,6 @@
         "summary": "Collection Queryables",
         "description": "Endpoint.",
         "operationId": "Collection_Queryables_prip_collections__collection_id__queryables_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -2947,11 +2917,6 @@
             }
           }
         },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "tags": [
           "Catalog"
         ]
@@ -2974,11 +2939,6 @@
             }
           }
         },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "tags": [
           "Catalog"
         ]
@@ -2989,11 +2949,6 @@
         "summary": "Get Item",
         "description": "Endpoint.",
         "operationId": "Get_Item_catalog_collections__collection_id__items__item_id__get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -3051,11 +3006,6 @@
         "summary": "Update Item",
         "description": "Endpoint.",
         "operationId": "Update_Item_catalog_collections__collection_id__items__item_id__put",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -3120,11 +3070,6 @@
         "summary": "Patch Item",
         "description": "Endpoint.",
         "operationId": "Patch_Item_catalog_collections__collection_id__items__item_id__patch",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -3954,11 +3899,6 @@
         "summary": "Delete Item",
         "description": "Endpoint.",
         "operationId": "Delete_Item_catalog_collections__collection_id__items__item_id__delete",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -4013,11 +3953,6 @@
         "summary": "Search",
         "description": "Endpoint.",
         "operationId": "Search_catalog_search_post",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -4058,11 +3993,6 @@
         "summary": "Search",
         "description": "Endpoint.",
         "operationId": "Search_catalog_search_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collections",
@@ -4471,11 +4401,6 @@
         "summary": "Get Collections",
         "description": "Endpoint.",
         "operationId": "Get_Collections_catalog_collections_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "bbox",
@@ -4768,11 +4693,6 @@
         "summary": "Create Collection",
         "description": "Endpoint.",
         "operationId": "Create_Collection_catalog_collections_post",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -4812,11 +4732,6 @@
         "summary": "Get Collection",
         "description": "Endpoint.",
         "operationId": "Get_Collection_catalog_collections__collection_id__get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -4863,11 +4778,6 @@
         "summary": "Update Collection",
         "description": "Endpoint.",
         "operationId": "Update_Collection_catalog_collections__collection_id__put",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -4920,11 +4830,6 @@
         "summary": "Patch Collection",
         "description": "Endpoint.",
         "operationId": "Patch_Collection_catalog_collections__collection_id__patch",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -5593,11 +5498,6 @@
         "summary": "Delete Collection",
         "description": "Endpoint.",
         "operationId": "Delete_Collection_catalog_collections__collection_id__delete",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -5640,11 +5540,6 @@
         "summary": "Get Itemcollection",
         "description": "Endpoint.",
         "operationId": "Get_ItemCollection_catalog_collections__collection_id__items_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -5924,11 +5819,6 @@
         "summary": "Create Item",
         "description": "Endpoint.",
         "operationId": "Create_Item_catalog_collections__collection_id__items_post",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -6024,12 +5914,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ]
+        }
       }
     },
     "/catalog/queryables": {
@@ -6049,12 +5934,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ]
+        }
       }
     },
     "/catalog/collections/{collection_id}/queryables": {
@@ -6065,11 +5945,6 @@
         "summary": "Collection Queryables",
         "description": "Endpoint.",
         "operationId": "Collection_Queryables_catalog_collections__collection_id__queryables_get",
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ],
         "parameters": [
           {
             "name": "collection_id",
