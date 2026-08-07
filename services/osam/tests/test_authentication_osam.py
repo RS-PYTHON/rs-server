@@ -15,19 +15,16 @@
 """Unit tests for the authentication."""
 
 # pylint: disable = duplicate-code
-from typing import cast
-
 import pytest
-from fastapi.routing import _IncludedRouter  # pylint: disable=no-name-in-module
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import apikey, authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
+from rs_server_common.fastapi_app import flatten_routes
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
 from rs_server_osam import main
 from starlette import status
-from starlette.routing import BaseRoute, Route
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -40,23 +37,6 @@ WRONG_APIKEY = "WRONG_APIKEY"
 CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 logger = Logging.default(__name__)
-
-
-def flatten_routes(routes: list[BaseRoute]) -> list[Route]:
-    """
-    Recursively resolve fastapi.routing._IncludedRouter wrappers into concrete routes.
-
-    Since fastapi 0.141 (starlette 1.x), app.include_router() no longer flattens the included
-    router's routes eagerly into the parent router: it stores a lazy _IncludedRouter wrapper
-    instead, which has no "path" attribute of its own.
-    """
-    flat: list[Route] = []
-    for route in routes:
-        if isinstance(route, _IncludedRouter):
-            flat.extend(flatten_routes(route.original_router.routes))
-        else:
-            flat.append(cast(Route, route))
-    return flat
 
 
 @pytest.fixture(autouse=True)
