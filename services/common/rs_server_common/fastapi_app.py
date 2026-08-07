@@ -21,7 +21,10 @@ from urllib.parse import urljoin
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI
-from fastapi.routing import APIRoute
+from fastapi.routing import (  # pylint: disable=no-name-in-module
+    APIRoute,
+    _IncludedRouter,
+)
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication.authentication import authenticate
@@ -53,11 +56,30 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.datastructures import State
 from starlette.middleware.cors import CORSMiddleware
+from starlette.routing import BaseRoute
 
 logger = Logging.default(__name__)
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
+
+
+def flatten_routes(routes: list[BaseRoute]) -> list[BaseRoute]:
+    """
+    Recursively resolve fastapi.routing._IncludedRouter wrappers into concrete routes.
+
+    Since fastapi 0.141 (starlette 1.x), app.include_router() no longer flattens the included
+    router's routes eagerly into the parent router: it stores a lazy _IncludedRouter wrapper
+    instead. Without this, routes nested behind an included router (e.g. /auxip/queryables) are
+    silently skipped below, and the authenticate dependency never gets attached to them.
+    """
+    flat: list[BaseRoute] = []
+    for route in routes:
+        if isinstance(route, _IncludedRouter):
+            flat.extend(flatten_routes(route.original_router.routes))
+        else:
+            flat.append(route)
+    return flat
 
 
 @typing.no_type_check
@@ -166,7 +188,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.router.prefix = ""
     if settings.CLUSTER_MODE:
         scopes = []  # One scope for each Router path and method
-        for route in app.router.routes:
+        for route in flatten_routes(app.router.routes):
             if not isinstance(route, APIRoute):
                 continue
             for method_ in route.methods:

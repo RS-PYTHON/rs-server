@@ -29,6 +29,7 @@ from rs_server_catalog.middleware.catalog_middleware import CatalogMiddleware
 from rs_server_catalog.utils import CATALOG_PREFIX
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
+from rs_server_common.fastapi_app import flatten_routes
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
@@ -180,7 +181,7 @@ if common_settings.CLUSTER_MODE:
 
     # One scope for each Router path and method
     scopes = []
-    for route in api.app.router.routes:
+    for route in flatten_routes(api.app.router.routes):
         if not isinstance(route, APIRoute) or not must_be_authenticated(route.path):
             continue
         for method_ in route.methods:

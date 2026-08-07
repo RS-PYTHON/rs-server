@@ -22,6 +22,7 @@ import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi import FastAPI, HTTPException
+from fastapi.routing import _IncludedRouter  # pylint: disable=no-name-in-module
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
@@ -33,7 +34,7 @@ from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
-from starlette.routing import Route
+from starlette.routing import BaseRoute, Route
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -48,6 +49,23 @@ WRONG_APIKEY = "WRONG_APIKEY"
 CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 logger = Logging.default(__name__)
+
+
+def flatten_routes(routes: list[BaseRoute]) -> list[Route]:
+    """
+    Recursively resolve fastapi.routing._IncludedRouter wrappers into concrete routes.
+
+    Since fastapi 0.141 (starlette 1.x), app.include_router() no longer flattens the included
+    router's routes eagerly into the parent router: it stores a lazy _IncludedRouter wrapper
+    instead, which has no "path" attribute of its own.
+    """
+    flat: list[Route] = []
+    for route in routes:
+        if isinstance(route, _IncludedRouter):
+            flat.extend(flatten_routes(route.original_router.routes))
+        else:
+            flat.append(cast(Route, route))
+    return flat
 
 
 async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
@@ -298,8 +316,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
 
     # For each adgs or cadip api endpoint
-    for base_route in fastapi_app.router.routes:
-        route = cast(Route, base_route)
+    for route in flatten_routes(fastapi_app.router.routes):
         if (
             route.path in openapi_urls
             or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/"))
