@@ -16,7 +16,6 @@
 
 import json
 import os
-from typing import cast
 
 import pytest
 import responses
@@ -27,13 +26,13 @@ from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.keycloak_util import KCInfo
+from rs_server_common.fastapi_app import flatten_routes
 from rs_server_common.settings import docs_params
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
-from starlette.routing import Route
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -298,8 +297,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     openapi_urls = docs_params(fastapi_app.state.router_prefix).values()
 
     # For each adgs or cadip api endpoint
-    for base_route in fastapi_app.router.routes:
-        route = cast(Route, base_route)
+    for route in flatten_routes(fastapi_app.router.routes):
         if (
             route.path in openapi_urls
             or not route.path.startswith(("/adgs/", "/auxip/", "/cadip/"))

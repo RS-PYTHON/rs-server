@@ -15,18 +15,16 @@
 """Unit tests for the authentication."""
 
 # pylint: disable = duplicate-code
-from typing import cast
-
 import pytest
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import apikey, authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER
+from rs_server_common.fastapi_app import flatten_routes
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
 from rs_server_osam import main
 from starlette import status
-from starlette.routing import Route
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -135,8 +133,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-locals
         assert client.get(path).status_code == status.HTTP_200_OK
 
     # For each application endpoint
-    for base_route in fastapi_app.router.routes:
-        route = cast(Route, base_route)
+    for route in flatten_routes(fastapi_app.router.routes):
         if not route.path.startswith("/storage/") or not route.methods:
             logger.debug(f"Skipping {route.path}")
             continue
