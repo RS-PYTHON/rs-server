@@ -124,7 +124,7 @@ template:
         - "$.Attributes"
       href:
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      downloadLink:
+      eodag:download_link:
       title: "$.Name"
 
     free_text_search_operations:
@@ -193,7 +193,7 @@ template:
     base_uri:
     metadata_mapping:
       uid: "$.Id"
-      downloadLink:
+      eodag:download_link:
 
 adgs:
   search:
@@ -202,11 +202,11 @@ adgs:
       href:
         - null
         - "http://127.0.0.1:5000/Products({id})/$value"
-      downloadLink: "http://127.0.0.1:5000/Products({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Products({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5000/Products"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5000/Products({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Products({uid})/$value"
 
 adgs2:
   search:
@@ -215,8 +215,8 @@ adgs2:
       href:
         - null
         - "http://127.0.0.1:5001/Products({id})/$value"
-      downloadLink: "http://127.0.0.1:5001/Products({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5001/Products({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5001/Products"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5001/Products({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5001/Products({uid})/$value"

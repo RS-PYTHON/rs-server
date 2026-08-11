@@ -99,7 +99,7 @@ cadip:
       - null
       - http://127.0.0.1:5000/Files({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5000/Files({id})/$value
+      eodag:download_link: http://127.0.0.1:5000/Files({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -133,7 +133,7 @@ cadip:
     base_uri: http://127.0.0.1:5000/Files
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5000/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5000/Files({uid})/$value
 ins:
   auth:
     type: TokenAuth
@@ -215,7 +215,7 @@ ins:
       - null
       - http://127.0.0.1:5100/Files({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5100/Files({id})/$value
+      eodag:download_link: http://127.0.0.1:5100/Files({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -249,7 +249,7 @@ ins:
     base_uri: http://127.0.0.1:5100/Files
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5100/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5100/Files({uid})/$value
 mps:
   auth:
     type: TokenAuth
@@ -331,7 +331,7 @@ mps:
       - null
       - http://127.0.0.1:5101/Files({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5101/Files({id})/$value
+      eodag:download_link: http://127.0.0.1:5101/Files({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -365,7 +365,7 @@ mps:
     base_uri: http://127.0.0.1:5101/Files
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5101/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5101/Files({uid})/$value
 mti:
   auth:
     type: TokenAuth
@@ -447,7 +447,7 @@ mti:
       - null
       - http://127.0.0.1:5102/Files({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5102/Files({id})/$value
+      eodag:download_link: http://127.0.0.1:5102/Files({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -481,7 +481,7 @@ mti:
     base_uri: http://127.0.0.1:5102/Files
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5102/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5102/Files({uid})/$value
 nsg:
   auth:
     type: TokenAuth
@@ -563,7 +563,7 @@ nsg:
       - null
       - http://127.0.0.1:5103/Files({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5103/Files({id})/$value
+      eodag:download_link: http://127.0.0.1:5103/Files({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -597,7 +597,7 @@ nsg:
     base_uri: http://127.0.0.1:5103/Files
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5103/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5103/Files({uid})/$value
 sgs:
   auth:
     type: TokenAuth
@@ -679,7 +679,7 @@ sgs:
       - null
       - http://127.0.0.1:5104/Files({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5104/Files({id})/$value
+      eodag:download_link: http://127.0.0.1:5104/Files({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -713,7 +713,7 @@ sgs:
     base_uri: http://127.0.0.1:5104/Files
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5104/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5104/Files({uid})/$value
 cadip_session:
   auth:
     type: TokenAuth
@@ -908,7 +908,7 @@ cadip_session:
     base_uri: https://127.0.0.1:5000/Sessions
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5000/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5000/Files({uid})/$value
 ins_session:
   auth:
     type: TokenAuth
@@ -1103,7 +1103,7 @@ ins_session:
     base_uri: https://127.0.0.1:5100/Sessions
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5100/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5100/Files({uid})/$value
 mps_session:
   auth:
     type: TokenAuth
@@ -1298,7 +1298,7 @@ mps_session:
     base_uri: https://127.0.0.1:5101/Sessions
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5101/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5101/Files({uid})/$value
 mti_session:
   auth:
     type: TokenAuth
@@ -1493,7 +1493,7 @@ mti_session:
     base_uri: https://127.0.0.1:5102/Sessions
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5102/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5102/Files({uid})/$value
 nsg_session:
   auth:
     type: TokenAuth
@@ -1688,7 +1688,7 @@ nsg_session:
     base_uri: https://127.0.0.1:5103/Sessions
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5103/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5103/Files({uid})/$value
 sgs_session:
   auth:
     type: TokenAuth
@@ -1883,4 +1883,4 @@ sgs_session:
     base_uri: https://127.0.0.1:5104/Sessions
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5104/Files({uid})/$value
+      eodag:download_link: http://127.0.0.1:5104/Files({uid})/$value

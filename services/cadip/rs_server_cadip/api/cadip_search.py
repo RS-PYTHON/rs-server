@@ -538,18 +538,18 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
 
         # The station authentication is the same for both the session and assets providers so copy it manually.
         eodag_gateway = session_provider.client  # same for both providers
-        providers_config = eodag_gateway.providers_config
+        providers_config = eodag_gateway.providers
         plugin_manager = eodag_gateway._plugins_manager  # pylint: disable=protected-access
 
         # See: eodag/plugins/manager.py::get_auth_plugins
         auth_session = plugin_manager._build_plugin(  # pylint: disable=protected-access
             station_session,
-            providers_config[station_session].auth,
+            providers_config[station_session].config.auth,
             Authentication,
         )
         auth_assets = plugin_manager._build_plugin(  # pylint: disable=protected-access
             station,
-            providers_config[station].auth,
+            providers_config[station].config.auth,
             Authentication,
         )
 

@@ -32,10 +32,10 @@ cadip:
         id:
             - null
             - '$.Id'
-        startTimeFromAscendingNode:
+        start_datetime:
             - null
             - '$.PublicationDate'
-        completionTimeFromAscendingNode:
+        end_datetime:
             - null
             - '$.PublicationDate'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
@@ -45,7 +45,7 @@ cadip:
         size:
             - null
             - '$.Size'
-        downloadLink: 'http://127.0.0.1:5000/Files({id})/$value'
+        eodag:download_link: 'http://127.0.0.1:5000/Files({id})/$value'
         title: '$.Name'
 
     free_text_search_operations:
@@ -54,8 +54,8 @@ cadip:
         wrapper: '"{}"'
         operations:
             and:
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate gt {start_datetime#to_iso_utc_datetime}'
+              - 'PublicationDate lt {end_datetime#to_iso_utc_datetime}'
 
     pagination:
       next_page_url_tpl: '{url}?{search}'

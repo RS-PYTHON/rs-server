@@ -55,8 +55,8 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
-        # disable product types discovery
-        os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
+        # disable collections discovery
+        os.environ["EODAG_EXT_COLLECTIONS_CFG_FILE"] = ""
 
         # Environment variable values, the last time we checked them. They will be read by eodag.
         self.old_environ = dict(os.environ)
@@ -94,31 +94,28 @@ class CustomEODataAccessGateway(EODataAccessGateway):
                 return
             self.all_auth_providers.append(provider)
 
-            provider_config = self.providers_config[provider]
             # mandatory keys
-            provider_config.update(
-                {
-                    "auth": {
-                        "auth_uri": external_config.token_url,
-                        "refresh_uri": external_config.token_url,
-                        "req_data": {
-                            "client_id": external_config.client_id,
-                            "client_secret": external_config.client_secret,
-                            "username": external_config.username,
-                            "password": external_config.password,
-                            "grant_type": external_config.grant_type,
-                        },
-                    },
+            auth_config: dict = {
+                "auth_uri": external_config.token_url,
+                "refresh_uri": external_config.token_url,
+                "req_data": {
+                    "client_id": external_config.client_id,
+                    "client_secret": external_config.client_secret,
+                    "username": external_config.username,
+                    "password": external_config.password,
+                    "grant_type": external_config.grant_type,
                 },
-            )
+            }
 
             # Used to set the authorization for token retrieval
             if external_config.authorization is not None:
-                provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
+                auth_config["credentials"] = {"auth_for_token": external_config.authorization}
 
             # optional keys
             if external_config.scope:
-                provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
+                auth_config["req_data"]["scope"] = external_config.scope
+
+            self.update_providers_config(dict_conf={provider: {"auth": auth_config}})
 
 
 class EodagProvider(Provider):
@@ -251,7 +248,9 @@ class EodagProvider(Provider):
             if query := kwargs.pop(op, None):
                 mapped_search_args[op] = query
 
-        max_items_allowed = int(self.client.providers_config[self.provider].search.pagination["max_items_per_page"])
+        max_items_allowed = int(
+            self.client.providers[self.provider].config.search.pagination["max_items_per_page"],
+        )
         if int(kwargs["items_per_page"]) > max_items_allowed:
             logger.warning(
                 f"Requesting {kwargs['items_per_page']} exceeds maximum of {max_items_allowed} "
@@ -264,7 +263,7 @@ class EodagProvider(Provider):
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
             try:
-                prov_cfg = self.client.providers_config[self.provider]
+                prov_cfg = self.client.providers[self.provider].config
                 products_cfg = getattr(prov_cfg, "products", {})
                 dataset_key = next(iter(products_cfg.keys()))
             except Exception:  # pylint: disable=broad-exception-caught
@@ -273,7 +272,7 @@ class EodagProvider(Provider):
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
                 raise_errors=True,
-                productType=dataset_key,
+                collection=dataset_key,
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
@@ -351,7 +350,7 @@ class EodagProvider(Provider):
                     "title": filename,
                     "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
                     # TODO build from configuration (but how ?)
-                    "downloadLink": f"{base_uri}({product_id})/$value",
+                    "eodag:download_link": f"{base_uri}({product_id})/$value",
                 },
             )
         except Exception as e:

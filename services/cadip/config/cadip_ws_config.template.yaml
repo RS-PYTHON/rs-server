@@ -96,7 +96,7 @@ template:
         - "$.PublicationDate"
       href:
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      downloadLink:
+      eodag:download_link:
       title: "$.Name"
 
     free_text_search_operations:
@@ -132,7 +132,7 @@ template:
     base_uri:
     metadata_mapping:
       uid: "$.Id"
-      downloadLink:
+      eodag:download_link:
 
 cadip:
   search:
@@ -141,11 +141,11 @@ cadip:
       href:
         - null
         - "http://127.0.0.1:5000/Files({id})/$value"
-      downloadLink: "http://127.0.0.1:5000/Files({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Files({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5000/Files"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5000/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Files({uid})/$value"
 
 ins:
   search:
@@ -154,11 +154,11 @@ ins:
       href:
         - null
         - "http://127.0.0.1:5100/Files({id})/$value"
-      downloadLink: "http://127.0.0.1:5100/Files({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5100/Files({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5100/Files"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5100/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5100/Files({uid})/$value"
 
 mps:
   search:
@@ -167,11 +167,11 @@ mps:
       href:
         - null
         - "http://127.0.0.1:5101/Files({id})/$value"
-      downloadLink: "http://127.0.0.1:5101/Files({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5101/Files({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5101/Files"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5101/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5101/Files({uid})/$value"
 
 mti:
   search:
@@ -180,11 +180,11 @@ mti:
       href:
         - null
         - "http://127.0.0.1:5102/Files({id})/$value"
-      downloadLink: "http://127.0.0.1:5102/Files({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5102/Files({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5102/Files"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5102/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5102/Files({uid})/$value"
 
 nsg:
   search:
@@ -193,11 +193,11 @@ nsg:
       href:
         - null
         - "http://127.0.0.1:5103/Files({id})/$value"
-      downloadLink: "http://127.0.0.1:5103/Files({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5103/Files({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5103/Files"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5103/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5103/Files({uid})/$value"
 
 sgs:
   search:
@@ -206,8 +206,8 @@ sgs:
       href:
         - null
         - "http://127.0.0.1:5104/Files({id})/$value"
-      downloadLink: "http://127.0.0.1:5104/Files({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5104/Files({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5104/Files"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5104/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5104/Files({uid})/$value"

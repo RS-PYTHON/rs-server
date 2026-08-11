@@ -783,7 +783,7 @@ def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id
         if "adgs" in station_id
         else cadip_retriever.init_cadip_provider(station_id)
     )
-    config = eodag_provider.client.providers_config[station_id]
+    config = eodag_provider.client.providers[station_id].config
 
     assert config.auth.auth_uri == get_external_auth_config.token_url
     assert config.auth.req_data["client_id"] == get_external_auth_config.client_id

@@ -210,7 +210,7 @@ template:
     base_uri:
     metadata_mapping:
       uid: "$.Id"
-      downloadLink:
+      eodag:download_link:
 
 cadip_session:
   search:
@@ -222,7 +222,7 @@ cadip_session:
   download:
     base_uri: "https://127.0.0.1:5000/Sessions"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5000/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Files({uid})/$value"
 
 ins_session:
   search:
@@ -234,7 +234,7 @@ ins_session:
   download:
     base_uri: "https://127.0.0.1:5100/Sessions"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5100/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5100/Files({uid})/$value"
 
 mps_session:
   search:
@@ -246,7 +246,7 @@ mps_session:
   download:
     base_uri: "https://127.0.0.1:5101/Sessions"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5101/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5101/Files({uid})/$value"
 
 mti_session:
   search:
@@ -258,7 +258,7 @@ mti_session:
   download:
     base_uri: "https://127.0.0.1:5102/Sessions"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5102/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5102/Files({uid})/$value"
 
 nsg_session:
   search:
@@ -270,7 +270,7 @@ nsg_session:
   download:
     base_uri: "https://127.0.0.1:5103/Sessions"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5103/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5103/Files({uid})/$value"
 
 sgs_session:
   search:
@@ -282,4 +282,4 @@ sgs_session:
   download:
     base_uri: "https://127.0.0.1:5104/Sessions"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5104/Files({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5104/Files({uid})/$value"

@@ -156,7 +156,7 @@ template:
       - null
       - $.platformShortName
       href:
-      downloadLink:
+      eodag:download_link:
       title: "$.Name"
       intersects:
       - null
@@ -258,7 +258,7 @@ template:
     base_uri:
     metadata_mapping:
       uid: "$.Id"
-      downloadLink:
+      eodag:download_link:
 
 s1a:
   products:
@@ -270,11 +270,11 @@ s1a:
       href:
         - null
         - "http://127.0.0.1:5000/Products({id})/$value"
-      downloadLink: "http://127.0.0.1:5000/Products({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Products({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5000/Products"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5000/Products({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Products({uid})/$value"
 
 s2b:
   products:
@@ -290,8 +290,8 @@ s2b:
       href:
         - null
         - "http://127.0.0.1:5000/Products({id})/$value"
-      downloadLink: "http://127.0.0.1:5000/Products({id})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Products({id})/$value"
   download:
     base_uri: "http://127.0.0.1:5000/Products"
     metadata_mapping:
-      downloadLink: "http://127.0.0.1:5000/Products({uid})/$value"
+      eodag:download_link: "http://127.0.0.1:5000/Products({uid})/$value"

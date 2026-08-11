@@ -127,7 +127,7 @@ adgs:
       - null
       - http://127.0.0.1:5000/Products({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5000/Products({id})/$value
+      eodag:download_link: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -204,7 +204,7 @@ adgs:
     base_uri: http://127.0.0.1:5000/Products
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5000/Products({uid})/$value
+      eodag:download_link: http://127.0.0.1:5000/Products({uid})/$value
 adgs2:
   auth:
     type: TokenAuth
@@ -315,7 +315,7 @@ adgs2:
       - null
       - http://127.0.0.1:5001/Products({id})/$value
       geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      downloadLink: http://127.0.0.1:5001/Products({id})/$value
+      eodag:download_link: http://127.0.0.1:5001/Products({id})/$value
       title: $.Name
     free_text_search_operations:
       $filter:
@@ -392,4 +392,4 @@ adgs2:
     base_uri: http://127.0.0.1:5001/Products
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5001/Products({uid})/$value
+      eodag:download_link: http://127.0.0.1:5001/Products({uid})/$value
