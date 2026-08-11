@@ -56,7 +56,7 @@ starlette = ">=1.4.1"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 sqlalchemy = "^2.0.43"
-eodag = "==v3.10.2"
+eodag = "==4.6.0"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
 pydantic = ">=2.9.2,<2.14.0" # see https://github.com/pyupio/safety/issues/673

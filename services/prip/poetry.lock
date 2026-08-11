@@ -993,14 +993,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.10.2"
+version = "4.6.0"
 description = "Earth Observation Data Access Gateway"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "eodag-3.10.2-py3-none-any.whl", hash = "sha256:4ee8e7a03f66a39539a62c4ec83a5c8b7f3c68d0d35da6b9f74c6188344e848e"},
-    {file = "eodag-3.10.2.tar.gz", hash = "sha256:f5657e6182157aa90aa56e0a7c497a94e757880247e4eb35a02fafdf267d12c6"},
+    {file = "eodag-4.6.0-py3-none-any.whl", hash = "sha256:f1158bd3468aeed0d61a8fd306ef9e267a4105dbf4653907b17332c72fe04ea2"},
+    {file = "eodag-4.6.0.tar.gz", hash = "sha256:5a56f0e573364b85145b8cb75d02b3c9173219cdfd1a7845be97d21ebd023117"},
 ]
 
 [package.dependencies]
@@ -1013,7 +1013,7 @@ importlib_metadata = ">=5.0"
 jsonpath-ng = "<1.8.0"
 lxml = "*"
 orjson = "*"
-pydantic = ">=2.1.0,<2.10.0 || >2.10.0"
+pydantic = ">=2.13.0"
 pydantic_core = "*"
 PyJWT = {version = ">=2.5.0", extras = ["crypto"]}
 pyproj = ">=2.1.0"
@@ -1023,23 +1023,23 @@ python-dateutil = "*"
 PyYAML = "*"
 requests = "*"
 shapely = ">=2.0.6"
+stac-pydantic = "*"
 tqdm = "*"
 typing_extensions = ">=4.8.0"
 urllib3 = "*"
 zipstream-ng = "*"
 
 [package.extras]
-all = ["eodag[all-providers,csw,server,tutorials]"]
+all = ["eodag[all-providers,csw,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
-dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
-docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-design", "sphinx-tabs", "sphinxcontrib-programoutput", "sphinxemoji"]
+dev = ["eodag[all-providers,csw,stubs]", "faker", "flake8", "moto (>=5)", "mypy", "prek", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stac-valid", "stdlib-list", "tomli ; python_version < \"3.11\"", "tox", "tox-uv", "twine", "wheel"]
+docs = ["autodoc_pydantic", "eodag[all,stubs,tutorials]", "nbconvert (>6.3.0)", "nbsphinx", "sphinx (<9.0.0)", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-design", "sphinx-tabs", "sphinxcontrib-programoutput", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
-server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
 stubs = ["boto3-stubs[essential]", "types-PyYAML", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-shapely", "types-tqdm", "types-urllib3"]
-tutorials = ["cartopy", "covjsonkit", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
-usgs = ["usgs (>=0.3.6)"]
+tutorials = ["cartopy", "covjsonkit (>=0.0.18) ; python_version > \"3.9\"", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
+usgs = ["usgs (>=0.3.7)"]
 
 [[package]]
 name = "fastapi"
@@ -3521,7 +3521,7 @@ boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 cachetools = ">=7.0.1"
 cachetools_async = ">=0.0.5"
-eodag = "==v3.10.2"
+eodag = "==4.6.0"
 fastapi = ">=0.141.1"
 filelock = ">=3.20.3"
 geojson-pydantic = "2.1.1"
