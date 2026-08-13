@@ -186,8 +186,9 @@ s1a:
           - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
           - OriginDate eq {OriginDate#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Start eq {Start#to_iso_utc_datetime}
-          - ContentDate/End eq {End#to_iso_utc_datetime}
+          - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start
+            eq {Start#to_iso_utc_datetime})
+          - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
           - ContentLength eq {ContentLength#to_int}
           - ContentLength gt {ContentLengthMin#to_int}
           - ContentLength lt {ContentLengthMax#to_int}
@@ -234,10 +235,6 @@ s1a:
             and att/OData.CSC.StringAttribute/Value eq {coordinates})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID'
             and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime'
-            and att/OData.CSC.StringAttribute/Value eq '{Start#to_iso_utc_datetime}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime'
-            and att/OData.CSC.StringAttribute/Value eq '{End#to_iso_utc_datetime}')
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'
@@ -451,8 +448,9 @@ s2b:
           - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
           - OriginDate eq {OriginDate#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
-          - ContentDate/Start eq {Start#to_iso_utc_datetime}
-          - ContentDate/End eq {End#to_iso_utc_datetime}
+          - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start
+            eq {Start#to_iso_utc_datetime})
+          - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
           - ContentLength eq {ContentLength#to_int}
           - ContentLength gt {ContentLengthMin#to_int}
           - ContentLength lt {ContentLengthMax#to_int}
@@ -499,10 +497,6 @@ s2b:
             and att/OData.CSC.StringAttribute/Value eq {coordinates})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID'
             and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime'
-            and att/OData.CSC.StringAttribute/Value eq '{Start#to_iso_utc_datetime}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime'
-            and att/OData.CSC.StringAttribute/Value eq '{End#to_iso_utc_datetime}')
           - '{t_before}'
           - '{t_after}'
           - '{t_meets}'

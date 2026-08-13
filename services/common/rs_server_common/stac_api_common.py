@@ -482,9 +482,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if datetime:
             try:
                 validate_inputs_format(datetime, raise_errors=True)
-                if self.auxip:
+                if self.auxip or self.prip:
                     stac_params["datetime"] = datetime
-                elif self.cadip or self.prip:
+                elif self.cadip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
                 raise HTTPException(
