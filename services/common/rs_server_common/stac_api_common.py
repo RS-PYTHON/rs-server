@@ -561,7 +561,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 return
 
             # Read temporal operators
-            if op in temporal_operations:
+            # Since cql2 0.6.0, operators ending with "by" are returned with a capital B (e.g. "t_metBy"),
+            # see: https://github.com/developmentseed/cql2-rs/releases/tag/cql2-v0.6.0
+            if op and op.lower() in temporal_operations:
+                op = op.lower()
                 temporal_query: str = temporal_op_query(op, args, self.temporal_mapping)
                 logger.debug(f"Temporal operator {op} with args {args} -> {temporal_query}")
                 stac_params[op] = temporal_query
