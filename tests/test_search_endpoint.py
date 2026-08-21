@@ -2462,7 +2462,7 @@ def test_search_parameters(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2470,7 +2470,7 @@ def test_search_parameters(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z", "sortby": "+published"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
@@ -2478,10 +2478,10 @@ def test_search_parameters(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=(PublicationDate gt 2022-06-26T06:30:34.558Z or "
-            "PublicationDate eq 2022-06-26T06:30:34.558Z) and "
-            "(PublicationDate lt 2023-06-26T06:30:34.558Z or "
-            "PublicationDate eq 2023-06-26T06:30:34.558Z) and "
+            "$filter=(ContentDate/Start gt 2022-06-26T06:30:34.558Z or "
+            "ContentDate/Start eq 2022-06-26T06:30:34.558Z) and "
+            "(ContentDate/End lt 2023-06-26T06:30:34.558Z or "
+            "ContentDate/End eq 2023-06-26T06:30:34.558Z) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2500,7 +2500,7 @@ def test_search_parameters(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=PublicationDate eq 2022-06-26T06:30:34.558Z and "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2508,8 +2508,9 @@ def test_search_parameters(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=(PublicationDate gt 2022-06-26T06:30:34.558Z or PublicationDate eq 2022-06-26T06:30:34.558Z) and "
-            "(PublicationDate lt 2023-06-26T06:30:34.558Z or PublicationDate eq 2023-06-26T06:30:34.558Z) and "
+            "$filter=(ContentDate/Start gt 2022-06-26T06:30:34.558Z or "
+            "ContentDate/Start eq 2022-06-26T06:30:34.558Z) and "
+            "(ContentDate/End lt 2023-06-26T06:30:34.558Z or ContentDate/End eq 2023-06-26T06:30:34.558Z) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2678,13 +2679,11 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "sortby": [{"field": "published", "direction": "desc"}],
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=ContentDate/Start eq 2020-06-26T06:30:34.558Z and ContentDate/End eq 2023-06-26T06:30:34.558Z "
+            "$filter=(ContentDate/Start gt 2020-06-26T06:30:34.558Z or "
+            "ContentDate/Start eq 2020-06-26T06:30:34.558Z) and "
+            "(ContentDate/End lt 2023-06-26T06:30:34.558Z or ContentDate/End eq 2023-06-26T06:30:34.558Z) "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
-            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'beginningDateTime' and "
-            "att/OData.CSC.StringAttribute/Value eq '2020-06-26T06:30:34.558Z') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'endingDateTime' "
-            "and att/OData.CSC.StringAttribute/Value eq '2023-06-26T06:30:34.558Z')"
+            "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
