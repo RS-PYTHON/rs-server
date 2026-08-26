@@ -36,6 +36,7 @@ from rs_server_common.middlewares import (
     apply_middlewares,
 )
 from rs_server_common.settings import docs_params
+from rs_server_common.stac_sortables import RSSortablesClient
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
@@ -132,7 +133,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     extensions = [  # no transactions because we don't update the database
         # TransactionExtension(client=TransactionsClient(), settings=api_settings),
         QueryExtension(),
-        SortExtension(),
+        SortExtension(client=RSSortablesClient()),
         FieldsExtension(),
         FilterExtension(client=FiltersClient()),
         PaginationExtension(),
@@ -151,6 +152,16 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
         # Fetch collections
         collections = (await self.all_collections(request=request)).get("collections", [])
+
+        # Add Sortables link
+        original["links"].append(
+            {
+                "rel": "http://www.opengis.net/def/rel/ogc/1.0/sortables",
+                "type": "application/schema+json",
+                "title": "Sortables",
+                "href": urljoin(base, "sortables"),
+            },
+        )
 
         # Append rel="child" links
         original["links"] += [
