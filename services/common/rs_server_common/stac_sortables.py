@@ -23,7 +23,7 @@ class RSSortablesClient(BaseSortablesClient):
     def __init__(self, router_prefix: str):
         self.router_prefix = router_prefix.strip("/")
 
-    def get_sortables(self, request=None, **kwargs):
+    def get_sortables(self):
         """
         Defines a list of sortable fields for each AUXIP/CADIP/PRIP.
         The fields are based on sort_param_mapping available in each yaml file.
