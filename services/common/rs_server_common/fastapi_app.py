@@ -130,10 +130,11 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
     # Example taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/api/test_api.py
     app.state.router_prefix = router_prefix  # NOTE: maybe we should keep this one
+    sortables_client = RSSortablesClient(router_prefix)
     extensions = [  # no transactions because we don't update the database
         # TransactionExtension(client=TransactionsClient(), settings=api_settings),
         QueryExtension(),
-        SortExtension(client=RSSortablesClient()),
+        SortExtension(client=sortables_client),
         FieldsExtension(),
         FilterExtension(client=FiltersClient()),
         PaginationExtension(),

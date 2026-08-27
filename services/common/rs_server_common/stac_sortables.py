@@ -14,25 +14,68 @@
 
 """Docstring to be added."""
 
-from typing import Any
-
 from stac_fastapi.extensions.sort.client import BaseSortablesClient
 
 
 class RSSortablesClient(BaseSortablesClient):
     """Sortables exposed by RS-Server."""
 
-    def get_sortables(
-        self,
-        request=None,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        return {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "https://example.org/sortables",
-            "type": "object",
-            "title": "Sortables",
-            "properties": {
+    def __init__(self, router_prefix: str):
+        self.router_prefix = router_prefix.strip("/")
+
+    def get_sortables(self, request=None, **kwargs):
+        properties = {
+            "cadip": {
+                "id": {
+                    "title": "Identifier",
+                    "type": "string",
+                },
+                "datetime": {
+                    "title": "Datetime",
+                    "type": "string",
+                    "format": "date-time",
+                },
+                "published": {
+                    "title": "Published",
+                    "type": "string",
+                    "format": "date-time",
+                },
+            },
+            "auxip": {
+                "id": {
+                    "title": "Identifier",
+                    "type": "string",
+                },
+                "file:size": {
+                    "title": "File size",
+                    "type": "number",
+                },
+                "type": {
+                    "title": "Type",
+                    "type": "string",
+                },
+                "eviction_datetime": {
+                    "title": "Eviction datetime",
+                    "type": "string",
+                    "format": "date-time",
+                },
+                "created": {
+                    "title": "Created",
+                    "type": "string",
+                    "format": "date-time",
+                },
+                "start_datetime": {
+                    "title": "Start datetime",
+                    "type": "string",
+                    "format": "date-time",
+                },
+                "end_datetime": {
+                    "title": "End datetime",
+                    "type": "string",
+                    "format": "date-time",
+                },
+            },
+            "prip": {
                 "id": {
                     "title": "Identifier",
                     "type": "string",
@@ -71,4 +114,12 @@ class RSSortablesClient(BaseSortablesClient):
                     "format": "date-time",
                 },
             },
+        }
+
+        return {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": f"https://example.org/{self.router_prefix}/sortables",
+            "type": "object",
+            "title": "Sortables",
+            "properties": properties.get(self.router_prefix, {}),
         }
