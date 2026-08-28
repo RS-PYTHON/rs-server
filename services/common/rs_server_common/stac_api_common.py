@@ -235,6 +235,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Mock the readpool function."""
         return cls.ReadPool(cls)
 
+    def add_sortables_link(self, collection: dict, collection_id: str) -> None:
+        """Add the collection-specific Sortables link."""
+        collection.setdefault("links", []).append(
+            {
+                "rel": "http://www.opengis.net/def/rel/ogc/1.0/sortables",
+                "type": "application/schema+json",
+                "title": "Sortables",
+                "href": (f"/{self.service}/collections/" f"{collection_id}/sortables"),
+            },
+        )
+
     # pylint: disable=too-many-branches
     def get_queryables(
         self,
