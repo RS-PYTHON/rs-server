@@ -242,7 +242,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 "rel": "http://www.opengis.net/def/rel/ogc/1.0/sortables",
                 "type": "application/schema+json",
                 "title": "Sortables",
-                "href": (f"/{self.service}/collections/" f"{collection_id}/sortables"),
+                "href": (f"/{self.service}/collections/{collection_id}/sortables"),
             },
         )
 
@@ -341,6 +341,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
+            self.add_sortables_link(collection, collection_id)
             return create_collection(collection).model_dump()
 
         # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
