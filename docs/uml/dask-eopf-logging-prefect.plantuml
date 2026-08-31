@@ -20,12 +20,17 @@ activate Prefect_UI
 John -> Prefect_UI: Run processing-flow
 Prefect_UI -> Prefect_Runner ++ : Start processing flow
 Prefect_Runner -> Prefect_Runner++ : Generate payload
-Prefect_Runner -> RS_DPR_Service++ : POST /processes/{processID}/execution
+Prefect_Runner -> API_Gateway++ : POST /processes/{processID}/execution
+API_Gateway -> API_Gateway: Route to the {processID} DPR service
+API_Gateway -> RS_DPR_Service++ : POST /processes/{processID}/execution
 RS_DPR_Service -> Dask_Worker++ : dask_client.submit()
 Dask_Worker -> eopf++: subprocess.run()
 eopf --> Dask_Worker: stdout (log / print)
 Dask_Worker --> RS_DPR_Service: dask_client.print()\nand/or\ndask_client.forward_logging()
-Prefect_Runner -> RS_DPR_Service: GET /jobs/{job_id}/logs
+Prefect_Runner -> API_Gateway: GET <font color=red>/processes/{processID}</font>/jobs/{job_id}/logs
+note left: Non-standard prefix to ensure correct routing
+API_Gateway -> API_Gateway: Route to the {processID} DPR service
+API_Gateway -> RS_DPR_Service: GET /jobs/{job_id}/logs
 RS_DPR_Service --> Prefect_Runner: logs stream (text/event-stream)
 Prefect_Runner --> Prefect_UI: Prefect Run logs
 
