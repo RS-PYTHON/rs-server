@@ -2531,6 +2531,8 @@ files = [
     {file = "lxml-6.1.2-cp38-cp38-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:af6585a466cee2c5a524f7fffc591844bd604a29fdd9cade964f548512b5ef7e"},
     {file = "lxml-6.1.2-cp38-cp38-manylinux_2_28_i686.whl", hash = "sha256:841630176c15fa5d3c5cd6f755435d3c5540a82e1dd2a7de1799401f92ee6d24"},
     {file = "lxml-6.1.2-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:215bb3cc4be015ccac3c7d4f25eb7b941f857fe5b02c0e3504cca61f7fb12455"},
+    {file = "lxml-6.1.2-cp38-cp38-win32.whl", hash = "sha256:7c687fd8e558c7d169f6f1987b696f37824d3a097f291bffd0ab4a2ea2307dfb"},
+    {file = "lxml-6.1.2-cp38-cp38-win_amd64.whl", hash = "sha256:69df1856cb6c065e5bfd23adcc7408bfa6dcf32b0018373a99b0769bd86e2256"},
     {file = "lxml-6.1.2-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:2dcc69e307e0916c7a0b552212010938d02a664d29b6bda75ab2bc5fa487c861"},
     {file = "lxml-6.1.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:243ecef7cb7415766dd742336cd5b8361a84c6f297e2773c865b783724cbbe74"},
     {file = "lxml-6.1.2-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:08f0c9ed7cded07c5e798b17c9c25bbba5d0650c8ff0a7f65f84c634966f0f10"},
@@ -3887,14 +3889,14 @@ yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "pygeoapi"
-version = "0.23.4"
+version = "0.24.0"
 description = "pygeoapi provides an API to geospatial data"
 optional = false
 python-versions = ">=3.12"
 groups = ["main"]
 files = [
-    {file = "pygeoapi-0.23.4-py2.py3-none-any.whl", hash = "sha256:7f0fd854575a0da049b64907b56fc0f77ab97768414c1397897e60a0e563438d"},
-    {file = "pygeoapi-0.23.4.tar.gz", hash = "sha256:935a22761eb0d8736f7b0f2c8384672f5341577509803e35f33f6e78299221ae"},
+    {file = "pygeoapi-0.24.0-py2.py3-none-any.whl", hash = "sha256:0ca8063121c19b86c90e896ed72758ce942be6c4a232062cc919ff7a8af36435"},
+    {file = "pygeoapi-0.24.0.tar.gz", hash = "sha256:00cf5c88776284780bb8bcc82f4f48c52d25ddfefc9ba1a65a8f3f811670a0a3"},
 ]
 
 [package.dependencies]
@@ -6093,4 +6095,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "0c1bde790665443048ab9dc2a807ae9c1a5d41bcf1b881a63b64921e7d6ccbad"
+content-hash = "5abf4a0ea2689acaa5f7246babaf09a0622ffaffec8128a40853427252adc3c8"
