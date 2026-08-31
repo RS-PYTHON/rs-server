@@ -2,10 +2,114 @@
   "openapi": "3.1.0",
   "info": {
     "title": "RS-Server",
-    "version": "1.0a12",
+    "version": "1.0a13",
     "description": "\nThe Copernicus Space Component Reference System is an open-source software solution allowing to implement,\nmaintain, deploy, operate and monitor Sentinel data processing workflows based on the future re-engineered Level\n0, 1, 2 Sentinel Data processors (Q3 2024/2025).\n\n---\n#### OAuth 2.0 authentication\n\n<a href=\"/auth/login\" target=\"_self\">Login</a> /\n<a href=\"/auth/logout\" target=\"_blank\">Logout</a>\n\n---\n#### Links\n\n<a href=\"https://home.rs-python.eu/\" target=\"_blank\">Website</a> /\n<a href=\"https://home.rs-python.eu/rs-documentation/\" target=\"_blank\">Documentation</a> /\n<a href=\"${RSPY_UAC_HOMEPAGE}\" target=\"_blank\">API-Key Manager</a>\n<br><br>\n<a href=\"#/ADGS%20stations\" target=\"_blank\">ADGS stations</a> /\n<a href=\"#/CADIP%20stations\" target=\"_blank\">CADIP stations</a> /\n<a href=\"#/PRIP%20stations\" target=\"_blank\">PRIP stations</a> /\n<a href=\"#/OSAM%20service\" target=\"_blank\">OSAM service</a> /\n<a href=\"#/Catalog\" target=\"_blank\">Catalog</a> /\n<a href=\"#/Staging%20service\" target=\"_blank\">Staging service</a> /\n<a href=\"#/Processing%20service\" target=\"_blank\">Processing service</a>\n\n---\n#### STAC Browser\n\n<a href=\"${STAC_BROWSER_URL_ADGS}\" target=\"_blank\">ADGS</a> /\n<a href=\"${STAC_BROWSER_URL_CADIP}\" target=\"_blank\">CADIP</a> /\n<a href=\"${STAC_BROWSER_URL_PRIP}\" target=\"_blank\">PRIP</a> /\n<a href=\"${STAC_BROWSER_URL_CATALOG}\" target=\"_blank\">Catalog</a>\n\n---\n"
   },
   "paths": {
+    "/auxip/sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Sortables",
+        "description": "Endpoint.",
+        "operationId": "Sortables_auxip_sortables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
+      }
+    },
+    "/auxip/collections/{collection_id}/sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Collection Sortables",
+        "description": "Endpoint.",
+        "operationId": "Collection_Sortables_auxip_collections__collection_id__sortables_get",
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Collection ID",
+              "title": "Collection Id"
+            },
+            "description": "Collection ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auxip/collections-sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Collections Catalog Sortables",
+        "description": "Endpoint.",
+        "operationId": "Collections_Catalog_Sortables_auxip_collections_sortables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
+      }
+    },
     "/auxip/queryables": {
       "get": {
         "tags": [
@@ -969,6 +1073,110 @@
         }
       }
     },
+    "/cadip/sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Sortables",
+        "description": "Endpoint.",
+        "operationId": "Sortables_cadip_sortables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
+      }
+    },
+    "/cadip/collections/{collection_id}/sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Collection Sortables",
+        "description": "Endpoint.",
+        "operationId": "Collection_Sortables_cadip_collections__collection_id__sortables_get",
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Collection ID",
+              "title": "Collection Id"
+            },
+            "description": "Collection ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cadip/collections-sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Collections Catalog Sortables",
+        "description": "Endpoint.",
+        "operationId": "Collections_Catalog_Sortables_cadip_collections_sortables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
+      }
+    },
     "/cadip/queryables": {
       "get": {
         "tags": [
@@ -1887,6 +2095,110 @@
             }
           }
         }
+      }
+    },
+    "/prip/sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Sortables",
+        "description": "Endpoint.",
+        "operationId": "Sortables_prip_sortables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
+      }
+    },
+    "/prip/collections/{collection_id}/sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Collection Sortables",
+        "description": "Endpoint.",
+        "operationId": "Collection_Sortables_prip_collections__collection_id__sortables_get",
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Collection ID",
+              "title": "Collection Id"
+            },
+            "description": "Collection ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prip/collections-sortables": {
+      "get": {
+        "tags": [
+          "Sort Extension"
+        ],
+        "summary": "Collections Catalog Sortables",
+        "description": "Endpoint.",
+        "operationId": "Collections_Catalog_Sortables_prip_collections_sortables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SortablesSchema"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
       }
     },
     "/prip/queryables": {
@@ -8978,6 +9290,68 @@
         ],
         "title": "SortExtension",
         "description": "https://github.com/radiantearth/stac-api-spec/tree/master/extensions/sort#sort-api-extension"
+      },
+      "SortablesSchema": {
+        "properties": {
+          "$schema": {
+            "type": "string",
+            "title": "$Schema",
+            "default": "https://json-schema.org/draft/2020-12/schema"
+          },
+          "$id": {
+            "type": "string",
+            "title": "$Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "object"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "default": "Sortables"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties"
+          },
+          "additionalProperties": {
+            "type": "boolean",
+            "title": "Additionalproperties",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "$id"
+        ],
+        "title": "SortablesSchema",
+        "description": "Pydantic model for the Sortables JSON Schema response.",
+        "example": {
+          "$id": "https://example.com/sortables",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": true,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "datetime": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "title": "Sortables",
+          "type": "object"
+        }
       },
       "SpatialExtent": {
         "properties": {

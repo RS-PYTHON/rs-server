@@ -235,6 +235,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Mock the readpool function."""
         return cls.ReadPool(cls)
 
+    def add_sortables_link(self, collection: dict, collection_id: str) -> None:
+        """Add the collection-specific Sortables link."""
+        collection.setdefault("links", []).append(
+            {
+                "rel": "http://www.opengis.net/def/rel/ogc/1.0/sortables",
+                "type": "application/schema+json",
+                "title": "Sortables",
+                "href": (f"/{self.service}/collections/{collection_id}/sortables"),
+            },
+        )
+
     # pylint: disable=too-many-branches
     def get_queryables(
         self,
@@ -330,6 +341,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", DEFAULT_STAC_VERSION)
+            self.add_sortables_link(collection, collection_id)
             return create_collection(collection).model_dump()
 
         # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
