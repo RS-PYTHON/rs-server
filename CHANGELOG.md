@@ -24,6 +24,47 @@ Changed
 
 None
 
+[1.0a13] - Sprint 39 - 2026-08-26
+=================================
+
+## Added
+
+- RSPY-106: Add Catalog PATCH and Bulk endpoints (requires stac-fastapi 6.0)
+- RSPY-329: Implement staging update of existing STAC item
+- RSPY-856: Gateway API migration: deploy envoy
+- RSPY-971: Check redundancy in rs-demo notebooks
+- RSPY-1017: Update to S1L0 processor 1.5.0
+- RSPY-1018: Update to S3L0 processor 1.5.0
+- RSPY-1020: [Secure CI/CD] Provide the Trivy errors in all repositories for "scan-type: config"
+- RSPY-1033: Analyze errors when running rs-demo notebooks in parallel
+- RSPY-1038: Improve OpenTelemetry staging support
+- RSPY-1059: Update to stac-browser 5.0.0
+- RSPY-1060: Update dask-gateway and staging to dask 2026.7.0
+- RSPY-1067: Smarter percentage progress of staging
+- RSPY-1109: Make the shared disk configurable in jupyter notebooks
+- RSPY-1111: Improve s3 operations handling with big resources
+- RSPY-1118: Trigger S3L1 OLCI processing automatically after S3L0 completion
+- RSPY-1119: Sprint 39 corrections of issues
+- RSPY-1133: Fix invalid geometries produced by the DPR processors
+- RSPY-1138: Gateway API migration: replace infra-core ingresses by http routes and listener sets
+- RSPY-1140: Gateway API migration: replace infra-monitoring ingresses by http routes and listener sets
+- RSPY-1146: Include processor version in docker image tags
+
+## Fixed
+
+- RSPY-651: Add missing realm roles in keycloak (rs-server services) (1 pt)
+- RSPY-996: Permission failure verifying user's JupyterHub API token ( 5 pts )
+- RSPY-1062: Simple IAM URL does not work anymore (1 pt)
+- RSPY-1079: Make rs-dpr-service retrieve the dask-gateway address dynamically based on the caller ( 3 pts )
+- RSPY-1108: Problems in the CI/CD to build the Jupyter docker images (5 pts)
+- RSPY-1116: STAC API validation failed with error returned no 'features' attribute (2 pts)
+- RSPY-1117: Generated STAC item receives the same global set of derived_from links (5 pts)
+- RSPY-1124: PRIP wrongly searches by PublicationDate instead of ContentDate (2 pts)
+- RSPY-1125: [DPR Processing Prefect Flow] A Single product ingestion failure in catalog prevents all generated products from being ingested (2 pts)
+- RSPY-1131: Error building Dask base image py3.13.12-2026.3.0 (1 pt)
+- RSPY-1144: input collection_name is ignored in ADF_conversion flow (1 pt)
+- RSPY-1171: Cannot process a staged CADIP session after its eviction date (1 pt)
+
 [1.0a12] - Sprint 38 - 2026-07-15
 =================================
 
