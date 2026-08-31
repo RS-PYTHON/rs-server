@@ -2076,9 +2076,9 @@ def test_search_parameters(
     filter_type,
     method,
     service,
-    adgs_response,
-    cadip_file_response,
-    cadip_session_response,
+    adgs_response,  # rs-server/tests/resources/endpoints/adgs_pickup_response.json
+    cadip_file_response,  # rs-server/tests/resources/endpoints/cadip_file_pickup_response.json
+    cadip_session_response,  # rs-server/tests/resources/endpoints/cadip_session_pickup_response.json
 ):
     """Test all search parameters"""
 
@@ -2105,6 +2105,13 @@ def test_search_parameters(
     #
     # Mock a collection with no hardcoded query, another with single values, another with multiple values
 
+    hardcoded_date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    hardcoded_limit = 10
+    query2_3 = {
+        "PublicationDate": hardcoded_date,
+        "top": hardcoded_limit,
+    }
+
     if adgs:
         query2 = {
             "productType": "AUX_OBMEMC",
@@ -2123,15 +2130,13 @@ def test_search_parameters(
         }
     else:
         raise NotImplementedError
-    hardcoded_date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
-    hardcoded_limit = 10
+
     mocked_collections = [
         {"id": "col1", **collection},
         {
             "id": "col2",
             "query": {
-                "PublicationDate": hardcoded_date,
-                "top": hardcoded_limit,
+                **query2_3,
                 **query2,
             },
             **collection,
@@ -2139,8 +2144,7 @@ def test_search_parameters(
         {
             "id": "col3",
             "query": {
-                "PublicationDate": hardcoded_date,
-                "top": hardcoded_limit,
+                **query2_3,
                 **query3,
             },
             **collection,
@@ -2158,7 +2162,7 @@ def test_search_parameters(
 
     # Static values
     user_ids = "id1,id2"
-    user_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    user_datetime = hardcoded_date
     user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
@@ -2224,8 +2228,8 @@ def test_search_parameters(
                 {
                     "filter": {
                         "args": [
-                            {"args": [{"property": "platform"}, "sentinel-2a"], "op": "="},
-                            {"args": [{"property": "constellation"}, "sentinel-2"], "op": "="},
+                            {"args": [{"property": "platform"}, user_platform], "op": "="},
+                            {"args": [{"property": "constellation"}, user_constellation], "op": "="},
                             *post_cql,
                         ],
                         "op": "and",
@@ -2236,8 +2240,8 @@ def test_search_parameters(
             user_params.update(
                 {
                     "query": {
-                        "platform": {"eq": "sentinel-2a"},
-                        "constellation": {"eq": "sentinel-2"},
+                        "platform": {"eq": user_platform},
+                        "constellation": {"eq": user_constellation},
                         **post_query,
                     },
                 },
@@ -2254,19 +2258,18 @@ def test_search_parameters(
         elif method == "POST":
             collection_params["collections"] = [collection_id]
 
-            # Do a first call with the user query/filter, and a second call without
-            for user_query in (True, False):
+        # Do a first call with the user query/filter, and a second call without
+        for user_query in (True, False):
 
-                # Remove the user query, but keep the datetime and others...
-                if not user_query:
-                    collection_params.pop("query", None)
-                    collection_params.pop("filter", None)
+            # Remove the user query, but keep the datetime and others...
+            if not user_query:
+                collection_params.pop("query", None)
+                collection_params.pop("filter", None)
 
-            # NOTE: the OData queries are logged in eodag_provider.py when calling self.client.search
-            # if the reponse is not mocked.
-            # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
-            # TODO after fixing rs-server, these parameters should appear in the OData request:
-            #  - sortBy (RSPY-131)
+            # NOTE: to see the odata request that is actually called, either 1) deactivate the rsps.add lines below
+            # and the HTTPException error will print the odata request (decode it with
+            # https://meyerweb.com/eric/tools/dencoder/), or 2) debug in eodag/plugins/search/qssearch.py
+            # -> self.build_query_string
             if adgs:
                 uids = user_ids.split(",")
                 name_filter = " or ".join(f"contains(Name,'{uid}')" for uid in uids)
@@ -2278,12 +2281,21 @@ def test_search_parameters(
                     f"{name_filter}"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
+                odata_query_publication_date = (
+                    (
+                        "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
+                        "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) and "
+                    )
+                    if "PublicationDate" in str(collection)
+                    else ""
+                )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
-                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
-                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) and "
+                    f"{odata_query_publication_date}"
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) and "
+                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' "
+                    "and att/OData.CSC.StringAttribute/Value eq 'A') and "
                     "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation}) and "
                     "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
@@ -2317,11 +2329,6 @@ def test_search_parameters(
             if collection_id == "col1":
                 odata = odata_query if user_query else odata_no_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]
-                # date_max = (
-                #     user_datetime.split("/")[1].replace(".000Z", ".999Z")
-                #     if method == "GET"
-                #     else user_datetime.split("/")[1]
-                # )
                 date_max = user_datetime.split("/")[1]
                 product_type = user_product_type
                 constellation = user_constellation
@@ -2440,7 +2447,7 @@ def test_search_parameters(
                 assert response.is_success, f"Response:{response}\nMock registered responses:{rsps.registered()}"
                 features = response.json()["features"]
                 if expect_result and adgs:
-                    # 2 calls, one for sessions, one for files
+                    # 1 single call for files
                     assert spy_search.call_count == 1
                     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
                 elif expect_result and cadip:

@@ -30,6 +30,8 @@ def run():
             port=settings.app_port,
             log_level="info",
             reload=settings.reload,
+            reload_dirs=[dir.strip() for dir in os.getenv("RELOAD_DIRS", "").split(",") if dir],
+            # NOTE: don't set workers= use the WEB_CONCURRENCY env var instead
             root_path=os.getenv("UVICORN_ROOT_PATH", ""),
         )
     except ImportError:
