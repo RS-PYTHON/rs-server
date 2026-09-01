@@ -1040,11 +1040,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             # Comma-separated lists
             elif key in COMMA_SEPARATED_LISTS_KEYS:
-                mode = "union" if key == "productType" else "intersection"
                 odata_merged[key], key_empty_selection = self.resolve_comma_separated_list_conflict(
                     odata_params[key],
                     odata_hardcoded[key],
-                    mode=mode,
                 )
             else:
                 logger.warning(f"No conflict resolution performed for key {key}")
@@ -1077,14 +1075,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}", start >= stop
 
-    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any, mode: str) -> tuple[Any, bool]:
+    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any) -> tuple[Any, bool]:
         """
         Resolves a conflict between two comma-separated lists by computing their intersection.
 
         Args:
             value1 (Any): The first list, or a comma-separated string representing it.
             value2 (Any): The second list, or a comma-separated string representing it.
-            mode (str): Resolution strategy – "union" to merge both lists, "intersection" to keep only common elements.
 
         Returns:
             tuple[Any, bool]: A tuple containing the intersected list as a comma-separated string,
@@ -1111,10 +1108,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     intersection = s
                 else:
                     # mypy: intersection starts None but is set on first loop
-                    if mode == "union":  # type: ignore[union-attr]
-                        intersection = intersection.union(s)  # type: ignore[union-attr]
-                    else:
-                        intersection = intersection.intersection(s)  # type: ignore[union-attr]
+                    intersection = intersection.intersection(s)  # type: ignore[union-attr]
             intersection = ",".join(intersection) if intersection else None
             logger.debug(f"comma-separated list conflict resolution result: {intersection}")
 
