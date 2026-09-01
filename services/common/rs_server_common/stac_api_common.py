@@ -28,6 +28,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime as dt
+from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 from typing import (
@@ -146,6 +147,13 @@ shapely_to_geojson_cls = {
     Polygon: GeoPolygon,
     MultiPolygon: GeoMultiPolygon,
 }
+
+
+class MergeMode(str, Enum):
+    """Merge two list with an union or intersection"""
+
+    UNION = "union"
+    INTERSECTION = "intersection"
 
 
 class Queryables(BaseModel):
@@ -764,18 +772,30 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         for station, station_collections in collections_by_station.items():
             if aggregate_search_params:
                 # Aggregates all search params for this station to make a single call
-                odata_merged = odata_params.copy()
-                empty_selection = False
+                odata_merged: dict = {}
+                only_empty = True
                 for collection in station_collections:
+
                     # Some OData search params are hardcoded in the collection configuration
                     odata_hardcoded = collection.get("query") or {}
 
-                    # Merge the user input params with the hardcoded params (which have higher priority)
-                    odata_merged, empty_selection = self.merge_odata_params(odata_hardcoded, odata_merged)
-                    if empty_selection:
-                        logger.warning("Key conflict resolution lead to empty selection, skipping search to {station}")
-                        break
-                if not empty_selection:
+                    # Calculate intersection between the user input params and the hardcoded params
+                    # (which have higher priority) of the current collection
+                    odata_collection, empty_selection = self.merge_odata_params(
+                        odata_hardcoded,
+                        odata_params,
+                        MergeMode.INTERSECTION,
+                    )
+                    only_empty = only_empty and empty_selection
+
+                    # Calculate union between all collections
+                    odata_merged, _ = self.merge_odata_params(odata_collection, odata_merged, MergeMode.UNION)
+
+                if only_empty:
+                    logger.warning(
+                        f"Key conflict resolution lead to empty selection when searching in {station!r} station",
+                    )
+                if not only_empty:
                     odata_params_by_station[station] = odata_merged
             else:
                 # Do the same search for all stations
@@ -1008,7 +1028,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             type=paginated_item_collection.type,
         ).model_dump()
 
-    def merge_odata_params(self, odata_hardcoded: dict, odata_params: dict) -> tuple[dict, bool]:
+    def merge_odata_params(self, odata_hardcoded: dict, odata_params: dict, mode: MergeMode) -> tuple[dict, bool]:
         """
         Merges hardcoded and user-provided OData parameters with conflict resolution logic.
 
@@ -1020,6 +1040,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         Args:
             odata_hardcoded (dict): Hardcoded parameters defined in the collection configuration.
             odata_params (dict): OData parameters provided by the user.
+            mode (str): Resolution strategy: "union" or "intersection" of parameters
 
         Returns:
             tuple[dict, bool]: A tuple containing the merged OData parameters and a boolean flag indicating
@@ -1037,12 +1058,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 odata_merged[key], key_empty_selection = self.resolve_date_interval_conflict(
                     odata_params[key],
                     odata_hardcoded[key],
+                    mode,
                 )
             # Comma-separated lists
             elif key in COMMA_SEPARATED_LISTS_KEYS:
                 odata_merged[key], key_empty_selection = self.resolve_comma_separated_list_conflict(
                     odata_params[key],
                     odata_hardcoded[key],
+                    mode,
                 )
             else:
                 logger.warning(f"No conflict resolution performed for key {key}")
@@ -1051,16 +1074,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return odata_merged, empty_selection
 
-    def resolve_date_interval_conflict(self, value1: str, value2: str) -> tuple[str, bool]:
+    def resolve_date_interval_conflict(self, value1: str, value2: str, mode: MergeMode) -> tuple[str, bool]:
         """
-        Resolves a conflict between two date interval strings by computing their intersection.
+        Resolves a conflict between two date interval strings by computing their union or intersection.
 
         Args:
             value1 (str): The first date interval in ISO 8601 format.
             value2 (str): The second date interval in ISO 8601 format.
+            mode (str): Resolution strategy: "union" or "intersection" of both intervals
 
         Returns:
-            tuple[str, bool]: A tuple containing the intersected date interval as a string,
+            tuple[str, bool]: A tuple containing the merged or intersected date interval as a string,
                 and a boolean indicating whether the selection is empty (True if no overlap).
         """
         logger.debug(f"Resolving date interval conflict resolution between {value1} and {value2}")
@@ -1069,50 +1093,56 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         _, start1, stop1 = validate_inputs_format(value1, raise_errors=True)
         _, start2, stop2 = validate_inputs_format(value2, raise_errors=True)
 
-        # Calculate the intersection
-        start = max(start1, start2)
-        stop = min(stop1, stop2)
+        # Calculate the union or intersection
+        if mode == MergeMode.UNION:
+            start = min(start1, start2)
+            stop = max(stop1, stop2)
+        else:
+            start = max(start1, start2)
+            stop = min(stop1, stop2)
 
         return f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}", start >= stop
 
-    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any) -> tuple[Any, bool]:
+    def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any, mode: MergeMode) -> tuple[Any, bool]:
         """
-        Resolves a conflict between two comma-separated lists by computing their intersection.
+        Resolves a conflict between two comma-separated lists by computing their union or intersection.
 
         Args:
             value1 (Any): The first list, or a comma-separated string representing it.
             value2 (Any): The second list, or a comma-separated string representing it.
+            mode (str): Resolution strategy: "union" to merge both lists, "intersection" to keep only common elements.
 
         Returns:
-            tuple[Any, bool]: A tuple containing the intersected list as a comma-separated string,
+            tuple[Any, bool]: A tuple containing the merged or intersected list as a comma-separated string,
             and a boolean indicating whether the result is empty (True if no intersection).
         """
         logger.debug(f"Resolving comma-separated list conflict resolution between {value1} and {value2}")
 
-        intersection = None
-
         # If one is empty or None, this means "keep everything".
-        # So keep the intersection = the other list.
+        # So keep the other list.
         if not value1:
-            intersection = value2
+            result = value2
         elif not value2:
-            intersection = value1
+            result = value1
 
-        # Else, split by comma and keep the intersection.
+        # Else, split by comma and keep the union or intersection.
         # If no intersection, then the selection is empty.
         else:
+            result = set()
             for i, value in enumerate((value1, value2)):
                 iterable = value if isinstance(value, list) else value.split(",")
                 s = {v.strip() for v in iterable}
                 if i == 0:
-                    intersection = s
+                    result = s
                 else:
-                    # mypy: intersection starts None but is set on first loop
-                    intersection = intersection.intersection(s)  # type: ignore[union-attr]
-            intersection = ",".join(intersection) if intersection else None
-            logger.debug(f"comma-separated list conflict resolution result: {intersection}")
+                    if mode == MergeMode.UNION:
+                        result = result.union(s)
+                    else:
+                        result = result.intersection(s)
+            result = ",".join(result) if result else None
+            logger.debug(f"Comma-separated list conflict resolution result: {result}")
 
-        return intersection, not intersection
+        return result, not result
 
     def perform_search_in_station(
         self,
