@@ -149,11 +149,11 @@ shapely_to_geojson_cls = {
 }
 
 
-class MergeMode(Enum):
+class MergeMode(str, Enum):
     """Merge two list with an union or intersection"""
 
-    UNION = (1,)
-    INTERSECTION = 2
+    UNION = "union"
+    INTERSECTION = "intersection"
 
 
 class Queryables(BaseModel):
