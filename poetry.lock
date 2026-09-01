@@ -1528,14 +1528,14 @@ poetry = ["poetry"]
 
 [[package]]
 name = "eodag"
-version = "3.10.2"
+version = "4.7.2"
 description = "Earth Observation Data Access Gateway"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "eodag-3.10.2-py3-none-any.whl", hash = "sha256:4ee8e7a03f66a39539a62c4ec83a5c8b7f3c68d0d35da6b9f74c6188344e848e"},
-    {file = "eodag-3.10.2.tar.gz", hash = "sha256:f5657e6182157aa90aa56e0a7c497a94e757880247e4eb35a02fafdf267d12c6"},
+    {file = "eodag-4.7.2-py3-none-any.whl", hash = "sha256:ddfa19b4584246282b81499c547f4db771e20b69ba6820e8b83b9d3181887e6b"},
+    {file = "eodag-4.7.2.tar.gz", hash = "sha256:3f846bd55adb285c2051e921e558484e8458b668dc763d2af618cd8808710228"},
 ]
 
 [package.dependencies]
@@ -1548,7 +1548,7 @@ importlib_metadata = ">=5.0"
 jsonpath-ng = "<1.8.0"
 lxml = "*"
 orjson = "*"
-pydantic = ">=2.1.0,<2.10.0 || >2.10.0"
+pydantic = ">=2.13.0"
 pydantic_core = "*"
 PyJWT = {version = ">=2.5.0", extras = ["crypto"]}
 pyproj = ">=2.1.0"
@@ -1558,23 +1558,23 @@ python-dateutil = "*"
 PyYAML = "*"
 requests = "*"
 shapely = ">=2.0.6"
+stac-pydantic = "*"
 tqdm = "*"
 typing_extensions = ">=4.8.0"
 urllib3 = "*"
 zipstream-ng = "*"
 
 [package.extras]
-all = ["eodag[all-providers,csw,server,tutorials]"]
+all = ["eodag[all-providers,csw,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
-dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
-docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-design", "sphinx-tabs", "sphinxcontrib-programoutput", "sphinxemoji"]
+dev = ["eodag[all-providers,csw,stubs]", "faker", "flake8", "moto (>=5)", "mypy", "prek", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stac-valid", "stdlib-list", "tomli ; python_version < \"3.11\"", "tox", "tox-uv", "twine", "wheel"]
+docs = ["autodoc_pydantic", "eodag[all,stubs,tutorials]", "nbconvert (>6.3.0)", "nbsphinx", "sphinx (<9.0.0)", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-design", "sphinx-tabs", "sphinxcontrib-programoutput", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
-server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
 stubs = ["boto3-stubs[essential]", "types-PyYAML", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-shapely", "types-tqdm", "types-urllib3"]
-tutorials = ["cartopy", "covjsonkit", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
-usgs = ["usgs (>=0.3.6)"]
+tutorials = ["cartopy", "covjsonkit (>=0.0.18) ; python_version > \"3.9\"", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
+usgs = ["usgs (>=0.3.7)"]
 
 [[package]]
 name = "fastapi"
@@ -2996,6 +2996,8 @@ files = [
     {file = "lxml-6.1.2-cp38-cp38-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:af6585a466cee2c5a524f7fffc591844bd604a29fdd9cade964f548512b5ef7e"},
     {file = "lxml-6.1.2-cp38-cp38-manylinux_2_28_i686.whl", hash = "sha256:841630176c15fa5d3c5cd6f755435d3c5540a82e1dd2a7de1799401f92ee6d24"},
     {file = "lxml-6.1.2-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:215bb3cc4be015ccac3c7d4f25eb7b941f857fe5b02c0e3504cca61f7fb12455"},
+    {file = "lxml-6.1.2-cp38-cp38-win32.whl", hash = "sha256:7c687fd8e558c7d169f6f1987b696f37824d3a097f291bffd0ab4a2ea2307dfb"},
+    {file = "lxml-6.1.2-cp38-cp38-win_amd64.whl", hash = "sha256:69df1856cb6c065e5bfd23adcc7408bfa6dcf32b0018373a99b0769bd86e2256"},
     {file = "lxml-6.1.2-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:2dcc69e307e0916c7a0b552212010938d02a664d29b6bda75ab2bc5fa487c861"},
     {file = "lxml-6.1.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:243ecef7cb7415766dd742336cd5b8361a84c6f297e2773c865b783724cbbe74"},
     {file = "lxml-6.1.2-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:08f0c9ed7cded07c5e798b17c9c25bbba5d0650c8ff0a7f65f84c634966f0f10"},
@@ -6179,7 +6181,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6196,7 +6198,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6213,7 +6215,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6232,7 +6234,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6247,7 +6249,7 @@ boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 cachetools = ">=7.0.1"
 cachetools_async = ">=0.0.5"
-eodag = "==v3.10.2"
+eodag = "==v4.7.2"
 fastapi = ">=0.141.1"
 filelock = ">=3.20.3"
 geojson-pydantic = "2.1.1"
@@ -6280,7 +6282,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6302,7 +6304,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-osam"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6322,7 +6324,7 @@ url = "services/osam"
 
 [[package]]
 name = "rs-server-prip"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6339,7 +6341,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "0.0.0"
+version = "0.0.0.post1.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
