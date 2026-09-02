@@ -39,6 +39,7 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provi
 from rs_server_common.utils import utils as common_utils
 from rs_server_common.utils.utils import map_auxip_prip_mission
 from rs_server_common.utils.utils2 import read_response_error
+from rs_server_prip import prip_utils
 from shapely.geometry import box, shape
 from shapely.wkt import loads as wkt_loads
 
@@ -2941,6 +2942,86 @@ def test_post_search_parameters_prip(client, mocker, prip_response, collection_p
     assert unquote(prod_url) == expected_odata, f"\nExpected:\n{expected_odata}\nGot:\n{unquote(prod_url)}"
     assert spy_search.call_count == 1
     spy_search.reset_mock()
+
+
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app, service",
+    ((ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_PRIP, "prip")),
+    ids=["adgs", "cadip", "prip"],
+    indirect=["fastapi_app"],
+)
+def test_cql2_in_operator(
+    mocker,
+    client,
+    method,
+    service,
+    adgs_response,  # rs-server/tests/resources/endpoints/adgs_pickup_response.json
+    cadip_file_response,  # rs-server/tests/resources/endpoints/cadip_file_pickup_response.json
+    cadip_session_response,  # rs-server/tests/resources/endpoints/cadip_session_pickup_response.json
+    prip_response,  # rs-server/tests/resources/endpoints/prip_pickup_response.json
+):
+    """
+    Test the cql2 "in" operator.
+    See: https://docs.ogc.org/is/21-065r2/21-065r2.html#advanced-comparison-operators
+    """
+
+    adgs = service == "adgs"
+    cadip = service == "cadip"
+    prip = service == "prip"
+
+    if adgs:
+        service_utils = adgs_utils
+        expected_response = adgs_response
+    elif cadip:
+        service_utils = cadip_utils
+        expected_response = cadip_session_response
+    elif prip:
+        service_utils = prip_utils
+        expected_response = prip_response
+    else:
+        raise NotImplementedError
+
+    all_mock_collections = []
+
+    def create_mock_collection(id: str, configured_query: dict):
+        """Create a mock collection"""
+
+        # Read the first collection, keep everything except the id and hardcoded query. From
+        # rs-server/services/adgs/config/adgs_search_config.yaml or
+        # rs-server/services/cadip/config/cadip_search_config.yaml or
+        # rs-server/services/prip/config/prip_search_config.yaml
+        collection: dict = service_utils.read_conf()["collections"][0]
+        collection = deepcopy(collection)  # copy the cached response before we modify it
+        collection["id"] = id
+        collection["query"] = configured_query
+
+        all_mock_collections.append(collection)
+        return collection
+
+    if cadip:
+        col1 = create_mock_collection("col1", {"Satellite": "S1A,S2A,S3A"})
+    else:
+        col1 = create_mock_collection("col1", {"platformShortName": "sentinel-1,sentinel-2,sentinel-3"})
+
+    if method == "GET":
+        user_filter = {"filter": f"constellation in  ( 'sentinel-1' , 'sentinel-2' ) "}
+        # user_filter = {"filter": f"constellation='sentinel-1'"}
+
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: all_mock_collections,
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": all_mock_collections})
+
+    # Call the endpoint
+    url = f"{os.getenv('router_prefix')}/search"
+    if method == "GET":
+        response = client.get(url, params=user_filter)
+
+    # Check that the search function was called and returned the expected result
+    assert response.is_success, f"Response:{response}\nMock registered responses:{rsps.registered()}"
 
 
 @pytest.mark.parametrize(

@@ -515,6 +515,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 ) from exception
 
         bbox = params.pop("bbox", None)
+
         #
         # Read query and/or CQL filter
 
@@ -531,7 +532,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             if isinstance(value, dict):
                 value = value.get("property")
-            if isinstance(value, str):
+            if isinstance(value, list):
+                value = ",".join([v.strip() for v in value])
+            elif isinstance(value, str):
                 value = value.strip()
             stac_params[prop] = value
 
@@ -569,8 +572,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     stac_params["intersects"] = str(geom).strip("'\"")
                 return
 
-            # Read a single property
-            if op == "=":
+            # Read a single property with the '=' or 'in' operator
+            if op.lower() in ("=", "in"):
                 if (len(args) != 2) or not (prop := args[0].get("property")):
                     raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -603,6 +606,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Used to read query parameter cql2-text filter."""
             if not query_arg:
                 return
+
             # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
             if re.search(r"\bAND\b", query_arg, re.IGNORECASE):  # only AND for now.
                 conditions = [c.strip() for c in re.split(r"\bAND\b", query_arg, flags=re.IGNORECASE)]
@@ -623,6 +627,22 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 check_input_type(self.get_queryables(), prop, value)
                 # Update stac params
                 stac_params[prop] = value  # type: ignore
+
+            # Handle 'in' if query_arg is like '<space>*<key><space>+IN<space>+(<value>)'
+            elif kv := re.findall(r"^\s*(\w+)\s+in\s+(\(.+)$", query_arg, re.IGNORECASE):
+                # Extract prop and check if it's in the queryables.
+                if (prop := kv[0][0].strip()) not in allowed_properties:
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
+                    )
+                value1 = kv[0][1].strip(" \t()")
+                value2 = [v.strip().strip("'\"") for v in value1.split(",")]
+                value = ",".join(value2)
+                check_input_type(self.get_queryables(), prop, value)
+                # Update stac params
+                stac_params[prop] = value  # type: ignore
+
             # Handle CQL2 temporal operators
             elif match := re.search(
                 r"\b(" + "|".join(map(re.escape, temporal_operations.keys())) + r")\b",
