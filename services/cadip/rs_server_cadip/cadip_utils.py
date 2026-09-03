@@ -204,11 +204,11 @@ def cadip_map_mission(platform: str, constellation: str) -> str | None:
                     if satellite_info.get("constellation") == constellation
                 ],
             )
+
+            # Invalid combination of platform/constellation
             if satellite and satellite not in satellites:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="Invalid combination of platform-constellation",
-                )
+                return None
+
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

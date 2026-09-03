@@ -2982,7 +2982,7 @@ def test_cql2_in_operator(
     else:
         raise NotImplementedError
 
-    all_mock_collections = []
+    cols = []
 
     def create_mock_collection(id: str, configured_query: dict):
         """Create a mock collection"""
@@ -2995,25 +2995,38 @@ def test_cql2_in_operator(
         collection = deepcopy(collection)  # copy the cached response before we modify it
         collection["id"] = id
         collection["query"] = configured_query
-
-        all_mock_collections.append(collection)
         return collection
 
     if cadip:
-        col1 = create_mock_collection("col1", {"Satellite": "S1A,S2A,S3A"})
+        cols.append(create_mock_collection("col1", {"Satellite": "S1A,S2B"}))
     else:
-        col1 = create_mock_collection("col1", {"platformShortName": "sentinel-1,sentinel-2,sentinel-3"})
+        cols.append(create_mock_collection("col1", {"platformShortName": "sentinel-1,sentinel-2"}))
+    cols.append(create_mock_collection("col2", {"productType": "type1,type2"}))
+    cols.append(create_mock_collection("col3", {}))
 
     if method == "GET":
-        user_filter = {"filter": f"constellation in  ( 'sentinel-1' , 'sentinel-2' ) "}
+        user_filter = {
+            "filter": f"id in ('col1','col2') and "
+            f"platform in ('sentinel-1a','sentinel-2b','sentinel-5p') and "
+            f"constellation in ('sentinel-1','sentinel-2','sentinel-5')",
+        }
+
+        # user_filter = {
+        #     "filter":
+        #         f"id='col1' and "
+        #         f"platform='sentinel-1a' AND "
+        #         f"constellation='sentinel-1'"}
+
         # user_filter = {"filter": f"constellation='sentinel-1'"}
+        # user_filter = {"filter": f"product:type in ('type1','type2')"}
+        # user_filter = {"filter": f"id in ('col1','col2')"}
 
     mocker.patch(
         "rs_server_common.stac_api_common.MockPgstac.all_collections",
         new_callable=mocker.PropertyMock,
-        return_value=lambda: all_mock_collections,
+        return_value=lambda: cols,
     )
-    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": all_mock_collections})
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": cols})
 
     # Call the endpoint
     url = f"{os.getenv('router_prefix')}/search"

@@ -248,11 +248,9 @@ def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | Non
             platform_serial_identifier = config.get("serialid")
 
         if constellation:
+            # Invalid combination of platform/constellation
             if platform_short_name and platform_short_name != constellation:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="Invalid combination of platform-constellation",
-                )
+                return None
 
             if any(
                 satellite[list(satellite.keys())[0]]["constellation"] == constellation

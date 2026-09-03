@@ -18,6 +18,7 @@
 
 import asyncio
 import copy
+import itertools
 import json
 import os
 import re
@@ -532,10 +533,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             if isinstance(value, dict):
                 value = value.get("property")
-            if isinstance(value, list):
-                value = ",".join([v.strip() for v in value])
             elif isinstance(value, str):
                 value = value.strip()
+            # NOTE: for a list, keep the value as it is
             stac_params[prop] = value
 
         # helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON)
@@ -573,7 +573,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 return
 
             # Read a single property with the '=' or 'in' operator
-            if op.lower() in ("=", "in"):
+            if op and op.lower() in ("=", "in"):
                 if (len(args) != 2) or not (prop := args[0].get("property")):
                     raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -636,12 +636,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
                         f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                     )
-                value1 = kv[0][1].strip(" \t()")
-                value2 = [v.strip().strip("'\"") for v in value1.split(",")]
-                value = ",".join(value2)
-                check_input_type(self.get_queryables(), prop, value)
+                stripped = kv[0][1].strip(" \t()")
+                values = [v.strip().strip("'\"") for v in stripped.split(",")]
+                check_input_type(self.get_queryables(), prop, values)
                 # Update stac params
-                stac_params[prop] = value  # type: ignore
+                stac_params[prop] = values  # type: ignore
 
             # Handle CQL2 temporal operators
             elif match := re.search(
@@ -685,16 +684,41 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if external_ids_param is not None and "externalIds" in allowed_properties:
             read_property("externalIds", external_ids_param)
 
-        # map stac platform/constellation values to odata values...
-        mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
-        # ... still saved with stac keys for now
-        if self.auxip:
-            stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
-        if self.cadip:
-            stac_params["platform"] = mission  # type: ignore
-        if self.prip:
-            stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
+        def map_missions(platform: str | list[str], constellation: str | list[str]) -> str | list[str]:
+            """Map one or several stac platform/constellation values to odata values"""
 
+            # Calculate for each pair of platform/constellation
+            pairs = itertools.product(
+                platform if isinstance(platform, list) else [platform],
+                constellation if isinstance(constellation, list) else [constellation],
+            )
+            mission = [self.map_mission(p, c) for p, c in pairs]
+            # Remove None entries and convert to set to remove duplicates
+            mission = {m for m in mission if m is not None}
+            if not mission:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid combination of platform/constellation: {platform}/{constellation}",
+                )
+
+            # But these mission odata values still saved with stac keys for now
+            if len(mission) == 1:
+                if self.cadip:
+                    stac_params["platform"] = mission.pop()  # type: ignore
+                else:  # auxip and prip
+                    stac_params["constellation"], stac_params["platform"] = mission.pop()
+            else:
+                if self.cadip:
+                    stac_params["platform"] = mission
+                else:  # auxip and prip
+                    c, p = zip(*mission)
+                    stac_params["constellation"] = sorted(list(set(c)))
+                    stac_params["platform"] = sorted(list(set(p)))
+
+        # Map platform/constellation fields
+        map_missions(stac_params.get("platform"), stac_params.get("constellation"))
+
+        if self.prip:
             if bbox:
                 if isinstance(bbox, str):
                     coords = [float(x) for x in bbox.split(",")]
@@ -1535,11 +1559,13 @@ def check_input_type(field_info, key, input_value):
         "datetime": check_datetime_input,  # Adding support for datetime
     }
 
-    if not type_mapping.get(expected_type)(input_value):  # type: ignore
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Invalid CQL2 filter value",
-        )
+    # A list of these value types is permitted
+    for v in (input_value if isinstance(input_value, list) else [input_value]):
+        if not type_mapping.get(expected_type)(v):  # type: ignore
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                f"Invalid CQL2 filter value for {key!r}={v!r}, expected type {expected_type!r}",
+            )
 
 
 def check_datetime_input(input_value: Any) -> bool:
