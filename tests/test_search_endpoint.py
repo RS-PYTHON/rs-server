@@ -19,8 +19,10 @@
 import json
 import os
 import re
+import urllib
 from copy import deepcopy
 from types import SimpleNamespace
+from typing import Literal
 from urllib.parse import quote, unquote
 
 import pytest
@@ -2982,8 +2984,6 @@ def test_cql2_in_operator(
     else:
         raise NotImplementedError
 
-    cols = []
-
     def create_mock_collection(id: str, configured_query: dict):
         """Create a mock collection"""
 
@@ -2997,29 +2997,169 @@ def test_cql2_in_operator(
         collection["query"] = configured_query
         return collection
 
+    def call_mocked_search(
+        # Requested collections
+        cols: list[str] = None,
+        # Platforms and constellations
+        request_platforms: list[str] = None,
+        request_constellations: list[str] = None,
+        expected_satellites: list[str] = None,
+        expected_constellations: list[str] = None,  # platformShortName
+        expected_platforms: list[str] = None,  # platformSerialIdentifier
+        # adgs/prip product types
+        request_product_types: list[str] = None,
+        expected_product_types: list[str] = None,
+        # Product or session ids
+        ids: list[str] = None,
+        # We don't expect any results if the user request does not match the collection config
+        expect_result: bool = True,
+    ) -> list[dict]:
+        """
+        Create a user stac request from parameters.
+        Then mock the odata request, that is calculated by rspy from the collection configurations
+        and the user request, and is sent to the station.
+        Then call the /search and check result.
+        """
+        user_filters = []
+        odata_filters = []
+
+        def _add_filter(mode: Literal["stac", "odata", "odata2"], key: str, values: list[str]):
+            """Format a key and values for a stac or odata request"""
+            if not values:
+                return
+
+            if mode == "odata2":
+                odata_filters.append(" or ".join(f"contains({key},'{v}')" for v in values))
+                return
+
+            joined = ""
+            if len(values) == 1:
+                if mode == "stac":
+                    joined = f"='{values[0]}'"
+                elif mode == "odata":
+                    joined = f" eq '{values[0]}'"
+            else:
+                joined = " in (" + ",".join([f"'{v}'" for v in values]) + ")"
+
+            if mode == "stac":
+                user_filters.append(f"{key}{joined}")
+            else:
+                odata_filters.append(
+                    f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{key}' and "
+                    f"att/OData.CSC.StringAttribute/Value{joined})",
+                )
+
+        #
+        # Handle all parameters
+
+        if not cadip:
+            _add_filter("stac", "product:type", request_product_types)
+            _add_filter("odata", "productType", expected_product_types)
+
+        _add_filter("stac", "platform", request_platforms)
+        _add_filter("stac", "constellation", request_constellations)
+        if cadip:
+            _add_filter("odata", "Satellite", expected_satellites)
+        else:
+            _add_filter("odata", "platformSerialIdentifier", expected_platforms)
+            _add_filter("odata", "platformShortName", expected_constellations)
+
+        _add_filter("stac", "id", ids)
+        if cadip:
+            _add_filter("odata", "SessionId", ids)
+        else:
+            _add_filter("odata2", "Name", ids)
+
+        # Build the user request
+        user_request = {}
+        if cols:
+            user_request["collections"] = ",".join(cols)
+        if user_filters:
+            user_request["filter"] = " and ".join(user_filters)
+
+        # Build the mocked odata
+        odata = "http://127.0.0.1:5000/" + ("Sessions" if cadip else "Products")
+        if odata_filters:
+            odata += (
+                "?$filter="
+                + " and ".join(odata_filters)
+                + "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
+            )
+
+        # Mock the station response
+        with responses.RequestsMock() as rsps:
+            if expect_result:
+                rsps.add(
+                    responses.GET,
+                    odata,
+                    status=status.HTTP_200_OK,
+                    json=expected_response,
+                )
+                if cadip:
+                    odata_query_files = (
+                        "http://127.0.0.1:5000/Files?"
+                        "$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0"
+                    )
+                    rsps.add(
+                        responses.GET,
+                        odata_query_files,
+                        status=status.HTTP_200_OK,
+                        json=cadip_file_response,
+                    )
+
+            # Call the endpoint
+            url = f"{os.getenv('router_prefix')}/search"
+            if method == "GET":
+                response = client.get(url, params=user_request)
+            elif method == "POST":
+                response = client.post(url, json=user_request)
+            else:
+                raise NotImplementedError
+
+            # The first call is for authentication. Check that the second called url is the same as the odata.
+            if expect_result:
+                called = urllib.parse.unquote(rsps.calls[1].request.url)
+                assert called.lower() == odata.lower()
+                assert called == odata
+
+            # Check success and return features
+            assert response.is_success
+            features = response.json()["features"]
+
+            # if expect_result and adgs:
+            #     # 1 single call for files
+            #     assert spy_search.call_count == 1
+            #     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
+            # elif expect_result and cadip:
+            #     # 2 calls, one for sessions, one for files
+            #     assert spy_search.call_count == 2
+            #     assert len(spy_search.spy_return) == 2 * len(features)  # expected_response
+            # else:
+            #     assert spy_search.call_count == 0
+            #     assert len(features) == 0
+            # spy_search.reset_mock()
+
+            return features
+
+    # Create a collection with 3 values for every queryable we'll test
+    cols = []
     if cadip:
-        cols.append(create_mock_collection("col1", {"Satellite": "S1A,S2B"}))
+        cols.append(create_mock_collection("col1", {"Satellite": "S1A,S2B,S3C"}))
     else:
-        cols.append(create_mock_collection("col1", {"platformShortName": "sentinel-1,sentinel-2"}))
-    cols.append(create_mock_collection("col2", {"productType": "type1,type2"}))
+        cols.append(
+            create_mock_collection(
+                "col1",
+                {
+                    "platformShortName": "sentinel-1,sentinel-2,sentinel-3",  # constellations
+                    "platformSerialIdentifier": "A,B,C",  # platforms
+                    "productType": "type1,type2",
+                },
+            ),
+        )
+
+    # And 2 other empty collections
+    cols.append(create_mock_collection("col2", {}))
     cols.append(create_mock_collection("col3", {}))
-
-    if method == "GET":
-        user_filter = {
-            "filter": f"id in ('col1','col2') and "
-            f"platform in ('sentinel-1a','sentinel-2b','sentinel-5p') and "
-            f"constellation in ('sentinel-1','sentinel-2','sentinel-5')",
-        }
-
-        # user_filter = {
-        #     "filter":
-        #         f"id='col1' and "
-        #         f"platform='sentinel-1a' AND "
-        #         f"constellation='sentinel-1'"}
-
-        # user_filter = {"filter": f"constellation='sentinel-1'"}
-        # user_filter = {"filter": f"product:type in ('type1','type2')"}
-        # user_filter = {"filter": f"id in ('col1','col2')"}
 
     mocker.patch(
         "rs_server_common.stac_api_common.MockPgstac.all_collections",
@@ -3028,13 +3168,21 @@ def test_cql2_in_operator(
     )
     mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": cols})
 
-    # Call the endpoint
-    url = f"{os.getenv('router_prefix')}/search"
-    if method == "GET":
-        response = client.get(url, params=user_filter)
-
-    # Check that the search function was called and returned the expected result
-    assert response.is_success, f"Response:{response}\nMock registered responses:{rsps.registered()}"
+    # Call the search on the first collection.
+    # The expected results are the intersection between the user request and the collection config
+    call_mocked_search(
+        cols=["col1"],
+        #
+        request_platforms=["sentinel-1c", "sentinel-2b"],
+        expected_satellites=["S2B"] if cadip else None,
+        expected_constellations=["SENTINEL-1", "SENTINEL-2"] if not cadip else None,
+        expected_platforms=["B", "C"] if not cadip else None,
+        #
+        request_product_types=["type1", "type2", "type4"],
+        expected_product_types=["type1", "type2"],
+        #
+        ids=["id1", "id2", "id3"],
+    )
 
 
 @pytest.mark.parametrize(

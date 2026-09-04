@@ -267,7 +267,7 @@ def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | Non
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Cannot map platform/constellation",
+            detail=f"Cannot map platform/constellation: {platform}/{constellation}",
         ) from exc
 
     return platform_short_name, platform_serial_identifier

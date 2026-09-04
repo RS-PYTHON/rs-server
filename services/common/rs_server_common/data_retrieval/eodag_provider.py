@@ -149,7 +149,7 @@ class EodagProvider(Provider):
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
         key = plural_key if isinstance(value, list) else singular_key
-        mapped_search_args[key] = ",".join(f"'{p}'" for p in value) if isinstance(value, list) else f"'{value}'"
+        mapped_search_args[key] = ",".join(f"'{p}'" for p in sorted(value)) if isinstance(value, list) else f"'{value}'"
 
     def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-branches,too-many-locals
         """
@@ -190,7 +190,7 @@ class EodagProvider(Provider):
                 # already adds the quotes.
                 mapped_search_args["Name"] = names[0]
             else:
-                mapped_search_args["NameContains"] = " or ".join(f"contains(Name,'{name}')" for name in names)
+                mapped_search_args["NameContains"] = " or ".join(f"contains(Name,'{name}')" for name in sorted(names))
 
         if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.

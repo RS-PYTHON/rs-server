@@ -629,7 +629,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 stac_params[prop] = value  # type: ignore
 
             # Handle 'in' if query_arg is like '<space>*<key><space>+IN<space>+(<value>)'
-            elif kv := re.findall(r"^\s*(\w+)\s+in\s+(\(.+)$", query_arg, re.IGNORECASE):
+            elif kv := re.findall(r"^\s*(\S+)\s+in\s+(\(.+)$", query_arg, re.IGNORECASE):
                 # Extract prop and check if it's in the queryables.
                 if (prop := kv[0][0].strip()) not in allowed_properties:
                     raise HTTPException(
@@ -687,6 +687,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         def map_missions(platform: str | list[str], constellation: str | list[str]) -> str | list[str]:
             """Map one or several stac platform/constellation values to odata values"""
 
+            if (platform is None) and (constellation is None):
+                return
+
             # Calculate for each pair of platform/constellation
             pairs = itertools.product(
                 platform if isinstance(platform, list) else [platform],
@@ -694,7 +697,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             )
             mission = [self.map_mission(p, c) for p, c in pairs]
             # Remove None entries and convert to set to remove duplicates
-            mission = {m for m in mission if m is not None}
+            mission = list({m for m in mission if m is not None})
             if not mission:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -809,7 +812,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
         # Group collections by station
         collections_by_station: dict[str, list[dict]] = defaultdict(list)
-        for collection in (self.select_config(collection_id) for collection_id in collection_ids):
+        for collection in (self.select_config(collection_id) for collection_id in sorted(collection_ids)):
             collections_by_station[collection["station"]].append(collection)
 
         odata_params_by_station: dict[str, dict] = {}
