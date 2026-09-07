@@ -22,7 +22,7 @@ import re
 import urllib
 from copy import deepcopy
 from types import SimpleNamespace
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import quote, unquote
 
 import pytest
@@ -3040,7 +3040,7 @@ def test_cql2_in_operator(
         and the user request, and is sent to the station.
         Then call the /search and check result.
         """
-        user_filters: list[str] = []  # list of user stac request parts
+        user_filters: list[str | dict[str, Any]] = []  # list of user stac request parts
         odata_filters: dict[str, str] = {}  # list of mocked odata request parts, ordered by key
         odata_kwargs: dict[str, str] = {}  # some odata fields are passed to eodag by kwargs, not url
 
@@ -3072,7 +3072,13 @@ def test_cql2_in_operator(
                 joined = " in (" + ",".join([f"'{v}'" for v in values]) + ")"
 
             if request == "stac":
-                user_filters.append(f"{key}{joined}")
+                if method == "GET":
+                    user_filters.append(f"{key}{joined}")
+                else:  # POST
+                    if len(values) == 1:
+                        user_filters.append({"args": [{"property": key}, values[0]], "op": "="})
+                    else:
+                        user_filters.append({"args": [{"property": key}, values], "op": "in"})
             elif cadip:
                 odata_dict[odata_key] = f"{key}{joined}"
             else:
@@ -3107,10 +3113,16 @@ def test_cql2_in_operator(
 
         # Build the user request
         user_request = {}
-        if cols:
-            user_request["collections"] = ",".join(cols)
-        if user_filters:
-            user_request["filter"] = " and ".join(user_filters)
+        if method == "GET":
+            if cols:
+                user_request["collections"] = ",".join(cols)
+            if user_filters:
+                user_request["filter"] = " and ".join(user_filters)
+        else:  # POST
+            if cols:
+                user_request["collections"] = cols
+            if user_filters:
+                user_request["filter"] = {"args": user_filters, "op": "and"}
 
         # The mocked odata request fields must respect a certain order
         if cadip:
