@@ -72,7 +72,7 @@ async def test_get_jobs_endpoint(
             "message": "Test detail",
             "created": datetime(2024, 1, 1, 12, 0, 0),
             "updated": datetime(2024, 1, 1, 13, 0, 0),
-            "process_id": "staging",
+            "processID": "staging",
         },
         {
             "identifier": "job_2",
@@ -82,7 +82,7 @@ async def test_get_jobs_endpoint(
             "message": "Test detail",
             "created": datetime(2024, 1, 2, 12, 0, 0),
             "updated": datetime(2024, 1, 2, 13, 0, 0),
-            "process_id": "staging",
+            "processID": "staging",
         },
     ]
     mock_jobs_result = [format_job_data(x) for x in mock_jobs]

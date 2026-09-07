@@ -148,7 +148,7 @@ class TestStaging:
         mock_db_process_manager.add_job.assert_called_once_with(
             {
                 "identifier": "12345",
-                "process_id": "staging",
+                "processID": "staging",
                 "status": JobStatus.accepted.value,
                 "progress": 0,
                 "message": "Job is starting.",

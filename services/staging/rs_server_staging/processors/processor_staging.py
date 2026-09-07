@@ -462,7 +462,7 @@ class Staging(
         """
         job_metadata = {
             "identifier": self.job_id,
-            "process_id": "staging",
+            "processID": "staging",
             "status": self.status.value,
             "progress": int(self.progress),
             "message": self.message,
