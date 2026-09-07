@@ -18,7 +18,7 @@ required:
    - status
    - type
 properties:
-   processID:
+   process_id:
       type: string
    type:
       type: string

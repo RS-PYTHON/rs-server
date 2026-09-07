@@ -99,7 +99,7 @@ async def test_validate_response():
         "message": "Test detail",
         "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "processID": "staging",
+        "process_id": "staging",
     }
     # Create a Starlette request to validate
     mock_request = Request(scope=request_scope, receive=lambda: mock_receive(valid_staging_body))

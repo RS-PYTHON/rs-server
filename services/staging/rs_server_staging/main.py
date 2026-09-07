@@ -477,7 +477,7 @@ async def get_job_status_endpoint(request: Request, job_id=Annotated[str, Path(.
         # Handle case when job_id is not found
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
 
-    auth_validation("read", job["processID"], request=request, staging_process=True)
+    auth_validation("read", job["process_id"], request=request, staging_process=True)
     formatted_job_data = format_job_data(job)
     validate_response(request, formatted_job_data)
     return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
@@ -505,7 +505,7 @@ async def delete_job_endpoint(request: Request, job_id=Annotated[str, Path(..., 
     except JobNotFoundError:  # pylint: disable=W0718
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
 
-    auth_validation("dismiss", job["processID"], request=request, staging_process=True)
+    auth_validation("dismiss", job["process_id"], request=request, staging_process=True)
     app.extra["process_manager"].delete_job(job_id)
     # Create job response with a status message to confirm the job deletion
     job["message"] = f"Job {job_id} deleted successfully"
@@ -529,7 +529,7 @@ async def get_specific_job_result_endpoint(
     except JobNotFoundError:
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
 
-    auth_validation("read", job["processID"], request=request, staging_process=True)
+    auth_validation("read", job["process_id"], request=request, staging_process=True)
     validate_response(request, job["status"])
     return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
 
