@@ -20,6 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import botocore
 from fastapi import HTTPException
+from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
 )
@@ -445,6 +446,65 @@ class S3Manager:
                     break
 
         return content
+
+    def update_patch_assets(self, item: dict, assets: dict) -> dict:
+        """Validate and enrich assets added to an item with PATCH."""
+        if self.is_catalog_local_mode:
+            logger.debug("Skipping PATCH asset enrichment in local catalog mode")
+            return assets
+
+        assets_with_href = {
+            asset_name: asset_info
+            for asset_name, asset_info in assets.items()
+            if isinstance(asset_info, dict) and asset_info.get("href")
+        }
+        # Preserve existing behavior for asset deletion and partial metadata patches.
+        if not assets_with_href:
+            return assets
+
+        user = item.get("properties", {}).get("owner", "")
+        collection_id = item.get("collection", "").removeprefix(f"{user}_")
+        item_eopf_type = item.get("properties", {}).get("eopf:type", "")
+        bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
+        assets_to_checksum = {}
+
+        for asset_name, asset_info in assets_with_href.items():
+            s3_href, _ = StacManager.get_s3_filename_from_asset(asset_info)
+            s3_parts = s3_href.split("/")
+            if len(s3_parts) < 4 or s3_parts[2] != bucket_name:
+                raise HTTPException(
+                    detail=f"Asset {asset_name} must be stored in catalog bucket {bucket_name}.",
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
+
+            s3_key = "/".join(s3_parts[3:])
+            try:
+                exists, size = self.s3_handler.check_s3_key_on_bucket(bucket_name, s3_key)
+            except RuntimeError as error:
+                raise HTTPException(
+                    detail=f"Failed to check asset {asset_name} in S3: {error}",
+                    status_code=HTTP_400_BAD_REQUEST,
+                ) from error
+            if not exists:
+                raise HTTPException(
+                    detail=f"Asset {asset_name} does not exist in catalog bucket {bucket_name}.",
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
+
+            # Keep caller-provided values, consistently with existing publication behavior.
+            if size != -1:
+                asset_info.setdefault("file:size", size)
+            asset_info.setdefault("file:local_path", "/".join(s3_key.split("/")[-2:]))
+            assets_to_checksum[asset_name] = asset_info
+
+        # Reuse the checksum enrichment already used by POST and PUT publication.
+        checksum_content = {
+            "collection": item.get("collection", ""),
+            "properties": item.get("properties", {}),
+            "assets": assets_to_checksum,
+        }
+        self.update_assets_checksums(checksum_content)
+        return assets
 
     async def delete_s3_files(self, s3_files_to_be_deleted: list[str]) -> bool:
         """
