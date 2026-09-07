@@ -29,6 +29,7 @@ import pytest
 import requests
 import responses
 import yaml
+from eodag.plugins.search.qssearch import QueryStringSearch
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -2968,6 +2969,12 @@ def test_cql2_in_operator(
     See: https://docs.ogc.org/is/21-065r2/21-065r2.html#advanced-comparison-operators
     """
 
+    # Spy on eodag.plugins.search.qssearch::QueryStringSearch
+    spy_search = mocker.spy(QueryStringSearch, "do_search")
+
+    # Product type, defined in the mocked collection
+    ptype = ""
+
     adgs = service == "adgs"
     cadip = service == "cadip"
     prip = service == "prip"
@@ -2975,24 +2982,37 @@ def test_cql2_in_operator(
     if adgs:
         service_utils = adgs_utils
         expected_response = adgs_response
+        ptype = "AUX_OBMEMC"
     elif cadip:
         service_utils = cadip_utils
         expected_response = cadip_session_response
     elif prip:
         service_utils = prip_utils
         expected_response = prip_response
+        ptype = "IW_RAW__0N"
     else:
         raise NotImplementedError
 
     def create_mock_collection(id: str, configured_query: dict):
         """Create a mock collection"""
 
-        # Read the first collection, keep everything except the id and hardcoded query. From
+        # Read a collection from:
         # rs-server/services/adgs/config/adgs_search_config.yaml or
         # rs-server/services/cadip/config/cadip_search_config.yaml or
         # rs-server/services/prip/config/prip_search_config.yaml
-        collection: dict = service_utils.read_conf()["collections"][0]
-        collection = deepcopy(collection)  # copy the cached response before we modify it
+        if adgs:
+            col_name = "adgs_by_platform"
+        elif cadip:
+            col_name = "cadip_session_by_id_list"
+        elif prip:
+            col_name = "S1A_L0_IW_RAW"
+        collections: dict = service_utils.read_conf()["collections"]
+        collection = [col for col in collections if col["id"] == col_name][0]
+
+        # Copy the cached response before we modify it
+        collection = deepcopy(collection)
+
+        # Keep everything except the id and hardcoded query
         collection["id"] = id
         collection["query"] = configured_query
         return collection
@@ -3020,41 +3040,57 @@ def test_cql2_in_operator(
         and the user request, and is sent to the station.
         Then call the /search and check result.
         """
-        user_filters = []
-        odata_filters = []
+        user_filters: list[str] = []  # list of user stac request parts
+        odata_filters: dict[str, str] = {}  # list of mocked odata request parts, ordered by key
+        odata_kwargs: dict[str, str] = {}  # some odata fields are passed to eodag by kwargs, not url
 
-        def _add_filter(mode: Literal["stac", "odata", "odata2"], key: str, values: list[str]):
+        def _add_filter(request: Literal["stac", "odata", "odata2"], key: str, values: list[str], kwargs_key: str = ""):
             """Format a key and values for a stac or odata request"""
             if not values:
                 return
 
-            if mode == "odata2":
-                odata_filters.append(" or ".join(f"contains({key},'{v}')" for v in values))
+            # Field passed by kwargs
+            if kwargs_key:
+                odata_dict = odata_kwargs
+                odata_key = kwargs_key
+            # Nominal case: field passed by url
+            else:
+                odata_dict = odata_filters
+                odata_key = key
+
+            if request == "odata2":
+                odata_dict[odata_key] = " or ".join(f"contains({key},'{v}')" for v in values)
                 return
 
             joined = ""
             if len(values) == 1:
-                if mode == "stac":
+                if request == "stac":
                     joined = f"='{values[0]}'"
-                elif mode == "odata":
+                elif request == "odata":
                     joined = f" eq '{values[0]}'"
             else:
                 joined = " in (" + ",".join([f"'{v}'" for v in values]) + ")"
 
-            if mode == "stac":
+            if request == "stac":
                 user_filters.append(f"{key}{joined}")
+            elif cadip:
+                odata_dict[odata_key] = f"{key}{joined}"
             else:
-                odata_filters.append(
+                odata_dict[odata_key] = (
                     f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{key}' and "
-                    f"att/OData.CSC.StringAttribute/Value{joined})",
+                    f"att/OData.CSC.StringAttribute/Value{joined})"
                 )
 
         #
         # Handle all parameters
 
-        if not cadip:
-            _add_filter("stac", "product:type", request_product_types)
-            _add_filter("odata", "productType", expected_product_types)
+        _add_filter("stac", "id", ids)
+        if cadip:
+            _add_filter("odata", "SessionId", ids)
+        elif adgs:
+            _add_filter("odata2", "Name", ids)
+        elif prip:
+            _add_filter("odata2", "Name", ids, kwargs_key="NameContains")
 
         _add_filter("stac", "platform", request_platforms)
         _add_filter("stac", "constellation", request_constellations)
@@ -3064,11 +3100,10 @@ def test_cql2_in_operator(
             _add_filter("odata", "platformSerialIdentifier", expected_platforms)
             _add_filter("odata", "platformShortName", expected_constellations)
 
-        _add_filter("stac", "id", ids)
-        if cadip:
-            _add_filter("odata", "SessionId", ids)
-        else:
-            _add_filter("odata2", "Name", ids)
+        # Product type only exists for auxip and prip
+        if not cadip:
+            _add_filter("stac", "product:type", request_product_types)
+            _add_filter("odata", "productType", expected_product_types)
 
         # Build the user request
         user_request = {}
@@ -3077,13 +3112,23 @@ def test_cql2_in_operator(
         if user_filters:
             user_request["filter"] = " and ".join(user_filters)
 
+        # The mocked odata request fields must respect a certain order
+        if cadip:
+            order_odata_by = ["SessionId", "Satellite"]
+        elif adgs:
+            order_odata_by = ["productType", "platformSerialIdentifier", "platformShortName", "Name"]
+        elif prip:
+            order_odata_by = ["productType", "platformShortName", "platformSerialIdentifier", "Name"]
+        ordered_odata = dict(sorted(odata_filters.items(), key=lambda item: order_odata_by.index(item[0]))).values()
+
         # Build the mocked odata
         odata = "http://127.0.0.1:5000/" + ("Sessions" if cadip else "Products")
         if odata_filters:
             odata += (
                 "?$filter="
-                + " and ".join(odata_filters)
-                + "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes"
+                + " and ".join(ordered_odata)
+                + "&$orderby=PublicationDate desc&$top=10&$skip=0"
+                + ("&$expand=Attributes" if not cadip else "")
             )
 
         # Mock the station response
@@ -3116,28 +3161,26 @@ def test_cql2_in_operator(
             else:
                 raise NotImplementedError
 
-            # The first call is for authentication. Check that the second called url is the same as the odata.
+            # Check that the odata url and kwargs are the same as expected
             if expect_result:
-                called = urllib.parse.unquote(rsps.calls[1].request.url)
-                assert called.lower() == odata.lower()
-                assert called == odata
+                assert spy_search.call_args_list[0][0][1].search_urls[0] == odata
+                for key, value in odata_kwargs.items():
+                    assert spy_search.call_args[1][key] == value
 
             # Check success and return features
             assert response.is_success
             features = response.json()["features"]
 
-            # if expect_result and adgs:
-            #     # 1 single call for files
-            #     assert spy_search.call_count == 1
-            #     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
-            # elif expect_result and cadip:
-            #     # 2 calls, one for sessions, one for files
-            #     assert spy_search.call_count == 2
-            #     assert len(spy_search.spy_return) == 2 * len(features)  # expected_response
-            # else:
-            #     assert spy_search.call_count == 0
-            #     assert len(features) == 0
-            # spy_search.reset_mock()
+            if expect_result:
+                if cadip:
+                    # 2 calls, one for sessions, one for files
+                    assert spy_search.call_count == 2
+                    assert len(spy_search.spy_return) == 2 * len(features) == 2 * len(expected_response["value"])
+                else:
+                    # 1 single call for files
+                    assert spy_search.call_count == 1
+                    assert len(spy_search.spy_return) == len(features) == len(expected_response["value"])
+            spy_search.reset_mock()
 
             return features
 
@@ -3152,7 +3195,7 @@ def test_cql2_in_operator(
                 {
                     "platformShortName": "sentinel-1,sentinel-2,sentinel-3",  # constellations
                     "platformSerialIdentifier": "A,B,C",  # platforms
-                    "productType": "type1,type2",
+                    "productType": f"{ptype},type2",
                 },
             ),
         )
@@ -3178,8 +3221,8 @@ def test_cql2_in_operator(
         expected_constellations=["SENTINEL-1", "SENTINEL-2"] if not cadip else None,
         expected_platforms=["B", "C"] if not cadip else None,
         #
-        request_product_types=["type1", "type2", "type4"],
-        expected_product_types=["type1", "type2"],
+        request_product_types=[ptype, "type2", "type4"],
+        expected_product_types=[ptype, "type2"],
         #
         ids=["id1", "id2", "id3"],
     )
