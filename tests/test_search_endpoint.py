@@ -2068,8 +2068,8 @@ class TestCollection:
 @pytest.mark.parametrize("method", ("GET", "POST"))
 @pytest.mark.parametrize(
     "fastapi_app, service",
-    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_AUXIP, "adgs")),
-    ids=["cadip", "adgs"],
+    ((ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_PRIP, "prip")),
+    ids=["adgs", "cadip", "prip"],
     indirect=["fastapi_app"],
 )
 def test_search_parameters(
@@ -2081,85 +2081,73 @@ def test_search_parameters(
     adgs_response,  # rs-server/tests/resources/endpoints/adgs_pickup_response.json
     cadip_file_response,  # rs-server/tests/resources/endpoints/cadip_file_pickup_response.json
     cadip_session_response,  # rs-server/tests/resources/endpoints/cadip_session_pickup_response.json
+    prip_response,  # rs-server/tests/resources/endpoints/prip_pickup_response.json
 ):
     """Test all search parameters"""
+    # Product type, defined in the mocked collection
+    ptype = ""
 
     adgs = service == "adgs"
     cadip = service == "cadip"
-
-    spy_search = mocker.spy(Provider, "search")
+    prip = service == "prip"
 
     if adgs:
         service_utils = adgs_utils
         expected_response = adgs_response
+        ptype = "AUX_OBMEMC"
     elif cadip:
         service_utils = cadip_utils
         expected_response = cadip_session_response
+    elif prip:
+        service_utils = prip_utils
+        expected_response = prip_response
+        ptype = "IW_RAW__0N"
     else:
         raise NotImplementedError
 
-    # Read the first adgs or cadip collection, keep everything except the id and hardcoded query. From
-    # rs-server/services/adgs/config/adgs_search_config.yaml or
-    # rs-server/services/cadip/config/cadip_search_config.yaml
-    collection: dict = service_utils.read_conf()["collections"][0]
-    collection = deepcopy(collection)  # copy the cached response before we modify it
-    collection.pop("id")
-    collection.pop("query")
+    # Shortcut functions
+    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(service, *args, **kwargs)
+    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
+        mocker,
+        client,
+        service,
+        method,
+        expected_response,
+        cadip_file_response,
+        *args,
+        **kwargs,
+    )
+
+    date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    limit = 10
 
     #
-    # Mock a collection with no hardcoded query, another with single values, another with multiple values
+    # Mock collections
 
-    hardcoded_date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
-    hardcoded_limit = 10
-    query2_3 = {
-        "PublicationDate": hardcoded_date,
-        "top": hardcoded_limit,
-    }
+    cols = []
 
-    if adgs:
-        query2 = {
-            "productType": "AUX_OBMEMC",
-            "platformShortName": "sentinel-1",
-        }
-        query3 = {
-            "productType": "AUX_OBMEMC,type2",
-            "platformShortName": "sentinel-1,sentinel-2",
-        }
-    elif cadip:
-        query2 = {
-            "Satellite": "S1A",
-        }
-        query3 = {
-            "Satellite": "S1A,S2A",
-        }
+    # No configured query
+    cols.append(create_mock_collection("col_noconf", {}))
+
+    # Configured date and pagination
+    cols.append(create_mock_collection("col_date_pagination", {"PublicationDate": date, "top": limit}))
+
+    # One or several configured satellites
+    if cadip:
+        cols.append(create_mock_collection("col_single_sat", {"Satellite": "S1A"}))
+        cols.append(create_mock_collection("col_multiple_sat", {"Satellite": "S1A,S2A"}))
     else:
-        raise NotImplementedError
+        cols.append(create_mock_collection("col_single_sat", {"platformShortName": "sentinel-1"}))
+        cols.append(create_mock_collection("col_multiple_sat", {"platformShortName": "sentinel-1,sentinel-2"}))
 
-    mocked_collections = [
-        {"id": "col1", **collection},
-        {
-            "id": "col2",
-            "query": {
-                **query2_3,
-                **query2,
-            },
-            **collection,
-        },
-        {
-            "id": "col3",
-            "query": {
-                **query2_3,
-                **query3,
-            },
-            **collection,
-        },
-    ]
     mocker.patch(
         "rs_server_common.stac_api_common.MockPgstac.all_collections",
         new_callable=mocker.PropertyMock,
-        return_value=lambda: mocked_collections,
+        return_value=lambda: cols,
     )
-    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": mocked_collections})
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": cols})
+
+    # return
 
     #
     # User given parameters
@@ -2990,7 +2978,14 @@ def test_cql2_in_operator(
     # Shortcut functions
     create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(service, *args, **kwargs)
     call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
-        mocker, client, service, method, expected_response, cadip_file_response, *args, **kwargs,
+        mocker,
+        client,
+        service,
+        method,
+        expected_response,
+        cadip_file_response,
+        *args,
+        **kwargs,
     )
 
     # Create a collection with several values for every queryable we'll test
@@ -3009,7 +3004,7 @@ def test_cql2_in_operator(
             ),
         )
 
-    # And another empty collection on the same station
+    # And another collection on the same station with no configured query
     cols.append(create_mock_collection("col2", {}))
 
     mocker.patch(
@@ -3045,7 +3040,7 @@ def test_cql2_in_operator(
             ids=["id1", "id2", "id3"],
         )
 
-    # If we also search on the second collection, the odata request will search on 
+    # If we also search on the second collection, the odata request will search on
     # all user criteria because the second collection has no criteria.
     if cadip:
         call_mocked_search(
