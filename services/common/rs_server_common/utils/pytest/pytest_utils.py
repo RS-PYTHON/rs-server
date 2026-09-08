@@ -168,6 +168,7 @@ def create_mock_collection(service: Literal["adgs", "cadip", "prip"], id: str, c
 
 
 def call_mocked_search(
+    # Parameters coming from the pytest
     mocker,
     client,
     service: Literal["adgs", "cadip", "prip"],
@@ -179,14 +180,23 @@ def call_mocked_search(
     # Platforms and constellations
     request_platforms: list[str] = None,
     request_constellations: list[str] = None,
-    expected_satellites: list[str] = None,
-    expected_constellations: list[str] = None,  # platformShortName
-    expected_platforms: list[str] = None,  # platformSerialIdentifier
+    expected_satellites: list[str] = None,  # for cadip
+    expected_constellations: list[str] = None,  # platformShortName, for adgs/prip
+    expected_platforms: list[str] = None,  # platformSerialIdentifier, for adgs/prip
     # adgs/prip product types
     request_product_types: list[str] = None,
     expected_product_types: list[str] = None,
+    # Datetimes
+    request_datetime: str | None = None,  # range as min/max
+    expected_publication_date: str | None = None,  # range as min/max
+    expected_content_date: str | None = None,  # range as min/max
     # Product or session ids
     ids: list[str] = None,
+    ids_in_filter: bool = True,  # pass ids inside or outside the filter ?
+    # Pagination
+    request_sortby: tuple[Literal["-", "+"], str] | None = None,
+    request_limit: int | None = None,
+    expected_pagination="&$orderby=PublicationDate desc&$top=10&$skip=0",
     # We don't expect any results if the user request does not match the collection config
     expect_result: bool = True,
 ) -> list[dict]:
@@ -207,11 +217,17 @@ def call_mocked_search(
     except AttributeError:
         spy_search = mocker.spy(QueryStringSearch, "do_search")
 
-    user_filters: list[str | dict[str, Any]] = []  # list of user stac request parts
+    user_request: dict[str, Any] = {}  # user stac request params, including "filter"
+    user_filters: list[str | dict[str, Any]] = []  # list of user stac "filter" parts
     odata_filters: dict[str, str] = {}  # list of mocked odata request parts, ordered by key
     odata_kwargs: dict[str, str] = {}  # some odata fields are passed to eodag by kwargs, not url
 
-    def _add_filter(request: Literal["stac", "odata", "odata2"], key: str, values: list[str], kwargs_key: str = ""):
+    def _add_filter(
+        request: str,  # "stac" or "odata_xxx"
+        key: str,
+        values: str | list[str],
+        kwargs_key: str = "",
+    ):
         """Format a key and values for a stac or odata request"""
         if not values:
             return
@@ -224,6 +240,24 @@ def call_mocked_search(
         else:
             odata_dict = odata_filters
             odata_key = key
+
+        if request.startswith("odata_range"):  # datetime range as min/max
+            date_min = values.split("/", maxsplit=1)[0]
+            date_max = values.split("/")[1]
+            if request == "odata_range1":
+                odata_dict[odata_key] = (
+                    f"({key} gt {date_min} or {key} eq {date_min}) and " f"({key} lt {date_max} or {key} eq {date_max})"
+                )
+            elif request == "odata_range2":
+                odata_dict[odata_key] = (
+                    f"({key}/Start gt {date_min} or {key}/Start eq {date_min}) and "
+                    f"({key}/End lt {date_max} or {key}/End eq {date_max})"
+                )
+            return
+
+        # Convert single value to list
+        if not isinstance(values, list):
+            values = [values]
 
         if request == "odata2":
             odata_dict[odata_key] = " or ".join(f"contains({key},'{v}')" for v in values)
@@ -257,7 +291,8 @@ def call_mocked_search(
     #
     # Handle all parameters
 
-    _add_filter("stac", "id", ids)
+    if ids_in_filter:
+        _add_filter("stac", "id", ids)
     if cadip:
         _add_filter("odata", "SessionId", ids)
     elif adgs:
@@ -267,19 +302,43 @@ def call_mocked_search(
 
     _add_filter("stac", "platform", request_platforms)
     _add_filter("stac", "constellation", request_constellations)
-    if cadip:
-        _add_filter("odata", "Satellite", expected_satellites)
-    else:
-        _add_filter("odata", "platformSerialIdentifier", expected_platforms)
-        _add_filter("odata", "platformShortName", expected_constellations)
 
-    # Product type only exists for auxip and prip
-    if service != "cadip":
-        _add_filter("stac", "product:type", request_product_types)
-        _add_filter("odata", "productType", expected_product_types)
+    _add_filter("odata", "Satellite", expected_satellites)
+    _add_filter("odata", "platformSerialIdentifier", expected_platforms)
+    _add_filter("odata", "platformShortName", expected_constellations)
+
+    _add_filter("stac", "product:type", request_product_types)
+    _add_filter("odata", "productType", expected_product_types)
+
+    _add_filter("odata_range1", "PublicationDate", expected_publication_date)
+    _add_filter("odata_range2", "ContentDate", expected_content_date)
+
+    #
+    # Non-filter parameters
+
+    if ids and (not ids_in_filter):
+        user_request["ids"] = ",".join(ids)
+
+    if request_datetime is not None:
+        user_request["datetime"] = request_datetime
+
+    if request_limit is not None:
+        user_request["limit"] = request_limit
+
+    if request_sortby is not None:
+        match request_sortby[1]:
+            case "datetime":
+                sortby_name = "published" if cadip else "created"
+            case _:
+                raise NotImplementedError()
+
+        sortby_sign = request_sortby[0]
+        if method == "GET":
+            user_request["sortby"] = f"{sortby_sign}{sortby_name}"
+        else:  # POST
+            user_request["sortby"] = [{"direction": "desc" if (sortby_sign == "-") else "asc", "field": sortby_name}]
 
     # Build the user request
-    user_request = {}
     if method == "GET":
         if cols:
             user_request["collections"] = ",".join(cols)
@@ -293,22 +352,36 @@ def call_mocked_search(
 
     # The mocked odata request fields must respect a certain order
     if cadip:
-        order_odata_by = ["SessionId", "Satellite"]
+        order_odata_by = ["PublicationDate", "SessionId", "Satellite"]
     elif adgs:
-        order_odata_by = ["productType", "platformSerialIdentifier", "platformShortName", "Name"]
+        order_odata_by = [
+            "PublicationDate",
+            "ContentDate",
+            "productType",
+            "platformSerialIdentifier",
+            "platformShortName",
+            "Name",
+        ]
     elif prip:
-        order_odata_by = ["productType", "platformShortName", "platformSerialIdentifier", "Name"]
+        order_odata_by = [
+            "PublicationDate",
+            "ContentDate",
+            "productType",
+            "platformShortName",
+            "platformSerialIdentifier",
+            "Name",
+        ]
     ordered_odata = dict(sorted(odata_filters.items(), key=lambda item: order_odata_by.index(item[0]))).values()
 
     # Build the mocked odata
-    odata = "http://127.0.0.1:5000/" + ("Sessions" if cadip else "Products")
+    odata = "http://127.0.0.1:5000/" + ("Sessions" if cadip else "Products") + "?"
     if odata_filters:
-        odata += (
-            "?$filter="
-            + " and ".join(ordered_odata)
-            + "&$orderby=PublicationDate desc&$top=10&$skip=0"
-            + ("&$expand=Attributes" if not cadip else "")
-        )
+        odata += "$filter=" + " and ".join(ordered_odata)
+    odata += expected_pagination
+    odata += "&$expand=Attributes" if not cadip else ""
+
+    # Handle some specific cases
+    odata = odata.replace("?&$orderby", "?$orderby")
 
     # Mock the station response
     with responses.RequestsMock() as rsps:
@@ -358,4 +431,6 @@ def call_mocked_search(
                 # 1 single call for files
                 assert spy_search.call_count == 1
                 assert len(spy_search.spy_return) == len(features) == len(expected_response["value"])
+        else:
+            assert spy_search.call_count == 0
         return features

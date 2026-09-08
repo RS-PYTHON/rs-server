@@ -597,7 +597,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if op != "and":
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed, got '{op}': {format_dict(filt)}",  # noqa: E501 # pylint: disable=line-too-long
+                    f"Invalid CQL2 filter '{op}': {format_dict(filt)}",  # noqa: E501
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
@@ -651,10 +651,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 op = match.group(1).lower()
                 logger.debug(f"Temporal operator detected: {op} -> {stac_params[op]}")
             else:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    "Invalid query filter, only '=' and temporal operators are allowed, got: " + query_arg,
-                )
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Invalid query filter: {query_arg}")
 
         # Pre-process filter extensions
         if "filter" in params:

@@ -2118,27 +2118,31 @@ def test_search_parameters(
         **kwargs,
     )
 
-    date = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
-    limit = 10
+    col_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
 
     #
     # Mock collections
 
     cols = []
 
+    # Configured date and pagination
+    cols.append(create_mock_collection("col_date_pagination", {"PublicationDate": col_datetime}))
+
     # No configured query
     cols.append(create_mock_collection("col_noconf", {}))
-
-    # Configured date and pagination
-    cols.append(create_mock_collection("col_date_pagination", {"PublicationDate": date, "top": limit}))
 
     # One or several configured satellites
     if cadip:
         cols.append(create_mock_collection("col_single_sat", {"Satellite": "S1A"}))
         cols.append(create_mock_collection("col_multiple_sat", {"Satellite": "S1A,S2A"}))
     else:
-        cols.append(create_mock_collection("col_single_sat", {"platformShortName": "sentinel-1"}))
-        cols.append(create_mock_collection("col_multiple_sat", {"platformShortName": "sentinel-1,sentinel-2"}))
+        cols.append(create_mock_collection("col_single_sat", {"platformShortName": "sentinel-1", "productType": ptype}))
+        cols.append(
+            create_mock_collection(
+                "col_multiple_sat",
+                {"platformShortName": "sentinel-1,sentinel-2", "productType": f"{ptype},type2"},
+            ),
+        )
 
     mocker.patch(
         "rs_server_common.stac_api_common.MockPgstac.all_collections",
@@ -2146,6 +2150,142 @@ def test_search_parameters(
         return_value=lambda: cols,
     )
     mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": cols})
+
+    #
+    # Call the searches
+    #
+
+    # If we don't pass any user request, then the odata request parameters
+    # will be the same as the collection configuration
+    call_mocked_search(
+        cols=["col_date_pagination"],
+        expected_publication_date=col_datetime,
+    )
+    call_mocked_search(
+        cols=["col_noconf"],
+    )
+    if cadip:
+        call_mocked_search(
+            cols=["col_single_sat"],
+            expected_satellites=["S1A"],
+        )
+        call_mocked_search(
+            cols=["col_multiple_sat"],
+            expected_satellites=["S1A", "S2A"],
+        )
+    else:
+        call_mocked_search(
+            cols=["col_single_sat"],
+            expected_constellations=["SENTINEL-1"],
+            expected_product_types=[ptype],
+        )
+        call_mocked_search(
+            cols=["col_multiple_sat"],
+            expected_constellations=["SENTINEL-1", "SENTINEL-2"],
+            expected_product_types=[ptype, "type2"],
+        )
+
+    # Test ids and pagination
+    call_mocked_search(
+        cols=["col_noconf"],
+        #
+        ids=["id1", "id2"],
+        ids_in_filter=False,
+        #
+        request_sortby=["-", "datetime"],
+        request_limit=15,
+        expected_pagination="&$orderby=PublicationDate desc&$top=15&$skip=0",
+    )
+    call_mocked_search(
+        cols=["col_noconf"],
+        request_sortby=["+", "datetime"],
+        request_limit=20,
+        expected_pagination="&$orderby=PublicationDate asc&$top=20&$skip=0",
+    )
+
+    # Search the collection that has a configured date, by passing it this same datetime
+    # Search with this same datetime
+    call_mocked_search(
+        cols=["col_date_pagination"],
+        request_datetime=col_datetime,
+        # We expect the odata PublicationDate and ContentDate = the datetime configured in the collection
+        expected_publication_date=col_datetime,
+        expected_content_date=col_datetime if not cadip else None,
+    )
+
+    # Search collections with a user request.
+    # The expected results are the intersection between the user request and the collection config
+    if cadip:
+        call_mocked_search(
+            cols=["col_noconf"],
+            #
+            request_platforms=["sentinel-2a"],
+            # odata = all that the user requested, because there is no criteria on the collection
+            expected_satellites=["S2A"],
+        )
+        call_mocked_search(
+            cols=["col_multiple_sat"],
+            # Same request
+            request_platforms=["sentinel-2a"],
+            # Same result, but this time because the user request matches all the criteria of the collection
+            expected_satellites=["S2A"],
+        )
+        call_mocked_search(
+            cols=["col_single_sat"],
+            # Same request
+            request_platforms=["sentinel-2a"],
+            # Don't expect any results (the staion is never called)
+            # because the user request does not intersect the collection config
+            expect_result=False,
+        )
+    else:  # auxip and prip
+        call_mocked_search(
+            cols=["col_noconf"],
+            #
+            request_constellations=["sentinel-2"],
+            request_platforms=["sentinel-2a"],
+            request_product_types=["type2"],
+            # odata = all that the user requested, because there is no criteria on the collection
+            expected_constellations=["SENTINEL-2"],
+            expected_platforms=["A"],
+            expected_product_types=["type2"],
+        )
+        call_mocked_search(
+            cols=["col_multiple_sat"],
+            # Same request
+            request_constellations=["sentinel-2"],
+            request_platforms=["sentinel-2a"],
+            request_product_types=["type2"],
+            # Same result, but this time because the user request matches all the criteria of the collection
+            expected_constellations=["SENTINEL-2"],
+            expected_platforms=["A"],
+            expected_product_types=["type2"],
+        )
+        call_mocked_search(
+            cols=["col_single_sat"],
+            # Same request
+            request_constellations=["sentinel-2"],
+            request_platforms=["sentinel-2a"],
+            request_product_types=["type2"],
+            # Don't expect any results (the staion is never called)
+            # because the user request does not intersect the collection config
+            expect_result=False,
+        )
+
+    # # Static values
+    # user_ids = "id1,id2"
+    # user_datetime = hardcoded_date
+    # user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
+    # template_user_params = {
+    #     "limit": user_limit,
+    #     "datetime": user_datetime,
+    # }
+    # user_product_type = "type2"
+    # user_platform = "sentinel-2a"
+    # user_constellation = "sentinel-2"
+    # user_satellite = cadip_utils.cadip_map_mission(user_platform, user_constellation)
+
+    bp = 0
 
     # return
 
@@ -2454,6 +2594,139 @@ def test_search_parameters(
                     assert spy_search.call_count == 0
                     assert len(features) == 0
                 spy_search.reset_mock()
+
+
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app, service",
+    ((ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_PRIP, "prip")),
+    ids=["adgs", "cadip", "prip"],
+    indirect=["fastapi_app"],
+)
+def test_cql2_in_operator(
+    mocker,
+    client,
+    method,
+    service,
+    adgs_response,  # rs-server/tests/resources/endpoints/adgs_pickup_response.json
+    cadip_file_response,  # rs-server/tests/resources/endpoints/cadip_file_pickup_response.json
+    cadip_session_response,  # rs-server/tests/resources/endpoints/cadip_session_pickup_response.json
+    prip_response,  # rs-server/tests/resources/endpoints/prip_pickup_response.json
+):
+    """
+    Test the cql2 "in" operator.
+    See: https://docs.ogc.org/is/21-065r2/21-065r2.html#advanced-comparison-operators
+    """
+    # Product type, defined in the mocked collection
+    ptype = ""
+
+    adgs = service == "adgs"
+    cadip = service == "cadip"
+    prip = service == "prip"
+
+    if adgs:
+        service_utils = adgs_utils
+        expected_response = adgs_response
+        ptype = "AUX_OBMEMC"
+    elif cadip:
+        service_utils = cadip_utils
+        expected_response = cadip_session_response
+    elif prip:
+        service_utils = prip_utils
+        expected_response = prip_response
+        ptype = "IW_RAW__0N"
+    else:
+        raise NotImplementedError
+
+    # Shortcut functions
+    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(service, *args, **kwargs)
+    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
+        mocker,
+        client,
+        service,
+        method,
+        expected_response,
+        cadip_file_response,
+        *args,
+        **kwargs,
+    )
+
+    # Create a collection with several values for every queryable we'll test
+    cols = []
+    if cadip:
+        cols.append(create_mock_collection("col1", {"Satellite": "S1A,S2B"}))
+    else:
+        cols.append(
+            create_mock_collection(
+                "col1",
+                {
+                    "platformShortName": "sentinel-1,sentinel-2",  # constellations
+                    "platformSerialIdentifier": "A,B",  # platforms
+                    "productType": f"{ptype},type2",
+                },
+            ),
+        )
+
+    # And another collection on the same station with no configured query
+    cols.append(create_mock_collection("col2", {}))
+
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: cols,
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": cols})
+
+    # Call the search on the first collection.
+    # The expected results are the intersection between the user request and the collection config
+    if cadip:
+        call_mocked_search(
+            cols=["col1"],
+            #
+            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
+            expected_satellites=["S2B"],
+            #
+            ids=["id1", "id2", "id3"],
+        )
+    else:
+        call_mocked_search(
+            cols=["col1"],
+            #
+            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
+            # NOTE: there is a bug here, we would expect only S2B
+            expected_constellations=["SENTINEL-1", "SENTINEL-2"],
+            expected_platforms=["A", "B"],
+            #
+            request_product_types=[ptype, "type2", "type4"],
+            expected_product_types=[ptype, "type2"],
+            #
+            ids=["id1", "id2", "id3"],
+        )
+
+    # If we also search on the second collection, the odata request will search on
+    # all user criteria because the second collection has no criteria.
+    if cadip:
+        call_mocked_search(
+            cols=["col1", "col2"],
+            #
+            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
+            expected_satellites=["S1C", "S2B", "S3A"],
+            #
+            ids=["id1", "id2", "id3"],
+        )
+    else:
+        call_mocked_search(
+            cols=["col1", "col2"],
+            #
+            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
+            expected_constellations=["SENTINEL-1", "SENTINEL-2", "SENTINEL-3"],
+            expected_platforms=["A", "B", "C"],
+            #
+            request_product_types=[ptype, "type2", "type4"],
+            expected_product_types=[ptype, "type2", "type4"],
+            #
+            ids=["id1", "id2", "id3"],
+        )
 
 
 @pytest.mark.unit
@@ -2931,139 +3204,6 @@ def test_post_search_parameters_prip(client, mocker, prip_response, collection_p
     assert unquote(prod_url) == expected_odata, f"\nExpected:\n{expected_odata}\nGot:\n{unquote(prod_url)}"
     assert spy_search.call_count == 1
     spy_search.reset_mock()
-
-
-@pytest.mark.parametrize("method", ("GET", "POST"))
-@pytest.mark.parametrize(
-    "fastapi_app, service",
-    ((ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_PRIP, "prip")),
-    ids=["adgs", "cadip", "prip"],
-    indirect=["fastapi_app"],
-)
-def test_cql2_in_operator(
-    mocker,
-    client,
-    method,
-    service,
-    adgs_response,  # rs-server/tests/resources/endpoints/adgs_pickup_response.json
-    cadip_file_response,  # rs-server/tests/resources/endpoints/cadip_file_pickup_response.json
-    cadip_session_response,  # rs-server/tests/resources/endpoints/cadip_session_pickup_response.json
-    prip_response,  # rs-server/tests/resources/endpoints/prip_pickup_response.json
-):
-    """
-    Test the cql2 "in" operator.
-    See: https://docs.ogc.org/is/21-065r2/21-065r2.html#advanced-comparison-operators
-    """
-    # Product type, defined in the mocked collection
-    ptype = ""
-
-    adgs = service == "adgs"
-    cadip = service == "cadip"
-    prip = service == "prip"
-
-    if adgs:
-        service_utils = adgs_utils
-        expected_response = adgs_response
-        ptype = "AUX_OBMEMC"
-    elif cadip:
-        service_utils = cadip_utils
-        expected_response = cadip_session_response
-    elif prip:
-        service_utils = prip_utils
-        expected_response = prip_response
-        ptype = "IW_RAW__0N"
-    else:
-        raise NotImplementedError
-
-    # Shortcut functions
-    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(service, *args, **kwargs)
-    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
-        mocker,
-        client,
-        service,
-        method,
-        expected_response,
-        cadip_file_response,
-        *args,
-        **kwargs,
-    )
-
-    # Create a collection with several values for every queryable we'll test
-    cols = []
-    if cadip:
-        cols.append(create_mock_collection("col1", {"Satellite": "S1A,S2B"}))
-    else:
-        cols.append(
-            create_mock_collection(
-                "col1",
-                {
-                    "platformShortName": "sentinel-1,sentinel-2",  # constellations
-                    "platformSerialIdentifier": "A,B",  # platforms
-                    "productType": f"{ptype},type2",
-                },
-            ),
-        )
-
-    # And another collection on the same station with no configured query
-    cols.append(create_mock_collection("col2", {}))
-
-    mocker.patch(
-        "rs_server_common.stac_api_common.MockPgstac.all_collections",
-        new_callable=mocker.PropertyMock,
-        return_value=lambda: cols,
-    )
-    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": cols})
-
-    # Call the search on the first collection.
-    # The expected results are the intersection between the user request and the collection config
-    if cadip:
-        call_mocked_search(
-            cols=["col1"],
-            #
-            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
-            expected_satellites=["S2B"],
-            #
-            ids=["id1", "id2", "id3"],
-        )
-    else:
-        call_mocked_search(
-            cols=["col1"],
-            #
-            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
-            # NOTE: there is a bug here, we would expect only S2B
-            expected_constellations=["SENTINEL-1", "SENTINEL-2"],
-            expected_platforms=["A", "B"],
-            #
-            request_product_types=[ptype, "type2", "type4"],
-            expected_product_types=[ptype, "type2"],
-            #
-            ids=["id1", "id2", "id3"],
-        )
-
-    # If we also search on the second collection, the odata request will search on
-    # all user criteria because the second collection has no criteria.
-    if cadip:
-        call_mocked_search(
-            cols=["col1", "col2"],
-            #
-            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
-            expected_satellites=["S1C", "S2B", "S3A"],
-            #
-            ids=["id1", "id2", "id3"],
-        )
-    else:
-        call_mocked_search(
-            cols=["col1", "col2"],
-            #
-            request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
-            expected_constellations=["SENTINEL-1", "SENTINEL-2", "SENTINEL-3"],
-            expected_platforms=["A", "B", "C"],
-            #
-            request_product_types=[ptype, "type2", "type4"],
-            expected_product_types=[ptype, "type2", "type4"],
-            #
-            ids=["id1", "id2", "id3"],
-        )
 
 
 @pytest.mark.parametrize(
