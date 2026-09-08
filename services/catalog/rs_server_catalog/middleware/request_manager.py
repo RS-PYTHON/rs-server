@@ -846,8 +846,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     owner_prefixed = f"{self.request_ids['owner_id']}_{normalized}"
 
                     logger.debug(f"Collection required: {collection}")
-                    logger.debug(f"Collection normalized: {collection}")
-                    logger.debug(f"Collection owner_prefixed: {collection}")
+                    logger.debug(f"Collection normalized: {normalized}")
+                    logger.debug(f"Collection owner_prefixed: {owner_prefixed}")
 
                     if await self._collection_exists(request, normalized):
                         content["collections"][i] = normalized
