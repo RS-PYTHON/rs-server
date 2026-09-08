@@ -844,16 +844,20 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 for i, collection in enumerate(content["collections"]):
                     normalized = collection.replace(":", "_")
                     owner_prefixed = f"{self.request_ids['owner_id']}_{normalized}"
+                    original_coll_name = content["collections"]
 
                     logger.debug(f"Collection required: {collection}")
                     logger.debug(f"Collection normalized: {normalized}")
                     logger.debug(f"Collection owner_prefixed: {owner_prefixed}")
+                    logger.debug(f"Original collection: {original_coll_name}")
 
                     if await self._collection_exists(request, normalized):
                         content["collections"][i] = normalized
                     elif await self._collection_exists(request, owner_prefixed):
                         content["collections"][i] = owner_prefixed
                         logger.debug(f"Using collection name: {content['collections'][i]}")
+                    elif await self._collection_exists(request, original_coll_name):
+                        continue
                     else:
                         raise HTTPException(
                             status_code=HTTP_404_NOT_FOUND,
