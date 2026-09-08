@@ -833,12 +833,21 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     "filter": stac_filter,
                 }  # The "filter_lang" field has to be placed BEFORE the filter.
 
+            all_collections = await self.client.all_collections(request)
+            all_collections = [dict(coll) for coll in all_collections["collections"]]
+            all_collections_ids = [c["id"] for c in all_collections]
+            logger.debug(all_collections_ids)
+
             # ----- Call /catalog/search with POST method endpoint
             if "collections" in content:
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(content["collections"]):
                     normalized = collection.replace(":", "_")
                     owner_prefixed = f"{self.request_ids['owner_id']}_{normalized}"
+
+                    logger.debug(f"Collection required: {collection}")
+                    logger.debug(f"Collection normalized: {collection}")
+                    logger.debug(f"Collection owner_prefixed: {collection}")
 
                     if await self._collection_exists(request, normalized):
                         content["collections"][i] = normalized
