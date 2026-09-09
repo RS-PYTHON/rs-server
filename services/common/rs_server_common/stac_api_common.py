@@ -712,41 +712,40 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     stac_params["platform"] = mission
                 else:  # auxip and prip
                     c, p = zip(*mission)
-                    stac_params["constellation"] = sorted(list(set(c)))
-                    stac_params["platform"] = sorted(list(set(p)))
+                    stac_params["constellation"] = list(set(c))
+                    stac_params["platform"] = list(set(p))
 
         # Map platform/constellation fields
         map_missions(stac_params.get("platform"), stac_params.get("constellation"))
 
-        if self.prip:
-            if bbox:
-                if isinstance(bbox, str):
-                    coords = [float(x) for x in bbox.split(",")]
-                elif isinstance(bbox, list):
-                    coords = list(map(float, bbox))
+        if self.prip and bbox:
+            if isinstance(bbox, str):
+                coords = [float(x) for x in bbox.split(",")]
+            elif isinstance(bbox, list):
+                coords = list(map(float, bbox))
 
-                west, south, east, north = coords  # pylint: disable=E0606
+            west, south, east, north = coords  # pylint: disable=E0606
 
-                # if 'intersects' wasn't previously set
-                if "intersects" not in stac_params or not stac_params["intersects"]:
-                    stac_params["intersects"] = (box(west, south, east, north)).wkt
+            # if 'intersects' wasn't previously set
+            if "intersects" not in stac_params or not stac_params["intersects"]:
+                stac_params["intersects"] = (box(west, south, east, north)).wkt
+            else:
+                # will set the value of the two intersecting polygons
+                bbox_polygon = box(west, south, east, north)
+
+                # also convert the 'intersects' value
+                poly = wkt.loads(stac_params["intersects"])
+                west, south, east, north = poly.bounds
+                filter_polygon = box(west, south, east, north)
+
+                if bbox_polygon.intersects(filter_polygon):
+                    stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
                 else:
-                    # will set the value of the two intersecting polygons
-                    bbox_polygon = box(west, south, east, north)
-
-                    # also convert the 'intersects' value
-                    poly = wkt.loads(stac_params["intersects"])
-                    west, south, east, north = poly.bounds
-                    filter_polygon = box(west, south, east, north)
-
-                    if bbox_polygon.intersects(filter_polygon):
-                        stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
-                    else:
-                        stac_params.pop("intersects", None)
-                        raise HTTPException(
-                            status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            "The provided 'bbox' and 'intersects' polygons do not overlap.",
-                        )
+                    stac_params.pop("intersects", None)
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        "The provided 'bbox' and 'intersects' polygons do not overlap.",
+                    )
 
         # Discard these search parameters
         params.pop("conf", None)

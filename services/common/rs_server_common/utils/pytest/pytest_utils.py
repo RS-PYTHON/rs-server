@@ -249,7 +249,7 @@ def call_mocked_search(
             date_max = values.split("/")[1]
             if request == "odata_range1":
                 odata_dict[odata_key] = (
-                    f"({key} gt {date_min} or {key} eq {date_min}) and " f"({key} lt {date_max} or {key} eq {date_max})"
+                    f"({key} gt {date_min} or {key} eq {date_min}) and ({key} lt {date_max} or {key} eq {date_max})"
                 )
             elif request == "odata_range2":
                 odata_dict[odata_key] = (
