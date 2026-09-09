@@ -16,6 +16,7 @@
 
 import os
 from copy import deepcopy
+from types import ModuleType
 from typing import Any, Literal
 
 import httpx
@@ -25,10 +26,7 @@ from eodag.plugins.search.qssearch import QueryStringSearch
 from fastapi import status
 from fastapi.testclient import TestClient
 from keycloak import KeycloakAdmin
-from rs_server_adgs import adgs_utils
-from rs_server_cadip import cadip_utils
 from rs_server_common.authentication import oauth2
-from rs_server_prip import prip_utils
 from starlette.responses import RedirectResponse
 
 
@@ -125,12 +123,18 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
     return response
 
 
-def create_mock_collection(service: Literal["adgs", "cadip", "prip"], col_id: str, configured_query: dict):
+def create_mock_collection(
+    service: Literal["adgs", "cadip", "prip"],
+    service_utils: ModuleType,
+    col_id: str,
+    configured_query: dict,
+):
     """
     Create a mock collection.
 
     Args:
         service: adgs, cadip or prip
+        service_utils: adgs_utils, cadip_utils or prip_utils
         col_id: id of the mocked collection
         configured_query: configured query for this collection, i.e. the collection  will only return results
         from this query.
@@ -145,13 +149,10 @@ def create_mock_collection(service: Literal["adgs", "cadip", "prip"], col_id: st
     # rs-server/services/prip/config/prip_search_config.yaml
     if adgs:
         col_name = "adgs_by_platform"
-        service_utils = adgs_utils
     elif cadip:
         col_name = "cadip_session_by_id_list"
-        service_utils = cadip_utils
     elif prip:
         col_name = "S1A_L0_IW_RAW"
-        service_utils = prip_utils
     else:
         raise NotImplementedError
 

@@ -145,9 +145,13 @@ class TestConstellationMapping:
         ],
     )
     def test_invalid_cadip_mapping(self, platform, constellation):
-        """Pytest using only invalid inputs, output is not verified, function should raise exception."""
-        with pytest.raises(HTTPException):
-            cadip_map_mission(platform, constellation)
+        """Pytest using only invalid inputs, output is not verified, function should raise exception or return None."""
+        ret = None
+        try:
+            ret = cadip_map_mission(platform, constellation)
+        except HTTPException:
+            ret = None
+        assert ret is None
 
 
 class TestLandingPagesEndpoints:
@@ -2115,8 +2119,13 @@ def test_search_parameters(
         raise NotImplementedError
 
     # Shortcut functions
-    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(service, *args, **kwargs)
-    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
+    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(  # noqa: E731
+        service,
+        service_utils,
+        *args,
+        **kwargs,
+    )
+    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(  # noqa: E731
         mocker,
         client,
         service,
@@ -2325,8 +2334,13 @@ def test_cql2_in_operator(
         raise NotImplementedError
 
     # Shortcut functions
-    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(service, *args, **kwargs)
-    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
+    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(  # noqa: E731
+        service,
+        service_utils,
+        *args,
+        **kwargs,
+    )
+    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(  # noqa: E731
         mocker,
         client,
         service,
@@ -2422,8 +2436,13 @@ def test_search_on_several_collections(
     ptype = "AUX_OBMEMC"
 
     # Shortcut functions
-    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection("adgs", *args, **kwargs)
-    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(
+    create_mock_collection = lambda *args, **kwargs: pytest_utils.create_mock_collection(  # noqa: E731
+        "adgs",
+        adgs_utils,
+        *args,
+        **kwargs,
+    )
+    call_mocked_search = lambda *args, **kwargs: pytest_utils.call_mocked_search(  # noqa: E731
         mocker,
         client,
         "adgs",

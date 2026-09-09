@@ -706,7 +706,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.cadip:
                     stac_params["platform"] = mission.pop()  # type: ignore
                 else:  # auxip and prip
-                    stac_params["constellation"], stac_params["platform"] = mission.pop()
+                    stac_params["constellation"], stac_params["platform"] = mission.pop()  # type: ignore
             else:
                 if self.cadip:
                     stac_params["platform"] = mission
