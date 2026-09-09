@@ -2419,6 +2419,7 @@ def test_cql2_in_operator(
             request_product_types=[ptype, "type2", "type4"],
             # odata = intersection with the collection config
             # NOTE: there is a bug here, we would expect only S2B
+            # see: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-1216
             expected_constellations=["SENTINEL-1", "SENTINEL-2"],
             expected_platforms=["A", "B"],
             expected_product_types=[ptype, "type2"],
