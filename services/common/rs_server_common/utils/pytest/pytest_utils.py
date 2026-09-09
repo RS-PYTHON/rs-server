@@ -125,13 +125,13 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
     return response
 
 
-def create_mock_collection(service: Literal["adgs", "cadip", "prip"], id: str, configured_query: dict):
+def create_mock_collection(service: Literal["adgs", "cadip", "prip"], col_id: str, configured_query: dict):
     """
     Create a mock collection.
 
     Args:
         service: adgs, cadip or prip
-        id: id of the mocked collection
+        col_id: id of the mocked collection
         configured_query: configured query for this collection, i.e. the collection  will only return results
         from this query.
     """
@@ -162,7 +162,7 @@ def create_mock_collection(service: Literal["adgs", "cadip", "prip"], id: str, c
     collection = deepcopy(collection)
 
     # Keep everything except the id and hardcoded query
-    collection["id"] = id
+    collection["id"] = col_id
     collection["query"] = configured_query
     return collection
 
@@ -175,6 +175,7 @@ def call_mocked_search(
     method: Literal["GET", "POST"],
     expected_response: dict,
     cadip_file_response: dict,
+    filter_type: Literal["cql", "query"] = "cql",
     # Requested collections
     cols: list[str] = None,
     # Platforms and constellations
@@ -217,8 +218,8 @@ def call_mocked_search(
     except AttributeError:
         spy_search = mocker.spy(QueryStringSearch, "do_search")
 
-    user_request: dict[str, Any] = {}  # user stac request params, including "filter"
-    user_filters: list[str | dict[str, Any]] = []  # list of user stac "filter" parts
+    user_request: dict[str, Any] = {}  # user stac request params, including "filter" or "query"
+    user_filters: list[str | dict[str, Any]] = []  # list of user stac filter/query parts
     odata_filters: dict[str, str] = {}  # list of mocked odata request parts, ordered by key
     odata_kwargs: dict[str, str] = {}  # some odata fields are passed to eodag by kwargs, not url
 
@@ -270,23 +271,32 @@ def call_mocked_search(
             elif request == "odata":
                 joined = f" eq '{values[0]}'"
         else:
+            if (request == "stac") and (filter_type == "query"):
+                raise NotImplementedError
             joined = " in (" + ",".join([f"'{v}'" for v in values]) + ")"
 
         if request == "stac":
             if method == "GET":
-                user_filters.append(f"{key}{joined}")
+                if filter_type == "cql":
+                    user_filters.append(f"{key}{joined}")
+                else:  # query
+                    user_filters.append(f'"{key}": {{"eq": "{values[0]}"}}')
             else:  # POST
-                if len(values) == 1:
-                    user_filters.append({"args": [{"property": key}, values[0]], "op": "="})
-                else:
-                    user_filters.append({"args": [{"property": key}, values], "op": "in"})
-        elif cadip:  # odata and cadip
-            odata_dict[odata_key] = f"{key}{joined}"
-        else:  # odata and adgs/prip
-            odata_dict[odata_key] = (
-                f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{key}' and "
-                f"att/OData.CSC.StringAttribute/Value{joined})"
-            )
+                if filter_type == "cql":
+                    if len(values) == 1:
+                        user_filters.append({"args": [{"property": key}, values[0]], "op": "="})
+                    else:
+                        user_filters.append({"args": [{"property": key}, values], "op": "in"})
+                else:  # query
+                    user_filters.append([key, {"eq": values[0]}])
+        else:  # odata
+            if cadip:
+                odata_dict[odata_key] = f"{key}{joined}"
+            else:  # adgs/prip
+                odata_dict[odata_key] = (
+                    f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{key}' and "
+                    f"att/OData.CSC.StringAttribute/Value{joined})"
+                )
 
     #
     # Handle all parameters
@@ -317,7 +327,7 @@ def call_mocked_search(
     # Non-filter parameters
 
     if ids and (not ids_in_filter):
-        user_request["ids"] = ",".join(ids)
+        user_request["ids"] = ids if (method == "POST") else ",".join(ids)
 
     if request_datetime is not None:
         user_request["datetime"] = request_datetime
@@ -330,7 +340,7 @@ def call_mocked_search(
             case "datetime":
                 sortby_name = "published" if cadip else "created"
             case _:
-                raise NotImplementedError()
+                raise NotImplementedError
 
         sortby_sign = request_sortby[0]
         if method == "GET":
@@ -343,14 +353,21 @@ def call_mocked_search(
         if cols:
             user_request["collections"] = ",".join(cols)
         if user_filters:
-            user_request["filter"] = " and ".join(user_filters)
+            if filter_type == "cql":
+                user_request["filter"] = " and ".join(user_filters)
+            else:  # query
+                user_request["query"] = "{" + ",".join(user_filters) + "}"
     else:  # POST
         if cols:
             user_request["collections"] = cols
         if user_filters:
-            user_request["filter"] = {"args": user_filters, "op": "and"}
+            if filter_type == "cql":
+                user_request["filter"] = {"args": user_filters, "op": "and"}
+            else:  # query
+                user_request["query"] = dict(user_filters)
 
     # The mocked odata request fields must respect a certain order
+    order_odata_by = []
     if cadip:
         order_odata_by = ["PublicationDate", "SessionId", "Satellite"]
     elif adgs:
@@ -394,7 +411,7 @@ def call_mocked_search(
             )
             if cadip:
                 odata_query_files = (
-                    "http://127.0.0.1:5000/Files?" "$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0"
+                    "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0"
                 )
                 rsps.add(
                     responses.GET,

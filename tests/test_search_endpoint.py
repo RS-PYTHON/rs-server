@@ -2114,11 +2114,12 @@ def test_search_parameters(
         method,
         expected_response,
         cadip_file_response,
+        filter_type,
         *args,
         **kwargs,
     )
 
-    col_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    col_datetime = "2020-01-01T00:00:00.000Z/2026-01-01T00:00:00.000Z"
 
     #
     # Mock collections
@@ -2186,6 +2187,7 @@ def test_search_parameters(
         )
 
     # Test ids and pagination
+    expected_orderby = "processingDate" if prip else "PublicationDate"
     call_mocked_search(
         cols=["col_noconf"],
         #
@@ -2194,13 +2196,13 @@ def test_search_parameters(
         #
         request_sortby=["-", "datetime"],
         request_limit=15,
-        expected_pagination="&$orderby=PublicationDate desc&$top=15&$skip=0",
+        expected_pagination=f"&$orderby={expected_orderby} desc&$top=15&$skip=0",
     )
     call_mocked_search(
         cols=["col_noconf"],
         request_sortby=["+", "datetime"],
         request_limit=20,
-        expected_pagination="&$orderby=PublicationDate asc&$top=20&$skip=0",
+        expected_pagination=f"&$orderby={expected_orderby} asc&$top=20&$skip=0",
     )
 
     # Search the collection that has a configured date, by passing it this same datetime
@@ -2271,329 +2273,6 @@ def test_search_parameters(
             # because the user request does not intersect the collection config
             expect_result=False,
         )
-
-    # # Static values
-    # user_ids = "id1,id2"
-    # user_datetime = hardcoded_date
-    # user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-    # template_user_params = {
-    #     "limit": user_limit,
-    #     "datetime": user_datetime,
-    # }
-    # user_product_type = "type2"
-    # user_platform = "sentinel-2a"
-    # user_constellation = "sentinel-2"
-    # user_satellite = cadip_utils.cadip_map_mission(user_platform, user_constellation)
-
-    bp = 0
-
-    # return
-
-    #
-    # User given parameters
-
-    # Static values
-    user_ids = "id1,id2"
-    user_datetime = hardcoded_date
-    user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-    template_user_params = {
-        "limit": user_limit,
-        "datetime": user_datetime,
-    }
-    user_product_type = "type2"
-    user_platform = "sentinel-2a"
-    user_constellation = "sentinel-2"
-    user_satellite = cadip_utils.cadip_map_mission(user_platform, user_constellation)
-    user_sortby = ""
-    if adgs:
-        user_sortby = "created"
-    if cadip:
-        user_sortby = "published"
-
-    # cql or query filter, for get or post requests
-    if adgs:
-        get_cql = f" AND product:type='{user_product_type}'"
-        get_query = f""","product:type": {{"eq": "{user_product_type}"}}"""
-        post_cql = [{"args": [{"property": "product:type"}, user_product_type], "op": "="}]
-        post_query = {"product:type": {"eq": user_product_type}}
-    else:
-        get_cql = ""
-        get_query = ""
-        post_cql = []
-        post_query = {}
-
-    # GET parameters
-    if method == "GET":
-        template_user_params.update(
-            {
-                "ids": user_ids,
-                "limit": user_limit,
-                "sortby": f"+{user_sortby}",
-            },
-        )
-        if filter_type == "cql":
-            template_user_params.update(
-                {"filter": f"platform='{user_platform}' AND constellation='{user_constellation}'{get_cql}"},
-            )
-        if filter_type == "query":
-            template_user_params.update(
-                {
-                    "query": (
-                        f"""{{"platform": {{"eq": "{user_platform}"}},"""
-                        f"""\"constellation": {{"eq": "{user_constellation}"}}"""
-                        f"{get_query}}}"
-                    ),
-                },
-            )
-
-    # POST parameters
-    if method == "POST":
-        template_user_params.update(
-            {
-                "ids": [id.strip() for id in user_ids.split(",")],
-                "limit": user_limit,
-                "sortby": [{"direction": "asc", "field": user_sortby}],
-            },
-        )
-        if filter_type == "cql":
-            template_user_params.update(
-                {
-                    "filter": {
-                        "args": [
-                            {"args": [{"property": "platform"}, user_platform], "op": "="},
-                            {"args": [{"property": "constellation"}, user_constellation], "op": "="},
-                            *post_cql,
-                        ],
-                        "op": "and",
-                    },
-                },
-            )
-        if filter_type == "query":
-            template_user_params.update(
-                {
-                    "query": {
-                        "platform": {"eq": user_platform},
-                        "constellation": {"eq": user_constellation},
-                        **post_query,
-                    },
-                },
-            )
-
-    # Call the /search endpoint for each collection
-    for mocked_collection in mocked_collections:
-        collection_id = mocked_collection["id"]
-
-        # Copy and modify user params
-        user_params = deepcopy(template_user_params)
-        if method == "GET":
-            user_params["collections"] = collection_id
-        elif method == "POST":
-            user_params["collections"] = [collection_id]
-
-        # Do a first call with the user query/filter, and a second call without
-        for with_user_filter in (True, False):
-            without_user_filter = not with_user_filter
-
-            # Remove the user query/filter, but keep the datetime and others...
-            if without_user_filter:
-                user_params.pop("query", None)
-                user_params.pop("filter", None)
-
-            # The odata request that is sent to the auxip/cadip station is calculated by rspy and is the result
-            # of the intersection between the user params and the mocked collection configuration.
-            # NOTE: to see the odata request that is actually called, either 1) deactivate the rsps.add lines below
-            # and the HTTPException error will print the odata request (decode it with
-            # https://meyerweb.com/eric/tools/dencoder/), or 2) debug in eodag/plugins/search/qssearch.py
-            # -> self.build_query_string
-            if adgs:
-                uids = user_ids.split(",")
-                name_filter = " or ".join(f"contains(Name,'{uid}')" for uid in uids)
-
-                odata_without_filter = (
-                    "http://127.0.0.1:5000/Products?$filter="
-                    "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
-                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max}) and "
-                    f"{name_filter}"
-                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
-                )
-                odata_publication_date = (
-                    (
-                        "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
-                        "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) and "
-                    )
-                    if "PublicationDate" in str(mocked_collection)
-                    else ""
-                )
-                odata_platform = (
-                    (
-                        "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' "
-                        "and att/OData.CSC.StringAttribute/Value eq 'A') and "
-                    )
-                    if "sentinel-2a" in str(user_params)
-                    else ""
-                )
-                odata_with_filter = (
-                    "http://127.0.0.1:5000/Products?$filter="
-                    f"{odata_publication_date}"
-                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
-                    "and att/OData.CSC.StringAttribute/Value {product_type_op} {product_type}) and "
-                    f"{odata_platform}"
-                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
-                    "and att/OData.CSC.StringAttribute/Value {constellation_op} {constellation}) and "
-                    "(ContentDate/Start gt {date_min} or ContentDate/Start eq {date_min}) and "
-                    "(ContentDate/End lt {date_max} or ContentDate/End eq {date_max}) and "
-                    f"{name_filter}"
-                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
-                )
-            elif cadip:
-                # Add quote to the user_id
-                user_ids_with_quote = ",".join([f"'{user_id}'" for user_id in user_ids.split(",")])
-                odata_without_filter = (
-                    "http://127.0.0.1:5000/Sessions?$filter="
-                    f"SessionId in ({user_ids_with_quote}) "
-                    "and (PublicationDate gt {date_min} or PublicationDate eq {date_min}) "
-                    "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
-                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
-                )
-                odata_with_filter = (
-                    "http://127.0.0.1:5000/Sessions?$filter="
-                    f"SessionId in ({user_ids_with_quote}) "
-                    "and Satellite {satellite_op} {satellite} "
-                    "and (PublicationDate gt {date_min} or PublicationDate eq {date_min}) "
-                    "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
-                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
-                )
-            else:
-                raise NotImplementedError
-
-            # The first collection has no hardcoded query. So either we use the user query.
-            # Or, if missing, we query on everything.
-            if collection_id == "col1":
-                odata = odata_without_filter if without_user_filter else odata_with_filter
-                date_min = user_datetime.split("/", maxsplit=1)[0]
-                date_max = user_datetime.split("/")[1]
-                product_type = user_product_type
-                constellation = user_constellation
-                satellite = user_satellite
-                limit = user_limit
-
-            # The second collection has a query that does not intersect the user query.
-            # So either it returns no results. Or, if the user query is missing, we use the collection query.
-            elif collection_id == "col2":
-                if with_user_filter:
-                    odata = None
-                else:
-                    odata = odata_with_filter
-                date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
-                date_max = hardcoded_date.split("/")[1]
-                product_type = mocked_collection["query"].get("productType")
-                constellation = mocked_collection["query"].get("platformShortName")
-                satellite = mocked_collection["query"].get("Satellite", "")
-                limit = user_limit
-
-            # The third collection has a query with multiple values, that intersects only one user value.
-            elif collection_id == "col3":
-                odata = odata_with_filter
-                date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
-                date_max = hardcoded_date.split("/")[1]
-                limit = user_limit
-                if with_user_filter:
-                    product_type = user_product_type
-                    constellation = user_constellation
-                    satellite = user_satellite
-                else:
-                    product_type = mocked_collection["query"].get("productType")
-                    constellation = mocked_collection["query"].get("platformShortName")
-                    satellite = mocked_collection["query"].get("Satellite", "")
-            else:
-                raise NotImplementedError
-
-            user_params["limit"] = limit
-
-            # Mock the station response
-            with responses.RequestsMock() as rsps:
-
-                # If the query should return results
-                if odata:
-
-                    # Format the odata request with all possible parameters
-                    if adgs:
-                        constellation = constellation.upper()
-
-                    def handle_multiple_values(value: str) -> str:
-                        if value is None:
-                            return None
-                        if "," in value:
-                            values = ",".join([f"'{val}'" for val in value.split(",")])
-                            return f"({values})"
-                        return f"'{value}'"
-
-                    def in_or_eq(value: str) -> str:
-                        return None if value is None else "in" if "," in value else "eq"
-
-                    product_type = handle_multiple_values(product_type)
-                    constellation = handle_multiple_values(constellation)
-                    satellite = handle_multiple_values(satellite)
-
-                    odata = odata.format(
-                        date_min=date_min,
-                        date_max=date_max,
-                        product_type=product_type,
-                        product_type_op=in_or_eq(product_type),
-                        constellation=constellation,
-                        constellation_op=in_or_eq(constellation),
-                        satellite=satellite,
-                        satellite_op=in_or_eq(satellite),
-                    )
-
-                    # Mock the reponse
-                    rsps.add(
-                        responses.GET,
-                        odata,
-                        status=status.HTTP_200_OK,
-                        json=expected_response,
-                    )
-                    if cadip:
-                        odata_query_files = (
-                            "http://127.0.0.1:5000/Files?"
-                            "$filter=SessionId%20eq%20'S1A_20200105072204051312'&$top=1000&$skip=0"
-                        )
-                        rsps.add(
-                            responses.GET,
-                            odata_query_files,
-                            status=status.HTTP_200_OK,
-                            json=cadip_file_response,
-                        )
-                    expect_result = True
-
-                # The query should not return response
-                else:
-                    expect_result = False
-
-                # Call the endpoint
-                url = f"{os.getenv('router_prefix')}/search"
-                if method == "GET":
-                    response = client.get(url, params=user_params)
-                elif method == "POST":
-                    response = client.post(url, json=user_params)
-                else:
-                    raise NotImplementedError
-
-                # Check that the search function was called and returned the expected result
-                assert response.is_success, f"Response:{response}\nMock registered responses:{rsps.registered()}"
-                features = response.json()["features"]
-                if expect_result and adgs:
-                    # 1 single call for files
-                    assert spy_search.call_count == 1
-                    assert len(spy_search.spy_return) == len(features) == 1  # expected_response
-                elif expect_result and cadip:
-                    # 2 calls, one for sessions, one for files
-                    assert spy_search.call_count == 2
-                    assert len(spy_search.spy_return) == 2 * len(features)  # expected_response
-                else:
-                    assert spy_search.call_count == 0
-                    assert len(features) == 0
-                spy_search.reset_mock()
 
 
 @pytest.mark.parametrize("method", ("GET", "POST"))
