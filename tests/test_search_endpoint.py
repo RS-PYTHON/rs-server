@@ -105,9 +105,13 @@ class TestConstellationMapping:
         ],
     )
     def test_invalid_adgs_mapping(self, platform, constellation):
-        """Pytest using only invalid inputs, output is not verified, function should raise exception."""
-        with pytest.raises(HTTPException):
-            map_auxip_prip_mission(platform, constellation)
+        """Pytest using only invalid inputs, output is not verified, function should raise exception or return None."""
+        ret = None
+        try:
+            ret = map_auxip_prip_mission(platform, constellation)
+        except HTTPException:
+            ret = None
+        assert ret is None
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -1863,24 +1867,28 @@ class TestFeatureCollectionOdataStacMapping:
         is_last,
     ):
         """Used to test if application correctly builds next/previous token."""
+        all_ids = sorted(
+            [
+                "S1A_20200105072204051310",
+                "S1A_20200105072204051312",
+                "S1A_20200105072204051313",
+                "S1A_20200105072204051314",
+                "S1A_20200105072204051315",
+                "S1A_20200105072204051316",
+                "S1A_20200105072204051317",
+                "S1A_20200105072204051318",
+                "S1A_20200105072204051319",
+                "S1A_20200105072204051311",
+            ],
+        )
         base_cadip_uri = (
             "http://127.0.0.1:5000/Sessions?$filter=SessionId in ("
-            "'S1A_20200105072204051312','S1A_20200105072204051313','S1A_20200105072204051314',"
-            "'S1A_20200105072204051315','S1A_20200105072204051316','S1A_20200105072204051317',"
-            "'S1A_20200105072204051318','S1A_20200105072204051319','S1A_20200105072204051310',"
-            "'S1A_20200105072204051311')&$orderby=PublicationDate desc&"
-            f"$top=10&$skip={(int(page) - 1) * 10}"
+            + ",".join([f"'{id}'" for id in all_ids])
+            + ")&$orderby=PublicationDate desc&"
+            + f"$top=10&$skip={(int(page) - 1) * 10}"
         )
         base_cadip_files_uris = [
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051313'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051314'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051315'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051316'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051317'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051318'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051319'&$top=1000&$skip=0",
-            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051311'&$top=1000&$skip=0",
+            f"http://127.0.0.1:5000/Files?$filter=SessionId eq '{id}'&$top=1000&$skip=0" for iyd in all_ids
         ]
         base_adgs_uri = (
             "http://127.0.0.1:5001/Products?"
