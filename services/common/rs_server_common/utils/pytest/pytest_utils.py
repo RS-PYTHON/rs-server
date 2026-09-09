@@ -177,22 +177,22 @@ def call_mocked_search(
     cadip_file_response: dict,
     filter_type: Literal["cql", "query"] = "cql",
     # Requested collections
-    cols: list[str] = None,
+    cols: list[str] | None = None,
     # Platforms and constellations
-    request_platforms: list[str] = None,
-    request_constellations: list[str] = None,
-    expected_satellites: list[str] = None,  # for cadip
-    expected_constellations: list[str] = None,  # platformShortName, for adgs/prip
-    expected_platforms: list[str] = None,  # platformSerialIdentifier, for adgs/prip
+    request_platforms: list[str] | None = None,
+    request_constellations: list[str] | None = None,
+    expected_satellites: list[str] | None = None,  # for cadip
+    expected_constellations: list[str] | None = None,  # platformShortName, for adgs/prip
+    expected_platforms: list[str] | None = None,  # platformSerialIdentifier, for adgs/prip
     # adgs/prip product types
-    request_product_types: list[str] = None,
-    expected_product_types: list[str] = None,
+    request_product_types: list[str] | None = None,
+    expected_product_types: list[str] | None = None,
     # Datetimes
     request_datetime: str | None = None,  # range as min/max
     expected_publication_date: str | None = None,  # range as min/max
     expected_content_date: str | None = None,  # range as min/max
     # Product or session ids
-    ids: list[str] = None,
+    ids: list[str] | None = None,
     ids_in_filter: bool = True,  # pass ids inside or outside the filter ?
     # Pagination
     request_sortby: tuple[Literal["-", "+"], str] | None = None,
@@ -219,14 +219,14 @@ def call_mocked_search(
         spy_search = mocker.spy(QueryStringSearch, "do_search")
 
     user_request: dict[str, Any] = {}  # user stac request params, including "filter" or "query"
-    user_filters: list[str | dict[str, Any]] = []  # list of user stac filter/query parts
+    user_filters: list[Any] = []  # list of user stac filter/query parts
     odata_filters: dict[str, str] = {}  # list of mocked odata request parts, ordered by key
     odata_kwargs: dict[str, str] = {}  # some odata fields are passed to eodag by kwargs, not url
 
     def _add_filter(
         request: str,  # "stac" or "odata_xxx"
         key: str,
-        values: str | list[str],
+        values: str | list[str] | None,
         kwargs_key: str = "",
     ):
         """Format a key and values for a stac or odata request"""
@@ -242,7 +242,8 @@ def call_mocked_search(
             odata_dict = odata_filters
             odata_key = key
 
-        if request.startswith("odata_range"):  # datetime range as min/max
+        if request.startswith("odata_range"):  # datetime range as min/max str
+            assert isinstance(values, str)
             date_min = values.split("/", maxsplit=1)[0]
             date_max = values.split("/")[1]
             if request == "odata_range1":

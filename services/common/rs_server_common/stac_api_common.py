@@ -681,7 +681,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if external_ids_param is not None and "externalIds" in allowed_properties:
             read_property("externalIds", external_ids_param)
 
-        def map_missions(platform: str | list[str], constellation: str | list[str]) -> str | list[str]:
+        def map_missions(platform: str | list[str] | None, constellation: str | list[str] | None):
             """Map one or several stac platform/constellation values to odata values"""
 
             if (platform is None) and (constellation is None):

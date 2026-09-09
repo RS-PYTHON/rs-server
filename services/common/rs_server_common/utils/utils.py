@@ -225,7 +225,7 @@ def map_stac_platform() -> dict:
         return yaml.safe_load(cf)
 
 
-def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | None, str | None]:
+def map_auxip_prip_mission(platform: str, constellation: str) -> tuple[str | None, str | None] | None:
     """
     Custom function for ADGS/PRIP, to read constellation mapper and return proper
     values for platform and serial.
