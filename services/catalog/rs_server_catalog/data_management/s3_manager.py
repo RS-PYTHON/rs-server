@@ -448,20 +448,21 @@ class S3Manager:
         return content
 
     def update_patch_assets(self, item: dict, assets: dict) -> dict:
-        """Validate and enrich assets added to an item with PATCH."""
+        """Validate PATCH asset locations and add their S3 file metadata."""
         if self.is_catalog_local_mode:
             logger.debug("Skipping PATCH asset enrichment in local catalog mode")
             return assets
 
+        # Deletions and metadata-only updates do not require an S3 lookup.
         assets_with_href = {
             asset_name: asset_info
             for asset_name, asset_info in assets.items()
             if isinstance(asset_info, dict) and asset_info.get("href")
         }
-        # Preserve existing behavior for asset deletion and partial metadata patches.
         if not assets_with_href:
             return assets
 
+        # Derive the authorized catalog bucket from the stored item, not from PATCH data.
         user = item.get("properties", {}).get("owner", "")
         collection_id = item.get("collection", "").removeprefix(f"{user}_")
         item_eopf_type = item.get("properties", {}).get("eopf:type", "")
@@ -469,6 +470,7 @@ class S3Manager:
         assets_to_checksum = {}
 
         for asset_name, asset_info in assets_with_href.items():
+            # Reject malformed paths and assets stored outside the resolved catalog bucket.
             s3_href, _ = StacManager.get_s3_filename_from_asset(asset_info)
             s3_parts = s3_href.split("/")
             if len(s3_parts) < 4 or s3_parts[2] != bucket_name:
@@ -479,6 +481,7 @@ class S3Manager:
 
             s3_key = "/".join(s3_parts[3:])
             try:
+                # A single S3 lookup confirms existence and returns the object size.
                 exists, size = self.s3_handler.check_s3_key_on_bucket(bucket_name, s3_key)
             except RuntimeError as error:
                 raise HTTPException(
@@ -494,6 +497,7 @@ class S3Manager:
             # Keep caller-provided values, consistently with existing publication behavior.
             if size != -1:
                 asset_info.setdefault("file:size", size)
+            # Match publication behavior: retain the product folder and filename.
             asset_info.setdefault("file:local_path", "/".join(s3_key.split("/")[-2:]))
             assets_to_checksum[asset_name] = asset_info
 

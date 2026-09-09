@@ -951,9 +951,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         """
         Pre-processing of a PATCH request to the Catalog.
 
-        Does authorization checks, merges partial geometry/bbox patches with the
-        current item when necessary, enforces spatial consistency, and updates
-        the `updated` timestamp.
+        Checks authorization, validates and enriches patched assets, enforces
+        spatial consistency, and updates the `updated` timestamp.
 
         Args:
             request (Request): The request from the Client
