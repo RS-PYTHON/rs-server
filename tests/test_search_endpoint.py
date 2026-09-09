@@ -48,6 +48,7 @@ from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP, ROUTER_PREFIX_PR
 
 # pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
 # pylint: disable=too-many-branches, too-many-lines, too-many-statements
+# pylint: disable=unnecessary-lambda-assignment
 
 
 class TestOperatorDefinedCollections:
@@ -2122,6 +2123,7 @@ def test_search_parameters(
         method,
         expected_response,
         cadip_file_response,
+        filter_type,
         *args,
         **kwargs,
     )
