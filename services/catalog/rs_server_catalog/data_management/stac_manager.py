@@ -22,6 +22,7 @@ from rs_server_catalog.utils import ALTERNATE_STRING, is_s3_path
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.utils.logging import Logging
+from starlette.requests import Request
 from starlette.status import HTTP_400_BAD_REQUEST
 
 logger = Logging.default(__name__)
@@ -121,7 +122,7 @@ class StacManager:
                     metadata[key] = os.environ.get(f"CATALOG_METADATA_{key.upper()}", metadata[key])
 
     @staticmethod
-    def update_links_for_all_collections(collections: list[dict]) -> list[dict]:
+    def update_links_for_all_collections(request: Request, collections: list[dict]) -> list[dict]:
         """Update the links for the endpoint /catalog/collections.
 
         Args:
@@ -132,7 +133,11 @@ class StacManager:
         """
         for collection in collections:
             owner_id = collection["owner"]
-            collection["id"] = collection["id"].removeprefix(f"{owner_id}_")
+
+            # Keep the owner prefix for the stac browser
+            if not common_settings.request_from_stacbrowser(request):
+                collection["id"] = collection["id"].removeprefix(f"{owner_id}_")
+
             for link in collection["links"]:
                 link_parser = urlparse(link["href"])
                 new_path = add_user_prefix(link_parser.path, owner_id, collection["id"])
