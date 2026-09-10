@@ -3967,7 +3967,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a13.post25.dev0"
+version = "0.0.0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -4000,10 +4000,10 @@ python-dotenv = "^1.0.0"
 python-keycloak = ">=5.7.0,<8.0"
 requests = "^2.32.5"
 sqlalchemy = "^2.0.43"
-stac-fastapi-api = ">=6.3.0"
-stac-fastapi-extensions = ">=6.3.0"
-stac-fastapi-pgstac = ">=6.3.0,<6.4.0"
-stac-fastapi-types = ">=6.3.0"
+stac-fastapi-api = ">=6.4.0"
+stac-fastapi-extensions = ">=6.4.0"
+stac-fastapi-pgstac = ">=6.4.0"
+stac-fastapi-types = ">=6.4.0"
 stac-pydantic = "^3.4.0"
 starlette = ">=1.4.1"
 urllib3 = ">=2.6.3"
@@ -4246,14 +4246,14 @@ stac-fastapi-types = ">=6.6,<7.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "6.3.1"
+version = "6.4.0"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-6.3.1-py3-none-any.whl", hash = "sha256:db90ae212969225471236cf3b09e5d2b15a92af980f7b640402607adba27b585"},
-    {file = "stac_fastapi_pgstac-6.3.1.tar.gz", hash = "sha256:ae65272eb5d99e1bcc9f89cfe5297c9404672bb0b4ab3ca4c749f65abf3b2cf3"},
+    {file = "stac_fastapi_pgstac-6.4.0-py3-none-any.whl", hash = "sha256:b33997cf598c292d514846837846754f8dac0966b5e7e0c2a3b585a85a77f125"},
+    {file = "stac_fastapi_pgstac-6.4.0.tar.gz", hash = "sha256:2f02bb2b6d5ef3b5edd5d5d049371793ed99741e911bcdcc8ab7881e4296aaa0"},
 ]
 
 [package.dependencies]
@@ -4268,9 +4268,9 @@ jsonpatch = ">=1.33.0"
 orjson = "*"
 pydantic = ">=2.4,<3.0"
 pydantic-settings = ">=2.7,<3.0"
-stac-fastapi-api = ">=6.3,<7.0"
-stac-fastapi-extensions = ">=6.3,<7.0"
-stac-fastapi-types = ">=6.3,<7.0"
+stac-fastapi-api = ">=6.4,<7.0"
+stac-fastapi-extensions = ">=6.4,<7.0"
+stac-fastapi-types = ">=6.4,<7.0"
 
 [package.extras]
 catalogs = ["stac-fastapi-catalogs-extension (==0.4.0)"]
