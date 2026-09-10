@@ -533,7 +533,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
             if isinstance(value, dict):
                 value = value.get("property")
-            elif isinstance(value, str):
+            if isinstance(value, str):
                 value = value.strip()
             # NOTE: for a list, keep the value as it is
             stac_params[prop] = value
@@ -597,7 +597,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if op != "and":
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    f"Invalid CQL2 filter '{op}': {format_dict(filt)}",  # noqa: E501
+                    f"Invalid CQL2 filter operator '{op}': {format_dict(filt)}",  # noqa: E501
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
@@ -701,7 +701,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     detail=f"Invalid combination of platform/constellation: {platform}/{constellation}",
                 )
 
-            # But these mission odata values still saved with stac keys for now
+            # But these mission odata values are still saved with stac keys for now
             if len(mission) == 1:
                 if self.cadip:
                     stac_params["platform"] = mission.pop()  # type: ignore
