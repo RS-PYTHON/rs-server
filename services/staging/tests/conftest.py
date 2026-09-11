@@ -148,7 +148,7 @@ def client_(mocker):
     """init fastapi client app."""
     # Test the FastAPI application, opens the database session
     mocker.patch("rs_server_staging.main.init_db", return_value=None)
-    mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
+    mocker.patch("rs_server_staging.main.postgresql_manager.PostgreSQLManager", return_value=mocker.Mock())
     with TestClient(app) as client:
 
         yield client

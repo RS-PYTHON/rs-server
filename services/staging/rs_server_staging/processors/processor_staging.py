@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 
 import boto3
 import botocore
+import pygeoapi.process.manager.postgresql as postgresql_manager
 import requests
 from dask.distributed import (
     Client,
@@ -44,9 +45,6 @@ from dask_gateway.auth import BasicAuth, JupyterHubAuth
 from fastapi import HTTPException
 from opentelemetry.propagate import inject
 from pygeoapi.process.base import BaseProcessor
-from pygeoapi.process.manager.postgresql import (
-    PostgreSQLManager,  # pylint: disable=C0302
-)
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
@@ -67,6 +65,7 @@ from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
+from rs_server_staging.jobs_table import get_table_model as rspy_get_table_model
 from rs_server_staging.processors.authentication import (
     RefreshTokenData,
     update_station_token,
@@ -82,6 +81,9 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
 )
+
+# Override function to return table model because the one from pygeoapi has a wrong field name
+postgresql_manager.get_table_model = rspy_get_table_model
 
 
 class Staging(
@@ -116,7 +118,7 @@ class Staging(
     def __init__(
         self,
         request: Request,
-        db_process_manager: PostgreSQLManager,
+        db_process_manager: postgresql_manager.PostgreSQLManager,
         cluster: LocalCluster,
         station_token_list: list[RefreshTokenData],
         station_token_list_lock: threading.Lock,
