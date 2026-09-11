@@ -18,7 +18,7 @@ import copy
 import os
 
 import pytest
-from rs_server_staging.jobs_table import JobsTable, get_table_model
+from rs_server_staging.jobs_table import get_table_model
 from rs_server_staging.main import (
     format_job_data,
     format_jobs_data,
