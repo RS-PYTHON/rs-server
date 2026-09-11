@@ -17,6 +17,7 @@
 import os
 import traceback
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 
 import botocore
 from fastapi import HTTPException
@@ -63,6 +64,7 @@ class S3Manager:
         Args:
             s3_credentials: S3 credentials
         """
+        self.s3_credentials = s3_credentials
         self.s3_handler: S3StorageHandler = self._get_s3_handler(s3_credentials)
         # If we are in local mode, operations on S3 bucket will be skipped
         self.is_catalog_local_mode = int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)) == 1
@@ -300,12 +302,19 @@ class S3Manager:
             logger.warning("Asset %s not found while generating presigned URL for item %s", asset_id, item_id)
             return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
-            if not self.s3_handler:
+            # Sign with a browser-accessible endpoint while retaining the internal
+            # endpoint for catalog-side S3 operations.
+            public_credentials = replace(
+                self.s3_credentials,
+                endpoint_url=os.environ.get("S3_PUBLIC_ENDPOINT", self.s3_credentials.endpoint_url),
+            )
+            download_handler = self._get_s3_handler(public_credentials)
+            if not download_handler:
                 raise HTTPException(
                     status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to find s3 credentials",
                 )
-            response = self.s3_handler.s3_client.generate_presigned_url(
+            response = download_handler.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": bucket_name, "Key": s3_path},
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
