@@ -481,7 +481,7 @@ class CatalogResponseManager:
             if item:
                 item["href"] = urlunparse(urlparse(item["href"])._replace(query=""))
 
-            content["collections"] = StacManager.update_links_for_all_collections(request, content["collections"])
+            content["collections"] = StacManager.update_links_for_all_collections(content["collections"])
 
         # If we are in cluster mode and the user_login is not authorized
         # to this endpoint raise a HTTP_401_UNAUTHORIZED status.
