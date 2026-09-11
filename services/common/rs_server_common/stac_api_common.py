@@ -18,6 +18,7 @@
 
 import asyncio
 import copy
+import itertools
 import json
 import os
 import re
@@ -515,6 +516,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 ) from exception
 
         bbox = params.pop("bbox", None)
+
         #
         # Read query and/or CQL filter
 
@@ -533,6 +535,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 value = value.get("property")
             if isinstance(value, str):
                 value = value.strip()
+            # NOTE: for a list, keep the value as it is
             stac_params[prop] = value
 
         # helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON)
@@ -569,8 +572,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     stac_params["intersects"] = str(geom).strip("'\"")
                 return
 
-            # Read a single property
-            if op == "=":
+            # Read a single property with the '=' or 'in' operator
+            if op and op.lower() in ("=", "in"):
                 if (len(args) != 2) or not (prop := args[0].get("property")):
                     raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -594,7 +597,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if op != "and":
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed, got '{op}': {format_dict(filt)}",  # noqa: E501 # pylint: disable=line-too-long
+                    f"Invalid CQL2 filter operator '{op}': {format_dict(filt)}",  # noqa: E501
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
@@ -603,6 +606,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Used to read query parameter cql2-text filter."""
             if not query_arg:
                 return
+
             # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
             if re.search(r"\bAND\b", query_arg, re.IGNORECASE):  # only AND for now.
                 conditions = [c.strip() for c in re.split(r"\bAND\b", query_arg, flags=re.IGNORECASE)]
@@ -623,6 +627,21 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 check_input_type(self.get_queryables(), prop, value)
                 # Update stac params
                 stac_params[prop] = value  # type: ignore
+
+            # Handle 'in' if query_arg is like '<space>*<key><space>+IN<space>+(<value>)'
+            elif kv := re.findall(r"^\s*(\S+)\s+in\s+(\(.+)$", query_arg, re.IGNORECASE):
+                # Extract prop and check if it's in the queryables.
+                if (prop := kv[0][0].strip()) not in allowed_properties:
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
+                    )
+                stripped = kv[0][1].strip(" \t()")
+                values = [v.strip().strip("'\"") for v in stripped.split(",")]
+                check_input_type(self.get_queryables(), prop, values)
+                # Update stac params
+                stac_params[prop] = values  # type: ignore
+
             # Handle CQL2 temporal operators
             elif match := re.search(
                 r"\b(" + "|".join(map(re.escape, temporal_operations.keys())) + r")\b",
@@ -632,10 +651,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 op = match.group(1).lower()
                 logger.debug(f"Temporal operator detected: {op} -> {stac_params[op]}")
             else:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    "Invalid query filter, only '=' and temporal operators are allowed, got: " + query_arg,
-                )
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Invalid query filter: {query_arg}")
 
         # Pre-process filter extensions
         if "filter" in params:
@@ -665,44 +681,71 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if external_ids_param is not None and "externalIds" in allowed_properties:
             read_property("externalIds", external_ids_param)
 
-        # map stac platform/constellation values to odata values...
-        mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
-        # ... still saved with stac keys for now
-        if self.auxip:
-            stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
-        if self.cadip:
-            stac_params["platform"] = mission  # type: ignore
-        if self.prip:
-            stac_params["constellation"], stac_params["platform"] = mission  # type: ignore
+        def map_missions(platform: str | list[str] | None, constellation: str | list[str] | None):
+            """Map one or several stac platform/constellation values to odata values"""
 
-            if bbox:
-                if isinstance(bbox, str):
-                    coords = [float(x) for x in bbox.split(",")]
-                elif isinstance(bbox, list):
-                    coords = list(map(float, bbox))
+            if (platform is None) and (constellation is None):
+                return
 
-                west, south, east, north = coords  # pylint: disable=E0606
+            # Calculate for each pair of platform/constellation
+            pairs = itertools.product(
+                platform if isinstance(platform, list) else [platform],
+                constellation if isinstance(constellation, list) else [constellation],
+            )
+            mission = [self.map_mission(p, c) for p, c in pairs]
+            # Remove None entries and convert to set to remove duplicates
+            mission = list({m for m in mission if m is not None})
+            if not mission:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid combination of platform/constellation: {platform}/{constellation}",
+                )
 
-                # if 'intersects' wasn't previously set
-                if "intersects" not in stac_params or not stac_params["intersects"]:
-                    stac_params["intersects"] = (box(west, south, east, north)).wkt
+            # But these mission odata values are still saved with stac keys for now
+            if len(mission) == 1:
+                if self.cadip:
+                    stac_params["platform"] = mission.pop()  # type: ignore
+                else:  # auxip and prip
+                    stac_params["constellation"], stac_params["platform"] = mission.pop()  # type: ignore
+            else:
+                if self.cadip:
+                    stac_params["platform"] = mission
+                else:  # auxip and prip
+                    c, p = zip(*mission)
+                    stac_params["constellation"] = list(set(c))
+                    stac_params["platform"] = list(set(p))
+
+        # Map platform/constellation fields
+        map_missions(stac_params.get("platform"), stac_params.get("constellation"))
+
+        if self.prip and bbox:
+            if isinstance(bbox, str):
+                coords = [float(x) for x in bbox.split(",")]
+            elif isinstance(bbox, list):
+                coords = list(map(float, bbox))
+
+            west, south, east, north = coords  # pylint: disable=E0606
+
+            # if 'intersects' wasn't previously set
+            if "intersects" not in stac_params or not stac_params["intersects"]:
+                stac_params["intersects"] = (box(west, south, east, north)).wkt
+            else:
+                # will set the value of the two intersecting polygons
+                bbox_polygon = box(west, south, east, north)
+
+                # also convert the 'intersects' value
+                poly = wkt.loads(stac_params["intersects"])
+                west, south, east, north = poly.bounds
+                filter_polygon = box(west, south, east, north)
+
+                if bbox_polygon.intersects(filter_polygon):
+                    stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
                 else:
-                    # will set the value of the two intersecting polygons
-                    bbox_polygon = box(west, south, east, north)
-
-                    # also convert the 'intersects' value
-                    poly = wkt.loads(stac_params["intersects"])
-                    west, south, east, north = poly.bounds
-                    filter_polygon = box(west, south, east, north)
-
-                    if bbox_polygon.intersects(filter_polygon):
-                        stac_params["intersects"] = (bbox_polygon.intersection(filter_polygon)).wkt
-                    else:
-                        stac_params.pop("intersects", None)
-                        raise HTTPException(
-                            status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            "The provided 'bbox' and 'intersects' polygons do not overlap.",
-                        )
+                    stac_params.pop("intersects", None)
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
+                        "The provided 'bbox' and 'intersects' polygons do not overlap.",
+                    )
 
         # Discard these search parameters
         params.pop("conf", None)
@@ -765,7 +808,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
         # Group collections by station
         collections_by_station: dict[str, list[dict]] = defaultdict(list)
-        for collection in (self.select_config(collection_id) for collection_id in collection_ids):
+        for collection in (self.select_config(collection_id) for collection_id in sorted(collection_ids)):
             collections_by_station[collection["station"]].append(collection)
 
         odata_params_by_station: dict[str, dict] = {}
@@ -1515,11 +1558,13 @@ def check_input_type(field_info, key, input_value):
         "datetime": check_datetime_input,  # Adding support for datetime
     }
 
-    if not type_mapping.get(expected_type)(input_value):  # type: ignore
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Invalid CQL2 filter value",
-        )
+    # A list of these value types is permitted
+    for v in (input_value if isinstance(input_value, list) else [input_value]):
+        if not type_mapping.get(expected_type)(v):  # type: ignore
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                f"Invalid CQL2 filter value for {key!r}={v!r}, expected type {expected_type!r}",
+            )
 
 
 def check_datetime_input(input_value: Any) -> bool:

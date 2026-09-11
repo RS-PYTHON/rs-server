@@ -74,7 +74,7 @@ authlib = "^1.6.1"
 python-keycloak = ">=5.7.0,<8.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = ">=6.3.0"
+stac-fastapi-pgstac = ">=6.3.0,<6.4.0" # see https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-1215
 stac-fastapi-api = ">=6.3.0"
 stac-fastapi-extensions = ">=6.3.0"
 stac-fastapi-types = ">=6.3.0"
