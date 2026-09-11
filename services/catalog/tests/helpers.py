@@ -19,7 +19,7 @@ import os
 import os.path as osp
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 import yaml
@@ -126,10 +126,9 @@ class Collection:
     user: str | None
     name: str
 
-    @property
-    def full_id(self) -> str:
-        """Returns the id as '<name>' or '<user>:<name>'"""
-        return f"{self.user}:{self.name}" if self.user else f"{self.name}"
+    def full_id(self, sep: Literal[":", "_"]) -> str:
+        """Returns the id as '<name>' or '<user><:|_><name>'"""
+        return f"{self.user}{sep}{self.name}" if self.user else f"{self.name}"
 
     @property
     def properties(self) -> dict[str, Any]:
@@ -162,12 +161,15 @@ class Collection:
         properties = self.properties
         auth_refs = AUTH_REFS if cluster_mode else {}
 
+        # Add the <owner_id>_ prefix to the collection id
+        properties["id"] = self.full_id("_")
+
         # Add links
         properties["links"] = [
             {
                 "rel": "items",
                 "type": "application/geo+json",
-                "href": f"http://testserver/catalog/collections/{self.full_id}/items",
+                "href": f"http://testserver/catalog/collections/{self.full_id(":")}/items",
                 **auth_refs,
             },
             {
@@ -185,7 +187,7 @@ class Collection:
             {
                 "rel": "self",
                 "type": "application/json",
-                "href": f"http://testserver/catalog/collections/{self.full_id}",
+                "href": f"http://testserver/catalog/collections/{self.full_id(":")}",
                 **auth_refs,
             },
             {
@@ -198,7 +200,7 @@ class Collection:
                 "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
                 "type": "application/schema+json",
                 "title": "Queryables",
-                "href": f"http://testserver/catalog/collections/{self.full_id}/queryables",
+                "href": f"http://testserver/catalog/collections/{self.full_id(":")}/queryables",
                 **auth_refs,
             },
         ]
