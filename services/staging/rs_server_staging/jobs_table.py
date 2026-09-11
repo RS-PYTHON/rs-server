@@ -18,10 +18,20 @@ from __future__ import annotations
 
 import enum
 from threading import Lock
+from typing import Any
 
-from pygeoapi.util import JobStatus
 from rs_server_staging import Base
-from sqlalchemy import Column, DateTime, Enum, Integer, String, func, orm
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    LargeBinary,
+    MetaData,
+    String,
+    func,
+    orm,
+)
+from sqlalchemy.engine import Engine
 
 # pylint: disable=attribute-defined-outside-init
 # mypy: ignore-errors
@@ -47,10 +57,10 @@ class JobsTable(Base):  # pylint: disable=too-few-public-methods
 
     __tablename__ = "jobs"
 
-    type = Column(Enum(JobType), nullable=False, server_default=JobType.process.value)
+    type = Column(String, nullable=False, server_default=JobType.process.value)
     identifier = Column(String, primary_key=True, unique=True, index=True)
     processID = Column(String, nullable=False)
-    status = Column(Enum(JobStatus), nullable=False)
+    status = Column(String, nullable=False)
     progress = Column(Integer, server_default="0", nullable=False)
     # Pylint issue with func.now, check this: https://github.com/sqlalchemy/sqlalchemy/issues/9189
     created = Column(DateTime, server_default=func.now())  # pylint: disable=not-callable
@@ -78,3 +88,32 @@ class JobsTable(Base):  # pylint: disable=too-few-public-methods
     def init_on_load(self):
         """Invoked when retrieving an existing record from the database table."""
         self.lock = Lock()
+
+
+def get_table_model(db_search_path: tuple[str], engine: Engine, table_output: bool) -> Any:
+    """Define SQLAlchemy jobs table model.
+    Rewrite of function get_table_model from pygeoapi:
+    https://github.com/geopython/pygeoapi/blob/f765a64fa65350dc93d9df0a1b38755bef6c31b0/pygeoapi/process/manager/postgresql.py#L306
+    Because the model used in pygeoapi is not compatible with ours
+    (incompatibility between field names, processID in out case but process_id in pygeoapi)
+    """
+
+    schema = db_search_path[0]
+
+    metadata = MetaData()
+
+    jobs = JobsTable.__table__.to_metadata(
+        metadata,
+        schema=schema,
+    )
+
+    if table_output and "output" not in jobs.c:
+        jobs.append_column(Column("output", LargeBinary))
+
+    metadata.create_all(
+        engine,
+        tables=[jobs],
+        checkfirst=True,
+    )
+
+    return jobs
