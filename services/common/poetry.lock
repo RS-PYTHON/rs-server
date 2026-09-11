@@ -1102,14 +1102,14 @@ files = [
 
 [[package]]
 name = "geojson-pydantic"
-version = "2.1.1"
+version = "2.1.2"
 description = "Pydantic data models for the GeoJSON spec."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "geojson_pydantic-2.1.1-py3-none-any.whl", hash = "sha256:55354f22ededc3c070e3210fec6f518d784b65c4368c1763f2c6dc4bab79b898"},
-    {file = "geojson_pydantic-2.1.1.tar.gz", hash = "sha256:3b64fa2dcd98108ff8a19bfb01eee3dab41bc230be2481804aefd7c1659d1c23"},
+    {file = "geojson_pydantic-2.1.2-py3-none-any.whl", hash = "sha256:49aa772b4f4c4d0612595908294a58510c4291848db805a0c99989836ebe4659"},
+    {file = "geojson_pydantic-2.1.2.tar.gz", hash = "sha256:94b9f80f9d8ec8b5cad94de9c8feae93d3e0081bf67a4d3929e0e36fb87479f0"},
 ]
 
 [package.dependencies]
@@ -4008,4 +4008,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "64faec7ffeea3f9304267f1ebd1697f0201d741a5274d2d9667a90d6384317a7"
+content-hash = "18403e7a0a85dfb7bdadf5d092430a54fc3b7ef72cd39e56603cfccd96303cec"
