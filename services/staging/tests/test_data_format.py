@@ -18,6 +18,7 @@ import copy
 import os
 
 import pytest
+from rs_server_staging.jobs_table import JobsTable, get_table_model
 from rs_server_staging.main import (
     format_job_data,
     format_jobs_data,
@@ -25,6 +26,7 @@ from rs_server_staging.main import (
     init_db,
     init_pygeoapi,
 )
+from sqlalchemy import Table
 from sqlalchemy.exc import SQLAlchemyError
 
 from .conftest import EXPECTED_JOBS_TEST
@@ -164,3 +166,20 @@ def test_format_jobs_data(mock_jobs):
         ],
     }
     assert format_jobs_data(mock_jobs) == expected_response
+
+
+def test_get_table_model(mocker):
+    """Unit test for get_table_model"""
+
+    # Mock create_all to avoid accessing the database
+    mocker.patch("sqlalchemy.MetaData.create_all")
+
+    table_model = get_table_model(("public",), None, True)
+
+    assert isinstance(table_model, Table)
+
+    assert table_model.name == "jobs"
+    assert table_model.schema == "public"
+
+    assert "processID" in table_model.c
+    assert "output" in table_model.c
