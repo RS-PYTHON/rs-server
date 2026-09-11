@@ -14,10 +14,16 @@
 
 """Utility functions used by the pytest unit tests."""
 
-from typing import Any
+import os
+from copy import deepcopy
+from types import ModuleType
+from typing import Any, Literal
 
 import httpx
+import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
+from eodag.plugins.search.qssearch import QueryStringSearch
+from fastapi import status
 from fastapi.testclient import TestClient
 from keycloak import KeycloakAdmin
 from rs_server_common.authentication import oauth2
@@ -115,3 +121,335 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
         assert ("session" in dict(client.cookies)) == has_cookie  # nosec
 
     return response
+
+
+def create_mock_collection(
+    service: Literal["adgs", "cadip", "prip"],
+    service_utils: ModuleType,
+    col_id: str,
+    configured_query: dict,
+):
+    """
+    Create a mock collection.
+
+    Args:
+        service: adgs, cadip or prip
+        service_utils: adgs_utils, cadip_utils or prip_utils
+        col_id: id of the mocked collection
+        configured_query: configured query for this collection, i.e. the collection  will only return results
+        from this query.
+    """
+    adgs = service == "adgs"
+    cadip = service == "cadip"
+    prip = service == "prip"
+
+    # Read a collection from:
+    # rs-server/services/adgs/config/adgs_search_config.yaml or
+    # rs-server/services/cadip/config/cadip_search_config.yaml or
+    # rs-server/services/prip/config/prip_search_config.yaml
+    if adgs:
+        col_name = "adgs_by_platform"
+    elif cadip:
+        col_name = "cadip_session_by_id_list"
+    elif prip:
+        col_name = "S1A_L0_IW_RAW"
+    else:
+        raise NotImplementedError
+
+    collections: dict = service_utils.read_conf()["collections"]
+    collection = [col for col in collections if col["id"] == col_name][0]
+
+    # Copy the cached response before we modify it
+    collection = deepcopy(collection)
+
+    # Keep everything except the id and hardcoded query
+    collection["id"] = col_id
+    collection["query"] = configured_query
+    return collection
+
+
+def call_mocked_search(
+    # Parameters coming from the pytest
+    mocker,
+    client,
+    service: Literal["adgs", "cadip", "prip"],
+    method: Literal["GET", "POST"],
+    expected_response: dict,
+    cadip_file_response: dict,
+    filter_type: Literal["cql", "query"] = "cql",
+    # Requested collections
+    cols: list[str] | None = None,
+    # Platforms and constellations
+    request_platforms: list[str] | None = None,
+    request_constellations: list[str] | None = None,
+    expected_satellites: list[str] | None = None,  # for cadip
+    expected_constellations: list[str] | None = None,  # platformShortName, for adgs/prip
+    expected_platforms: list[str] | None = None,  # platformSerialIdentifier, for adgs/prip
+    # adgs/prip product types
+    request_product_types: list[str] | None = None,
+    expected_product_types: list[str] | None = None,
+    # Datetimes
+    request_datetime: str | None = None,  # range as min/max
+    expected_publication_date: str | None = None,  # range as min/max
+    expected_content_date: str | None = None,  # range as min/max
+    # Product or session ids
+    ids: list[str] | None = None,
+    ids_in_filter: bool = True,  # pass ids inside or outside the filter ?
+    # Pagination
+    request_sortby: tuple[Literal["-", "+"], str] | None = None,
+    request_limit: int | None = None,
+    expected_pagination="&$orderby=PublicationDate desc&$top=10&$skip=0",
+    # We don't expect any results if the user request does not match the collection config
+    expect_result: bool = True,
+) -> list[dict]:
+    """
+    Create a user stac request from parameters.
+    Then mock the odata request, that is calculated by rspy from the collection configurations
+    and the user request, and is sent to the station.
+    Then call the /search and check result.
+    """
+    adgs = service == "adgs"
+    cadip = service == "cadip"
+    prip = service == "prip"
+
+    # Spy on eodag.plugins.search.qssearch::QueryStringSearch if it's not already mocked, or reset the mock
+    try:
+        spy_search = QueryStringSearch.do_search
+        spy_search.reset_mock()
+    except AttributeError:
+        spy_search = mocker.spy(QueryStringSearch, "do_search")
+
+    user_request: dict[str, Any] = {}  # user stac request params, including "filter" or "query"
+    user_filters: list[Any] = []  # list of user stac filter/query parts
+    odata_filters: dict[str, str] = {}  # list of mocked odata request parts, ordered by key
+    odata_kwargs: dict[str, str] = {}  # some odata fields are passed to eodag by kwargs, not url
+
+    def _add_filter(
+        request: str,  # "stac" or "odata_xxx"
+        key: str,
+        values: str | list[str] | None,
+        kwargs_key: str = "",
+    ):
+        """Format a key and values for a stac or odata request"""
+        if not values:
+            return
+
+        # Field passed by kwargs
+        if kwargs_key:
+            odata_dict = odata_kwargs
+            odata_key = kwargs_key
+        # Nominal case: field passed by url
+        else:
+            odata_dict = odata_filters
+            odata_key = key
+
+        if request.startswith("odata_range"):  # datetime range as min/max str
+            assert isinstance(values, str)
+            date_min = values.split("/", maxsplit=1)[0]
+            date_max = values.split("/")[1]
+            if request == "odata_range1":
+                odata_dict[odata_key] = (
+                    f"({key} gt {date_min} or {key} eq {date_min}) and ({key} lt {date_max} or {key} eq {date_max})"
+                )
+            elif request == "odata_range2":
+                odata_dict[odata_key] = (
+                    f"({key}/Start gt {date_min} or {key}/Start eq {date_min}) and "
+                    f"({key}/End lt {date_max} or {key}/End eq {date_max})"
+                )
+            return
+
+        # Convert single value to list
+        if not isinstance(values, list):
+            values = [values]
+
+        if request == "odata2":
+            odata_dict[odata_key] = " or ".join(f"contains({key},'{v}')" for v in values)
+            return
+
+        joined = ""
+        if len(values) == 1:
+            if request == "stac":
+                joined = f"='{values[0]}'"
+            elif request == "odata":
+                joined = f" eq '{values[0]}'"
+        else:
+            if (request == "stac") and (filter_type == "query"):
+                raise NotImplementedError
+            joined = " in (" + ",".join([f"'{v}'" for v in values]) + ")"
+
+        if request == "stac":
+            if method == "GET":
+                if filter_type == "cql":
+                    user_filters.append(f"{key}{joined}")
+                else:  # query
+                    user_filters.append(f'"{key}": {{"eq": "{values[0]}"}}')
+            else:  # POST
+                if filter_type == "cql":
+                    if len(values) == 1:
+                        user_filters.append({"args": [{"property": key}, values[0]], "op": "="})
+                    else:
+                        user_filters.append({"args": [{"property": key}, values], "op": "in"})
+                else:  # query
+                    user_filters.append([key, {"eq": values[0]}])
+        else:  # odata
+            if cadip:
+                odata_dict[odata_key] = f"{key}{joined}"
+            else:  # adgs/prip
+                odata_dict[odata_key] = (
+                    f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{key}' and "
+                    f"att/OData.CSC.StringAttribute/Value{joined})"
+                )
+
+    #
+    # Handle all parameters
+
+    if ids_in_filter:
+        _add_filter("stac", "id", ids)
+    if cadip:
+        _add_filter("odata", "SessionId", ids)
+    elif adgs:
+        _add_filter("odata2", "Name", ids)
+    elif prip:
+        _add_filter("odata2", "Name", ids, kwargs_key="NameContains")
+
+    _add_filter("stac", "platform", request_platforms)
+    _add_filter("stac", "constellation", request_constellations)
+
+    _add_filter("odata", "Satellite", expected_satellites)
+    _add_filter("odata", "platformSerialIdentifier", expected_platforms)
+    _add_filter("odata", "platformShortName", expected_constellations)
+
+    _add_filter("stac", "product:type", request_product_types)
+    _add_filter("odata", "productType", expected_product_types)
+
+    _add_filter("odata_range1", "PublicationDate", expected_publication_date)
+    _add_filter("odata_range2", "ContentDate", expected_content_date)
+
+    #
+    # Non-filter parameters
+
+    if ids and (not ids_in_filter):
+        user_request["ids"] = ids if (method == "POST") else ",".join(ids)
+
+    if request_datetime is not None:
+        user_request["datetime"] = request_datetime
+
+    if request_limit is not None:
+        user_request["limit"] = request_limit
+
+    if request_sortby is not None:
+        match request_sortby[1]:
+            case "datetime":
+                sortby_name = "published" if cadip else "created"
+            case _:
+                raise NotImplementedError
+
+        sortby_sign = request_sortby[0]
+        if method == "GET":
+            user_request["sortby"] = f"{sortby_sign}{sortby_name}"
+        else:  # POST
+            user_request["sortby"] = [{"direction": "desc" if (sortby_sign == "-") else "asc", "field": sortby_name}]
+
+    # Build the user request
+    if method == "GET":
+        if cols:
+            user_request["collections"] = ",".join(cols)
+        if user_filters:
+            if filter_type == "cql":
+                user_request["filter"] = " and ".join(user_filters)
+            else:  # query
+                user_request["query"] = "{" + ",".join(user_filters) + "}"
+    else:  # POST
+        if cols:
+            user_request["collections"] = cols
+        if user_filters:
+            if filter_type == "cql":
+                user_request["filter"] = {"args": user_filters, "op": "and"}
+            else:  # query
+                user_request["query"] = dict(user_filters)
+
+    # The mocked odata request fields must respect a certain order
+    order_odata_by = []
+    if cadip:
+        order_odata_by = ["PublicationDate", "SessionId", "Satellite"]
+    elif adgs:
+        order_odata_by = [
+            "PublicationDate",
+            "ContentDate",
+            "productType",
+            "platformSerialIdentifier",
+            "platformShortName",
+            "Name",
+        ]
+    elif prip:
+        order_odata_by = [
+            "PublicationDate",
+            "ContentDate",
+            "productType",
+            "platformShortName",
+            "platformSerialIdentifier",
+            "Name",
+        ]
+    ordered_odata = dict(sorted(odata_filters.items(), key=lambda item: order_odata_by.index(item[0]))).values()
+
+    # Build the mocked odata
+    odata = "http://127.0.0.1:5000/" + ("Sessions" if cadip else "Products") + "?"
+    if odata_filters:
+        odata += "$filter=" + " and ".join(ordered_odata)
+    odata += expected_pagination
+    odata += "&$expand=Attributes" if not cadip else ""
+
+    # Handle some specific cases
+    odata = odata.replace("?&$orderby", "?$orderby")
+
+    # Mock the station response
+    with responses.RequestsMock() as rsps:
+        if expect_result:
+            rsps.add(
+                responses.GET,
+                odata,
+                status=status.HTTP_200_OK,
+                json=expected_response,
+            )
+            if cadip:
+                odata_query_files = (
+                    "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0"
+                )
+                rsps.add(
+                    responses.GET,
+                    odata_query_files,
+                    status=status.HTTP_200_OK,
+                    json=cadip_file_response,
+                )
+
+        # Call the endpoint
+        url = f"{os.getenv('router_prefix')}/search"
+        if method == "GET":
+            response = client.get(url, params=user_request)
+        elif method == "POST":
+            response = client.post(url, json=user_request)
+        else:
+            raise NotImplementedError
+
+        # Check that the odata url and kwargs are the same as expected
+        if expect_result:
+            assert spy_search.call_args_list[0][0][1].search_urls[0] == odata
+            for key, value in odata_kwargs.items():
+                assert spy_search.call_args_list[0][1][key] == value
+
+        # Check success and return features
+        assert response.is_success
+        features = response.json()["features"]
+
+        if expect_result:
+            if cadip:
+                # 2 calls, one for sessions, one for files
+                assert spy_search.call_count == 2
+                assert len(spy_search.spy_return) == 2 * len(features) == 2 * len(expected_response["value"])
+            else:
+                # 1 single call for files
+                assert spy_search.call_count == 1
+                assert len(spy_search.spy_return) == len(features) == len(expected_response["value"])
+        else:
+            assert spy_search.call_count == 0
+        return features

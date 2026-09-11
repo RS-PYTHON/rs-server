@@ -181,4 +181,4 @@ notes = ["XXX"]  # No errors on TODO and FIXME
 min-similarity-lines = 10  # Minimum lines number of a similarity
 
 [tool.bandit]
-exclude_dirs = ["tests"]
+exclude_dirs = ["tests", "services/common/rs_server_common/utils/pytest"]
