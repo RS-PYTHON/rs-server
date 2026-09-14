@@ -6296,54 +6296,6 @@
         }
       }
     },
-    "/catalog/collections/{collection_id}/bulk_items": {
-      "post": {
-        "tags": [
-          "Catalog (Bulk Transaction Extension)"
-        ],
-        "summary": "Bulk Create Item",
-        "description": "Endpoint.",
-        "operationId": "Bulk_Create_Item_catalog_collections__collection_id__bulk_items_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Items"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "title": "Response Bulk Create Item Catalog Collections  Collection Id  Bulk Items Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "API key authentication": []
-          }
-        ]
-      }
-    },
     "/catalog/queryables": {
       "get": {
         "tags": [
@@ -6415,6 +6367,54 @@
             }
           }
         }
+      }
+    },
+    "/catalog/collections/{collection_id}/bulk_items": {
+      "post": {
+        "tags": [
+          "Catalog (Bulk Transaction Extension)"
+        ],
+        "summary": "Bulk Create Item",
+        "description": "Endpoint.",
+        "operationId": "Bulk_Create_Item_catalog_collections__collection_id__bulk_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Items"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "title": "Response Bulk Create Item Catalog Collections  Collection Id  Bulk Items Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ]
       }
     },
     "/catalog/_mgmt/ping": {

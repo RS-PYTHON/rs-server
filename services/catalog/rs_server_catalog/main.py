@@ -16,7 +16,7 @@
 
 import os
 
-from stac_fastapi.pgstac.app import settings
+from rs_server_catalog.stac_api import settings
 
 
 def run():

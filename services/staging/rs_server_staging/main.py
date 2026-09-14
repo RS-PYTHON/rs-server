@@ -27,13 +27,13 @@ from time import sleep
 from typing import Annotated
 
 import httpx
+import pygeoapi.process.manager.postgresql as postgresql_manager
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, Depends, FastAPI, Path, Security
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
-from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.sql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
@@ -48,6 +48,7 @@ from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging import Base
+from rs_server_staging.jobs_table import get_table_model as rspy_get_table_model
 from rs_server_staging.processors.processor_staging import processors
 from rs_server_staging.staging_endpoints_validation import (
     validate_request,
@@ -73,6 +74,9 @@ from starlette.status import (
 
 # DON'T REMOVE (needed for SQLAlchemy)
 from . import jobs_table  # pylint: disable=unused-import
+
+# Override function to return table model because the one from pygeoapi has a wrong field name
+postgresql_manager.get_table_model = rspy_get_table_model
 
 REFRESH_TOKENS_TIMEOUT = 40
 
@@ -183,7 +187,7 @@ def __filelock(func):
 
 
 @__filelock
-def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
+def init_db(pause: int = 3, timeout: int | None = None) -> postgresql_manager.PostgreSQLManager:
     """Initialize the PostgreSQL database connection and sets up required table and ENUM type.
 
     This function constructs the database URL using environment variables for PostgreSQL
@@ -234,7 +238,7 @@ def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
             sleep(pause)
 
     # Initialize PostgreSQLManager with the manager configuration
-    return PostgreSQLManager(manager_def)
+    return postgresql_manager.PostgreSQLManager(manager_def)
 
 
 # Create Dask LocalCluster when the application starts
