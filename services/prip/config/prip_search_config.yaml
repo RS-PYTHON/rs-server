@@ -18,34 +18,13 @@
 # DON'T MODIFY IT DIRECTLY !
 
 collections:
-- id: S1A_L0_IW_RAW
+- id: S1A_L0_HK
   station: s1a
   query:
-    productType: IW_RAW__0N
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.1.0/schema.json
-  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
-  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
-  - https://stac-extensions.github.io/product/v1.0.0/schema.json
-  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
-  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
-  title: S1A L0 RAW products
-  description: S1A L0 RAW products
+    productType: HK_RAW__0_
+  title: S1A L0 HK products
+  description: S1A L0 HK products
   license: other
-  extent:
-    spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
-    temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
@@ -65,34 +44,2228 @@ collections:
     roles:
     - host
     url: https://home.rs-python.eu/
-- id: S2B_L0_DS
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_GP
+  station: s1a
+  query:
+    productType: GP_RAW__0_
+  title: S1A L0 GP products
+  description: S1A L0 GP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_EN_S
+  station: s1a
+  query:
+    productType: EN_RAW__0S
+  title: S1A L0 EN_S products
+  description: S1A L0 EN_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_EW_ANC
+  station: s1a
+  query:
+    productType: EW_RAW__0A,EW_RAW__0C,EW_RAW__0N
+  title: S1A L0 EW_ANC products
+  description: S1A L0 EW_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_EW_S
+  station: s1a
+  query:
+    productType: EW_RAW__0S
+  title: S1A L0 EW_S products
+  description: S1A L0 EW_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_IW_ANC
+  station: s1a
+  query:
+    productType: IW_RAW__0A,IW_RAW__0C,IW_RAW__0N
+  title: S1A L0 IW_ANC products
+  description: S1A L0 IW_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_IW_S
+  station: s1a
+  query:
+    productType: IW_RAW__0S
+  title: S1A L0 IW_S products
+  description: S1A L0 IW_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_NM_S
+  station: s1a
+  query:
+    productType: N1_RAW__0S,N2_RAW__0S,N3_RAW__0S,N4_RAW__0S,N5_RAW__0S,N6_RAW__0S
+  title: S1A L0 NM_S products
+  description: S1A L0 NM_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_SM_ANC
+  station: s1a
+  query:
+    productType: S1_RAW__0A,S1_RAW__0C,S1_RAW__0N,S2_RAW__0A,S2_RAW__0C,S2_RAW__0N,S3_RAW__0A,S3_RAW__0C,S3_RAW__0N,S4_RAW__0A,S4_RAW__0C,S4_RAW__0N,S5_RAW__0A,S5_RAW__0C,S5_RAW__0N,S6_RAW__0A,S6_RAW__0C,S6_RAW__0N
+  title: S1A L0 SM_ANC products
+  description: S1A L0 SM_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_SM_S
+  station: s1a
+  query:
+    productType: S1_RAW__0S,S2_RAW__0S,S3_RAW__0S,S4_RAW__0S,S5_RAW__0S,S6_RAW__0S
+  title: S1A L0 SM_S products
+  description: S1A L0 SM_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_WV_ANC
+  station: s1a
+  query:
+    productType: WV_RAW__0A,WV_RAW__0C,WV_RAW__0N
+  title: S1A L0 WV_ANC products
+  description: S1A L0 WV_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_WV_S
+  station: s1a
+  query:
+    productType: WV_RAW__0S
+  title: S1A L0 WV_S products
+  description: S1A L0 WV_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_RF_S
+  station: s1a
+  query:
+    productType: RF_RAW__0S
+  title: S1A L0 RF_S products
+  description: S1A L0 RF_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_ZM_S
+  station: s1a
+  query:
+    productType: Z1_RAW__0S,Z2_RAW__0S,Z3_RAW__0S,Z4_RAW__0S,Z5_RAW__0S,Z6_RAW__0S
+  title: S1A L0 ZM_S products
+  description: S1A L0 ZM_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_ZE_S
+  station: s1a
+  query:
+    productType: ZE_RAW__0S
+  title: S1A L0 ZE_S products
+  description: S1A L0 ZE_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_ZI_S
+  station: s1a
+  query:
+    productType: ZI_RAW__0S
+  title: S1A L0 ZI_S products
+  description: S1A L0 ZI_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L0_ZW_S
+  station: s1a
+  query:
+    productType: ZW_RAW__0S
+  title: S1A L0 ZW_S products
+  description: S1A L0 ZW_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_EW_GRD
+  station: s1a
+  query:
+    productType: EW_GRDH_1A,EW_GRDH_1S,EW_GRDM_1A,EW_GRDM_1S
+  title: S1A L1 EW_GRD products
+  description: S1A L1 EW_GRD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_EW_SLC
+  station: s1a
+  query:
+    productType: EW_SLC__1A,EW_SLC__1S
+  title: S1A L1 EW_SLC products
+  description: S1A L1 EW_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_IW_GRD
+  station: s1a
+  query:
+    productType: IW_GRDH_1A,IW_GRDH_1S,IW_GRDM_1A,IW_GRDM_1S
+  title: S1A L1 IW_GRD products
+  description: S1A L1 IW_GRD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_IW_SLC
+  station: s1a
+  query:
+    productType: IW_SLC__1A,IW_SLC__1S
+  title: S1A L1 IW_SLC products
+  description: S1A L1 IW_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_SM_GRD
+  station: s1a
+  query:
+    productType:
+      S1_GRDF_1A,S1_GRDF_1S,S1_GRDH_1A,S1_GRDH_1S,S1_GRDM_1A,S1_GRDM_1S,S2_GRDF_1A,S2_GRDF_1S,S2_GRDH_1A,S2_GRDH_1S,S2_GRDM_1A,S2_GRDM_1S,S3_GRDF_1A,S3_GRDF_1S,S3_GRDH_1A,S3_GRDH_1S,S3_GRDM_1A,S3_GRDM_1S,S4_GRDF_1A,S4_GRDF_1S,S4_GRDH_1A,S4_GRDH_1S,S4_GRDM_1A,S4_GRDM_1S,S5_GRDF_1A,S5_GRDF_1S,S5_GRDH_1A,S5_GRDH_1S,S5_GRDM_1A,S5_GRDM_1S,S6_GRDF_1A,S6_GRDF_1S,S6_GRDH_1A,S6_GRDH_1S,S6_GRDM_1A,S6_GRDM_1S
+  title: S1A L1 SM_GRD products
+  description: S1A L1 SM_GRD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_SM_SLC
+  station: s1a
+  query:
+    productType: S1_SLC__1A,S1_SLC__1S,S2_SLC__1A,S2_SLC__1S,S3_SLC__1A,S3_SLC__1S,S4_SLC__1A,S4_SLC__1S,S5_SLC__1A,S5_SLC__1S,S6_SLC__1A,S6_SLC__1S
+  title: S1A L1 SM_SLC products
+  description: S1A L1 SM_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_WV_SLC
+  station: s1a
+  query:
+    productType: WV_SLC__1A,WV_SLC__1S
+  title: S1A L1 WV_SLC products
+  description: S1A L1 WV_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_EW_ETAD
+  station: s1a
+  query:
+    productType: EW_ETA__AX
+  title: S1A L1 EW_ETAD products
+  description: S1A L1 EW_ETAD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_IW_ETAD
+  station: s1a
+  query:
+    productType: IW_ETA__AX
+  title: S1A L1 IW_ETAD products
+  description: S1A L1 IW_ETAD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1_SM_ETAD
+  station: s1a
+  query:
+    productType: S1_ETA__AX,S2_ETA__AX,S3_ETA__AX,S4_ETA__AX,S5_ETA__AX,S6_ETA__AX
+  title: S1A L1 SM_ETAD products
+  description: S1A L1 SM_ETAD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L1____OBS__SS
+  station: s1a
+  query:
+    productType: ___OBS__SS
+  title: S1A L1 ___OBS__SS products
+  description: S1A L1 ___OBS__SS products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L2_EW_OCN
+  station: s1a
+  query:
+    productType: EW_OCN__2A,EW_OCN__2S
+  title: S1A L2 EW_OCN products
+  description: S1A L2 EW_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L2_IW_OCN
+  station: s1a
+  query:
+    productType: IW_OCN__2A,IW_OCN__2S
+  title: S1A L2 IW_OCN products
+  description: S1A L2 IW_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L2_SM_OCN
+  station: s1a
+  query:
+    productType: S1_OCN__2A,S1_OCN__2S,S2_OCN__2A,S2_OCN__2S,S3_OCN__2A,S3_OCN__2S,S4_OCN__2A,S4_OCN__2S,S5_OCN__2A,S5_OCN__2S,S6_OCN__2A,S6_OCN__2S
+  title: S1A L2 SM_OCN products
+  description: S1A L2 SM_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1A_L2_WV_OCN
+  station: s1a
+  query:
+    productType: WV_OCN__2A,WV_OCN__2S
+  title: S1A L2 WV_OCN products
+  description: S1A L2 WV_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_AI
+  station: s1c
+  query:
+    productType: AI_RAW__0_
+  title: S1C L0 AI products
+  description: S1C L0 AI products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_HK
+  station: s1c
+  query:
+    productType: HK_RAW__0_
+  title: S1C L0 HK products
+  description: S1C L0 HK products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_GP
+  station: s1c
+  query:
+    productType: GP_RAW__0_
+  title: S1C L0 GP products
+  description: S1C L0 GP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_EN_S
+  station: s1c
+  query:
+    productType: EN_RAW__0S
+  title: S1C L0 EN_S products
+  description: S1C L0 EN_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_EW_ANC
+  station: s1c
+  query:
+    productType: EW_RAW__0A,EW_RAW__0C,EW_RAW__0N
+  title: S1C L0 EW_ANC products
+  description: S1C L0 EW_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_EW_S
+  station: s1c
+  query:
+    productType: EW_RAW__0S
+  title: S1C L0 EW_S products
+  description: S1C L0 EW_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_IW_ANC
+  station: s1c
+  query:
+    productType: IW_RAW__0A,IW_RAW__0C,IW_RAW__0N
+  title: S1C L0 IW_ANC products
+  description: S1C L0 IW_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_IW_S
+  station: s1c
+  query:
+    productType: IW_RAW__0S
+  title: S1C L0 IW_S products
+  description: S1C L0 IW_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_NM_S
+  station: s1c
+  query:
+    productType: N1_RAW__0S,N2_RAW__0S,N3_RAW__0S,N4_RAW__0S,N5_RAW__0S,N6_RAW__0S
+  title: S1C L0 NM_S products
+  description: S1C L0 NM_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_SM_ANC
+  station: s1c
+  query:
+    productType: S1_RAW__0A,S1_RAW__0C,S1_RAW__0N,S2_RAW__0A,S2_RAW__0C,S2_RAW__0N,S3_RAW__0A,S3_RAW__0C,S3_RAW__0N,S4_RAW__0A,S4_RAW__0C,S4_RAW__0N,S5_RAW__0A,S5_RAW__0C,S5_RAW__0N,S6_RAW__0A,S6_RAW__0C,S6_RAW__0N
+  title: S1C L0 SM_ANC products
+  description: S1C L0 SM_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_SM_S
+  station: s1c
+  query:
+    productType: S1_RAW__0S,S2_RAW__0S,S3_RAW__0S,S4_RAW__0S,S5_RAW__0S,S6_RAW__0S
+  title: S1C L0 SM_S products
+  description: S1C L0 SM_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_WV_ANC
+  station: s1c
+  query:
+    productType: WV_RAW__0A,WV_RAW__0C,WV_RAW__0N
+  title: S1C L0 WV_ANC products
+  description: S1C L0 WV_ANC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_WV_S
+  station: s1c
+  query:
+    productType: WV_RAW__0S
+  title: S1C L0 WV_S products
+  description: S1C L0 WV_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_RF_S
+  station: s1c
+  query:
+    productType: RF_RAW__0S
+  title: S1C L0 RF_S products
+  description: S1C L0 RF_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_ZM_S
+  station: s1c
+  query:
+    productType: Z1_RAW__0S,Z2_RAW__0S,Z3_RAW__0S,Z4_RAW__0S,Z5_RAW__0S,Z6_RAW__0S
+  title: S1C L0 ZM_S products
+  description: S1C L0 ZM_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_ZE_S
+  station: s1c
+  query:
+    productType: ZE_RAW__0S
+  title: S1C L0 ZE_S products
+  description: S1C L0 ZE_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_ZI_S
+  station: s1c
+  query:
+    productType: ZI_RAW__0S
+  title: S1C L0 ZI_S products
+  description: S1C L0 ZI_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L0_ZW_S
+  station: s1c
+  query:
+    productType: ZW_RAW__0S
+  title: S1C L0 ZW_S products
+  description: S1C L0 ZW_S products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_EW_GRD
+  station: s1c
+  query:
+    productType: EW_GRDH_1A,EW_GRDH_1S,EW_GRDM_1A,EW_GRDM_1S
+  title: S1C L1 EW_GRD products
+  description: S1C L1 EW_GRD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_EW_SLC
+  station: s1c
+  query:
+    productType: EW_SLC__1A,EW_SLC__1S
+  title: S1C L1 EW_SLC products
+  description: S1C L1 EW_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_IW_GRD
+  station: s1c
+  query:
+    productType: IW_GRDH_1A,IW_GRDH_1S,IW_GRDM_1A,IW_GRDM_1S
+  title: S1C L1 IW_GRD products
+  description: S1C L1 IW_GRD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_IW_SLC
+  station: s1c
+  query:
+    productType: IW_SLC__1A,IW_SLC__1S
+  title: S1C L1 IW_SLC products
+  description: S1C L1 IW_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_SM_GRD
+  station: s1c
+  query:
+    productType:
+      S1_GRDF_1A,S1_GRDF_1S,S1_GRDH_1A,S1_GRDH_1S,S1_GRDM_1A,S1_GRDM_1S,S2_GRDF_1A,S2_GRDF_1S,S2_GRDH_1A,S2_GRDH_1S,S2_GRDM_1A,S2_GRDM_1S,S3_GRDF_1A,S3_GRDF_1S,S3_GRDH_1A,S3_GRDH_1S,S3_GRDM_1A,S3_GRDM_1S,S4_GRDF_1A,S4_GRDF_1S,S4_GRDH_1A,S4_GRDH_1S,S4_GRDM_1A,S4_GRDM_1S,S5_GRDF_1A,S5_GRDF_1S,S5_GRDH_1A,S5_GRDH_1S,S5_GRDM_1A,S5_GRDM_1S,S6_GRDF_1A,S6_GRDF_1S,S6_GRDH_1A,S6_GRDH_1S,S6_GRDM_1A,S6_GRDM_1S
+  title: S1C L1 SM_GRD products
+  description: S1C L1 SM_GRD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_SM_SLC
+  station: s1c
+  query:
+    productType: S1_SLC__1A,S1_SLC__1S,S2_SLC__1A,S2_SLC__1S,S3_SLC__1A,S3_SLC__1S,S4_SLC__1A,S4_SLC__1S,S5_SLC__1A,S5_SLC__1S,S6_SLC__1A,S6_SLC__1S
+  title: S1C L1 SM_SLC products
+  description: S1C L1 SM_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_WV_SLC
+  station: s1c
+  query:
+    productType: WV_SLC__1A,WV_SLC__1S
+  title: S1C L1 WV_SLC products
+  description: S1C L1 WV_SLC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_EW_ETAD
+  station: s1c
+  query:
+    productType: EW_ETA__AX
+  title: S1C L1 EW_ETAD products
+  description: S1C L1 EW_ETAD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_IW_ETAD
+  station: s1c
+  query:
+    productType: IW_ETA__AX
+  title: S1C L1 IW_ETAD products
+  description: S1C L1 IW_ETAD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1_SM_ETAD
+  station: s1c
+  query:
+    productType: S1_ETA__AX,S2_ETA__AX,S3_ETA__AX,S4_ETA__AX,S5_ETA__AX,S6_ETA__AX
+  title: S1C L1 SM_ETAD products
+  description: S1C L1 SM_ETAD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L1____OBS__SS
+  station: s1c
+  query:
+    productType: ___OBS__SS
+  title: S1C L1 ___OBS__SS products
+  description: S1C L1 ___OBS__SS products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L2_EW_OCN
+  station: s1c
+  query:
+    productType: EW_OCN__2A,EW_OCN__2S
+  title: S1C L2 EW_OCN products
+  description: S1C L2 EW_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L2_IW_OCN
+  station: s1c
+  query:
+    productType: IW_OCN__2A,IW_OCN__2S
+  title: S1C L2 IW_OCN products
+  description: S1C L2 IW_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L2_SM_OCN
+  station: s1c
+  query:
+    productType: S1_OCN__2A,S1_OCN__2S,S2_OCN__2A,S2_OCN__2S,S3_OCN__2A,S3_OCN__2S,S4_OCN__2A,S4_OCN__2S,S5_OCN__2A,S5_OCN__2S,S6_OCN__2A,S6_OCN__2S
+  title: S1C L2 SM_OCN products
+  description: S1C L2 SM_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S1C_L2_WV_OCN
+  station: s1c
+  query:
+    productType: WV_OCN__2A,WV_OCN__2S
+  title: S1C L2 WV_OCN products
+  description: S1C L2 WV_OCN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L0_MSI_L0
+  station: s2c
+  query:
+    productType: MSI_L0__DS,MSI_L0__GR
+    platformSerialIdentifier: A
+  title: S2A L0 MSI_L0 products
+  description: S2A L0 MSI_L0 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L0_PRD_HKTM
+  station: s2c
+  query:
+    productType: PRD_HKTM__
+    platformSerialIdentifier: A
+  title: S2A L0 PRD_HKTM products
+  description: S2A L0 PRD_HKTM products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L0_AUX_SADATA
+  station: s2c
+  query:
+    productType: AUX_SADATA
+    platformSerialIdentifier: A
+  title: S2A L0 AUX_SADATA products
+  description: S2A L0 AUX_SADATA products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L1_MSI_L1A
+  station: s2c
+  query:
+    productType: MSI_L1A_DS,MSI_L1A_GR
+    platformSerialIdentifier: A
+  title: S2A L1 MSI_L1A products
+  description: S2A L1 MSI_L1A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L1_MSI_L1B
+  station: s2c
+  query:
+    productType: MSI_L1B_DS,MSI_L1B_GR
+    platformSerialIdentifier: A
+  title: S2A L1 MSI_L1B products
+  description: S2A L1 MSI_L1B products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L1_MSI_L1C
+  station: s2c
+  query:
+    productType: MSI_L1C_DS,MSI_L1C_TC,MSI_L1C_TL
+    platformSerialIdentifier: A
+  title: S2A L1 MSI_L1C products
+  description: S2A L1 MSI_L1C products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2A_L2_MSI_L2A
+  station: s2c
+  query:
+    productType: MSI_L2A_DS,MSI_L2A_TC,MSI_L2A_TL
+    platformSerialIdentifier: A
+  title: S2A L2 MSI_L2A products
+  description: S2A L2 MSI_L2A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2B_L0_MSI_L0
   station: s2b
   query:
-    productType: OPER_MSI
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.1.0/schema.json
-  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
-  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
-  - https://stac-extensions.github.io/product/v1.0.0/schema.json
-  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
-  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
-  title: L0 datastrips
-  description: Sentinel-2B Level-0 Datastrip
+    productType: MSI_L0__DS,MSI_L0__GR
+  title: S2B L0 MSI_L0 products
+  description: S2B L0 MSI_L0 products
   license: other
-  extent:
-    spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
-    temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
@@ -107,39 +2280,23 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
   - name: Reference System
     roles:
     - host
     url: https://home.rs-python.eu/
-- id: S2B_L0_GR
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2B_L0_PRD_HKTM
   station: s2b
   query:
-    productType: OPER_MSI_L0
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.1.0/schema.json
-  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
-  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
-  - https://stac-extensions.github.io/product/v1.0.0/schema.json
-  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
-  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
-  title: L0 granules
-  description: Sentinel-2B Level-0 Granule
+    productType: PRD_HKTM__
+  title: S2B L0 PRD_HKTM products
+  description: S2B L0 PRD_HKTM products
   license: other
-  extent:
-    spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
-    temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
@@ -154,39 +2311,23 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
   - name: Reference System
     roles:
     - host
     url: https://home.rs-python.eu/
-- id: S2B_L2A_TL
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2B_L0_AUX_SADATA
   station: s2b
   query:
-    productType: OPER_MSI_L2A
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.1.0/schema.json
-  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
-  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
-  - https://stac-extensions.github.io/product/v1.0.0/schema.json
-  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
-  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
-  title: L2A tile products
-  description: Sentinel-2B Level-2A Tile
+    productType: AUX_SADATA
+  title: S2B L0 AUX_SADATA products
+  description: S2B L0 AUX_SADATA products
   license: other
-  extent:
-    spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
-    temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
@@ -201,39 +2342,116 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
   - name: Reference System
     roles:
     - host
     url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2B_L1_MSI_L1A
+  station: s2b
+  query:
+    productType: MSI_L1A_DS,MSI_L1A_GR
+  title: S2B L1 MSI_L1A products
+  description: S2B L1 MSI_L1A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2B_L1_MSI_L1B
+  station: s2b
+  query:
+    productType: MSI_L1B_DS,MSI_L1B_GR
+  title: S2B L1 MSI_L1B products
+  description: S2B L1 MSI_L1B products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2B_L1_MSI_L1C
+  station: s2b
+  query:
+    productType: MSI_L1C_DS,MSI_L1C_TC,MSI_L1C_TL
+  title: S2B L1 MSI_L1C products
+  description: S2B L1 MSI_L1C products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
 - id: S2B_L2_MSI_L2A
   station: s2b
   query:
-    productType: MSI_L2A_DS
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.1.0/schema.json
-  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
-  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
-  - https://stac-extensions.github.io/product/v1.0.0/schema.json
-  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
-  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
-  title: L2A tile products
-  description: Sentinel-2B Level-2A Tile
+    productType: MSI_L2A_DS,MSI_L2A_TC,MSI_L2A_TL
+  title: S2B L2 MSI_L2A products
+  description: S2B L2 MSI_L2A products
   license: other
-  extent:
-    spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
-    temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
@@ -248,39 +2466,24 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
   - name: Reference System
     roles:
     - host
     url: https://home.rs-python.eu/
-- id: IW_SLC__1S
-  station: s1a
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L0_MSI_L0
+  station: s2c
   query:
-    productType: IW_SLC__1S
-  stac_extensions:
-  - https://stac-extensions.github.io/eo/v2.0.0/schema.json
-  - https://stac-extensions.github.io/projection/v2.0.0/schema.json
-  - https://stac-extensions.github.io/view/v1.1.0/schema.json
-  - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-  - https://stac-extensions.github.io/sat/v1.1.0/schema.json
-  - https://stac-extensions.github.io/processing/v1.2.0/schema.json
-  - https://stac-extensions.github.io/product/v1.0.0/schema.json
-  - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
-  - https://stac-extensions.github.io/timestamps/v1.1.0/schema.json
-  title: IW 1S SLC tile products
-  description: Sentinel-1A Level-1 Tile
+    productType: MSI_L0__DS,MSI_L0__GR
+    platformSerialIdentifier: C
+  title: S2C L0 MSI_L0 products
+  description: S2C L0 MSI_L0 products
   license: other
-  extent:
-    spatial:
-      bbox:
-      - - -180
-        - -82.85
-        - 180
-        - 82.82
-    temporal:
-      interval:
-      - - '2024-06-12T02:57:21.459000Z'
-        - '2024-08-22T11:30:12.767000Z'
   links:
   - rel: license
     href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
@@ -295,8 +2498,2499 @@ collections:
     roles:
     - producer
     - licensor
-    url: https://sentiwiki.copernicus.eu/web/sentinel-1
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
   - name: Reference System
     roles:
     - host
     url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L0_PRD_HKTM
+  station: s2c
+  query:
+    productType: PRD_HKTM__
+    platformSerialIdentifier: C
+  title: S2C L0 PRD_HKTM products
+  description: S2C L0 PRD_HKTM products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L0_AUX_SADATA
+  station: s2c
+  query:
+    productType: AUX_SADATA
+    platformSerialIdentifier: C
+  title: S2C L0 AUX_SADATA products
+  description: S2C L0 AUX_SADATA products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L1_MSI_L1A
+  station: s2c
+  query:
+    productType: MSI_L1A_DS,MSI_L1A_GR
+    platformSerialIdentifier: C
+  title: S2C L1 MSI_L1A products
+  description: S2C L1 MSI_L1A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L1_MSI_L1B
+  station: s2c
+  query:
+    productType: MSI_L1B_DS,MSI_L1B_GR
+    platformSerialIdentifier: C
+  title: S2C L1 MSI_L1B products
+  description: S2C L1 MSI_L1B products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L1_MSI_L1C
+  station: s2c
+  query:
+    productType: MSI_L1C_DS,MSI_L1C_TC,MSI_L1C_TL
+    platformSerialIdentifier: C
+  title: S2C L1 MSI_L1C products
+  description: S2C L1 MSI_L1C products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S2C_L2_MSI_L2A
+  station: s2c
+  query:
+    productType: MSI_L2A_DS,MSI_L2A_TC,MSI_L2A_TL
+    platformSerialIdentifier: C
+  title: S2C L2 MSI_L2A products
+  description: S2C L2 MSI_L2A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-2
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_DO_0_DOP
+  station: s3a
+  query:
+    productType: DO_0_DOP__G,DO_0_DOP___
+  title: S3A L0 DO_0_DOP products
+  description: S3A L0 DO_0_DOP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_DO_0_NAV
+  station: s3a
+  query:
+    productType: DO_0_NAV__G,DO_0_NAV___
+  title: S3A L0 DO_0_NAV products
+  description: S3A L0 DO_0_NAV products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_GN_0_GNS
+  station: s3a
+  query:
+    productType: GN_0_GNS__G,GN_0_GNS___
+  title: S3A L0 GN_0_GNS products
+  description: S3A L0 GN_0_GNS products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_MW_0_MWR
+  station: s3a
+  query:
+    productType: MW_0_MWR__G,MW_0_MWR___
+  title: S3A L0 MW_0_MWR products
+  description: S3A L0 MW_0_MWR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_OL_0_CR0
+  station: s3a
+  query:
+    productType: OL_0_CR0__G,OL_0_CR0___
+  title: S3A L0 OL_0_CR0 products
+  description: S3A L0 OL_0_CR0 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_OL_0_CR1
+  station: s3a
+  query:
+    productType: OL_0_CR1__G,OL_0_CR1___
+  title: S3A L0 OL_0_CR1 products
+  description: S3A L0 OL_0_CR1 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_OL_0_EFR
+  station: s3a
+  query:
+    productType: OL_0_EFR__G,OL_0_EFR___
+  title: S3A L0 OL_0_EFR products
+  description: S3A L0 OL_0_EFR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_SL_0_SLT
+  station: s3a
+  query:
+    productType: SL_0_SLT__G,SL_0_SLT___
+  title: S3A L0 SL_0_SLT products
+  description: S3A L0 SL_0_SLT products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_SR_0_SRA
+  station: s3a
+  query:
+    productType: SR_0_SRA__G,SR_0_SRA___
+  title: S3A L0 SR_0_SRA products
+  description: S3A L0 SR_0_SRA products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_SR_0_CAL
+  station: s3a
+  query:
+    productType: SR_0_CAL__G,SR_0_CAL___
+  title: S3A L0 SR_0_CAL products
+  description: S3A L0 SR_0_CAL products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_TM_0_HKM
+  station: s3a
+  query:
+    productType: TM_0_HKM__G,TM_0_HKM___
+  title: S3A L0 TM_0_HKM products
+  description: S3A L0 TM_0_HKM products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_TM_0_HKM2
+  station: s3a
+  query:
+    productType: TM_0_HKM2_G,TM_0_HKM2__
+  title: S3A L0 TM_0_HKM2 products
+  description: S3A L0 TM_0_HKM2 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L0_TM_0_NAT
+  station: s3a
+  query:
+    productType: TM_0_NAT__G,TM_0_NAT___
+  title: S3A L0 TM_0_NAT products
+  description: S3A L0 TM_0_NAT products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_MW_CAL
+  station: s3a
+  query:
+    productType: MW_1_CAL___
+  title: S3A L1 MW_CAL products
+  description: S3A L1 MW_CAL products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_MW_MWR
+  station: s3a
+  query:
+    productType: MW_1_MWR___
+  title: S3A L1 MW_MWR products
+  description: S3A L1 MW_MWR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_OL_EFR
+  station: s3a
+  query:
+    productType: OL_1_EFR___
+  title: S3A L1 OL_EFR products
+  description: S3A L1 OL_EFR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_OL_ERR
+  station: s3a
+  query:
+    productType: OL_1_ERR___
+  title: S3A L1 OL_ERR products
+  description: S3A L1 OL_ERR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_OL_RAC
+  station: s3a
+  query:
+    productType: OL_1_RAC___
+  title: S3A L1 OL_RAC products
+  description: S3A L1 OL_RAC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_OL_SPC
+  station: s3a
+  query:
+    productType: OL_1_SPC___
+  title: S3A L1 OL_SPC products
+  description: S3A L1 OL_SPC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_SL_RBT
+  station: s3a
+  query:
+    productType: SL_1_RBT___
+  title: S3A L1 SL_RBT products
+  description: S3A L1 SL_RBT products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_SR_CAL
+  station: s3a
+  query:
+    productType: SR_1_CAL___
+  title: S3A L1 SR_CAL products
+  description: S3A L1 SR_CAL products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_SR_LAN_RD
+  station: s3a
+  query:
+    productType: SR_1_LAN_RD
+  title: S3A L1 SR_LAN_RD products
+  description: S3A L1 SR_LAN_RD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_SR_SRA_A
+  station: s3a
+  query:
+    productType: SR_1_SRA_A_
+  title: S3A L1 SR_SRA_A products
+  description: S3A L1 SR_SRA_A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L1_SY_MISR
+  station: s3a
+  query:
+    productType: SY_1_MISR__
+  title: S3A L1 SY_MISR products
+  description: S3A L1 SY_MISR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_OL_LFR
+  station: s3a
+  query:
+    productType: OL_2_LFR___
+  title: S3A L2 OL_LFR products
+  description: S3A L2 OL_LFR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_OL_LRR
+  station: s3a
+  query:
+    productType: OL_2_LRR___
+  title: S3A L2 OL_LRR products
+  description: S3A L2 OL_LRR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SL_LST
+  station: s3a
+  query:
+    productType: SL_2_LST___
+  title: S3A L2 SL_LST products
+  description: S3A L2 SL_LST products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SL_FRP
+  station: s3a
+  query:
+    productType: SL_2_FRP___
+  title: S3A L2 SL_FRP products
+  description: S3A L2 SL_FRP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SR_LAN_SI
+  station: s3a
+  query:
+    productType: SR_2_LAN_SI
+  title: S3A L2 SR_LAN_SI products
+  description: S3A L2 SR_LAN_SI products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SR_LAN_HY
+  station: s3a
+  query:
+    productType: SR_2_LAN_HY
+  title: S3A L2 SR_LAN_HY products
+  description: S3A L2 SR_LAN_HY products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SR_LAN_LI
+  station: s3a
+  query:
+    productType: SR_2_LAN_LI
+  title: S3A L2 SR_LAN_LI products
+  description: S3A L2 SR_LAN_LI products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SY_SYN
+  station: s3a
+  query:
+    productType: SY_2_SYN___
+  title: S3A L2 SY_SYN products
+  description: S3A L2 SY_SYN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SY_V10
+  station: s3a
+  query:
+    productType: SY_2_V10___
+  title: S3A L2 SY_V10 products
+  description: S3A L2 SY_V10 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SY_VG1
+  station: s3a
+  query:
+    productType: SY_2_VG1___
+  title: S3A L2 SY_VG1 products
+  description: S3A L2 SY_VG1 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SY_VGP
+  station: s3a
+  query:
+    productType: SY_2_VGP___
+  title: S3A L2 SY_VGP products
+  description: S3A L2 SY_VGP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SY_VGK
+  station: s3a
+  query:
+    productType: SY_2_VGK___
+  title: S3A L2 SY_VGK products
+  description: S3A L2 SY_VGK products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3A_L2_SY_AOD
+  station: s3a
+  query:
+    productType: SY_2_AOD___
+  title: S3A L2 SY_AOD products
+  description: S3A L2 SY_AOD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_DO_0_DOP
+  station: s3b
+  query:
+    productType: DO_0_DOP__G,DO_0_DOP___
+  title: S3B L0 DO_0_DOP products
+  description: S3B L0 DO_0_DOP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_DO_0_NAV
+  station: s3b
+  query:
+    productType: DO_0_NAV__G,DO_0_NAV___
+  title: S3B L0 DO_0_NAV products
+  description: S3B L0 DO_0_NAV products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_GN_0_GNS
+  station: s3b
+  query:
+    productType: GN_0_GNS__G,GN_0_GNS___
+  title: S3B L0 GN_0_GNS products
+  description: S3B L0 GN_0_GNS products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_MW_0_MWR
+  station: s3b
+  query:
+    productType: MW_0_MWR__G,MW_0_MWR___
+  title: S3B L0 MW_0_MWR products
+  description: S3B L0 MW_0_MWR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_OL_0_CR0
+  station: s3b
+  query:
+    productType: OL_0_CR0__G,OL_0_CR0___
+  title: S3B L0 OL_0_CR0 products
+  description: S3B L0 OL_0_CR0 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_OL_0_CR1
+  station: s3b
+  query:
+    productType: OL_0_CR1__G,OL_0_CR1___
+  title: S3B L0 OL_0_CR1 products
+  description: S3B L0 OL_0_CR1 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_OL_0_EFR
+  station: s3b
+  query:
+    productType: OL_0_EFR__G,OL_0_EFR___
+  title: S3B L0 OL_0_EFR products
+  description: S3B L0 OL_0_EFR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_SL_0_SLT
+  station: s3b
+  query:
+    productType: SL_0_SLT__G,SL_0_SLT___
+  title: S3B L0 SL_0_SLT products
+  description: S3B L0 SL_0_SLT products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_SR_0_SRA
+  station: s3b
+  query:
+    productType: SR_0_SRA__G,SR_0_SRA___
+  title: S3B L0 SR_0_SRA products
+  description: S3B L0 SR_0_SRA products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_SR_0_CAL
+  station: s3b
+  query:
+    productType: SR_0_CAL__G,SR_0_CAL___
+  title: S3B L0 SR_0_CAL products
+  description: S3B L0 SR_0_CAL products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_TM_0_HKM
+  station: s3b
+  query:
+    productType: TM_0_HKM__G,TM_0_HKM___
+  title: S3B L0 TM_0_HKM products
+  description: S3B L0 TM_0_HKM products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_TM_0_HKM2
+  station: s3b
+  query:
+    productType: TM_0_HKM2_G,TM_0_HKM2__
+  title: S3B L0 TM_0_HKM2 products
+  description: S3B L0 TM_0_HKM2 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L0_TM_0_NAT
+  station: s3b
+  query:
+    productType: TM_0_NAT__G,TM_0_NAT___
+  title: S3B L0 TM_0_NAT products
+  description: S3B L0 TM_0_NAT products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_MW_CAL
+  station: s3b
+  query:
+    productType: MW_1_CAL___
+  title: S3B L1 MW_CAL products
+  description: S3B L1 MW_CAL products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_MW_MWR
+  station: s3b
+  query:
+    productType: MW_1_MWR___
+  title: S3B L1 MW_MWR products
+  description: S3B L1 MW_MWR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_OL_EFR
+  station: s3b
+  query:
+    productType: OL_1_EFR___
+  title: S3B L1 OL_EFR products
+  description: S3B L1 OL_EFR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_OL_ERR
+  station: s3b
+  query:
+    productType: OL_1_ERR___
+  title: S3B L1 OL_ERR products
+  description: S3B L1 OL_ERR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_OL_RAC
+  station: s3b
+  query:
+    productType: OL_1_RAC___
+  title: S3B L1 OL_RAC products
+  description: S3B L1 OL_RAC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_OL_SPC
+  station: s3b
+  query:
+    productType: OL_1_SPC___
+  title: S3B L1 OL_SPC products
+  description: S3B L1 OL_SPC products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_SL_RBT
+  station: s3b
+  query:
+    productType: SL_1_RBT___
+  title: S3B L1 SL_RBT products
+  description: S3B L1 SL_RBT products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_SR_CAL
+  station: s3b
+  query:
+    productType: SR_1_CAL___
+  title: S3B L1 SR_CAL products
+  description: S3B L1 SR_CAL products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_SR_LAN_RD
+  station: s3b
+  query:
+    productType: SR_1_LAN_RD
+  title: S3B L1 SR_LAN_RD products
+  description: S3B L1 SR_LAN_RD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_SR_SRA_A
+  station: s3b
+  query:
+    productType: SR_1_SRA_A_
+  title: S3B L1 SR_SRA_A products
+  description: S3B L1 SR_SRA_A products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L1_SY_MISR
+  station: s3b
+  query:
+    productType: SY_1_MISR__
+  title: S3B L1 SY_MISR products
+  description: S3B L1 SY_MISR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_OL_LFR
+  station: s3b
+  query:
+    productType: OL_2_LFR___
+  title: S3B L2 OL_LFR products
+  description: S3B L2 OL_LFR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_OL_LRR
+  station: s3b
+  query:
+    productType: OL_2_LRR___
+  title: S3B L2 OL_LRR products
+  description: S3B L2 OL_LRR products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SL_LST
+  station: s3b
+  query:
+    productType: SL_2_LST___
+  title: S3B L2 SL_LST products
+  description: S3B L2 SL_LST products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SL_FRP
+  station: s3b
+  query:
+    productType: SL_2_FRP___
+  title: S3B L2 SL_FRP products
+  description: S3B L2 SL_FRP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SR_LAN_SI
+  station: s3b
+  query:
+    productType: SR_2_LAN_SI
+  title: S3B L2 SR_LAN_SI products
+  description: S3B L2 SR_LAN_SI products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SR_LAN_HY
+  station: s3b
+  query:
+    productType: SR_2_LAN_HY
+  title: S3B L2 SR_LAN_HY products
+  description: S3B L2 SR_LAN_HY products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SR_LAN_LI
+  station: s3b
+  query:
+    productType: SR_2_LAN_LI
+  title: S3B L2 SR_LAN_LI products
+  description: S3B L2 SR_LAN_LI products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SY_SYN
+  station: s3b
+  query:
+    productType: SY_2_SYN___
+  title: S3B L2 SY_SYN products
+  description: S3B L2 SY_SYN products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SY_V10
+  station: s3b
+  query:
+    productType: SY_2_V10___
+  title: S3B L2 SY_V10 products
+  description: S3B L2 SY_V10 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SY_VG1
+  station: s3b
+  query:
+    productType: SY_2_VG1___
+  title: S3B L2 SY_VG1 products
+  description: S3B L2 SY_VG1 products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SY_VGP
+  station: s3b
+  query:
+    productType: SY_2_VGP___
+  title: S3B L2 SY_VGP products
+  description: S3B L2 SY_VGP products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SY_VGK
+  station: s3b
+  query:
+    productType: SY_2_VGK___
+  title: S3B L2 SY_VGK products
+  description: S3B L2 SY_VGK products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]
+- id: S3B_L2_SY_AOD
+  station: s3b
+  query:
+    productType: SY_2_AOD___
+  title: S3B L2 SY_AOD products
+  description: S3B L2 SY_AOD products
+  license: other
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction
+    title: Production Service
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/sentinel-3
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [[null, null]]

@@ -12,141 +12,495 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-template:
-  id:
-  station:
-  query:
-  stac_extensions:
-    [
-    ]
-  title:
-  description:
-  license: other
-  extent:
-    spatial:
-      bbox: [[-180, -82.85, 180, 82.82]]
-    temporal:
-      interval: [["2024-06-12T02:57:21.459000Z", "2024-08-22T11:30:12.767000Z"]]
-  links:
-    - rel: license
-      href: "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice"
-      title: "Legal notice on the use of Copernicus Sentinel Data and Service Information"
-      type: "application/pdf"
-    - rel: describedby
-      href: "https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition"
-      title: "Data Acquisition"
-      type: "text/html"
-  providers:
-    - name: "European Union/ESA/Copernicus"
-      roles:
-        - producer
-        - licensor
-      url: "https://sentiwiki.copernicus.eu/web/sentinel-1"
-    - name: "Reference System"
-      roles:
-        - host
-      url: "https://home.rs-python.eu/"
+# THIS FILE WAS AUTOMATICALLY CREATED FROM:
+#  - rs-server/services/cadip/config/cadip_search_config.template.yaml
+#  - rs-server/resources/sync_config_files.py
+# DON'T MODIFY IT DIRECTLY !
+template: {}
 
 collections:
+  - id: s1_ins
+    station: ssc
+    query:
+      Satellite: ['S1A','S1C']
+      StationId: INS_
+    stac_extensions: []
+    title:  'Sentinel-1 Inuvik CADIP'
+    description: 'Sentinel-1 CADIP sessions and chunk downloaded to Inuvik station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_ins.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Inuvik'
 
-  # All stations deployed in the CS cluster, without queries
-  - id: cadip
-    station: cadip
-    title: "All from 'cadip' station"
-    description: "All from 'cadip' station"
+  - id: s2_ins
+    station: ssc
+    query:
+      Satellite: ['S2A','S2B','S2C']
+      StationId: INS_
+    stac_extensions: []
+    title:  'Sentinel-2 Inuvik CADIP'
+    description: 'Sentinel-2 sessions and chunk downloaded to Inuvik station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s2_ins.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S2 Inuvik'
 
-  - id: mti
+  - id: s1_kse
+    station: ssc
+    query:
+      Satellite: ['S1A','S1C']
+      StationId: KSE_
+    stac_extensions: []
+    title:  'Sentinel-1 Kiruna CADIP'
+    description: 'Sentinel-1 CADIP sessions and chunk downloaded to Kiruna (Esrange) station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_kse.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Kiruna'
+
+  - id: s2_kse
+    station: ssc
+    query:
+      Satellite: ['S2A','S2B','S2C']
+      StationId: KSE_
+    stac_extensions: []
+    title:  'Sentinel-2 Kiruna CADIP'
+    description: 'Sentinel-2 sessions and chunk downloaded to Kiruna (Esrange) station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s2_kse.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S2 Kiruna'
+
+  - id: s1_par
+    station: ssc
+    query:
+      Satellite: ['S1A','S1C']
+      StationId: PAR_
+    stac_extensions: []
+    title:  'Sentinel-1 Punta Arenas CADIP'
+    description: 'Sentinel-1 CADIP sessions and chunk downloaded to Punta Arenas station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_par.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Punta Arenas'
+
+  - id: s2_par
+    station: ssc
+    query:
+      Satellite: ['S2A','S2B','S2C']
+      StationId: PAR_
+    stac_extensions: []
+    title:  'Sentinel-2 Punta Arenas CADIP'
+    description: 'Sentinel-2 sessions and chunk downloaded to Punta Arenas station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s2_par.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S2 Punta Arenas'
+
+  - id: s1_mti
     station: mti
-    title: "All from 'mti' station"
-    description: "All from 'mti' station"
-
-  - id: sgs
-    station: sgs
-    title: "All from 'sgs' station"
-    description: "All from 'sgs' station"
-
-  # Idem with one collection per constellation
-
-  - id: cadip_sentinel1
-    station: cadip
     query:
-      Satellite: S1A, S1C, S1D
-    title: "Sentinel-1 'cadip' station"
-    description: "Sentinel-1 'cadip' station"
+      Satellite: ['S1A','S1C']
+    stac_extensions: []
+    title:  'Sentinel-1 Matera CADIP '
+    description: 'Sentinel-1 sessions and chunk downloaded to Matera station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_mti.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Matera'
 
-  - id: cadip_sentinel2
-    station: cadip
-    query:
-      Satellite: S2A, S2B, S2C
-    title: "Sentinel-2 'cadip' station"
-    description: "Sentinel-2 'cadip' station"
-
-  - id: cadip_sentinel3
-    station: cadip
-    query:
-      Satellite: S3A, S3B
-    title: "Sentinel-3 'cadip' station"
-    description: "Sentinel-3 'cadip' station"
-
-  - id: cadip_sentinel5
-    station: cadip
-    query:
-      Satellite: S5P
-    title: "Sentinel-5 'cadip' station"
-    description: "Sentinel-5 'cadip' station"
-
-  - id: mti_sentinel1
-    station: mti
-    query:
-      Satellite: S1A, S1C, S1D
-    title: "Sentinel-1 'mti' station"
-    description: "Sentinel-1 'mti' station"
-
-  - id: mti_sentinel2
-    station: mti
-    query:
-      Satellite: S2A, S2B, S2C
-    title: "Sentinel-2 'mti' station"
-    description: "Sentinel-2 'mti' station"
-
-  - id: mti_sentinel3
-    station: mti
-    query:
-      Satellite: S3A, S3B
-    title: "Sentinel-3 'mti' station"
-    description: "Sentinel-3 'mti' station"
-
-  - id: mti_sentinel5
-    station: mti
-    query:
-      Satellite: S5P
-    title: "Sentinel-5 'mti' station"
-    description: "Sentinel-5 'mti' station"
-
-  - id: sgs_sentinel1
+  - id: s1_sgs
     station: sgs
     query:
-      Satellite: S1A, S1C, S1D
-    title: "Sentinel-1 'sgs' station"
-    description: "Sentinel-1 'sgs' station"
+      Satellite: ['S1A','S1C']
+    stac_extensions: []
+    title:  'Sentinel-1 Svalbard CADIP'
+    description: 'Sentinel-1 sessions and chunk downloaded to Svalbard station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_sgs.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Svalbard'
 
-  - id: sgs_sentinel2
+  - id: s2_sgs
     station: sgs
     query:
-      Satellite: S2A, S2B, S2C
-    title: "Sentinel-2 'sgs' station"
-    description: "Sentinel-2 'sgs' station"
+      Satellite: ['S2A','S2B','S2C']
+    stac_extensions: []
+    title:  'Sentinel-2 Svalbard CADIP'
+    description: 'Sentinel-2 sessions and chunk downloaded to Svalbard station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s2_sgs.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S2 Svalbard'
 
-  - id: sgs_sentinel3
+  - id: s3_sgs
     station: sgs
     query:
-      Satellite: S3A, S3B
-    title: "Sentinel-3 'sgs' station"
-    description: "Sentinel-3 'sgs' station"
+      Satellite: ['S3A','S3B']
+    stac_extensions: []
+    title:  'Sentinel-3 Svalbard CADIP'
+    description: 'Sentinel-3 sessions and chunk downloaded to Svalbard station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s3_sgs.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S3 Svalbard'
 
-  - id: sgs_sentinel5
-    station: sgs
+  - id: s1_mps
+    station: mps
     query:
-      Satellite: S5P
-    title: "Sentinel-5 'sgs' station"
-    description: "Sentinel-5 'sgs' station"
+      Satellite: ['S1A','S1C']
+    stac_extensions: []
+    title:  'Sentinel-1 Maspalomas CADIP'
+    description: 'Sentinel-1 sessions and chunk downloaded to Maspalomas station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_mps.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Maspalomas'
+
+  - id: s1_nsg
+    station: nsg
+    query:
+      Satellite: ['S1A','S1C']
+    stac_extensions: []
+    title:  'Sentinel-1 Neustrelitz CADIP sessions'
+    description: 'Sentinel-1 sessions and chunk downloaded to Neustrelitz station'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+        type: 'application/pdf'
+      - rel: describedby
+        href: 'https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition'
+        title: 'Data Acquisition'
+        type: 'text/html'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/sentinel-1'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+    assets:
+      thumbnail:
+        href: 'https://raw.githubusercontent.com/RS-PYTHON/RS-PYTHON.github.io/refs/heads/main/assets/images/cadip/s1_nsg.jpg'
+        type: 'image/jpeg'
+        roles:
+          - thumbnail
+        title: 'S1 Neustrelitz'
