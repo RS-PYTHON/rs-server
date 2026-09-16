@@ -297,6 +297,7 @@ def a_correct_feature_fixture() -> dict:
         "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "other_metadata": {},
         "properties": {
+            "product:type": "S1SIWOCN",
             "gsd": 0.5971642834779395,
             "width": 2500,
             "height": 2500,

@@ -57,6 +57,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -592,6 +593,15 @@ field is not permitted also."
                     raise HTTPException(
                         status_code=HTTP_404_NOT_FOUND,
                         detail=f"Collection {collection} does not exist.",
+                    )
+
+                # STAC-CORE-ITEM-REQ-0270 requires a product type on created and replaced items.
+                properties = content.get("properties")
+                product_type = properties.get("product:type") if isinstance(properties, dict) else None
+                if not isinstance(product_type, str) or not product_type.strip():
+                    raise HTTPException(
+                        status_code=HTTP_403_FORBIDDEN,
+                        detail="Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
                     )
 
                 # try to get the item if it is already part from the collection
