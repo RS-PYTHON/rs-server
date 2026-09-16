@@ -81,7 +81,8 @@ class TestCatalogPublishFeature:
 
         assert response.status_code == fastapi.status.HTTP_403_FORBIDDEN
         assert response.json() == {
-            "detail": "Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
+            "code": "Forbidden",
+            "description": "Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
         }
         response = client.get(f"/catalog/collections/fixture_owner:fixture_collection/items/{feature['id']}")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
@@ -112,11 +113,16 @@ class TestCatalogPublishFeature:
 
         assert response.status_code == fastapi.status.HTTP_403_FORBIDDEN
         assert response.json() == {
-            "detail": "Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
+            "code": "Forbidden",
+            "description": "Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
         }
         response = client.get(item_url)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert response.json() == original
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
 
     def test_get_non_existent_feature(self, client, a_minimal_collection):
         """
