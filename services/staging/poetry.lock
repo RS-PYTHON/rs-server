@@ -1183,20 +1183,20 @@ ssh = ["bcrypt (>=3.1.5)"]
 
 [[package]]
 name = "dask"
-version = "2026.7.0"
+version = "2026.8.0"
 description = "Parallel PyData with Task Scheduling"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "dask-2026.7.0-py3-none-any.whl", hash = "sha256:68def8b467529ab8425ef9fcc6735dcaefaaf715d5e19ae219485f99a394dbef"},
-    {file = "dask-2026.7.0.tar.gz", hash = "sha256:b039970642ce97a063070bae2763dada8aae27e3cbd8ff6d894072f920a1e252"},
+    {file = "dask-2026.8.0-py3-none-any.whl", hash = "sha256:ccc0c83a189b0398602435189771d28dad7b5773b6089bb8dce14ae732dd782c"},
+    {file = "dask-2026.8.0.tar.gz", hash = "sha256:8a94c37b5de6d869343340dc26c3c3acca7ec48a3abdabe00ea3abb1125884d5"},
 ]
 
 [package.dependencies]
 click = ">=8.1"
 cloudpickle = ">=3.0.0"
-distributed = {version = ">=2026.7.0,<2026.7.1", optional = true, markers = "extra == \"distributed\""}
+distributed = {version = ">=2026.8.0,<2026.8.1", optional = true, markers = "extra == \"distributed\""}
 fsspec = ">=2021.9.0"
 packaging = ">=20.0"
 partd = ">=1.4.0"
@@ -1208,7 +1208,7 @@ array = ["numpy (>=1.24)"]
 complete = ["dask[array,dataframe,diagnostics,distributed]", "lz4 (>=4.3.2)"]
 dataframe = ["dask[array]", "pandas (>=2.0)", "pyarrow (>=16.0)"]
 diagnostics = ["bokeh (>=3.1.0)", "jinja2 (>=2.10.3)"]
-distributed = ["distributed (>=2026.7.0,<2026.7.1)"]
+distributed = ["distributed (>=2026.8.0,<2026.8.1)"]
 test = ["pandas[test]", "pre-commit", "pytest", "pytest-cov", "pytest-mock", "pytest-rerunfailures", "pytest-timeout", "pytest-xdist"]
 
 [[package]]
@@ -1301,20 +1301,20 @@ files = [
 
 [[package]]
 name = "distributed"
-version = "2026.7.0"
+version = "2026.8.0"
 description = "Distributed scheduler for Dask"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "distributed-2026.7.0-py3-none-any.whl", hash = "sha256:792e684c27dfc51f8fdc8e28a7ba895b0d6c86bd9bc7eeca5f7a485f6d9aecf6"},
-    {file = "distributed-2026.7.0.tar.gz", hash = "sha256:3b9ecc6c9d1a9ad64e6b5ba6ec3e35c28efcda6f04fa105074179ad79f45c8b9"},
+    {file = "distributed-2026.8.0-py3-none-any.whl", hash = "sha256:3bd8882861a2cf497453f28c6b61135fa8ef2bb1d6885ad3b9f27e887e9c0e01"},
+    {file = "distributed-2026.8.0.tar.gz", hash = "sha256:6f55008ecacf96ba945309fc12e680544764995e27bd63cc5e109afb97d7044d"},
 ]
 
 [package.dependencies]
 click = ">=8.0"
 cloudpickle = ">=3.0.0"
-dask = ">=2026.7.0,<2026.7.1"
+dask = ">=2026.8.0,<2026.8.1"
 jinja2 = ">=2.10.3"
 locket = ">=1.0.0"
 msgpack = ">=1.0.2"
@@ -6261,4 +6261,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "898f19766739c1d5b63bb6b0630df2c5f556033e533ed2b9e6ceeae8afcbb593"
+content-hash = "84526cca494cdf1dfd991b79752935c9659aae2dcfa8f8601e5df59a8dd99e9b"
