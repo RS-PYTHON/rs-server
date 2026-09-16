@@ -988,7 +988,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if is_item and ("geometry" in content or "bbox" in content):
                 # Merge patched geometry/bbox over current item, then validate the result.
                 logger.debug("Merging PATCH geometry/bbox over current item %s", self.request_ids["item_id"])
-                merged_content = copy.deepcopy(item)
+                # The preceding lookup rejects missing items for any geometry/bbox PATCH.
+                merged_content = copy.deepcopy(cast(dict[str, Any], item))
                 if "geometry" in content:
                     merged_content["geometry"] = content["geometry"]
                     # Force bbox recomputation/removal according to the new geometry.

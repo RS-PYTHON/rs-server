@@ -15,6 +15,7 @@
 """Unit tests for utils module."""
 
 import os
+from typing import Any
 
 import pytest
 from fastapi import HTTPException
@@ -682,7 +683,7 @@ class TestGetS3Handler:
     def test_update_patch_assets_success(self, mocker, s3_manager):
         """Test that valid PATCH assets are enriched with S3 file metadata and checksums."""
         item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
-        assets = {
+        assets: dict[str, dict[str, Any]] = {
             "asset1": {"href": "s3://rspython-ops-catalog-all-production/product/asset1.tif"},
             # file:size is already set, setdefault must keep the caller-provided value.
             "asset2": {
