@@ -20,7 +20,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from rs_server_cadip.cadip_utils import link_assets_to_session, map_dag_file_to_asset, prepare_collection
+from rs_server_cadip.cadip_utils import (
+    link_assets_to_session,
+    map_dag_file_to_asset,
+    prepare_collection,
+)
 from stac_pydantic import Item, ItemCollection, ItemProperties
 from stac_pydantic.links import Links
 

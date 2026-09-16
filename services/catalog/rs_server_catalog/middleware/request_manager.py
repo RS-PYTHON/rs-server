@@ -601,7 +601,10 @@ field is not permitted also."
                 if not isinstance(product_type, str) or not product_type.strip():
                     raise HTTPException(
                         status_code=HTTP_403_FORBIDDEN,
-                        detail="Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
+                        detail=(
+                            "Cannot create or update item: "
+                            "'product:type' must be a non-empty string in 'properties'."
+                        ),
                     )
 
                 # try to get the item if it is already part from the collection
