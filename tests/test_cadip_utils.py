@@ -19,8 +19,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-from rs_server_cadip.cadip_utils import link_assets_to_session, map_dag_file_to_asset
-from stac_pydantic import Item, ItemProperties
+import pytest
+from rs_server_cadip.cadip_utils import link_assets_to_session, map_dag_file_to_asset, prepare_collection
+from stac_pydantic import Item, ItemCollection, ItemProperties
 from stac_pydantic.links import Links
 
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "services/cadip/config"
@@ -113,3 +114,41 @@ def test_map_dag_file_to_asset_adds_external_ids():
     asset = map_dag_file_to_asset({"id": "id"}, product, "http://example/Files(file-123)/$value")
 
     assert asset.model_dump().get("externalIds") == [{"scheme": "cadip", "value": "file-123"}]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "satellite, product_type",
+    [
+        ("S1A", "S01CADU__"),
+        ("S1B", "S01CADU__"),
+        ("S1C", "S01CADU__"),
+        ("S1D", "S01CADU__"),
+        ("S2A", "S02CADU__"),
+        ("S2B", "S02CADU__"),
+        ("S2C", "S02CADU__"),
+        ("S3A", "S03CADU__"),
+        ("S3B", "S03CADU__"),
+        ("S5P", None),
+        ("unknown", None),
+        (None, None),
+    ],
+)
+def test_prepare_collection_product_type(satellite, product_type):
+    """Serialize the mission's CADU product type without guessing for other missions."""
+    item = Item(
+        type="Feature",
+        id="session",
+        geometry=None,
+        properties=ItemProperties(datetime="2024-12-02T18:38:45Z", platform=satellite),
+        assets={},
+        links=[],
+    )
+    collection = prepare_collection(ItemCollection(type="FeatureCollection", features=[item]))
+    properties = collection.model_dump()["features"][0]["properties"]
+    if product_type is None:
+        assert "product:type" not in properties
+    else:
+        assert properties["product:type"] == product_type
+        assert properties["platform"] == f"sentinel-{satellite[1:].lower()}"
+        assert properties["constellation"] == f"sentinel-{satellite[1]}"
