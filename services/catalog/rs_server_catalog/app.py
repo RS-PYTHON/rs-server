@@ -26,6 +26,7 @@ from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
 from rs_server_catalog.middleware.catalog_middleware import CatalogMiddleware
+from rs_server_catalog.stac_api import api, with_transactions
 from rs_server_catalog.utils import CATALOG_PREFIX
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
@@ -41,9 +42,6 @@ from rs_server_common.middlewares import (
 )
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.pgstac.app import api
-from stac_fastapi.pgstac.app import app as sfpg_app
-from stac_fastapi.pgstac.app import with_transactions
 from stac_fastapi.pgstac.db import close_db_connection, connect_to_db
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -86,7 +84,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     return parameters
 
 
-app: FastAPI = sfpg_app
+app: FastAPI = api.app
 
 # Add middlewares. When sending a request, the middleware order must be:
 # Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...] -> Catalog

@@ -33,9 +33,9 @@ from fastapi import HTTPException
 from rs_server_catalog.data_management.user_handler import get_user, reroute_url
 from rs_server_catalog.middleware.request_manager import CatalogRequestManager
 from rs_server_catalog.middleware.response_manager import CatalogResponseManager
+from rs_server_catalog.stac_api import api
 from rs_server_common import settings as common_settings
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.pgstac.app import api
 from stac_fastapi.pgstac.core import CoreCrudClient
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
