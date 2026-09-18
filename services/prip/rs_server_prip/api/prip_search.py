@@ -359,11 +359,12 @@ def process_product_search(  # pylint: disable=too-many-locals
             all other exceptions are wrapped in a new HTTPException(503).
     """
     try:
+        search_kwargs = {"limit": limit, "page": page}
+        if sortby:
+            search_kwargs["sort_by"] = validate_sort_input(sortby)
         products = prip_retriever.init_prip_provider(station).search(
             **validate(queryables),
-            items_per_page=limit,
-            sort_by=validate_sort_input(sortby),
-            page=page,
+            **search_kwargs,
             **kwargs,
         )
         collection = create_stac_collection(

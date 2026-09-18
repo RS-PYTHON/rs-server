@@ -526,19 +526,21 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         # Get the cadip session provider
         station_session = f"{station}_session"
         session_provider = cadip_retriever.init_cadip_provider(station_session)
-
         # Authenticate and search sessions
+        sort_kwargs = {"sort_by": validate_sort_input(sortby)} if (sortby := sortby) else {}
         products = session_provider.search(
             **validate(queryables),
             sessions_search=True,
-            items_per_page=limit,
-            sort_by=validate_sort_input(sortby),
+            limit=limit,
             page=page,
+            **sort_kwargs,
         )
 
         # The station authentication is the same for both the session and assets providers so copy it manually.
         eodag_gateway = session_provider.client  # same for both providers
-        providers_config = eodag_gateway.providers_config
+        providers_config = (
+            eodag_gateway._providers.configs
+        )  # use _providers directly to avoid deepcopy in providers property
         plugin_manager = eodag_gateway._plugins_manager  # pylint: disable=protected-access
 
         # See: eodag/plugins/manager.py::get_auth_plugins
@@ -629,11 +631,12 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
+        sort_kwargs = {"sort_by": validate_sort_input(sortby)} if (sortby := kwargs.get("sortby")) else {}
         products = cadip_retriever.init_cadip_provider(station).search(
             **validate(queryables),
-            items_per_page=limit,
-            sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
+            limit=limit,
             page=kwargs.get("page", 1),
+            **sort_kwargs,
         )
 
         if kwargs.get("map_to_session", False):

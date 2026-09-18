@@ -537,7 +537,7 @@ def find_product_type(product_type: str):
 
 def validate_sort_input(sortby: str):
     """Used to transform stac sort parameter to odata type.
-    -datetime = startTimeFromAscendingNode DESC.
+    -datetime = start_datetime DESC.
     """
     sortby = sortby.strip("'\"").lower().replace("properties.", "")
     return [(sortby[1:] if sortby[0] in ["-", "+"] else sortby, "DESC" if sortby[0] == "-" else "ASC")]

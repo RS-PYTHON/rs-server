@@ -162,7 +162,7 @@ s1a:
       href:
       - null
       - http://127.0.0.1:5000/Products({id})/$value
-      downloadLink: http://127.0.0.1:5000/Products({id})/$value
+      eodag:download_link: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
       intersects:
       - null
@@ -267,14 +267,14 @@ s1a:
       max_sort_params: 1
     pagination:
       max_items_per_page: 10000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
+      next_page_url_tpl: '{url}?{search}&$top={limit}&$skip={skip}&$expand=Attributes'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5000/Products
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5000/Products({uid})/$value
+      eodag:download_link: http://127.0.0.1:5000/Products({uid})/$value
 s2b:
   auth:
     type: TokenAuth
@@ -424,7 +424,7 @@ s2b:
       href:
       - null
       - http://127.0.0.1:5000/Products({id})/$value
-      downloadLink: http://127.0.0.1:5000/Products({id})/$value
+      eodag:download_link: http://127.0.0.1:5000/Products({id})/$value
       title: $.Name
       intersects:
       - null
@@ -529,11 +529,11 @@ s2b:
       max_sort_params: 1
     pagination:
       max_items_per_page: 10000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
+      next_page_url_tpl: '{url}?{search}&$top={limit}&$skip={skip}&$expand=Attributes'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5000/Products
     metadata_mapping:
       uid: $.Id
-      downloadLink: http://127.0.0.1:5000/Products({uid})/$value
+      eodag:download_link: http://127.0.0.1:5000/Products({uid})/$value

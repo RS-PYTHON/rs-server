@@ -110,7 +110,7 @@ def rename_keys(product: dict) -> dict:
     if "Id" in product:
         product["id"] = product.pop("Id")
     if "PublicationDate" in product:
-        product["startTimeFromAscendingNode"] = product["PublicationDate"]
+        product["start_datetime"] = product["PublicationDate"]
     return product
 
 
