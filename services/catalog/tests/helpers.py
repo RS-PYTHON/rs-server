@@ -303,6 +303,7 @@ class Feature:
             },
             "collection": f"{self.collection}",
             "properties": {
+                "product:type": "S1SIWOCN",
                 "gsd": 0.5971642834779395,
                 "width": 2500,
                 "height": 2500,

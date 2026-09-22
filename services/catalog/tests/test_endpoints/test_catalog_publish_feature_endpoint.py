@@ -23,6 +23,7 @@ from datetime import datetime
 from unittest.mock import patch
 
 import fastapi
+import pytest
 
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -61,6 +62,63 @@ class TestCatalogPublishFeature:
         specific_feature = json.loads(check_features_response.content)
         # Check that specific feature is exactly match for previous one
         assert specific_feature["features"][0] == returned_features["features"][0]
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
+
+    @pytest.mark.parametrize("product_type", ["missing", None, "", "   ", 123, [], {}])
+    def test_create_item_requires_product_type(self, client, a_minimal_collection, a_correct_feature, product_type):
+        """Reject missing or unfilled product types before processing item assets."""
+        feature = copy.deepcopy(a_correct_feature)
+        feature["collection"] = "fixture_collection"
+        if product_type == "missing":
+            feature["properties"].pop("product:type", None)
+        else:
+            feature["properties"]["product:type"] = product_type
+
+        response = client.post("/catalog/collections/fixture_owner:fixture_collection/items", json=feature)
+
+        assert response.status_code == fastapi.status.HTTP_403_FORBIDDEN
+        assert response.json() == {
+            "code": "Forbidden",
+            "description": "Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
+        }
+        response = client.get(f"/catalog/collections/fixture_owner:fixture_collection/items/{feature['id']}")
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("product_type", ["missing", None, "", "   ", 123, [], {}])
+    def test_update_item_requires_product_type(
+        self,
+        init_buckets,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
+        product_type,
+    ):
+        """A replacement cannot remove or invalidate an existing item's product type."""
+        feature = copy.deepcopy(a_correct_feature)
+        feature["collection"] = "fixture_collection"
+        items_url = "/catalog/collections/fixture_owner:fixture_collection/items"
+        response = client.post(items_url, json=feature)
+        assert response.status_code == fastapi.status.HTTP_201_CREATED
+        item_url = f"{items_url}/{feature['id']}"
+        original = client.get(item_url).json()
+        if product_type == "missing":
+            feature["properties"].pop("product:type")
+        else:
+            feature["properties"]["product:type"] = product_type
+
+        response = client.put(item_url, json=feature)
+
+        assert response.status_code == fastapi.status.HTTP_403_FORBIDDEN
+        assert response.json() == {
+            "code": "Forbidden",
+            "description": "Cannot create or update item: 'product:type' must be a non-empty string in 'properties'.",
+        }
+        response = client.get(item_url)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert response.json() == original
         assert (
             client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
             == fastapi.status.HTTP_200_OK

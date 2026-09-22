@@ -8,6 +8,7 @@
         "eopf:origin_datetime": "2020-01-05T18:52:32.165Z",
         "platform": "sentinel-1a",
         "constellation": "sentinel-1",
+        "product:type": "S01CADU__",
         "published": "2020-01-05T18:52:26.165Z",
         "externalIds": [
             {
@@ -101,6 +102,7 @@
     ],
     "stac_extensions": [
         "https://home.rs-python.eu/cadip-stac-extension/v1.4.0/schema.json",
+        "https://stac-extensions.github.io/product/v1.0.0/schema.json",
         "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
         "https://stac-extensions.github.io/external-ids/v1.0.0/schema.json"

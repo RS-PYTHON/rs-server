@@ -157,6 +157,10 @@ user is used with the following priority:
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
+Item creation (POST) and replacement (PUT) must include a non-empty string in `properties["product:type"]`
+(STAC-CORE-ITEM-REQ-0270). Missing, null, or blank values return HTTP 403 Forbidden
+with a message identifying the required property.
+
     POST /catalog/collections/{[ownerId:]collectionId}/items
 
     {
@@ -202,6 +206,7 @@ user is used with the following priority:
       ],
       "other_metadata": {},
       "properties": {
+        "product:type": "S1SIWOCN",
         "gsd": 0.5971642834779395,
         "width": 2500,
         "height": 2500,
