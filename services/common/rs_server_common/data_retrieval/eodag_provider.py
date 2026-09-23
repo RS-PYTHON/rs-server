@@ -154,10 +154,10 @@ class EodagProvider(Provider):
         try:
             with global_lock:  # use a thread lock before calling the lru_cache
                 self.client = CustomEODataAccessGateway.create(self.eodag_config_path)
+            self.client.set_preferred_provider(self.provider)
+            self.client.authenticate_provider(self.provider, external_config)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
-        self.client.set_preferred_provider(self.provider)
-        self.client.authenticate_provider(self.provider, external_config)
 
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
@@ -264,10 +264,13 @@ class EodagProvider(Provider):
             if query := kwargs.pop(op, None):
                 mapped_search_args[op] = query
 
+        if intersects := kwargs.pop("intersects", None):
+            mapped_search_args["geometry"] = intersects
+
         # Thread-safe access to providers config - avoid dictionary keys changed during iteration
         # error when multiple threads modify providers concurrently.
         with self.client.lock:
-            providers = self.client._providers
+            providers = self.client._providers  # pylint: disable=protected-access
             max_items_allowed = int(providers[self.provider].config.search.pagination["max_items_per_page"])
             page_limit = kwargs.pop("limit", None)
             if page_limit is not None:

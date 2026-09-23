@@ -359,7 +359,10 @@ def process_product_search(  # pylint: disable=too-many-locals
             all other exceptions are wrapped in a new HTTPException(503).
     """
     try:
-        search_kwargs = {"limit": limit, "page": page}
+        # EODAG 4.x doesn't convert `page` to `next_page_token` when `next_page_token_key=skip`,
+        # so compute the skip offset directly to ensure correct pagination.
+        next_page_token = (page - 1) * limit if limit else None
+        search_kwargs = {"limit": limit, "next_page_token": next_page_token}
         if sortby:
             search_kwargs["sort_by"] = validate_sort_input(sortby)
         products = prip_retriever.init_prip_provider(station).search(

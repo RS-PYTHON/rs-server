@@ -124,7 +124,9 @@ template:
 
     pagination:
       max_items_per_page: 10000
-      next_page_url_tpl: "{url}?{search}&$top={limit}&$skip={skip}"
+      next_page_token_key: "skip"     # force skip token (differences between eodag 3.10 and 4.8)
+      start_page: 0                   # first page skip=0
+      next_page_url_tpl: '{url}?{search}&$top={limit}&$skip={skip}'
       total_items_nb_key_path: "$.total"
 
   download:
