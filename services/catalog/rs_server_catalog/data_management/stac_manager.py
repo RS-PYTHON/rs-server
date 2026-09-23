@@ -132,10 +132,10 @@ class StacManager:
         """
         for collection in collections:
             owner_id = collection["owner"]
-            collection["id"] = collection["id"].removeprefix(f"{owner_id}_")
+            collection_id = collection["id"].removeprefix(f"{owner_id}_")
             for link in collection["links"]:
                 link_parser = urlparse(link["href"])
-                new_path = add_user_prefix(link_parser.path, owner_id, collection["id"])
+                new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
                 link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
 
