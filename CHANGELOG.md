@@ -24,6 +24,35 @@ Changed
 
 None
 
+[1.0a14] - Sprint 40 - 2026-09-23
+=================================
+
+## Added
+
+- RSPY-554: Support IN operator in CQL2 filters
+- RSPY-619: Handle product:type
+- RSPY-1103: Allow to choose log level of Prefect flows at runtime
+- RSPY-1122: Don't allow items from other owners in DPR Processing flows
+- RSPY-1123: Upgrade pygeoapi to 0.24.0
+- RSPY-1135: Update Neuvector to 5.6.1+
+- RSPY-1136: Update Wazuh to 4.14.7+
+- RSPY-1141: Gateway API migration: replace infra-security ingresses by http routes and listener sets
+- RSPY-1145: S3 L1 OLCI quicklooks
+- RSPY-1147: Automatic cleanup of untagged docker images
+- RSPY-1155: Setup the generic processing flow with S3 OLCI L2 processor
+- RSPY-1159: Trigger S3L2 OLCI processing automatically after S3L1 OLCI completion
+- RSPY-1160: S3 L2 OLCI quicklooks
+- RSPY-1173: Sprint 40 corrections of issues
+- RSPY-1183: Update Task Table ICD to CPMv3
+- RSPY-1215: Upgrade stac-fastapi-pgstac from 6.3.1 to 6.4.0
+
+## Fixed
+
+- RSPY-1137: Remove hardcoded pip version when a pip-tools fix is released (1 pt)
+- RSPY-1158: Some fields displayed in sort dropdown are not queryable (3 pts)
+- RSPY-1162: [S3-L1-OLCI] eopf:origin_datetime field is set to an hardcoded value (1 pt)
+- RSPY-1170: [INFRA] Grafana K8S resources are no longer synchronized (1 pt)
+
 [1.0a13] - Sprint 39 - 2026-08-26
 =================================
 
