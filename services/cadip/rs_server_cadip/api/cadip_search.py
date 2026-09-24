@@ -533,7 +533,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         queryables = {k: v for k, v in queryables.items() if k != "limit"}
         # EODAG 4.x doesn't convert `page` to `next_page_token` when `next_page_token_key=skip`,
         # so compute the skip offset directly to ensure correct pagination.
-        next_page_token = (page - 1) * limit if limit else None
+        next_page_token = (page - 1) * limit if limit and page else None
         products = session_provider.search(
             **validate(queryables),
             sessions_search=True,

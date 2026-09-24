@@ -379,7 +379,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     try:
         # EODAG 4.x doesn't convert `page` to `next_page_token` when `next_page_token_key=skip`,
         # so compute the skip offset directly to ensure correct pagination.
-        next_page_token = (page - 1) * limit if limit else None
+        next_page_token = (page - 1) * limit if limit and page else None
         search_kwargs = {"limit": limit, "next_page_token": next_page_token}
         if sortby:
             search_kwargs["sort_by"] = validate_sort_input(sortby)
