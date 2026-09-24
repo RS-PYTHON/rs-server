@@ -272,9 +272,16 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
 
 
 def prepare_collection(collection: ItemCollection) -> ItemCollection:
-    """Used to create a more complex mapping on platform/constallation from odata to stac."""
+    """Map OData satellite codes to STAC mission metadata and CADU product types."""
     for feature in collection.features:
         feature.properties.platform, feature.properties.constellation = cadip_reverse_map_mission(
             feature.properties.platform,
         )
+        product_type = {
+            "sentinel-1": "S01CADU__",
+            "sentinel-2": "S02CADU__",
+            "sentinel-3": "S03CADU__",
+        }.get(feature.properties.constellation or "")
+        if product_type is not None:
+            setattr(feature.properties, "product:type", product_type)
     return collection

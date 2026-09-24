@@ -18,7 +18,7 @@ import asyncio
 import re
 from functools import lru_cache
 from typing import Any
-from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
+from urllib.parse import parse_qs, quote, urljoin, urlparse, urlunparse
 
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (
@@ -41,6 +41,7 @@ from rs_server_catalog.utils import (
     extract_owner_name_from_json_filter,
     extract_owner_name_from_text_filter,
     headers_minus_content_length,
+    is_s3_path,
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication
@@ -95,6 +96,41 @@ def mask_internal_default_geometry_and_bbox(payload: Any) -> Any:
                 feature["geometry"] = None
             if feature.get("bbox") == DEFAULT_BBOX:
                 feature["bbox"] = None
+
+    return payload
+
+
+def add_thumbnail_download_alternates(payload: Any) -> Any:
+    """Expose S3 thumbnails through the catalog's authenticated download route."""
+    if not isinstance(payload, dict):
+        return payload
+
+    features = payload.get("features")
+    items = features if isinstance(features, list) else [payload]
+    for item in items:
+        if not isinstance(item, dict) or item.get("type") != "Feature":
+            continue
+
+        # Build a portable URL from the public self link adapted for this response.
+        self_href = next(
+            (link.get("href") for link in item.get("links", []) if link.get("rel") == "self"),
+            None,
+        )
+        if not self_href:
+            continue
+
+        for asset_name, asset in item.get("assets", {}).items():
+            if not isinstance(asset, dict) or "thumbnail" not in asset.get("roles", []):
+                continue
+            if not is_s3_path(asset.get("href")):
+                continue
+
+            alternates = asset.setdefault("alternate", {})
+            if isinstance(alternates, dict):
+                alternates.setdefault(
+                    "download",
+                    {"href": f"{self_href.rstrip('/')}/download/{quote(asset_name, safe='')}"},
+                )
 
     return payload
 
@@ -290,6 +326,7 @@ class CatalogResponseManager:
             # feature links contain the public owner/collection path shape.
             content = adapt_links(content, "features", self.request_ids["owner_id"], collection_id)
         content = mask_internal_default_geometry_and_bbox(content)
+        content = add_thumbnail_download_alternates(content)
 
         # Add the stac authentication extension
         await StacManager.add_authentication_extension(content)
@@ -534,6 +571,9 @@ class CatalogResponseManager:
             logger.debug("Adapted item object links for item %s", self.request_ids["item_id"])
         else:
             logger.debug(f"No link adaptation performed for {request.scope}")
+
+        # Add browser-readable alternatives after all public links are finalized.
+        content = add_thumbnail_download_alternates(content)
 
         # Add the stac authentication extension
         await StacManager.add_authentication_extension(content)

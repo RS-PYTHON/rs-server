@@ -57,6 +57,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -594,6 +595,18 @@ field is not permitted also."
                         detail=f"Collection {collection} does not exist.",
                     )
 
+                # STAC-CORE-ITEM-REQ-0270 requires a product type on created and replaced items.
+                properties = content.get("properties")
+                product_type = properties.get("product:type") if isinstance(properties, dict) else None
+                if not isinstance(product_type, str) or not product_type.strip():
+                    raise HTTPException(
+                        status_code=HTTP_403_FORBIDDEN,
+                        detail=(
+                            "Cannot create or update item: "
+                            "'product:type' must be a non-empty string in 'properties'."
+                        ),
+                    )
+
                 # try to get the item if it is already part from the collection
                 item = await self._get_item_from_collection(request)
                 content = self.s3_manager(request).update_stac_item_publication(
@@ -951,9 +964,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
         """
         Pre-processing of a PATCH request to the Catalog.
 
-        Does authorization checks, merges partial geometry/bbox patches with the
-        current item when necessary, enforces spatial consistency, and updates
-        the `updated` timestamp.
+        Checks authorization, validates and enriches patched assets, enforces
+        spatial consistency, and updates the `updated` timestamp.
 
         Args:
             request (Request): The request from the Client
@@ -976,8 +988,9 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             logger.debug("PATCH authorization succeeded for request ids %s", self.request_ids)
 
             is_item = "/items/" in request.scope["path"]
-            if is_item and ("geometry" in content or "bbox" in content):
-                # Load current item because PATCH payload can contain only partial geometry/bbox fields.
+            item = None
+            if is_item and ("geometry" in content or "bbox" in content or "assets" in content):
+                # Spatial validation and asset enrichment need the complete item context.
                 item = await self._get_item_from_collection(request)
                 if not item:
                     raise HTTPException(
@@ -985,9 +998,11 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                         detail=f"Item {self.request_ids['item_id']} not found.",
                     )
 
+            if is_item and ("geometry" in content or "bbox" in content):
                 # Merge patched geometry/bbox over current item, then validate the result.
                 logger.debug("Merging PATCH geometry/bbox over current item %s", self.request_ids["item_id"])
-                merged_content = copy.deepcopy(item)
+                # The preceding lookup rejects missing items for any geometry/bbox PATCH.
+                merged_content = copy.deepcopy(cast(dict[str, Any], item))
                 if "geometry" in content:
                     merged_content["geometry"] = content["geometry"]
                     # Force bbox recomputation/removal according to the new geometry.
@@ -1009,7 +1024,14 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     content.get("bbox"),
                 )
 
+            if is_item and isinstance(content.get("assets"), dict):
+                # Validate and enrich only assets explicitly present in this PATCH.
+                content["assets"] = self.s3_manager(request).update_patch_assets(item, content["assets"])
+
             # Update "updated" timestamp (different field if it is an item or a collection)
+            if is_item:
+                # A valid partial item PATCH does not have to provide properties.
+                content.setdefault("properties", {})
             content = timestamps_extension.set_updated_timestamp_to_now(content, is_item=is_item)
             logger.debug("Updated PATCH timestamp for item=%s", is_item)
 

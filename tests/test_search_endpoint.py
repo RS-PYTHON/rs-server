@@ -500,16 +500,33 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
+    @pytest.mark.parametrize(
+        "satellite, constellation, product_type",
+        [
+            ("S1A", "sentinel-1", "S01CADU__"),
+            ("S2A", "sentinel-2", "S02CADU__"),
+            ("S3A", "sentinel-3", "S03CADU__"),
+        ],
+    )
     def test_cadip_feature_mapping(
         self,
         client: TestClient,
         cadip_feature,
         cadip_session_response,
         cadip_file_response,
+        satellite,
+        constellation,
+        product_type,
     ):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
         """
+        cadip_session_response = deepcopy(cadip_session_response)
+        cadip_feature = deepcopy(cadip_feature)
+        cadip_session_response["value"][0]["Satellite"] = satellite
+        cadip_feature["properties"]["platform"] = f"{constellation}a"
+        cadip_feature["properties"]["constellation"] = constellation
+        cadip_feature["properties"]["product:type"] = product_type
         # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,

@@ -15,6 +15,7 @@
 """Unit tests for utils module."""
 
 import os
+from typing import Any
 
 import pytest
 from fastapi import HTTPException
@@ -27,6 +28,7 @@ from rs_server_catalog.utils import (
 )
 from rs_server_common.utils.pytest import pytest_common_tests
 from rs_server_common.utils.utils2 import S3Credentials
+from starlette.status import HTTP_400_BAD_REQUEST
 
 
 class TestVerifyExistingItemFromCatalog:
@@ -601,6 +603,123 @@ class TestGetS3Handler:
         assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "file1"),
             mocker.call("rspython-ops-catalog-all-production", "file2"),
+        ]
+
+    def test_update_patch_assets_local_mode(self, mocker, s3_manager):
+        """Test that PATCH asset enrichment is skipped in local catalog mode."""
+        item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
+        assets = {"asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"}}
+
+        s3_manager.is_catalog_local_mode = True
+        mock_check_s3_key = mocker.patch.object(s3_manager.s3_handler, "check_s3_key_on_bucket")
+
+        result = s3_manager.update_patch_assets(item, assets)
+
+        assert result is assets
+        mock_check_s3_key.assert_not_called()
+
+    def test_update_patch_assets_no_href_assets(self, mocker, s3_manager):
+        """Test that PATCH assets without href (deletions/metadata-only) skip S3 lookups."""
+        item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
+        assets = {"asset1": None, "asset2": {"title": "metadata only, no href"}}
+
+        s3_manager.is_catalog_local_mode = False
+        mock_check_s3_key = mocker.patch.object(s3_manager.s3_handler, "check_s3_key_on_bucket")
+
+        result = s3_manager.update_patch_assets(item, assets)
+
+        assert result is assets
+        mock_check_s3_key.assert_not_called()
+
+    def test_update_patch_assets_invalid_bucket(self, s3_manager):
+        """Test that a PATCH asset stored outside the resolved catalog bucket is rejected."""
+        item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
+        assets = {"asset1": {"href": "s3://not-allowed-bucket/file1"}}
+
+        s3_manager.is_catalog_local_mode = False
+
+        with pytest.raises(HTTPException) as exc_info:
+            s3_manager.update_patch_assets(item, assets)
+
+        assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+        assert "must be stored in catalog bucket" in exc_info.value.detail
+
+    def test_update_patch_assets_check_s3_key_runtime_error(self, mocker, s3_manager):
+        """Test that a S3 lookup failure during PATCH asset validation raises a 400 error."""
+        item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
+        assets = {"asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"}}
+
+        s3_manager.is_catalog_local_mode = False
+        mocker.patch.object(
+            s3_manager.s3_handler,
+            "check_s3_key_on_bucket",
+            side_effect=RuntimeError("S3 unavailable"),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            s3_manager.update_patch_assets(item, assets)
+
+        assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+        assert "Failed to check asset asset1 in S3" in exc_info.value.detail
+
+    def test_update_patch_assets_asset_not_found(self, mocker, s3_manager):
+        """Test that a PATCH asset missing from the catalog bucket is rejected."""
+        item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
+        assets = {"asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"}}
+
+        s3_manager.is_catalog_local_mode = False
+        mocker.patch.object(
+            s3_manager.s3_handler,
+            "check_s3_key_on_bucket",
+            return_value=(False, -1),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            s3_manager.update_patch_assets(item, assets)
+
+        assert exc_info.value.status_code == HTTP_400_BAD_REQUEST
+        assert "does not exist in catalog bucket" in exc_info.value.detail
+
+    def test_update_patch_assets_success(self, mocker, s3_manager):
+        """Test that valid PATCH assets are enriched with S3 file metadata and checksums."""
+        item = {"collection": "test_collection", "properties": {"owner": "test_user"}}
+        assets: dict[str, dict[str, Any]] = {
+            "asset1": {"href": "s3://rspython-ops-catalog-all-production/product/asset1.tif"},
+            # file:size is already set, setdefault must keep the caller-provided value.
+            "asset2": {
+                "href": "s3://rspython-ops-catalog-all-production/product/asset2.tif",
+                "file:size": 999,
+            },
+        }
+
+        s3_manager.is_catalog_local_mode = False
+        mocker.patch.object(
+            s3_manager.s3_handler,
+            "check_s3_key_on_bucket",
+            side_effect=[(True, 123), (True, 456)],
+        )
+        mocker.patch.object(
+            s3_manager.s3_handler,
+            "get_object_attributes",
+            side_effect=[
+                {"Checksum": {"ChecksumSHA256": "checksum-1"}},
+                {"Checksum": {"ChecksumSHA256": "checksum-2"}},
+            ],
+        )
+
+        result = s3_manager.update_patch_assets(item, assets)
+
+        assert result is assets
+        assert result["asset1"]["file:size"] == 123
+        assert result["asset1"]["file:local_path"] == "product/asset1.tif"
+        assert result["asset1"]["file:checksum"] == "checksum-1"
+        # Pre-existing file:size is preserved despite the S3 lookup returning a different size.
+        assert result["asset2"]["file:size"] == 999
+        assert result["asset2"]["file:local_path"] == "product/asset2.tif"
+        assert result["asset2"]["file:checksum"] == "checksum-2"
+        assert s3_manager.s3_handler.check_s3_key_on_bucket.call_args_list == [
+            mocker.call("rspython-ops-catalog-all-production", "product/asset1.tif"),
+            mocker.call("rspython-ops-catalog-all-production", "product/asset2.tif"),
         ]
 
 
