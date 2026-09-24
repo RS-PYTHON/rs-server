@@ -527,7 +527,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         station_session = f"{station}_session"
         session_provider = cadip_retriever.init_cadip_provider(station_session)
         # Authenticate and search sessions
-        sort_kwargs = {"sort_by": validate_sort_input(sortby)} if (sortby := sortby) else {}
+        sort_kwargs = {"sort_by": validate_sort_input(sortby)} if sortby else {}
         # The pagination limit is passed separately to the provider search; remove it from queryables
         # to avoid passing the same keyword twice.
         queryables = {k: v for k, v in queryables.items() if k != "limit"}
