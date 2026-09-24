@@ -300,6 +300,7 @@ class EodagProvider(Provider):
                 provider=self.provider,
                 raise_errors=True,
                 collection=dataset_key,
+                validate=False,
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
