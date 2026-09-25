@@ -16,7 +16,25 @@
 
 import os
 
-from rs_server_catalog.stac_api import settings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class UvicornSettings(BaseSettings):
+    """
+    Uvicorn deployment settings, read from the APP_HOST, APP_PORT and RELOAD env vars.
+
+    They were removed from the stac-fastapi ApiSettings in stac-fastapi 7.0.0, so we define them here
+    with the same names and default values.
+    """
+
+    app_host: str = "0.0.0.0"
+    app_port: int = 8000
+    reload: bool = True
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+
+settings = UvicornSettings()
 
 
 def run():

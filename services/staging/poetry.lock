@@ -5325,7 +5325,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a13.post44.dev0"
+version = "1.0a14"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -5358,10 +5358,10 @@ python-dotenv = "^1.0.0"
 python-keycloak = ">=5.7.0,<8.0"
 requests = "^2.32.5"
 sqlalchemy = "^2.0.43"
-stac-fastapi-api = ">=6.4.0,!=7.0.0"
-stac-fastapi-extensions = ">=6.4.0,!=7.0.0"
-stac-fastapi-pgstac = ">=6.4.0,!=7.0.0"
-stac-fastapi-types = ">=6.4.0,!=7.0.0"
+stac-fastapi-api = ">=6.4.0"
+stac-fastapi-extensions = ">=6.4.0"
+stac-fastapi-pgstac = ">=6.4.0"
+stac-fastapi-types = ">=6.4.0"
 stac-pydantic = "^3.4.0"
 starlette = ">=1.4.1"
 urllib3 = ">=2.6.3"
@@ -5587,49 +5587,49 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "6.6.0"
+version = "7.0.0"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_api-6.6.0-py3-none-any.whl", hash = "sha256:b65d3aa2264af9e49bbc962593529701d3db90e2a801db961161557542319204"},
-    {file = "stac_fastapi_api-6.6.0.tar.gz", hash = "sha256:7cbbadbc85976c6b97f9c4a80895a894aeca13d9926bb8b70078b6ea69e7f619"},
+    {file = "stac_fastapi_api-7.0.0-py3-none-any.whl", hash = "sha256:bc5243034af6d7bcf8f5129432bbcb2ce8f73be04da3cc2d266ed547058e0405"},
+    {file = "stac_fastapi_api-7.0.0.tar.gz", hash = "sha256:144eda572c89a76a2bb61ec422c736f5a5a15599587a407ee0074759e6e85c20"},
 ]
 
 [package.dependencies]
 brotli-asgi = "*"
-stac-fastapi-types = ">=6.6,<7.0"
+stac-fastapi-types = ">=7.0,<8.0"
 
 [package.extras]
 metrics = ["prometheus-fastapi-instrumentator (>=8.1.0)"]
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "6.6.0"
+version = "7.0.0"
 description = "Extensions for stac-fastapi apis."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_extensions-6.6.0-py3-none-any.whl", hash = "sha256:df066b19e6e28181826ab5ec7481b13f8f7e14b00f9331f56e8f84a4bdbd17a1"},
-    {file = "stac_fastapi_extensions-6.6.0.tar.gz", hash = "sha256:34c020eb1b0b431230306d2a073a06d57583f4f701569b11103b12fda3e0ea0f"},
+    {file = "stac_fastapi_extensions-7.0.0-py3-none-any.whl", hash = "sha256:7d7a6a26ef35328791bd5f439c8c218b8ac1f10314ed8074e0e31bc5c0b695ef"},
+    {file = "stac_fastapi_extensions-7.0.0.tar.gz", hash = "sha256:53c523ef9ab8b0fa5da0ae4530c8e98baa9ac337fa499f4cc4d28387320b2d56"},
 ]
 
 [package.dependencies]
-stac-fastapi-api = ">=6.6,<7.0"
-stac-fastapi-types = ">=6.6,<7.0"
+stac-fastapi-api = ">=7.0,<8.0"
+stac-fastapi-types = ">=7.0,<8.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "6.4.1"
+version = "7.0.0"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-6.4.1-py3-none-any.whl", hash = "sha256:118422dc6e0a89a517c252692201be66448ed5c3d88c9c40bdb6c6d4fb0dbfc9"},
-    {file = "stac_fastapi_pgstac-6.4.1.tar.gz", hash = "sha256:b48c9886796f4796406ec1121f5086b97ef5382b6244bbcdffc97e75cfc1ab24"},
+    {file = "stac_fastapi_pgstac-7.0.0-py3-none-any.whl", hash = "sha256:896642fe2a63267d3465df348456146306fea4becacb185af1fcfbf3f3b4f989"},
+    {file = "stac_fastapi_pgstac-7.0.0.tar.gz", hash = "sha256:b780dad2cdfab40532bbc23610af02c503faaccc2aae7acd71c91cadca07a1a8"},
 ]
 
 [package.dependencies]
@@ -5644,25 +5644,26 @@ jsonpatch = ">=1.33.0"
 orjson = "*"
 pydantic = ">=2.4,<3.0"
 pydantic-settings = ">=2.7,<3.0"
-stac-fastapi-api = ">=6.4,<7.0"
-stac-fastapi-extensions = ">=6.4,<7.0"
-stac-fastapi-types = ">=6.4,<7.0"
+stac-fastapi-api = ">=7.0,<8.0"
+stac-fastapi-extensions = ">=7.0,<8.0"
+stac-fastapi-types = ">=7.0,<8.0"
 
 [package.extras]
 catalogs = ["stac-fastapi-catalogs-extension (==0.4.0)"]
+metrics = ["stac-fastapi-api[metrics]"]
 server = ["uvicorn[standard] (==0.38.0)"]
 validation = ["stac-pydantic[validation]"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "6.6.0"
+version = "7.0.0"
 description = "Core API for stac-fastapi modules."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_types-6.6.0-py3-none-any.whl", hash = "sha256:fdfea762a2bc5931a9bd0cf2bd0998c464ea37e657a7ffd67595f064a07ce014"},
-    {file = "stac_fastapi_types-6.6.0.tar.gz", hash = "sha256:607243f14dc8eddad157fd6e9e9716eb344e9c2bd0a1f02dcbf279806d029eac"},
+    {file = "stac_fastapi_types-7.0.0-py3-none-any.whl", hash = "sha256:d123197d0704f37aacf83ec49d522ba24f9b41dfc539ba6149953e68381e34d4"},
+    {file = "stac_fastapi_types-7.0.0.tar.gz", hash = "sha256:297a60e73092dac5a9b18eecfcaf3e74980e3b0c0f221efa7719f4614ab23f4d"},
 ]
 
 [package.dependencies]
