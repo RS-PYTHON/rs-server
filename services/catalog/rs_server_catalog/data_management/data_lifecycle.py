@@ -256,7 +256,7 @@ class DataLifecycle:
                     len(col_items),
                     col_name,
                 )
-                self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, bulk_request))
+                self.logger.debug(await self.client_bulk.bulk_item_insert(bulk_items, request=bulk_request))
 
         # Then delete all files from object storage. If this fails, the external
         # object-storage lifecycle is expected to perform eventual cleanup.

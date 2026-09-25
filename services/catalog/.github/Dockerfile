@@ -69,12 +69,14 @@ USER $USER
 
 # See: rs_server_catalog/main.py
 # uvicorn.run(
-#     "stac_fastapi.pgstac.app:app",
+#     "rs_server_catalog.app:app",
 #     host=settings.app_host,
 #     port=settings.app_port,
 #     log_level="info",
 #     reload=settings.reload,
+#     reload_dirs=[dir.strip() for dir in os.getenv("RELOAD_DIRS", "").split(",") if dir],
 #     root_path=os.getenv("UVICORN_ROOT_PATH", ""),
+# )
 ENTRYPOINT [ "python", "-m", "rs_server_catalog.main" ]
 
 # Set labels based on the Open Containers Initiative (OCI):
