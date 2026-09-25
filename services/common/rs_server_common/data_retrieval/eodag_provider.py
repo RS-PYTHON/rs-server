@@ -300,7 +300,7 @@ class EodagProvider(Provider):
                 provider=self.provider,
                 raise_errors=True,
                 collection=dataset_key,
-                validate=False,
+                validate=False,  # disable validation to decrease the runtime of the search when in parallel
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.

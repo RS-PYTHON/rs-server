@@ -1940,9 +1940,7 @@ class TestFeatureCollectionOdataStacMapping:
             json={"value": []} if is_last else adgs_response_10_items,
             status=200,
         )
-        print("1. Requesting page: " + page)
         response = client.get(endpoint + page)
-        print("2. Response: " + str(response.json()))
         assert response.status_code == status.HTTP_200_OK
 
         base_url = str(response.url).split("token", maxsplit=1)[0]
@@ -1977,8 +1975,6 @@ class TestFeatureCollectionOdataStacMapping:
             } in response.json()["links"]
 
             # Check that "previous" link exists
-            for link in response.json()["links"]:
-                print(f"Link: {link}")
             assert not any(link["rel"] == "previous" for link in response.json()["links"])
 
 
