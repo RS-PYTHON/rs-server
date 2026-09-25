@@ -110,7 +110,7 @@ def rename_keys(product: dict) -> dict:
     if "Id" in product:
         product["id"] = product.pop("Id")
     if "PublicationDate" in product:
-        product["startTimeFromAscendingNode"] = product["PublicationDate"]
+        product["start_datetime"] = product["PublicationDate"]
     return product
 
 
@@ -257,15 +257,19 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
                 ),
                 default=None,
             )
-            # https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md#date-and-time-range
-            # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
-            # records by the provided times. So if you use start_datetime you need to add end_datetime and vice-versa.
-            if start_date and end_date:
-                properties.end_datetime = strftime_millis(end_date)  # type: ignore
-            elif start_date or end_date:
-                logger.warning(f"{feature.id} has only one time range property: {start_date}/{end_date}")
-                properties.start_datetime = None
-                properties.end_datetime = None
+            # Only refine the session end datetime from its matching assets. When no asset is associated,
+            # keep the complete temporal interval already mapped from DownlinkStart / DownlinkStop.
+            if matching_assets:
+                # https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md#date-and-time-range
+                # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
+                # records by the provided times. So if you use start_datetime you need to add end_datetime and
+                # vice-versa.
+                if start_date and end_date:
+                    properties.end_datetime = strftime_millis(end_date)  # type: ignore
+                elif start_date or end_date:
+                    logger.warning(f"{feature.id} has only one time range property: {start_date}/{end_date}")
+                    properties.start_datetime = None
+                    properties.end_datetime = None
         except ValueError as e:
             logger.warning(f"Cannot update start/end datetime for {feature.id}: {e}")
             continue

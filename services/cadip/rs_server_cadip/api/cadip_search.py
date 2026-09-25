@@ -526,19 +526,27 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         # Get the cadip session provider
         station_session = f"{station}_session"
         session_provider = cadip_retriever.init_cadip_provider(station_session)
-
         # Authenticate and search sessions
+        sort_kwargs = {"sort_by": validate_sort_input(sortby)} if sortby else {}
+        # The pagination limit is passed separately to the provider search; remove it from queryables
+        # to avoid passing the same keyword twice.
+        queryables = {k: v for k, v in queryables.items() if k != "limit"}
+        # EODAG 4.x doesn't convert `page` to `next_page_token` when `next_page_token_key=skip`,
+        # so compute the skip offset directly to ensure correct pagination.
+        next_page_token = (page - 1) * limit if limit and page else None
         products = session_provider.search(
             **validate(queryables),
             sessions_search=True,
-            items_per_page=limit,
-            sort_by=validate_sort_input(sortby),
-            page=page,
+            limit=limit,
+            next_page_token=next_page_token,
+            **sort_kwargs,
         )
 
         # The station authentication is the same for both the session and assets providers so copy it manually.
         eodag_gateway = session_provider.client  # same for both providers
-        providers_config = eodag_gateway.providers_config
+        providers_config = (
+            eodag_gateway._providers.configs  # pylint: disable=protected-access
+        )  # use _providers directly to avoid deepcopy in providers property
         plugin_manager = eodag_gateway._plugins_manager  # pylint: disable=protected-access
 
         # See: eodag/plugins/manager.py::get_auth_plugins
@@ -629,11 +637,19 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
+        sort_kwargs = {"sort_by": validate_sort_input(sortby)} if (sortby := kwargs.get("sortby")) else {}
+        # The pagination limit is passed separately to the provider search; remove it from queryables
+        # to avoid passing the same keyword twice.
+        queryables = {k: v for k, v in queryables.items() if k != "limit"}
+        # EODAG 4.x doesn't convert `page` to `next_page_token` when `next_page_token_key=skip`,
+        # so compute the skip offset directly to ensure correct pagination.
+        page_num = kwargs.get("page", 1)
+        next_page_token = (page_num - 1) * limit if limit else None
         products = cadip_retriever.init_cadip_provider(station).search(
             **validate(queryables),
-            items_per_page=limit,
-            sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
-            page=kwargs.get("page", 1),
+            limit=limit,
+            next_page_token=next_page_token,
+            **sort_kwargs,
         )
 
         if kwargs.get("map_to_session", False):
