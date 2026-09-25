@@ -262,7 +262,8 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
             if matching_assets:
                 # https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md#date-and-time-range
                 # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
-                # records by the provided times. So if you use start_datetime you need to add end_datetime and vice-versa.
+                # records by the provided times. So if you use start_datetime you need to add end_datetime and
+                # vice-versa.
                 if start_date and end_date:
                     properties.end_datetime = strftime_millis(end_date)  # type: ignore
                 elif start_date or end_date:
