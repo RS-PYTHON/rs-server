@@ -27,7 +27,8 @@ class UvicornSettings(BaseSettings):
     with the same names and default values.
     """
 
-    app_host: str = "0.0.0.0"
+    # Bind to all interfaces for container networking; override via APP_HOST.
+    app_host: str = "0.0.0.0"  # nosec B104
     app_port: int = 8000
     reload: bool = True
 
