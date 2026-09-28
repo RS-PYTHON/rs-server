@@ -257,16 +257,19 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
                 ),
                 default=None,
             )
-            # Only refine the session end datetime from its matching assets. When no asset is associated,
-            # keep the complete temporal interval already mapped from DownlinkStart / DownlinkStop.
-            if matching_assets:
-                # https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md#date-and-time-range
-                # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
-                # records by the provided times. So if you use start_datetime you need to add end_datetime and
-                # vice-versa.
-                if start_date and end_date:
-                    properties.end_datetime = strftime_millis(end_date)  # type: ignore
-                elif start_date or end_date:
+            # https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md#date-and-time-range
+            # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
+            # records by the provided times. So if you use start_datetime you need to add end_datetime and
+            # vice-versa.
+            if start_date and end_date:
+                properties.end_datetime = strftime_millis(end_date)  # type: ignore
+            elif start_date or end_date:
+                # If both start_datetime and end_datetime are already valid, keep them as they came
+                if properties.start_datetime and properties.end_datetime:
+                    # Only refine the session end datetime from its matching assets. When no asset is associated,
+                    # keep the complete temporal interval already mapped from DownlinkStart / DownlinkStop.
+                    pass
+                else:
                     logger.warning(f"{feature.id} has only one time range property: {start_date}/{end_date}")
                     properties.start_datetime = None
                     properties.end_datetime = None
