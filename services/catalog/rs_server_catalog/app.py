@@ -131,14 +131,14 @@ async def lifespan(my_app: FastAPI):
     """The lifespan function."""
     try:
         # Connect to the databse
-        db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
+        db_info = f"'{env['PGUSER']}@{env['PGHOST']}:{env['PGPORT']}'"
         while True:
             try:
                 await connect_to_db(my_app, add_write_connection_pool=with_transactions)
-                logger.info("Reached %r database on %s", env["POSTGRES_DB"], db_info)
+                logger.info("Reached %r database on %s", env["PGDATABASE"], db_info)
                 break
             except ConnectionRefusedError:
-                logger.warning("Trying to reach %r database on %s", env["POSTGRES_DB"], db_info)
+                logger.warning("Trying to reach %r database on %s", env["PGDATABASE"], db_info)
 
                 # timeout gestion if specified
                 if my_app.state.pg_timeout is not None:
