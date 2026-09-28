@@ -6170,7 +6170,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6187,7 +6187,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6204,7 +6204,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6223,7 +6223,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6272,7 +6272,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6294,7 +6294,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-osam"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6314,7 +6314,7 @@ url = "services/osam"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6331,7 +6331,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a14.post10.dev0"
+version = "1.0a14.post15.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
