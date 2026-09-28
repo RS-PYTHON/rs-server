@@ -42,6 +42,7 @@ from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     HealthMiddleware,
+    OdataRequestToStacMiddleware,
     apply_middlewares,
 )
 from rs_server_common.utils import init_opentelemetry
@@ -140,6 +141,9 @@ app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authe
 # In cluster mode, add the oauth2 authentication and the SessionMiddleware
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
+
+# Middleware to deal with odata requests
+app.add_middleware(OdataRequestToStacMiddleware)
 
 app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
 HandleExceptionsMiddleware.disable_default_exception_handler(app)

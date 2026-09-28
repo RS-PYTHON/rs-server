@@ -32,7 +32,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import read_streaming_response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware, _MiddlewareFactory
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 REL_TITLES = {
     "collection": "Collection",
@@ -88,6 +88,47 @@ class Rfc7807ErrorResponse(TypedDict):
 #############################
 # Middleware implementation #
 #############################
+class OdataRequestToStacMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    Middle to catch and translate an odata request to stac and pass it to the catalog.
+    """
+
+    def __init__(self, app, dispatch=None):
+        super().__init__(app, dispatch)
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        url = str(request.url)
+
+        # STAC request
+        if "/odata/" not in url:
+            return await call_next(request)
+
+        # get both dates
+        # "PublicationDate gt 2017-05-15T00:00:00.000Z and PublicationDate lt 2019-04-10T10:00:00.000Z"
+        odata_filter = dict(request.query_params)["filter"]
+        components = odata_filter.split()
+        d1, d2 = components[2], components[6]
+
+        # translate it to stac
+        # date_filter = {
+        #     "op": "t_intersects",
+        #     "args": [
+        #         {"interval": [{"property": "start_datetime"}, {"property": "end_datetime"}]},
+        #         {"interval": [d1, d2]},
+        #     ],
+        # }
+
+        stac_params = {
+            "filter-lang": "cql2-text",
+            "filter": "T_CONTAINS(INTERVAL(start_datetime,end_datetime)," f"INTERVAL('{d1}','{d2}'))",
+        }
+        # params_as_str = json.dumps(stac_params, separators=(",", ":"))
+
+        request.scope["query_string"] = urlencode(stac_params, doseq=True).encode("utf-8")
+        new_path = "/catalog/search"
+        request.scope["path"] = new_path
+        request.scope["raw_path"] = new_path.encode()
+        return await call_next(request)
 
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
