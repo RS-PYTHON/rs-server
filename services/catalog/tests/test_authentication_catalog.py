@@ -466,7 +466,7 @@ async def test_authorization_landing_page(
             {
                 "rel": "child",
                 "type": "application/json",
-                "title": col.collection_id,
+                "title": f"{col.owner_id}_{col.collection_id}",
                 "href": f"http://testserver/catalog/collections/{col.owner_id}:{col.collection_id}",
                 **AUTH_REFS,
             }
@@ -664,6 +664,7 @@ async def test_authorization_post_and_delete_one_collection(
 
     owner = requested_collections[0].owner_id
     collection_id = requested_collections[0].collection_id
+    expected_collection_id = f"{owner}_{collection_id}"
     new_collection = Collection(owner, collection_id)
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
@@ -677,7 +678,7 @@ async def test_authorization_post_and_delete_one_collection(
             assert post_response.status_code == HTTP_201_CREATED
             returned_col = json.loads(post_response.content)
             assert returned_col["owner"] == owner
-            assert returned_col["id"] == collection_id
+            assert returned_col["id"] == expected_collection_id
         else:
             assert post_response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -699,7 +700,7 @@ async def test_authorization_post_and_delete_one_collection(
             assert json.loads(delete_response.content) == {"deleted collection": "new_collection"}
 
         # NOTE: in this case, the collection has not been created.
-        # But we still receive a 401 not 404 even though the colleciton does not exist.
+        # But we still receive a 401 not 404 even though the collection does not exist.
         else:
             assert delete_response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -718,6 +719,7 @@ async def test_authorization_put_one_collection(
 
     owner = requested_collections[0].owner_id
     collection_id = requested_collections[0].collection_id
+    expected_collection_id = f"{owner}_{collection_id}"
     existing_collection = Collection(owner, collection_id)
     header = VALID_APIKEY_HEADER if test_apikey else {}
 
@@ -741,7 +743,7 @@ async def test_authorization_put_one_collection(
             assert response.status_code == HTTP_200_OK
             returned_col = json.loads(response.content)
             assert returned_col["owner"] == owner
-            assert returned_col["id"] == collection_id
+            assert returned_col["id"] == expected_collection_id
         else:
             assert response.status_code == HTTP_401_UNAUTHORIZED
 

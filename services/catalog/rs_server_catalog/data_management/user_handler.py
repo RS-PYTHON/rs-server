@@ -115,7 +115,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     elif match := re.fullmatch(BULK_ITEMS_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
-        ids_dict["collection_ids"].append(collection_id_without_owner_id(groups["collection_id"], ids_dict["owner_id"]))
+        ids_dict["collection_ids"].append(groups["collection_id"])
         path = (
             CATALOG_COLLECTIONS
             + f"/{owner_id_and_collection_id(ids_dict['owner_id'], ids_dict['collection_ids'][0])}/bulk_items"
@@ -125,7 +125,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     elif match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
-        ids_dict["collection_ids"].append(collection_id_without_owner_id(groups["collection_id"], ids_dict["owner_id"]))
+        ids_dict["collection_ids"].append(groups["collection_id"])
         path = (
             CATALOG_COLLECTIONS
             + f"/{owner_id_and_collection_id(ids_dict['owner_id'], ids_dict['collection_ids'][0])}/queryables"
@@ -142,16 +142,12 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
                 # the following handles the absence of the ownerId param, for endpoints like:
                 # /catalog/collections/collectionId/items
                 ids_dict["owner_id"] = get_user(None, ids_dict["user_login"])
-                ids_dict["collection_ids"].append(
-                    collection_id_without_owner_id(owner_collection_id_split[0], ids_dict["owner_id"]),
-                )
+                ids_dict["collection_ids"].append(owner_collection_id_split[0])
             else:
                 # the following handles the presence of the ownerId param, for endpoints like:
                 # /catalog/collections/ownerId:collectionId/items
                 ids_dict["owner_id"] = owner_collection_id_split[0]
-                ids_dict["collection_ids"].append(
-                    collection_id_without_owner_id(owner_collection_id_split[1], ids_dict["owner_id"]),
-                )
+                ids_dict["collection_ids"].append(owner_collection_id_split[1])
 
         # /catalog/collections/{owner_id}:{collection_id}
         # case is the same for PUT / POST / DELETE, but needs different paths
@@ -249,6 +245,9 @@ def remove_owner_from_collection_name_in_feature(feature: dict, current_user: st
     if feature["collection"].startswith(f"{user}_"):
         feature["collection"] = feature["collection"].removeprefix(f"{user}_")
         return feature, user
+    # if feature["collection"].startswith(f"{user}_"):
+    #     feature["collection"] = feature["collection"].removeprefix(f"{user}_")
+    #     return feature, user
     return feature, ""
 
 
@@ -274,8 +273,9 @@ def remove_owner_from_collection_name_in_collection(collection: dict, current_us
         user = current_user
 
     if collection["id"].startswith(f"{user}_"):
-        collection["id"] = collection["id"].removeprefix(f"{user}_")
-        return collection, user
+        collection_id = collection["id"].removeprefix(f"{user}_")
+        return collection_id, user
+
     return collection, ""
 
 
@@ -289,24 +289,24 @@ def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
     Returns:
         dict: The collection passed in parameter with adapted links
     """
-    user = collection_id = feature_id = ""
+    user = href_collection_id = feature_id = ""
 
     # Case when object is an item
     if "properties" in object_content and "collection" in object_content:
         object_content, user = remove_owner_from_collection_name_in_feature(object_content, current_user)
-        collection_id = object_content["collection"]
+        href_collection_id = object_content["collection"]
         feature_id = object_content["id"]
 
     # Case when object is a collection
     elif "id" in object_content:
-        object_content, user = remove_owner_from_collection_name_in_collection(object_content, current_user)
-        collection_id = object_content["id"]
+        _, user = remove_owner_from_collection_name_in_collection(object_content, current_user)
+        href_collection_id = object_content["id"].removeprefix(f"{current_user}_")
 
     # Update links with user, collection and feature values retrieved from previous steps
     links = object_content.get("links", [])
     for j, link in enumerate(links):
         link_parser = urlparse(link["href"])
-        new_path = add_user_prefix(link_parser.path, user, collection_id, feature_id)
+        new_path = add_user_prefix(link_parser.path, user, href_collection_id, feature_id)
         links[j]["href"] = link_parser._replace(path=new_path).geturl()
 
     return object_content

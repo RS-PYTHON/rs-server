@@ -150,6 +150,7 @@ def test_patch_collection(client):
             "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
         },
     }
+    expected_collection_id = f"{minimal_collection["owner"]}_{minimal_collection["id"]}"
     response = client.post("/catalog/collections", json=minimal_collection)
     # Check that collection status code is 201 or 409 (if it already exists)
     assert response.status_code in (fastapi.status.HTTP_201_CREATED, fastapi.status.HTTP_409_CONFLICT)
@@ -159,7 +160,7 @@ def test_patch_collection(client):
     assert response.status_code == fastapi.status.HTTP_200_OK
     response_content = json.loads(response.content)
     # Check that values are correctly written in catalogDB
-    assert response_content["id"] == minimal_collection["id"]
+    assert response_content["id"] == expected_collection_id
     assert response_content["owner"] == minimal_collection["owner"]
     assert response_content["description"] == minimal_collection["description"]
     created_timestamp = response_content["created"]
@@ -178,7 +179,7 @@ def test_patch_collection(client):
     assert response.status_code == fastapi.status.HTTP_200_OK
     response_content = json.loads(response.content)
     # Check that values are correctly written in catalogDB
-    assert response_content["id"] == minimal_collection["id"]
+    assert response_content["id"] == expected_collection_id
     assert response_content["owner"] == minimal_collection["owner"]
     assert response_content["description"] == patch_values["description"]  # Check patched value
     assert response_content["created"] == created_timestamp  # Check that "created" date didn't change

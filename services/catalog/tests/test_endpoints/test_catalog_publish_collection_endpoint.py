@@ -42,11 +42,13 @@ class TestCatalogPublishCollectionEndpoint:
                 "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
             },
         }
+        expected_collection_id = f"{minimal_collection["owner"]}_{minimal_collection["id"]}"
+
         response = client.post("/catalog/collections", json=minimal_collection)
         # Check that collection status code is 201
         assert response.status_code == fastapi.status.HTTP_201_CREATED
         # Check that internal collection id is set to owner_collection
-        assert json.loads(response.content)["id"] == "test_collection"
+        assert json.loads(response.content)["id"] == expected_collection_id
         assert json.loads(response.content)["owner"] == "test_owner"
 
         # # Call search endpoint to verify presence of collection in catalog
@@ -59,7 +61,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response.status_code == fastapi.status.HTTP_200_OK
         response_content = json.loads(response.content)
         # Check that values are correctly written in catalogDB
-        assert response_content["id"] == minimal_collection["id"]
+        assert response_content["id"] == expected_collection_id
         assert response_content["owner"] == minimal_collection["owner"]
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]
@@ -83,12 +85,13 @@ class TestCatalogPublishCollectionEndpoint:
                 "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
             },
         }
+        expected_collection_id = f"{getpass.getuser()}_{minimal_collection["id"]}"
 
         response = client.post("/catalog/collections", json=minimal_collection)
         # Check that collection status code is 201
         assert response.status_code == fastapi.status.HTTP_201_CREATED
         # Check that internal collection id is set to owner_collection
-        assert json.loads(response.content)["id"] == "test_collection_without_user"
+        assert json.loads(response.content)["id"] == expected_collection_id
         assert json.loads(response.content)["owner"] == getpass.getuser()
 
         # # Call search endpoint to verify presence of collection in catalog
@@ -101,7 +104,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response.status_code == fastapi.status.HTTP_200_OK
         response_content = json.loads(response.content)
         # Check that values are correctly written in catalogDB
-        assert response_content["id"] == minimal_collection["id"]
+        assert response_content["id"] == expected_collection_id
         assert response_content["owner"] == getpass.getuser()
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]

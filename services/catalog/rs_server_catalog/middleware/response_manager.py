@@ -450,11 +450,7 @@ class CatalogResponseManager:
             )
 
             for collection in collections:
-                collection_id = (
-                    collection["id"].removeprefix(f"{collection['owner']}_")
-                    if collection["owner"]
-                    else collection["id"]
-                )
+                collection_id = collection["id"]
                 content["links"].append(
                     {
                         "rel": "child",
