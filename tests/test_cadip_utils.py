@@ -105,30 +105,29 @@ def do_test_link_assets_to_session(start: bool, end: bool):
             tzinfo=timezone.utc,
         )
         assert item.properties.end_datetime == "2024-12-02T18:49:55.000Z"  # pylint: disable=no-member
-    else:
-        if not start:
-            assert item.properties.start_datetime is None  # pylint: disable=no-member
-            assert item.properties.end_datetime is None  # pylint: disable=no-member
-        if not end:
-            # If both start_datetime and end_datetime are already valid, keep them as they came
-            assert item.properties.start_datetime == datetime(  # pylint: disable=no-member
-                2024,
-                12,
-                2,
-                18,
-                0,
-                0,
-                tzinfo=timezone.utc,
-            )
-            assert item.properties.end_datetime == datetime(  # pylint: disable=no-member
-                2024,
-                12,
-                2,
-                18,
-                0,
-                0,
-                tzinfo=timezone.utc,
-            )
+    elif not start:
+        assert item.properties.start_datetime is None  # pylint: disable=no-member
+        assert item.properties.end_datetime is None  # pylint: disable=no-member
+    elif not end:
+        # If both start_datetime and end_datetime are already valid, keep them as they came
+        assert item.properties.start_datetime == datetime(  # pylint: disable=no-member
+            2024,
+            12,
+            2,
+            18,
+            0,
+            0,
+            tzinfo=timezone.utc,
+        )
+        assert item.properties.end_datetime == datetime(  # pylint: disable=no-member
+            2024,
+            12,
+            2,
+            18,
+            0,
+            0,
+            tzinfo=timezone.utc,
+        )
 
 
 def test_map_dag_file_to_asset_adds_external_ids():
