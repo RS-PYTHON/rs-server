@@ -126,6 +126,7 @@ class StacManager:
         """Update the links for the endpoint /catalog/collections.
 
         Args:
+            request (Request): The request received by the catalog
             collections (list[dict]): all the collections to be updated.
 
         Returns:
