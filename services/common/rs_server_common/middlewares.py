@@ -109,20 +109,10 @@ class OdataRequestToStacMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-f
         components = odata_filter.split()
         d1, d2 = components[2], components[6]
 
-        # translate it to stac
-        # date_filter = {
-        #     "op": "t_intersects",
-        #     "args": [
-        #         {"interval": [{"property": "start_datetime"}, {"property": "end_datetime"}]},
-        #         {"interval": [d1, d2]},
-        #     ],
-        # }
-
         stac_params = {
             "filter-lang": "cql2-text",
-            "filter": "T_CONTAINS(INTERVAL(start_datetime,end_datetime)," f"INTERVAL('{d1}','{d2}'))",
+            "filter": f"published >= '{d1}' AND published <= '{d2}'",
         }
-        # params_as_str = json.dumps(stac_params, separators=(",", ":"))
 
         request.scope["query_string"] = urlencode(stac_params, doseq=True).encode("utf-8")
         new_path = "/catalog/search"
