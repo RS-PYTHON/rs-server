@@ -55,7 +55,11 @@ fastapi = ">=0.141.1"
 starlette = ">=1.4.1"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
-sqlalchemy = "^2.0.43"
+# Constraint to remove when sqlalchemy-utils becomes compatible with sqlalchemy 2.1.XXX
+# https://github.com/kvesteri/sqlalchemy-utils/issues/800
+# https://github.com/kvesteri/sqlalchemy-utils/issues/829
+# https://github.com/kvesteri/sqlalchemy-utils/pull/831
+sqlalchemy = ">=2.0.54,<2.1.0"
 eodag = "==v3.10.2"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
