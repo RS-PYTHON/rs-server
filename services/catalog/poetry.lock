@@ -1015,14 +1015,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "4.8.0"
+version = "4.9.1"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "eodag-4.8.0-py3-none-any.whl", hash = "sha256:1f8f7c7566f7ef5cfea47f67b68403987f07d03f9ba280e63ed2132f7ce8d0c7"},
-    {file = "eodag-4.8.0.tar.gz", hash = "sha256:e5e8477d37c257d4bd5709049ff06d37f48400879da15607053278cc8921f153"},
+    {file = "eodag-4.9.1-py3-none-any.whl", hash = "sha256:3f5c98fbd072b06df910ac4f777648cf352ec92a70b9973376244be21de93eac"},
+    {file = "eodag-4.9.1.tar.gz", hash = "sha256:3ecb3826fd94b7e525a81997d51ea98dfaffccdedd1293f42572c932970d8a71"},
 ]
 
 [package.dependencies]
@@ -3833,7 +3833,7 @@ boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 cachetools = ">=7.0.1"
 cachetools_async = ">=0.0.5"
-eodag = "4.8.0"
+eodag = "4.9.1"
 fastapi = ">=0.141.1"
 filelock = ">=3.20.3"
 geojson-pydantic = "2.1.1"
