@@ -1579,14 +1579,14 @@ usgs = ["usgs (>=0.3.6)"]
 
 [[package]]
 name = "fastapi"
-version = "0.142.1"
+version = "0.142.2"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.142.1-py3-none-any.whl", hash = "sha256:7eea2b5b1632ed43de2c090b3a43b7d92267189dfbbd55a967307ed763b6c57a"},
-    {file = "fastapi-0.142.1.tar.gz", hash = "sha256:761663e3e6939da45f997a6f68362abc0fa9d8606e76d504f15f806d2281581d"},
+    {file = "fastapi-0.142.2-py3-none-any.whl", hash = "sha256:bd5f4d81f1e93a88bcd77caf4dfe3c2dbffc3805407a0007e9a114c18b3a670b"},
+    {file = "fastapi-0.142.2.tar.gz", hash = "sha256:06366626f2e70576367714d9ab2fe8472e6c8456dba69b399f9f797ab5e92570"},
 ]
 
 [package.dependencies]
@@ -1904,14 +1904,14 @@ files = [
 
 [[package]]
 name = "geojson-pydantic"
-version = "2.1.1"
+version = "2.2.0"
 description = "Pydantic data models for the GeoJSON spec."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "geojson_pydantic-2.1.1-py3-none-any.whl", hash = "sha256:55354f22ededc3c070e3210fec6f518d784b65c4368c1763f2c6dc4bab79b898"},
-    {file = "geojson_pydantic-2.1.1.tar.gz", hash = "sha256:3b64fa2dcd98108ff8a19bfb01eee3dab41bc230be2481804aefd7c1659d1c23"},
+    {file = "geojson_pydantic-2.2.0-py3-none-any.whl", hash = "sha256:5048d9519510ccaa7d1c1e6d8c04d790c59a365221a565288e03ec5ccae61f20"},
+    {file = "geojson_pydantic-2.2.0.tar.gz", hash = "sha256:d9c28d672a754b8dcda27b4192aa9ef9638c373a8e960baa8dcf907a0c8b897c"},
 ]
 
 [package.dependencies]
@@ -6337,9 +6337,9 @@ botocore = ">=1.40.2"
 cachetools = ">=7.0.1"
 cachetools_async = ">=0.0.5"
 eodag = "==v3.10.2"
-fastapi = ">=0.141.1"
+fastapi = ">=0.141.2"
 filelock = ">=3.20.3"
-geojson-pydantic = "2.1.1"
+geojson-pydantic = "2.2.0"
 httpx = "^0.28.1"
 itsdangerous = "^2.2.0"
 markdown = "^3.8.2"
@@ -6347,18 +6347,18 @@ opentelemetry-distro = "^0.65b0"
 opentelemetry-exporter-otlp = "^1.44.0"
 ply = "3.10"
 protobuf = ">=6.31.1"
-pydantic = ">=2.9.2,<2.14.0"
-pydantic-settings = ">2.2.1,<3.0.0,!=2.9.0"
+pydantic = ">=2.13.5,<2.14.0"
+pydantic-settings = ">=2.15.0,<3.0.0"
 pyjwt = {version = "^2.9.0", extras = ["crypto"]}
 python-dotenv = "^1.0.0"
-python-keycloak = ">=5.7.0,<8.0"
-requests = "^2.32.5"
+python-keycloak = ">=7.1.1,<8.0"
+requests = "^2.34.2"
 sqlalchemy = ">=2.0.54,<2.1.0"
 stac-fastapi-api = ">=6.4.0"
 stac-fastapi-extensions = ">=6.4.0"
 stac-fastapi-pgstac = ">=6.4.0"
 stac-fastapi-types = ">=6.4.0"
-stac-pydantic = "^3.4.0"
+stac-pydantic = "^3.6.0"
 starlette = ">=1.4.1"
 urllib3 = ">=2.6.3"
 uvicorn = ">=0.35.0"
