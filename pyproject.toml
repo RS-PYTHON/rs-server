@@ -100,6 +100,11 @@ httpx = "^0.28.1"
 sphinx = "^9.1.0"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.42.1"
+# Constraint to remove when sqlalchemy-utils becomes compatible with sqlalchemy 2.1.XXX
+# https://github.com/kvesteri/sqlalchemy-utils/issues/800
+# https://github.com/kvesteri/sqlalchemy-utils/issues/829
+# https://github.com/kvesteri/sqlalchemy-utils/pull/831
+sqlalchemy = ">=2.0.54,<2.1.0"
 click = ">=8.3.3"
 responses = "^0.26.0"
 

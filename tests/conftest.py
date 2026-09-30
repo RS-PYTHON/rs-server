@@ -31,6 +31,11 @@ from importlib import reload
 os.environ["RSPY_LOCAL_MODE"] = "1"
 os.environ["CORS_ORIGINS"] = "http://domain_a,http://domain_b"  # also mockup the cors settings
 
+# Tests do not require OpenTelemetry exporters.
+os.environ["OTEL_LOGS_EXPORTER"] = "none"
+os.environ["OTEL_TRACES_EXPORTER"] = "none"
+os.environ["OTEL_METRICS_EXPORTER"] = "none"
+
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
 TOKEN_CLIENT_SECRET = os.getenv("RSPY_CLIENT_SECRET", "client_secret")
