@@ -16,10 +16,12 @@
 
 import asyncio
 import re
+from contextlib import AsyncExitStack
 from functools import lru_cache
 from typing import Any
 from urllib.parse import parse_qs, quote, urljoin, urlparse, urlunparse
 
+import httpx
 from fastapi import HTTPException
 from rs_server_catalog.authentication_catalog import (
     get_all_accessible_collections,
@@ -49,6 +51,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import read_streaming_response
 from stac_fastapi.api.models import GeoJSONResponse
 from stac_fastapi.pgstac.core import CoreCrudClient
+from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import (
     JSONResponse,
@@ -67,6 +70,62 @@ from starlette.status import (
 QUERYABLES = "/queryables"
 
 logger = Logging.default(__name__)
+
+
+async def stream_quicklook(request: Request, url: str) -> StreamingResponse | JSONResponse:
+    """Relay a signed S3 download so browser access does not require bucket CORS."""
+    resources = AsyncExitStack()
+    try:
+        # Use a separate client: catalog cookies and Bearer tokens must not reach S3.
+        client = await resources.enter_async_context(httpx.AsyncClient(timeout=60))
+        headers = {"Accept-Encoding": "identity"}
+        for name in ("range", "if-range"):
+            if value := request.headers.get(name):
+                headers[name] = value
+        upstream = await resources.enter_async_context(client.stream("GET", url, headers=headers))
+        response_headers = {
+            name: upstream.headers[name]
+            for name in (
+                "content-type",
+                "content-length",
+                "content-range",
+                "accept-ranges",
+                "content-encoding",
+                "etag",
+                "last-modified",
+            )
+            if name in upstream.headers
+        }
+        response_headers["Cache-Control"] = "private, no-store"
+        response_headers["Access-Control-Expose-Headers"] = "Content-Range, Accept-Ranges, ETag"
+        if upstream.status_code >= 400:
+            await resources.aclose()
+            for name in ("content-type", "content-length", "content-encoding"):
+                response_headers.pop(name, None)
+            return JSONResponse(
+                {"code": "S3DownloadError", "description": "Object storage rejected the quicklook request"},
+                status_code=upstream.status_code,
+                headers=response_headers,
+            )
+
+        async def chunks():
+            try:
+                async for chunk in upstream.aiter_raw():
+                    yield chunk
+            finally:
+                await resources.aclose()
+
+        return StreamingResponse(
+            chunks(),
+            status_code=upstream.status_code,
+            headers=response_headers,
+            background=BackgroundTask(resources.aclose),
+        )
+    except BaseException as exc:
+        await resources.aclose()
+        if isinstance(exc, httpx.RequestError):
+            raise HTTPException(502, "Failed to retrieve quicklook from object storage") from exc
+        raise
 
 
 def mask_internal_default_geometry_and_bbox(payload: Any) -> Any:
@@ -338,13 +397,14 @@ class CatalogResponseManager:
         self,
         request: Request,
         response: StreamingResponse,
-    ) -> JSONResponse | RedirectResponse:
+    ) -> JSONResponse | RedirectResponse | StreamingResponse:
         """
         Manage download responses and generate presigned URL redirects.
 
         stac-fastapi first resolves the item/asset. If the item exists and the
         caller is authorized, the catalog service converts the asset href into a
-        short-lived S3 presigned URL and returns an HTTP redirect.
+        short-lived S3 presigned URL. Quicklooks are streamed through the catalog;
+        other assets use an HTTP redirect.
 
         Args:
             request (starlette.requests.Request): The request object.
@@ -391,6 +451,13 @@ class CatalogResponseManager:
                 request.url.path,
             )
             if code == HTTP_302_FOUND:
+                if request.url.path.rsplit("/", 1)[-1].lower() in {
+                    "quicklook.jpg",
+                    "quicklook.jpeg",
+                    "quicklook.tif",
+                    "quicklook.tiff",
+                }:
+                    return await stream_quicklook(request, content)
                 logger.info("Returning presigned URL redirect for item %s", self.request_ids["item_id"])
                 return RedirectResponse(url=content, status_code=code)
             logger.warning("Failed to generate presigned URL for item %s; status=%s", self.request_ids["item_id"], code)
