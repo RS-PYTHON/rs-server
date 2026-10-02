@@ -23,6 +23,7 @@ from threading import Lock
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.config import EODAGSettings
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -56,12 +57,27 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
         # disable product types discovery
-        os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
+        os.environ["EODAG_EXT_COLLECTIONS_CFG_FILE"] = ""
 
         # Environment variable values, the last time we checked them. They will be read by eodag.
         self.old_environ = dict(os.environ)
 
-        # Init eodag instance
+        # Use EODAGSettings(cfg_file=...) instead of the deprecated 'user_conf_file_path'.
+        # The first positional arg (config file path) is converted into an EODAGSettings object.
+        settings = kwargs.pop("settings", None)
+        config_file_path = None
+
+        # Old positional arg: config file path
+        if len(args) > 0 and args[0] is not None:
+            config_file_path = args[0]
+            args = args[1:]
+
+        if settings is None and config_file_path is not None:
+            settings = EODAGSettings(cfg_file=config_file_path)
+
+        if settings is not None:
+            kwargs["settings"] = settings
+
         super().__init__(*args, **kwargs)
 
     def __del__(self):
@@ -94,31 +110,28 @@ class CustomEODataAccessGateway(EODataAccessGateway):
                 return
             self.all_auth_providers.append(provider)
 
-            provider_config = self.providers_config[provider]
             # mandatory keys
-            provider_config.update(
-                {
-                    "auth": {
-                        "auth_uri": external_config.token_url,
-                        "refresh_uri": external_config.token_url,
-                        "req_data": {
-                            "client_id": external_config.client_id,
-                            "client_secret": external_config.client_secret,
-                            "username": external_config.username,
-                            "password": external_config.password,
-                            "grant_type": external_config.grant_type,
-                        },
-                    },
+            auth_config: dict = {
+                "auth_uri": external_config.token_url,
+                "refresh_uri": external_config.token_url,
+                "req_data": {
+                    "client_id": external_config.client_id,
+                    "client_secret": external_config.client_secret,
+                    "username": external_config.username,
+                    "password": external_config.password,
+                    "grant_type": external_config.grant_type,
                 },
-            )
+            }
 
             # Used to set the authorization for token retrieval
             if external_config.authorization is not None:
-                provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
+                auth_config["credentials"] = {"auth_for_token": external_config.authorization}
 
             # optional keys
             if external_config.scope:
-                provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
+                auth_config["req_data"]["scope"] = external_config.scope
+
+            self.update_providers_config(dict_conf={provider: {"auth": auth_config}})
 
 
 class EodagProvider(Provider):
@@ -141,10 +154,10 @@ class EodagProvider(Provider):
         try:
             with global_lock:  # use a thread lock before calling the lru_cache
                 self.client = CustomEODataAccessGateway.create(self.eodag_config_path)
+            self.client.set_preferred_provider(self.provider)
+            self.client.authenticate_provider(self.provider, external_config)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
-        self.client.set_preferred_provider(self.provider)
-        self.client.authenticate_provider(self.provider, external_config)
 
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
@@ -251,29 +264,43 @@ class EodagProvider(Provider):
             if query := kwargs.pop(op, None):
                 mapped_search_args[op] = query
 
-        max_items_allowed = int(self.client.providers_config[self.provider].search.pagination["max_items_per_page"])
-        if int(kwargs["items_per_page"]) > max_items_allowed:
-            logger.warning(
-                f"Requesting {kwargs['items_per_page']} exceeds maximum of {max_items_allowed} "
-                "allowed for this provider!",
-            )
-            logger.warning(f"Number of items per page was set to {max_items_allowed - 1}.")
-            kwargs["items_per_page"] = max_items_allowed - 1
-        try:
-            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
-            # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
-            # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
+        if intersects := kwargs.pop("intersects", None):
+            mapped_search_args["geometry"] = intersects
+
+        # Thread-safe access to providers config - avoid dictionary keys changed during iteration
+        # error when multiple threads modify providers concurrently.
+        with self.client.lock:
+            providers = self.client._providers  # pylint: disable=protected-access
+            max_items_allowed = int(providers[self.provider].config.search.pagination["max_items_per_page"])
+            page_limit = kwargs.pop("limit", None)
+            if page_limit is not None:
+                limit_value = int(page_limit)
+                if limit_value > max_items_allowed:
+                    logger.warning(
+                        f"Requesting {limit_value} exceeds maximum of {max_items_allowed} "
+                        "allowed for this provider!",
+                    )
+                    logger.warning(f"Number of items per page was set to {max_items_allowed - 1}.")
+                    kwargs["limit"] = max_items_allowed - 1
+                else:
+                    kwargs["limit"] = limit_value
+
+            # Get dataset_key inside the lock
             try:
-                prov_cfg = self.client.providers_config[self.provider]
-                products_cfg = getattr(prov_cfg, "products", {})
+                prov_cfg = providers[self.provider]
+                products_cfg = getattr(prov_cfg.config, "products", {})
                 dataset_key = next(iter(products_cfg.keys()))
             except Exception:  # pylint: disable=broad-exception-caught
                 dataset_key = "S1_SAR_RAW"  # last-resort fallback
+
+        logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
+        try:
             products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
                 raise_errors=True,
-                productType=dataset_key,
+                collection=dataset_key,
+                validate=False,  # disable validation to decrease the runtime of the search when in parallel
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
@@ -351,7 +378,7 @@ class EodagProvider(Provider):
                     "title": filename,
                     "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
                     # TODO build from configuration (but how ?)
-                    "downloadLink": f"{base_uri}({product_id})/$value",
+                    "eodag:download_link": f"{base_uri}({product_id})/$value",
                 },
             )
         except Exception as e:

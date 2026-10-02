@@ -1909,9 +1909,11 @@ class TestFeatureCollectionOdataStacMapping:
             + ")&$orderby=PublicationDate desc&"
             + f"$top=10&$skip={(int(page) - 1) * 10}"
         )
-        base_cadip_files_uris = [
-            f"http://127.0.0.1:5000/Files?$filter=SessionId eq '{id}'&$top=1000&$skip=0" for iyd in all_ids
-        ]
+        base_cadip_files_uri = (
+            "http://127.0.0.1:5000/Files?$filter=SessionId in ("
+            + ",".join([f"'{id}'" for id in all_ids])
+            + ")&$top=1000&$skip=0"
+        )
         base_adgs_uri = (
             "http://127.0.0.1:5001/Products?"
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
@@ -1926,8 +1928,12 @@ class TestFeatureCollectionOdataStacMapping:
             json={"value": []} if is_last else cadip_session_response_10_items,
             status=200,
         )
-        for base_cadip_files_uri in base_cadip_files_uris:
-            responses.add(responses.GET, base_cadip_files_uri, json={"value": []}, status=200)
+        responses.add(
+            responses.GET,
+            base_cadip_files_uri,
+            json={"value": []},
+            status=200,
+        )
         responses.add(
             responses.GET,
             base_adgs_uri,
@@ -2669,13 +2675,13 @@ def test_search_on_several_collections(
         (
             {
                 "collections": "S1A_L0_IW_RAW",
-                "filter": "intersects='POLYGON((-10 0,-62 -10,-58 -10,-56 0,-60 0))' AND constellation='sentinel-1'",
+                "filter": "intersects='POLYGON((-10 0,-62 -10,-58 -10,-56 0,-10 0))' AND constellation='sentinel-1'",
                 "filter-lang": "cql2-text",
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-10 0,-62 -10,-58 -10,-56 0,-60 0))') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((-10 0, -62 -10, -58 -10, -56 0, -10 0))') "
+            "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
             "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
@@ -2830,7 +2836,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))') "
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((-60 0, -62 -10, -58 -10, -56 0, -60 0))') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name "
@@ -2860,7 +2866,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((-60 0, -62 -10, -58 -10, -56 0, -60 0))') "
+            "$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON ((-60 0, -62 -10, -58 -10, -56 0, -60 0))') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name "
