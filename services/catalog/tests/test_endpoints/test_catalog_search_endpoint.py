@@ -337,6 +337,28 @@ class TestCatalogSearchEndpointWithTemporalFilters:
         t1+dt1 = 2025-06-01T00:00:00Z
     """
 
+    def test_search_endpoint_with_odata(self, client, temporal_filters_test_data):
+        d1 = "2025-03-01T00:00:00Z"
+        d2 = "2025-06-01T00:00:00Z"
+
+        test_params = {
+            "filter-lang": "cql2-text",
+            "filter": f"T_CONTAINS(INTERVAL(start_datetime,end_datetime),INTERVAL('{d1}','{d2}'))",
+        }
+        response = client.get("/catalog/search", params=test_params)
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        stac_features = len(response.json()["features"])
+        assert stac_features == 2
+
+        # Search with odata filter on the same dates
+        odata_params = {"filter": f"PublicationDate gt {d1} and PublicationDate lt {d2}"}
+
+        response = client.get("/odata/v1/Products?", params=odata_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert len(content["features"]) == stac_features
+
     @pytest.mark.parametrize(
         "method",
         ["POST", "GET"],
