@@ -6098,7 +6098,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6115,7 +6115,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6132,7 +6132,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6199,7 +6199,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6221,7 +6221,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-osam"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6241,7 +6241,7 @@ url = "services/osam"
 
 [[package]]
 name = "rs-server-prip"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel rs-server, PRIP service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6258,7 +6258,7 @@ url = "services/prip"
 
 [[package]]
 name = "rs-server-staging"
-version = "1.0a14.post26.dev0"
+version = "1.0a14.post32.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = ">=3.13,<4"
@@ -6945,7 +6945,7 @@ version = "9.1.4"
 description = "Retry code until it succeeds"
 optional = false
 python-versions = ">=3.10"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55"},
     {file = "tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a"},
