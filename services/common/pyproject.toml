@@ -59,7 +59,7 @@ botocore = ">=1.40.2"
 # https://github.com/kvesteri/sqlalchemy-utils/issues/800
 # https://github.com/kvesteri/sqlalchemy-utils/issues/829
 # https://github.com/kvesteri/sqlalchemy-utils/pull/831
-sqlalchemy = ">=2.0.54,<2.1.0"
+sqlalchemy = ">=2.0.54,<2.2.0"
 eodag = "4.9.1"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
