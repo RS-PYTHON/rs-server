@@ -318,7 +318,7 @@ class TestQueryablesEndpoints:
     @pytest.mark.parametrize(
         "fastapi_app, endpoint, expected_queryables",
         [
-            (ROUTER_PREFIX_CADIP, "/cadip/queryables", ["platform", "constellation"]),
+            (ROUTER_PREFIX_CADIP, "/cadip/queryables", ["platform", "constellation", "sat:acquisition_station"]),
             (ROUTER_PREFIX_AUXIP, "/auxip/queryables", ["product:type", "platform", "constellation"]),
             (ROUTER_PREFIX_PRIP, "/prip/queryables", ["product:type", "platform", "constellation"]),
         ],
@@ -524,6 +524,8 @@ class TestFeatureOdataStacMapping:
         cadip_session_response = deepcopy(cadip_session_response)
         cadip_feature = deepcopy(cadip_feature)
         cadip_session_response["value"][0]["Satellite"] = satellite
+        cadip_session_response["value"][0]["StationId"] = "MTI"
+        cadip_feature["properties"]["sat:acquisition_station"] = "MTI"
         cadip_feature["properties"]["platform"] = f"{constellation}a"
         cadip_feature["properties"]["constellation"] = constellation
         cadip_feature["properties"]["product:type"] = product_type
