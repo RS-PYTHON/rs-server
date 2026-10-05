@@ -33,7 +33,7 @@ DASK_TAG_STAGING=2026.7.0
 DASK_GATEWAY_TAG=2026.3.0
 PREFECT_TAG=3.8.7
 PREFECT_AWS_TAG=0.7.7
-JUPYTER_HUB_VERSION=5.5.2
+JUPYTER_HUB_VERSION=5.5.1
 
 # Old version numbers, before we apply this script.
 # We use the same variable names, suffixed by _OLD
