@@ -160,7 +160,7 @@ class MergeMode(str, Enum):
 class Queryables(BaseModel):
     """
     BaseModel used to describe queryable holder.
-    See: site-packages/pypgstac/migrations/pgstac.0.9.10.sql
+    See: site-packages/pypgstac/migrations/pgstac.0.10.0.sql
     """
 
     id: str = Field("", alias="$id")
