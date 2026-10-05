@@ -6320,14 +6320,14 @@ crt = ["botocore[crt] (>=1.37.4,<2.0a0)"]
 
 [[package]]
 name = "safety"
-version = "3.8.0"
+version = "3.8.1"
 description = "Scan dependencies for known vulnerabilities and licenses."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "safety-3.8.0-py3-none-any.whl", hash = "sha256:76f38519e34c5dfb728e9324b128b54b452c69b2accb9594f29fcb0d4d3fee2f"},
-    {file = "safety-3.8.0.tar.gz", hash = "sha256:24b2cd7b873ee0dd4bc7f4f65933d2bfaf7041741f371449c12b5c8572ccb727"},
+    {file = "safety-3.8.1-py3-none-any.whl", hash = "sha256:953c1c3c60c873f53a6cc250b2a9c4b38bb6ef45f0625990e43f20bff916c965"},
+    {file = "safety-3.8.1.tar.gz", hash = "sha256:e646123b976bbb6707cfaacae8c926e2f886b744a60e0f410e8610a3a4eaf7be"},
 ]
 
 [package.dependencies]
@@ -6945,7 +6945,7 @@ version = "9.1.4"
 description = "Retry code until it succeeds"
 optional = false
 python-versions = ">=3.10"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55"},
     {file = "tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a"},
@@ -7539,4 +7539,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "c9555717758f6f1f2878b497a7bcd3da8798f0b6102dc245767812f50328ebd4"
+content-hash = "e61d9160fd3209b140963cd6952fab9fa53b6e11921fe5a8654d4f5cf0d2ba67"
