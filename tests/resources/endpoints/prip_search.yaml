@@ -48,7 +48,7 @@ collections:
       - https://stac-extensions.github.io/projection/v2.0.0/schema.json
       - https://stac-extensions.github.io/view/v1.1.0/schema.json
       - https://stac-extensions.github.io/sar/v1.3.0/schema.json
-      - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+      - https://stac-extensions.github.io/sat/v1.2.0/schema.json
       - https://stac-extensions.github.io/processing/v1.2.0/schema.json
       - https://stac-extensions.github.io/product/v1.0.0/schema.json
       - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
@@ -85,7 +85,7 @@ collections:
       - https://stac-extensions.github.io/eo/v2.0.0/schema.json
       - https://stac-extensions.github.io/projection/v2.0.0/schema.json
       - https://stac-extensions.github.io/view/v1.1.0/schema.json
-      - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+      - https://stac-extensions.github.io/sat/v1.2.0/schema.json
       - https://stac-extensions.github.io/processing/v1.2.0/schema.json
       - https://stac-extensions.github.io/product/v1.0.0/schema.json
       - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
@@ -122,7 +122,7 @@ collections:
       - https://stac-extensions.github.io/eo/v2.0.0/schema.json
       - https://stac-extensions.github.io/projection/v2.0.0/schema.json
       - https://stac-extensions.github.io/view/v1.1.0/schema.json
-      - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+      - https://stac-extensions.github.io/sat/v1.2.0/schema.json
       - https://stac-extensions.github.io/processing/v1.2.0/schema.json
       - https://stac-extensions.github.io/product/v1.0.0/schema.json
       - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
@@ -159,7 +159,7 @@ collections:
       - https://stac-extensions.github.io/eo/v2.0.0/schema.json
       - https://stac-extensions.github.io/projection/v2.0.0/schema.json
       - https://stac-extensions.github.io/view/v1.1.0/schema.json
-      - https://stac-extensions.github.io/sat/v1.1.0/schema.json
+      - https://stac-extensions.github.io/sat/v1.2.0/schema.json
       - https://stac-extensions.github.io/processing/v1.2.0/schema.json
       - https://stac-extensions.github.io/product/v1.0.0/schema.json
       - https://cs-si.github.io/eopf-stac-extension/v1.2.0/schema.json
