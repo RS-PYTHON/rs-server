@@ -17,7 +17,7 @@
 # This script is run from the ci/cd.
 
 set -euo pipefail
-# set -x
+set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
