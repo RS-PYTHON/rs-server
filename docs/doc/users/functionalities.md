@@ -146,7 +146,6 @@ A valid session search request must contain at least a value for either
                         }
                     ],
                     "cadip:num_channels": 2,
-                    "cadip:station_unit_id": "01",
                     "cadip:downlink_orbit": 53186,
                     "cadip:acquisition_id": "53186_A1",
                     "cadip:antenna_id": "MSP21",
@@ -186,7 +185,6 @@ A valid session search request must contain at least a value for either
                         }
                     ],
                     "cadip:num_channels": 2,
-                    "cadip:station_unit_id": "01",
                     "cadip:downlink_orbit": 53186,
                     "cadip:acquisition_id": "53186_A1",
                     "cadip:antenna_id": "MSP21",
@@ -226,7 +224,6 @@ A valid session search request must contain at least a value for either
                         }
                     ],
                     "cadip:num_channels": 2,
-                    "cadip:station_unit_id": "01",
                     "cadip:downlink_orbit": 53186,
                     "cadip:acquisition_id": "53186_A1",
                     "cadip:antenna_id": "MSP21",

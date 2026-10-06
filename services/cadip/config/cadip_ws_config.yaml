@@ -894,8 +894,7 @@ cadip_session:
         platform: Satellite
         publicationDate: PublicationDate
         cadip:num_channels: NumChannels
-        cadip:station_id: StationId
-        cadip:station_unit_id: StationUnitId
+        sat:acquisition_station: StationId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
         cadip:antenna_id: AntennaId
@@ -1091,8 +1090,7 @@ ins_session:
         platform: Satellite
         publicationDate: PublicationDate
         cadip:num_channels: NumChannels
-        cadip:station_id: StationId
-        cadip:station_unit_id: StationUnitId
+        sat:acquisition_station: StationId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
         cadip:antenna_id: AntennaId
@@ -1288,8 +1286,7 @@ mps_session:
         platform: Satellite
         publicationDate: PublicationDate
         cadip:num_channels: NumChannels
-        cadip:station_id: StationId
-        cadip:station_unit_id: StationUnitId
+        sat:acquisition_station: StationId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
         cadip:antenna_id: AntennaId
@@ -1485,8 +1482,7 @@ mti_session:
         platform: Satellite
         publicationDate: PublicationDate
         cadip:num_channels: NumChannels
-        cadip:station_id: StationId
-        cadip:station_unit_id: StationUnitId
+        sat:acquisition_station: StationId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
         cadip:antenna_id: AntennaId
@@ -1682,8 +1678,7 @@ nsg_session:
         platform: Satellite
         publicationDate: PublicationDate
         cadip:num_channels: NumChannels
-        cadip:station_id: StationId
-        cadip:station_unit_id: StationUnitId
+        sat:acquisition_station: StationId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
         cadip:antenna_id: AntennaId
@@ -1879,8 +1874,7 @@ sgs_session:
         platform: Satellite
         publicationDate: PublicationDate
         cadip:num_channels: NumChannels
-        cadip:station_id: StationId
-        cadip:station_unit_id: StationUnitId
+        sat:acquisition_station: StationId
         sat:absolute_orbit: DownlinkOrbit
         cadip:acquisition_id: AcquisitionId
         cadip:antenna_id: AntennaId
