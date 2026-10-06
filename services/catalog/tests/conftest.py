@@ -308,7 +308,7 @@ def a_correct_feature_fixture() -> dict:
         "stac_extensions": [
             "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
             "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.2.0/schema.json",
             "https://stac-extensions.github.io/view/v1.1.0/schema.json",
             "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
             "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
@@ -347,7 +347,7 @@ def a_incorrect_feature_fixture() -> dict:
         "stac_extensions": [
             "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
             "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.2.0/schema.json",
             "https://stac-extensions.github.io/view/v1.1.0/schema.json",
             "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
             "https://stac-extensions.github.io/processing/v1.1.0/schema.json",

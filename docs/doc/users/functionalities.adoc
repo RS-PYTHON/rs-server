@@ -130,7 +130,6 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
                     }
                 ],
                 "cadip:num_channels": 2,
-                "cadip:station_unit_id": "01",
                 "cadip:downlink_orbit": 53186,
                 "cadip:acquisition_id": "53186_A1",
                 "cadip:antenna_id": "MSP21",
@@ -170,7 +169,6 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
                     }
                 ],
                 "cadip:num_channels": 2,
-                "cadip:station_unit_id": "01",
                 "cadip:downlink_orbit": 53186,
                 "cadip:acquisition_id": "53186_A1",
                 "cadip:antenna_id": "MSP21",
@@ -210,7 +208,6 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
                     }
                 ],
                 "cadip:num_channels": 2,
-                "cadip:station_unit_id": "01",
                 "cadip:downlink_orbit": 53186,
                 "cadip:acquisition_id": "53186_A1",
                 "cadip:antenna_id": "MSP21",
