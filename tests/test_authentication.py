@@ -20,7 +20,7 @@ import os
 import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
@@ -620,3 +620,50 @@ async def test_stac_browser_authent(
         iam_roles=mocked_kc_info.roles,
         attributes=mocked_kc_info.attributes,
     )
+
+
+@responses.activate
+@pytest.mark.parametrize("test_apikey", [True, False], ids=["with_apikey", "without_apikey"])
+def test_get_s3_credentials_forwards_authorization(monkeypatch, test_apikey):
+    """Forward the bearer token to OSAM, including when an API key is also present."""
+    # Point the credentials lookup to the dummy OSAM endpoint mocked below.
+    osam_url = "https://dummy-osam"
+    monkeypatch.setenv("RSPY_HOST_OSAM", osam_url)
+
+    # The bearer token must be forwarded both on its own and alongside an API key.
+    authorization = "Bearer mocked_token"
+    headers = {"Authorization": authorization}
+    if test_apikey:
+        headers[APIKEY_HEADER] = VALID_APIKEY
+
+    # ASGI stores headers as lowercase byte pairs. A fresh request has no cached S3 credentials.
+    request = Request(
+        {
+            "type": "http",
+            "headers": [(name.lower().encode(), value.encode()) for name, value in headers.items()],
+        },
+    )
+
+    # Intercept the outgoing HTTP call and return credentials without contacting a real OSAM service.
+    responses.add(
+        responses.GET,
+        f"{osam_url}/storage/account/credentials",
+        json={
+            "access_key": "mocked_access_key",
+            "secret_key": "mocked_secret_key",
+            "endpoint": "https://dummy-s3",
+            "region": "mocked_region",
+        },
+    )
+
+    credentials = authentication.get_s3_credentials(request)
+
+    # Check that the lookup succeeded and sent exactly one request to OSAM.
+    assert credentials.access_key_id == "mocked_access_key"
+    assert len(responses.calls) == 1
+
+    # Inspect the outgoing headers: this fails if the Authorization assignment is removed.
+    assert responses.calls[0].request.headers["Authorization"] == authorization
+    if test_apikey:
+        # Forwarding the bearer token must also preserve the API key when supplied.
+        assert responses.calls[0].request.headers[APIKEY_HEADER] == VALID_APIKEY

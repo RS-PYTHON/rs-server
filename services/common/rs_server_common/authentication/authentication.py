@@ -84,14 +84,13 @@ async def authenticate(
         or the user oauth2 account.
     """
 
-    # If the request comes from the stac browser
-    if settings.request_from_stacbrowser(request):
+    # Bearer authentication also applies to internal requests without an Origin header.
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer ") or settings.request_from_stacbrowser(request):
 
-        # With the stac browser, we don't use either api key or oauth2.
-        # It passes an authorization token in a specific header.
-        if token := request.headers.get("authorization"):
+        if token := authorization:
             issuer, key = await get_issuer_and_public_key()
-            if token.startswith("Bearer "):
+            if token.lower().startswith("bearer "):
                 token = token[7:]  # remove the "Bearer " header
 
             # Decode the token
@@ -123,7 +122,7 @@ async def authenticate(
                 detail="Authentication needed from the STAC browser",
             )
 
-    # Not from the stac browser
+    # Requests using API key or OAuth2 session authentication.
     else:
         # Try to authenticate with the api key value
         auth_info = await apikey_security(apikey_value)
@@ -208,12 +207,14 @@ def get_s3_credentials(request: Request) -> S3Credentials:
     # Else we're calculating it.
     # We create a new HTTP request to OSAM to retrieve the S3 credentials of the user.
     # The user is already logged in, this is why he's able to call the current request.
-    # The current request contains the user credentials in its api key and/or oauth2 cookie.
-    # So we copy the api key and oauth2 cookie to the new request so the user will also be authenticated in osam.
+    # Forward the API key, bearer token and OAuth2 session cookie so OSAM can authenticate the user.
     osam_request = requests.Session()
 
-    # Copy the api key from the request headers
+    # Copy authentication headers to the request sent to OSAM.
     apikey_value = request.headers.get(APIKEY_HEADER)
+    osam_headers = {APIKEY_HEADER: apikey_value} if apikey_value else {}
+    if authorization := request.headers.get("authorization"):
+        osam_headers["Authorization"] = authorization
 
     # Copy the "session" cookie from the request, as in starlette/middleware/sessions.py::__call__
     connection = HTTPConnection(request.scope)
@@ -224,7 +225,7 @@ def get_s3_credentials(request: Request) -> S3Credentials:
     # NOTE: the results are cached on the osam server-side for every user, so it's calculated only once.
     osam_response = osam_request.get(
         os.environ["RSPY_HOST_OSAM"] + "/storage/account/credentials",
-        headers={APIKEY_HEADER: apikey_value} if apikey_value else {},
+        headers=osam_headers,
     )
     if not osam_response.ok:
         raise HTTPException(
