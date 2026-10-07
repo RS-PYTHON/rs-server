@@ -26,7 +26,7 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 # Hardcode here the versions to use, with the same variable names as in the files below
 
 # We use a different python version in eopf + the dpr processors
-PYTHON_VERSION=3.13.12
+PYTHON_VERSION=3.13.15
 PYTHON_VERSION_DPR=3.11.7
 DASK_TAG=2024.5.2
 DASK_TAG_STAGING=2026.7.0
@@ -37,7 +37,7 @@ JUPYTER_HUB_VERSION=5.5.1
 
 # Old version numbers, before we apply this script.
 # We use the same variable names, suffixed by _OLD
-PYTHON_VERSION_OLD=3.13.11
+PYTHON_VERSION_OLD=3.13.12
 PYTHON_VERSION_DPR_OLD=3.11.7
 DASK_TAG_OLD=2024.5.2
 DASK_TAG_STAGING_OLD=2026.3.0
