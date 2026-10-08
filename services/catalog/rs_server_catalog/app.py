@@ -35,6 +35,7 @@ from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     HealthMiddleware,
+    OdataRequestToStacMiddleware,
     PaginationLinksMiddleware,
     apply_middlewares,
     insert_middleware_after,
@@ -107,6 +108,13 @@ insert_middleware_after(
     CORSMiddleware,
     AuthenticationMiddleware,
     must_be_authenticated=must_be_authenticated,
+)
+
+# Middleware to deal with odata requests
+insert_middleware_after(
+    app,
+    PaginationLinksMiddleware,
+    OdataRequestToStacMiddleware,
 )
 
 # In cluster mode, add the oauth2 authentication and the SessionMiddleware

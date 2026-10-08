@@ -337,6 +337,22 @@ class TestCatalogSearchEndpointWithTemporalFilters:
         t1+dt1 = 2025-06-01T00:00:00Z
     """
 
+    def test_search_endpoint_with_odata(self, client, temporal_filters_test_data):
+        d1 = "2025-03-01T00:00:00Z"
+        d2 = "2025-06-01T00:00:00Z"
+
+        # Search with odata filter on the same dates
+        odata_params = {"filter": f"PublicationDate gt {d1} and PublicationDate lt {d2}"}
+
+        response = client.get("/odata/v1/Products?", params=odata_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert len(content) == 4
+
+        # # todo: have collections with different published dates to make sure the filter is correct
+        # for feat in content["features"]:
+        #     assert d1 < feat["properties"]["published"] < d2
+
     @pytest.mark.parametrize(
         "method",
         ["POST", "GET"],
