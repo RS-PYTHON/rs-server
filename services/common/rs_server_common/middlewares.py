@@ -29,10 +29,11 @@ from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.oauth2 import LoginAndRedirect
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import stac_to_odata
 from rs_server_common.utils.utils2 import read_streaming_response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware, _MiddlewareFactory
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import BaseHTTPMiddleware
 
 REL_TITLES = {
     "collection": "Collection",
@@ -90,21 +91,21 @@ class Rfc7807ErrorResponse(TypedDict):
 #############################
 class OdataRequestToStacMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
-    Middle to catch and translate an odata request to stac and pass it to the catalog.
+    Middleware to catch and translate an odata request to stac and pass it to the catalog.
     """
 
     def __init__(self, app, dispatch=None):
         super().__init__(app, dispatch)
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable):
         url = str(request.url)
 
-        # STAC request
+        # Deal with request: odata => STAC
         if "/odata/" not in url:
             return await call_next(request)
 
         # get both dates
-        # "PublicationDate gt 2017-05-15T00:00:00.000Z and PublicationDate lt 2019-04-10T10:00:00.000Z"
+        # very brute force parsing, maybe we can do better
         odata_filter = dict(request.query_params)["filter"]
         components = odata_filter.split()
         d1, d2 = components[2], components[6]
@@ -114,11 +115,35 @@ class OdataRequestToStacMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-f
             "filter": f"published >= '{d1}' AND published <= '{d2}'",
         }
 
+        # Update the request with the stac parameters and correct endpoint
         request.scope["query_string"] = urlencode(stac_params, doseq=True).encode("utf-8")
         new_path = "/catalog/search"
         request.scope["path"] = new_path
         request.scope["raw_path"] = new_path.encode()
-        return await call_next(request)
+
+        # Deal with response: STAC => odata
+        response = await call_next(request)
+
+        encoding = response.headers.get("content-encoding", "")
+        if encoding == "br":
+            body_bytes = b"".join([section async for section in response.body_iterator])
+            response_body = brotli.decompress(body_bytes)
+        else:
+            response_body = b""
+            async for chunk in response.body_iterator:
+                response_body += chunk
+
+        data = json.loads(response_body)
+        odata_products = stac_to_odata(data)
+
+        body = json.dumps(odata_products).encode()
+        headers = response.headers
+        del headers["content-encoding"]
+        del headers["content-length"]
+
+        odata_response = Response(content=body, status_code=response.status_code, headers=headers)
+
+        return odata_response
 
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods

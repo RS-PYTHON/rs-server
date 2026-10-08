@@ -14,10 +14,12 @@
 
 """This module is used to share common functions between apis endpoints"""
 
+import json
 import os
 import os.path as osp
 import re
 import traceback
+import uuid
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -588,3 +590,35 @@ def run_in_threads(
                 logger.error(traceback.format_exc())
                 results.append(e)
     return results
+
+
+def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> list[dict]:
+    """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
+    if required_keys is None:
+        required_keys = ["Id", "Name", "ContentDate", "PublicationDate", "EvictionDate"]
+
+    odata_properties = []
+
+    for feature in stac_params["features"]:
+        odata_prop = {}
+
+        for asset_name, asset_props in feature["assets"].items():
+            prop = feature["properties"]
+            # Add missing elements
+            odata_prop["Name"] = feature["id"]
+            odata_prop["PublicationDate"] = prop.get("published")
+            odata_prop["ContentDate"] = {
+                "Start": prop.get("start_datetime"),
+                "End": prop.get("start_datetime"),
+            }
+            odata_prop["ContentLength"] = asset_props.get("file:size")
+            odata_prop["Checksum"] = {"Value": asset_props.get("file:checksum")}
+
+            # For the moment, only a random uuid is used (see RSPY#1223)
+            odata_prop["_private"] = {"product_uuid": uuid.uuid4()}
+
+            odata_prop = {k: v for k, v in odata_prop.items() if k in required_keys}
+
+            odata_properties.append(odata_prop)
+
+    return odata_properties
