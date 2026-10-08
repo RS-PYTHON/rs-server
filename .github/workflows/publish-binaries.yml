@@ -393,7 +393,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: notebook-outputs
-          path: local-mode/notebook-outputs/
+          path: rs-demo/local-mode/notebook-outputs/
           if-no-files-found: ignore
 
       # If we used a temp docker tag, and only if the tests succeeded, then
