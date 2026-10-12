@@ -338,8 +338,8 @@ class TestCatalogSearchEndpointWithTemporalFilters:
     """
 
     def test_search_endpoint_with_odata(self, client, temporal_filters_test_data):
-        d1 = "2025-03-01T00:00:00Z"
-        d2 = "2025-06-01T00:00:00Z"
+        d1 = "2000-01-01T00:00:00Z"
+        d2 = "2999-01-01T00:00:00Z"
 
         # Search with odata filter on the same dates
         odata_params = {"filter": f"PublicationDate gt {d1} and PublicationDate lt {d2}"}
