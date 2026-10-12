@@ -595,8 +595,7 @@ def run_in_threads(
 def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> list[dict]:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
     if required_keys is None:
-        required_keys = ["Id", "Name", "ContentDate", "PublicationDate", "EvictionDate"]
-
+        required_keys = ["Id", "Name", "ContentDate", "ContentLength", "PublicationDate", "EvictionDate", "Checksum"]
     odata_properties = []
 
     for feature in stac_params["features"]:
@@ -615,9 +614,7 @@ def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> 
             odata_prop["Checksum"] = {"Value": asset_props.get("file:checksum")}
 
             # For the moment, only a random uuid is used (see RSPY#1223)
-            odata_prop["_private"] = {"product_uuid": uuid.uuid4()}
-
-            odata_prop = {k: v for k, v in odata_prop.items() if k in required_keys}
+            odata_prop["_private"] = {"product_uuid": str(uuid.uuid4())}
 
             odata_properties.append(odata_prop)
 
