@@ -597,7 +597,11 @@ def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> 
         required_keys = ["Id", "Name", "ContentDate", "ContentLength", "PublicationDate", "EvictionDate", "Checksum"]
     odata_properties = []
 
+    logger.info("len(stac_params['features']): %d", len(stac_params["features"]))
+
     for feature in stac_params["features"]:
+        logger.info(feature)
+
         odata_prop = {}
 
         for _, asset_props in feature["assets"].items():
