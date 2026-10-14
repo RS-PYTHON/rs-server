@@ -24,6 +24,7 @@ from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     HealthMiddleware,
+    OdataRequestToStacMiddleware,
     Rfc7807ErrorResponse,
     StacErrorResponse,
 )
@@ -66,6 +67,7 @@ def test_middleware_order(client, use_auth_middleware: bool):
         (HealthMiddleware, False),
         (CORSMiddleware, True),
         (HandleExceptionsMiddleware, False),
+        (OdataRequestToStacMiddleware, True),
     ]
 
     # Does the service use the AuthenticationMiddleware ? (catalog and staging)
