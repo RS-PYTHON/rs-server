@@ -619,6 +619,6 @@ def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> 
             # For the moment, only a random uuid is used (see RSPY#1223)
             odata_prop["_private"] = {"product_uuid": str(uuid.uuid4())}
 
-            odata_properties.append(odata_prop)
+        odata_properties.append(odata_prop)
 
     return odata_properties
