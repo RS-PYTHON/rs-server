@@ -19,7 +19,7 @@ import traceback
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any, ParamSpec, TypedDict
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, unquote_plus, urlencode, urlparse, urlunparse
 
 import brotli
 from fastapi import FastAPI, HTTPException, Request, Response, status
@@ -114,8 +114,14 @@ class OdataRequestToStacMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-f
 
         # get both dates
         # very brute force parsing, maybe we can do better
-        odata_filter = dict(request.query_params)["filter"]
-        components = odata_filter.split()
+        found_filter = dict(request.query_params).get("filter")
+        if found_filter is not None:
+            odata_filter = dict(request.query_params)["filter"]
+            components = odata_filter.split()
+        else:
+            # decode %20 or + for spaces
+            components = unquote_plus(url).split(" ")
+
         d1, d2 = components[2], components[6]
 
         stac_params = {
