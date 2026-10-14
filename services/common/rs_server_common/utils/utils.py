@@ -14,7 +14,6 @@
 
 """This module is used to share common functions between apis endpoints"""
 
-import json
 import os
 import os.path as osp
 import re
@@ -601,7 +600,7 @@ def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> 
     for feature in stac_params["features"]:
         odata_prop = {}
 
-        for asset_name, asset_props in feature["assets"].items():
+        for _, asset_props in feature["assets"].items():
             prop = feature["properties"]
             # Add missing elements
             odata_prop["Name"] = feature["id"]

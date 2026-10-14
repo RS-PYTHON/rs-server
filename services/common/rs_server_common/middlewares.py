@@ -94,10 +94,18 @@ class OdataRequestToStacMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-f
     Middleware to catch and translate an odata request to stac and pass it to the catalog.
     """
 
-    def __init__(self, app, dispatch=None):
-        super().__init__(app, dispatch)
-
     async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Dispatch function of the middleware. Intercepts odata requests and returns odata responses,
+        leaving stac requests unchanged.
+
+        Args:
+            request (Request): The incoming request.
+            call_next (Callable): The next middleware or endpoint to call.
+
+        Returns:
+            Response: The response returned by the next middleware or endpoint.
+        """
         url = str(request.url)
 
         # Deal with request: odata => STAC
