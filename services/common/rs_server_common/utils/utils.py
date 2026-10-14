@@ -598,6 +598,8 @@ def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> 
     odata_properties = []
 
     logger.info("len(stac_params['features']): %d", len(stac_params["features"]))
+    f_names = [feature["id"] for feature in stac_params["features"]]
+    logger.info("Feature names: %s", f_names)
 
     for feature in stac_params["features"]:
         logger.info(feature)
