@@ -621,7 +621,7 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                 "_private": {"product_uuid": str(uuid.uuid4())},
             }
 
-            if odata_prop != {}:
+            if odata_prop:
                 odata_properties.append(odata_prop)
 
     return odata_properties

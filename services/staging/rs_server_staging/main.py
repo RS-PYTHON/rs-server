@@ -42,7 +42,6 @@ from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     HealthMiddleware,
-    OdataRequestToStacMiddleware,
     apply_middlewares,
 )
 from rs_server_common.utils import init_opentelemetry
