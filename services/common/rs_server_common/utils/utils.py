@@ -591,37 +591,37 @@ def run_in_threads(
     return results
 
 
-def stac_to_odata(stac_params: dict, required_keys: list[str] | None = None) -> list[dict]:
-    """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
-    if required_keys is None:
-        required_keys = ["Id", "Name", "ContentDate", "ContentLength", "PublicationDate", "EvictionDate", "Checksum"]
+def stac_to_odata(stac_params: dict) -> list[dict]:
+    """
+    Convert a list of stac features into a list of corresponding odata dictionaries (stac assets).
+
+    Args:
+        stac_params (dict): Dictionary containing all the stac features
+
+    Returns:
+        list[dict]: List of dictionaries containing the corresponding odata properties
+    """
     odata_properties = []
 
-    logger.info("len(stac_params['features']): %d", len(stac_params["features"]))
-    f_names = [feature["id"] for feature in stac_params["features"]]
-    logger.info("Feature names: %s", f_names)
-
     for feature in stac_params["features"]:
-        logger.info(feature)
+        prop = feature["properties"]
 
-        odata_prop = {}
-
+        # Return assets, not features
         for _, asset_props in feature["assets"].items():
-            prop = feature["properties"]
-            # Add missing elements
-            odata_prop["Name"] = feature["id"]
-            odata_prop["PublicationDate"] = prop.get("published")
-            odata_prop["ContentDate"] = {
-                "Start": prop.get("start_datetime"),
-                "End": prop.get("start_datetime"),
+            odata_prop = {
+                "Name": feature["id"],
+                "PublicationDate": prop.get("published"),
+                "ContentDate": {
+                    "Start": prop.get("start_datetime"),
+                    "End": prop.get("start_datetime"),
+                },
+                "ContentLength": asset_props.get("file:size"),
+                "Checksum": {"Value": asset_props.get("file:checksum")},
+                # For the moment, only a random uuid is used (see RSPY#1223)
+                "_private": {"product_uuid": str(uuid.uuid4())},
             }
-            odata_prop["ContentLength"] = asset_props.get("file:size")
-            odata_prop["Checksum"] = {"Value": asset_props.get("file:checksum")}
 
-            # For the moment, only a random uuid is used (see RSPY#1223)
-            odata_prop["_private"] = {"product_uuid": str(uuid.uuid4())}
-
-        if odata_prop != {}:
-            odata_properties.append(odata_prop)
+            if odata_prop != {}:
+                odata_properties.append(odata_prop)
 
     return odata_properties
