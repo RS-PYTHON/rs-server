@@ -1,0 +1,85 @@
+' Copyright 2023-2026 Airbus, CS Group
+'
+' Licensed under the Apache License, Version 2.0 (the "License");
+' you may not use this file except in compliance with the License.
+' You may obtain a copy of the License at
+'
+'     http://www.apache.org/licenses/LICENSE-2.0
+'
+' Unless required by applicable law or agreed to in writing, software
+' distributed under the License is distributed on an "AS IS" BASIS,
+' WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+' See the License for the specific language governing permissions and
+' limitations under the License.
+
+@startuml stac-model
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam class {
+  BackgroundColor #E0F2F1
+  BorderColor #00796B
+  ArrowColor #00796B
+}
+hide circle
+hide methods
+
+class "Catalog\n(landing page)" as Catalog {
+  type = "Catalog"
+  stac_version
+  id
+  title, description
+  links
+}
+class Collection {
+  type = "Collection"
+  stac_version, stac_extensions
+  id
+  title, description, keywords
+  license
+  providers
+  extent: spatial, temporal
+  summaries
+  owner
+  links
+  assets
+}
+class "Item\n(GeoJSON Feature)" as Item {
+  type = "Feature"
+  stac_version, stac_extensions
+  id
+  geometry, bbox
+  properties
+  collection
+  links
+  assets
+}
+class Properties {
+  datetime, start_datetime, end_datetime
+  created, updated, published, expires, unpublished
+  owner, platform, constellation, instruments
+  product:*, processing:*, sat:*, eopf:*...
+}
+class Asset {
+  href
+  title, description
+  type, roles
+  file:size, file:checksum
+  alternate
+}
+class Provider {
+  name, description
+  roles, url
+}
+class Link {
+  href, rel, type, title
+}
+
+Catalog "1" o-- "*" Collection : child links
+Collection "1" o-- "*" Item : items
+Collection "1" *-- "*" Provider
+Item "1" *-- "1" Properties
+Item "1" *-- "*" Asset
+Catalog *-- "*" Link
+Collection *-- "*" Link
+Item *-- "*" Link
+@enduml
