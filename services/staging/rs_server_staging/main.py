@@ -142,9 +142,6 @@ app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authe
 if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
-# Middleware to deal with odata requests
-app.add_middleware(OdataRequestToStacMiddleware)
-
 app.add_middleware(HandleExceptionsMiddleware, rfc7807=True)
 HandleExceptionsMiddleware.disable_default_exception_handler(app)
 
