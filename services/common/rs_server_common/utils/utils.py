@@ -610,15 +610,24 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
         for _, asset_props in feature["assets"].items():
             odata_prop = {
                 "Name": feature["id"],
+                "ContentType": prop.get("type"),
+                "OriginDate": prop.get("eopf:origin_datetime"),
                 "PublicationDate": prop.get("published"),
+                "EvictionDate": prop.get("eviction_datetime"),
+                "GeoFootPrint": feature["geometry"],
                 "ContentDate": {
                     "Start": prop.get("start_datetime"),
                     "End": prop.get("start_datetime"),
                 },
                 "ContentLength": asset_props.get("file:size"),
-                "Checksum": {"Value": asset_props.get("file:checksum")},
+                "Checksum": {
+                    "Algorithm": "MD5",
+                    "Value": asset_props.get("file:checksum"),
+                    "ChecksumDate": prop.get("eopf:origin_datetime"),
+                },
+                "ProductionType": prop.get("processing:lineage"),
                 # For the moment, only a random uuid is used (see RSPY#1223)
-                "_private": {"product_uuid": str(uuid.uuid4())},
+                "Id": str(uuid.uuid4()),
             }
 
             if odata_prop:
