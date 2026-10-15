@@ -625,7 +625,7 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                     "Value": asset_props.get("file:checksum"),
                     "ChecksumDate": prop.get("eopf:origin_datetime"),
                 },
-                "ProductionType": prop.get("processing:lineage"),
+                "ProductionType": prop.get("processing:lineage", "systematic_production"),
                 # For the moment, only a random uuid is used (see RSPY#1223)
                 "Id": str(uuid.uuid4()),
             }
