@@ -100,7 +100,7 @@ def docker_compose_file_():
 @pytest.fixture(scope="session", name="db_url")
 def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missing-function-docstring
     port = docker_services.port_for("stac-db", 5432)
-    return f"postgresql://postgres:password@{docker_ip}:{port}/{os.getenv('POSTGRES_DB')}"
+    return f"postgresql+psycopg2://postgres:password@{docker_ip}:{port}/{os.getenv('POSTGRES_DB')}"
 
 
 @pytest.fixture(scope="session", autouse=True, name="start_database")
