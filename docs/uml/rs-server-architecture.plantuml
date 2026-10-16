@@ -1,0 +1,78 @@
+' Copyright 2023-2026 Airbus, CS Group
+'
+' Licensed under the Apache License, Version 2.0 (the "License");
+' you may not use this file except in compliance with the License.
+' You may obtain a copy of the License at
+'
+'     http://www.apache.org/licenses/LICENSE-2.0
+'
+' Unless required by applicable law or agreed to in writing, software
+' distributed under the License is distributed on an "AS IS" BASIS,
+' WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+' See the License for the specific language governing permissions and
+' limitations under the License.
+
+@startuml rs-server-architecture
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam rectangle {
+  BackgroundColor #F5F9FA
+  BorderColor #00796B
+}
+skinparam component {
+  BackgroundColor #E0F2F1
+  BorderColor #00796B
+}
+skinparam cloud {
+  BackgroundColor #EDE7F6
+  BorderColor #5E35B1
+}
+skinparam database {
+  BackgroundColor #FFF8E1
+  BorderColor #F9A825
+}
+
+actor "Users, flows,\nSTAC browsers" as users
+component "Envoy Gateway\n(single domain name,\nroutes by path)" as gateway
+component "Keycloak\nAPI Key Manager" as iam
+
+rectangle "rs-server" {
+  component "rs-server-frontend\n/docs, /openapi.json" as frontend
+  component "rs-server-adgs\n/auxip" as adgs
+  component "rs-server-cadip\n/cadip" as cadip
+  component "rs-server-prip\n/prip" as prip
+  component "rs-server-catalog\n/catalog" as catalog
+  component "rs-server-staging\n/processes, /jobs" as staging
+  component "rs-server-osam\n/storage" as osam
+}
+
+database "PostgreSQL\n(pgstac)" as pgstac
+database "PostgreSQL\n(jobs)" as jobs
+database "Object storage\n(S3)" as s3
+component "Staging Dask cluster" as dask
+cloud "Copernicus ground segment\n(CADIP, AUXIP, PRIP, LTA, CDSE...)" as csc
+
+users --> gateway
+gateway --> frontend
+gateway --> adgs
+gateway --> cadip
+gateway --> prip
+gateway --> catalog
+gateway --> staging
+gateway --> osam
+adgs --> csc : OData
+cadip --> csc : OData
+prip --> csc : OData
+catalog --> pgstac
+catalog --> s3
+staging --> jobs
+staging --> dask
+dask --> csc
+dask --> s3
+staging --> catalog
+osam --> s3 : accounts\nand rights
+osam --> iam
+adgs ..> iam : authentication\nauthorisation
+@enduml
