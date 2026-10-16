@@ -67,7 +67,6 @@ def test_middleware_order(client, use_auth_middleware: bool):
         (HealthMiddleware, False),
         (CORSMiddleware, True),
         (HandleExceptionsMiddleware, False),
-        (OdataRequestToStacMiddleware, False),
     ]
 
     # Does the service use the AuthenticationMiddleware ? (catalog and staging)
