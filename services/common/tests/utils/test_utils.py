@@ -14,7 +14,9 @@
 
 """Unit tests for utility funtions defined in utils.py."""
 
+import uuid
 from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 from rs_server_common.utils.utils import (
@@ -24,6 +26,7 @@ from rs_server_common.utils.utils import (
     find_product_type,
     normalize_external_ids,
     repair_and_orient_geojson_geometry,
+    stac_to_odata,
     validate_inputs_format,
 )
 
@@ -375,4 +378,75 @@ def test_repair_and_orient_geojson_geometry_returns_non_polygonal_make_valid_out
     assert repair_and_orient_geojson_geometry(geometry) == {
         "type": "MultiLineString",
         "coordinates": (((0.0, 0.0), (1.0, 0.0)), ((1.0, 0.0), (2.0, 0.0))),
+    }
+
+
+@patch("rs_server_common.utils.utils.uuid.uuid4")
+def test_stac_to_odata_single_asset(mock_uuid4):
+    """Test the conversion script of a STAC feature."""
+    mock_uuid4.return_value = uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+    # Test with empty list
+    assert not stac_to_odata({"features": []})
+
+    # Test with a feature with no assets (returns empty list)
+    stac_params = {
+        "features": [
+            {
+                "id": "feature-004",
+                "geometry": None,
+                "properties": {},
+                "assets": {},
+            },
+        ],
+    }
+
+    assert not stac_to_odata(stac_params)
+
+    # Test with real stac data
+    stac_params = {
+        "features": [
+            {
+                "id": "feature-001",
+                "geometry": {"type": "Point", "coordinates": [2.0, 48.0]},
+                "properties": {
+                    "type": "image/tiff",
+                    "eopf:origin_datetime": "2025-01-01T10:00:00Z",
+                    "published": "2025-01-02T10:00:00Z",
+                    "eviction_datetime": "2026-01-01T00:00:00Z",
+                    "start_datetime": "2025-01-01T09:00:00Z",
+                    "processing:lineage": "operational",
+                },
+                "assets": {
+                    "data": {
+                        "file:size": 1024,
+                        "file:checksum": "abc123",
+                    },
+                },
+            },
+        ],
+    }
+
+    result = stac_to_odata(stac_params)
+
+    assert len(result) == 1
+    assert result[0] == {
+        "Name": "feature-001",
+        "ContentType": "image/tiff",
+        "OriginDate": "2025-01-01T10:00:00Z",
+        "PublicationDate": "2025-01-02T10:00:00Z",
+        "EvictionDate": "2026-01-01T00:00:00Z",
+        "GeoFootPrint": {"type": "Point", "coordinates": [2.0, 48.0]},
+        "ContentDate": {
+            "Start": "2025-01-01T09:00:00Z",
+            "End": "2025-01-01T09:00:00Z",
+        },
+        "ContentLength": 1024,
+        "Checksum": {
+            "Algorithm": "MD5",
+            "Value": "abc123",
+            "ChecksumDate": "2025-01-01T10:00:00Z",
+        },
+        "ProductionType": "operational",
+        "Id": "12345678-1234-5678-1234-567812345678",
     }
