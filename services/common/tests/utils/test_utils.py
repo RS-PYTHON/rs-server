@@ -390,7 +390,7 @@ def test_stac_to_odata_single_asset(mock_uuid4):
     assert not stac_to_odata({"features": []})
 
     # Test with a feature with no assets (returns empty list)
-    stac_params = {
+    stac_params: dict = {
         "features": [
             {
                 "id": "feature-004",
@@ -404,7 +404,7 @@ def test_stac_to_odata_single_asset(mock_uuid4):
     assert not stac_to_odata(stac_params)
 
     # Test with real stac data
-    stac_params = {
+    stac_params: dict = {
         "features": [
             {
                 "id": "feature-001",
