@@ -326,7 +326,7 @@ None
 - RSPY-711: Cannot search AUXIP/CADIP by multiple collection/item id ( 5 pts)
 - RSPY-745: async functions should always call long sync functions using `asyncio.to_thread` (3 points)
 - RSPY-875: [Jupyter] Error "groups: cannot find name for group ID 1000" [2 pts]
-- RSPY-877: [CI/CD] [rs-helm] Lint and Test Charts uses wrong rs-server version [2 pts]
+- RSPY-877: [CI/CD] \[rs-helm] Lint and Test Charts uses wrong rs-server version [2 pts]
 - RSPY-880: Staging on the wrong bucket ( 1 pt )
 - RSPY-893: Error 401 when trying to stage a CADIP session. (1 pt)
 - RSPY-897: Grafana Deployment failed to retrieve his credential for the private repository [1 pt]
