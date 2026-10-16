@@ -68,6 +68,9 @@ from .helpers import (
 load_dotenv(RESOURCES_FOLDER / "db/.env")
 
 from rs_server_catalog.app import app
+from rs_server_catalog.data_management.external_ids import (
+    SQL_CREATE_EXTERNAL_IDS_INDEXES,
+)
 
 TEST_STORAGE_CONFIG_DATA = [
     ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
@@ -115,6 +118,18 @@ def client_fixture(start_database):  # pylint: disable=missing-function-docstrin
     # to setup the env to start the app.
     with TestClient(app, follow_redirects=False) as client:
         yield client
+
+
+@pytest.fixture(scope="session", name="external_ids_indexes")
+def external_ids_indexes_fixture(client):
+    """Create the indexes used to search by externalIds, as done when deploying the catalog database."""
+
+    async def create_indexes():
+        async with app.state.writepool.acquire() as conn:
+            for sql in SQL_CREATE_EXTERNAL_IDS_INDEXES:
+                await conn.execute(sql)
+
+    client.portal.call(create_indexes)
 
 
 @pytest.fixture(scope="session", name="client_with_empty_catalog")
