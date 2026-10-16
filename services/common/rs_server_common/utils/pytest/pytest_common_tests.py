@@ -24,7 +24,6 @@ from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     HealthMiddleware,
-    OdataRequestToStacMiddleware,
     Rfc7807ErrorResponse,
     StacErrorResponse,
 )
