@@ -438,14 +438,14 @@ profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
 name = "fastapi"
-version = "0.143.2"
+version = "0.143.3"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.143.2-py3-none-any.whl", hash = "sha256:da2fe9893b7392ebce76d8c8511e3fa43e5a25f5852103aa2eee7cff3ab80b75"},
-    {file = "fastapi-0.143.2.tar.gz", hash = "sha256:e9e6d97018dcfd748da7d9e7c61cedefbe9eb91b1a3288e45b13fbae76df2d54"},
+    {file = "fastapi-0.143.3-py3-none-any.whl", hash = "sha256:75e8bd68e2f52f77d29b2879749c257d64de2d85282d25270caf2bfccce5efe5"},
+    {file = "fastapi-0.143.3.tar.gz", hash = "sha256:b9ab567ee57afb4454004ce04c889f8f0160ac47946b99795887cd6e88484848"},
 ]
 
 [package.dependencies]
@@ -654,14 +654,14 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "4.13.0"
+version = "4.13.3"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "platformdirs-4.13.0-py3-none-any.whl", hash = "sha256:3dbcf4cd708f21cf876c4eaa90e58412bc4f033d87143f41b1493ff77c25b7e1"},
-    {file = "platformdirs-4.13.0.tar.gz", hash = "sha256:1aa0b0d3f224c1f07c295121e312a5a24a180d6ae5a8425ea1784b3e3863e9c0"},
+    {file = "platformdirs-4.13.3-py3-none-any.whl", hash = "sha256:f6ad7f447f24f8a3b82cce5976387428bff894a0eca6c3488f4a17f153c130c4"},
+    {file = "platformdirs-4.13.3.tar.gz", hash = "sha256:5e567f664eb087ab8521c0179cd8d1bd60857d271136567a39719e28e2d383ce"},
 ]
 
 [[package]]
@@ -951,19 +951,19 @@ testing = ["process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-docker"
-version = "3.2.5"
+version = "3.2.6"
 description = "Simple pytest fixtures for Docker and Docker Compose based tests"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "pytest_docker-3.2.5-py3-none-any.whl", hash = "sha256:79f3d209f928f45d4385cb825944861bc8a8cccd309804d9c9cd63bcef03edba"},
-    {file = "pytest_docker-3.2.5.tar.gz", hash = "sha256:c9662567522911280b394af4da2edd57facaf644494601fac962ff1e396d7ab6"},
+    {file = "pytest_docker-3.2.6-py3-none-any.whl", hash = "sha256:aeabb385eeb4898bbab46fe13b7762df31da6a5cf446d0a6746cb00b69cea0b2"},
+    {file = "pytest_docker-3.2.6.tar.gz", hash = "sha256:0b86f48e7f728e5171f0278fbf0ea358090ea76fbec2c5f9b25c7ba931fc3097"},
 ]
 
 [package.dependencies]
 attrs = ">=19.2.0"
-pytest = ">=4.0,<10.0"
+pytest = ">=6.2,<10.0"
 
 [package.extras]
 docker-compose-v1 = ["docker-compose (>=1.27.3,<2.0)"]
@@ -1166,14 +1166,14 @@ full = ["httpx (>=0.27.0,<0.29.0)", "httpx2 (>=2.0.0)", "itsdangerous", "jinja2"
 
 [[package]]
 name = "tomlkit"
-version = "0.15.1"
+version = "0.15.2"
 description = "Style preserving TOML library"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "tomlkit-0.15.1-py3-none-any.whl", hash = "sha256:177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304"},
-    {file = "tomlkit-0.15.1.tar.gz", hash = "sha256:e25bbf38843005246210a12982776f27f99cb9be67160e14434d0c0d21ee1e97"},
+    {file = "tomlkit-0.15.2-py3-none-any.whl", hash = "sha256:05562412163a3037b94497385fb7f9204c637bc605af7a48199e41cf2272f437"},
+    {file = "tomlkit-0.15.2.tar.gz", hash = "sha256:83e32755ba1d20d9340bd069ee97e9f6232ba2346b63ffcba425de01f7e327a6"},
 ]
 
 [[package]]
