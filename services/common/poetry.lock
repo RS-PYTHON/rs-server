@@ -1002,14 +1002,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "4.9.1"
+version = "4.9.2"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "eodag-4.9.1-py3-none-any.whl", hash = "sha256:3f5c98fbd072b06df910ac4f777648cf352ec92a70b9973376244be21de93eac"},
-    {file = "eodag-4.9.1.tar.gz", hash = "sha256:3ecb3826fd94b7e525a81997d51ea98dfaffccdedd1293f42572c932970d8a71"},
+    {file = "eodag-4.9.2-py3-none-any.whl", hash = "sha256:ee4d213a39c826948b80aeca2c9037e98e17fb1e2103ec38e8f964cc4a8ef808"},
+    {file = "eodag-4.9.2.tar.gz", hash = "sha256:4b0dbbb91c702133978cb74b61d43d73529950f965e445a6f9647cd66ff4febc"},
 ]
 
 [package.dependencies]
@@ -1019,7 +1019,7 @@ botocore = "*"
 click = "*"
 geojson = "*"
 importlib_metadata = ">=5.0"
-jsonpath-ng = "<1.8.0"
+jsonpath-ng = "!=1.8.0"
 lxml = "*"
 orjson = "*"
 pydantic = ">=2.13.0"
@@ -4164,4 +4164,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "86cc4fd5751908956415a05fec06759e187d55ddc3e453ab4677031152f43ed9"
+content-hash = "1d6b2b1fbfda0c0fa29f59a70ea03cee0ad34e48c9af992ea3e7d98e2013f40d"
