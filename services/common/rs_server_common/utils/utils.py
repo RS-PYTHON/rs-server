@@ -18,6 +18,7 @@ import os
 import os.path as osp
 import re
 import traceback
+import uuid
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -588,3 +589,48 @@ def run_in_threads(
                 logger.error(traceback.format_exc())
                 results.append(e)
     return results
+
+
+def stac_to_odata(stac_params: dict) -> list[dict]:
+    """
+    Convert a list of stac features into a list of corresponding odata dictionaries (stac assets).
+
+    Args:
+        stac_params (dict): Dictionary containing all the stac features
+
+    Returns:
+        list[dict]: List of dictionaries containing the corresponding odata properties
+    """
+    odata_properties = []
+
+    for feature in stac_params["features"]:
+        prop = feature["properties"]
+
+        # Return assets, not features
+        for _, asset_props in feature["assets"].items():
+            odata_prop = {
+                "Name": feature["id"],
+                "ContentType": prop.get("type"),
+                "OriginDate": prop.get("eopf:origin_datetime"),
+                "PublicationDate": prop.get("published"),
+                "EvictionDate": prop.get("eviction_datetime"),
+                "GeoFootPrint": feature["geometry"],
+                "ContentDate": {
+                    "Start": prop.get("start_datetime"),
+                    "End": prop.get("start_datetime"),
+                },
+                "ContentLength": asset_props.get("file:size"),
+                "Checksum": {
+                    "Algorithm": "MD5",
+                    "Value": asset_props.get("file:checksum"),
+                    "ChecksumDate": prop.get("eopf:origin_datetime"),
+                },
+                "ProductionType": prop.get("processing:lineage", "systematic_production"),
+                # For the moment, only a random uuid is used (see RSPY#1223)
+                "Id": str(uuid.uuid4()),
+            }
+
+            if odata_prop:
+                odata_properties.append(odata_prop)
+
+    return odata_properties
