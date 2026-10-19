@@ -14,7 +14,7 @@ own Docker image:
 | Service | Endpoints | Description |
 |---|---|---|
 | rs-server-cadip | `/cadip` | STAC API to search the sessions of the CADIP acquisition stations. |
-| rs-server-adgs | `/auxip` | STAC API to search the auxiliary data of the AUXIP stations. |
+| rs-server-adgs | `/auxip` | STAC API to search the auxiliary data of the AUXIP instances. |
 | rs-server-prip | `/prip` | STAC API to search the products of the PRIP production services. |
 | rs-server-catalog | `/catalog` | STAC API of the RS-Python catalog, with collections owned by the users. |
 | rs-server-staging | `/processes`, `/jobs` | OGC API - Processes service that stages products from the stations into the catalog. |
@@ -38,8 +38,8 @@ See the [rs-server documentation](docs/doc/index.md) for the details.
 
 - User documentation: [overview](docs/doc/index.md), [external data sources](docs/doc/users/external-data-sources.md)
   and their [STAC mapping](docs/doc/users/stac-mapping.md), [catalog](docs/doc/users/catalog.md) and its
-  [data model and lifecycle](docs/doc/users/data-model.md), [staging](docs/doc/users/staging.md),
-  [OSAM](docs/doc/users/osam.md), [frontend](docs/doc/users/frontend.md).
+  [data model and lifecycle](docs/doc/users/data-model.md), its [OData PRIP interface](docs/doc/users/odata-mapping.md),
+  [staging](docs/doc/users/staging.md), [OSAM](docs/doc/users/osam.md), [frontend](docs/doc/users/frontend.md).
 - Developer documentation: [developer manual](docs/doc/dev/developer_manual.md),
   [staging internals](docs/doc/dev/staging-internals.md).
 - Online documentation of the whole project: <https://home.rs-python.eu/rs-documentation/>

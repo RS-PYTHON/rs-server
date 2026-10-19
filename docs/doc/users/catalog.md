@@ -54,6 +54,8 @@ The owner has all the rights on its collections. The other users need the
 | `GET` | `/catalog/collections/{owner}:{collection}/items/{item_id}/download/{asset}` | Download an asset, see [Download](#download-the-assets). |
 | `GET`, `POST` | `/catalog/search` | Search the items of all or some collections. |
 | `GET` | `/catalog/queryables`, `/catalog/collections/{owner}:{collection}/queryables` | Properties that can be used in the filters. |
+| `GET` | `/odata/v1/Products` | Search the products with the OData PRIP interface, see [OData PRIP interface](odata-mapping.md). |
+| `GET` | `/odata/v1/Products(<Id>)/$value` | Download a product by its UUID with the OData PRIP interface. |
 
 The search parameters (`collections`, `ids`, `datetime`, `bbox`, `filter`, `sortby`, `limit`...) are described in
 [Browse products](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/services/browse-products.md#search-parameters).
@@ -126,7 +128,13 @@ POST /catalog/collections/my-collection/items
 When an item is created or replaced:
 
 - the `product:type` property is mandatory (`403 Forbidden` otherwise),
-- the assets must exist in the object storage: the catalog checks them and computes their `file:checksum`,
+- the assets must exist in the object storage: the catalog checks them and computes their `file:checksum`. MD5 is
+  the only hash function handled by the catalog: `file:checksum` is the MD5 of the file, encoded as a
+  [multihash](https://github.com/multiformats/multihash) as required by the
+  [File](https://github.com/stac-extensions/file#asset--link-object-fields) extension, e.g.
+  `d50110e8a303bf3d85200514f727db60e7db65` (`d501` for MD5, `10` for the 16 bytes of the digest, then the digest).
+  MD5 is the checksum required by the [OData PRIP interface](odata-mapping.md#checksum), and the File extension
+  only stores one checksum per asset,
 - the catalog adds the `owner` property, the `created`, `updated`, `published` and `expires` timestamps, see
   [Catalog data model and lifecycle](data-model.md#data-lifecycle).
 
@@ -142,8 +150,9 @@ GET /catalog/search?collections=copernicus:s3-l0&filter=platform='sentinel-3a'&s
 ## Search by external identifiers
 
 The items can carry the identifiers of the product in external systems (e.g. the PRIP or AUXIP identifier of the
-original product) in their `externalIds` property, a list of `scheme` (the system) and `value` (the identifier in
-this system) objects:
+original product) in their `externalIds` property
+([External IDs](https://github.com/stac-extensions/external-ids) extension), a list of `scheme` (the system) and
+`value` (the identifier in this system) objects:
 
 ```json
 "externalIds": [
@@ -213,6 +222,15 @@ a JSON key path, and its array operators compare whole elements. However, each o
 
 The details are in the `rs_server_catalog.data_management.external_ids` module. The items are stored unchanged, and
 the size of the SQL query only depends on the number of searched identifiers.
+
+## OData PRIP interface
+
+The catalog also exposes its products with the OData interface of the ESA Production Interface Delivery Points
+(PRIP), as specified by the
+[PRIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-production-interface-delivery-point-specification/).
+Each item gets a UUID, generated once by the catalog when it is added, and stored in its `externalIds` with the
+`rs-odata-prip` scheme. See [OData PRIP interface of the catalog](odata-mapping.md) for the mapping between the STAC
+items and the OData products.
 
 ## Download the assets
 

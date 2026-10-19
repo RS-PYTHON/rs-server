@@ -59,9 +59,9 @@ packaged in its own Docker image and deployed with its own [Helm chart](https://
 
 | Service | Endpoints | Implementation |
 |---|---|---|
-| `rs-server-adgs` | `/auxip` | STAC API over the AUXIP stations (ADGS). |
+| `rs-server-adgs` | `/auxip` | STAC API over the AUXIP instances (ADGS). |
 | `rs-server-cadip` | `/cadip` | STAC API over the CADIP stations. |
-| `rs-server-prip` | `/prip` | STAC API over the PRIP stations. |
+| `rs-server-prip` | `/prip` | STAC API over the PRIP instances. |
 | `rs-server-catalog` | `/catalog` | [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac) with a [pgstac](https://github.com/stac-utils/pgstac) database, wrapped by RS-Python middlewares for the ownership, the authorisation, the object storage and the data lifecycle. |
 | `rs-server-staging` | `/processes`, `/jobs` | [pygeoapi](https://pygeoapi.io/) process manager, with the staging tasks run on a Dask cluster. |
 | `rs-server-osam` | `/storage` | Object storage accounts and rights management. |
@@ -82,7 +82,8 @@ rs-server runs in two modes:
 ## User documentation
 
 - [External data sources](users/external-data-sources.md) and their [STAC mapping](users/stac-mapping.md)
-- [Catalog](users/catalog.md) and its [data model and lifecycle](users/data-model.md)
+- [Catalog](users/catalog.md), its [data model and lifecycle](users/data-model.md) and its
+  [OData PRIP interface](users/odata-mapping.md)
 - [Staging](users/staging.md)
 - [OSAM](users/osam.md)
 - [Frontend](users/frontend.md)

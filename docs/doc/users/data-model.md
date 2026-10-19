@@ -38,8 +38,9 @@ The items also use fields from the following STAC extensions:
 | [Projection](https://github.com/stac-extensions/projection) | `proj:` | Coordinate reference system and grid of the products. |
 | [Raster](https://github.com/stac-extensions/raster) | `raster:` | Raster bands of the assets. |
 | [EOPF](https://github.com/CS-SI/eopf-stac-extension) | `eopf:` | Fields specific to the EOPF products, e.g. `eopf:datatake_id`, `eopf:origin_datetime`. |
-| [File](https://github.com/stac-extensions/file) | `file:` | Size and checksum of the assets. |
+| [File](https://github.com/stac-extensions/file) | `file:` | Size and checksum of the assets. The checksum is always an MD5 multihash, see [Add an item](catalog.md#add-an-item). |
 | [Timestamps](https://github.com/stac-extensions/timestamps) | | `published`, `expires`, `unpublished` dates, see [Data lifecycle](#data-lifecycle). |
+| [External IDs](https://github.com/stac-extensions/external-ids) | | `externalIds` of the items and assets: their identifiers in other systems, e.g. the OData `Id` in the external data sources, see [STAC mapping](stac-mapping.md), or the UUID of the [OData PRIP interface](odata-mapping.md#product-identifier). |
 | [Alternate Assets](https://github.com/stac-extensions/alternate-assets) | | Alternate locations of an asset, e.g. its download URL. |
 | [Authentication](https://github.com/stac-extensions/authentication) | `auth:` | How to authenticate to get the assets. |
 | [Ownership](https://github.com/RS-PYTHON/ownership-stac-extension) (RS-Python) | | `owner` of the collections and items. |
