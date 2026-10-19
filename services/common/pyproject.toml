@@ -56,7 +56,7 @@ starlette = ">=1.4.1"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
 sqlalchemy = ">=2.1.4"
-eodag = "4.9.2"
+eodag = "^4.10.1"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
 pydantic = ">=2.13.5"
