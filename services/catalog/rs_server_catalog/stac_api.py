@@ -46,6 +46,7 @@ from starlette.status import HTTP_400_BAD_REQUEST
 def bbox_to_geometry(west: float, south: float, east: float, north: float) -> Point | LineString | Polygon:
     """Represent a non-wrapping bbox, including a point or line, as GeoJSON."""
     southwest, northeast = Position2D(west, south), Position2D(east, north)
+    # A zero-width or zero-height bbox must not become an invalid, zero-area polygon.
     if west == east and south == north:
         return Point(type="Point", coordinates=southwest)
     if west == east or south == north:
@@ -71,9 +72,11 @@ class CatalogSearchClient(CoreCrudClient):
             return await super()._search_base(search_request, request)
 
         # The request model already validates length and latitude/elevation order.
+        # NaN can pass comparison-based bounds checks, so check finiteness first.
         if not all(isfinite(value) for value in bbox):
             raise HTTPException(HTTP_400_BAD_REQUEST, "Invalid bbox: coordinates must be finite numbers.")
         west, south = bbox[:2]
+        # STAC 3D order is [west, south, min_elevation, east, north, max_elevation].
         east, north = bbox[3:5] if len(bbox) == 6 else bbox[2:]
         if not (-180 <= west <= 180 and -180 <= east <= 180 and -90 <= south <= 90 and -90 <= north <= 90):
             raise HTTPException(HTTP_400_BAD_REQUEST, "Invalid bbox: coordinates must be within WGS84 bounds.")
@@ -91,6 +94,8 @@ class CatalogSearchClient(CoreCrudClient):
         if west < east and south < north:
             # Keep the native pgSTAC bbox path for ordinary rectangles.
             if len(bbox) == 6:
+                # Zero is inside the elevation range here. Projecting to 2D avoids
+                # pgSTAC's PolyhedralSurface conversion while preserving matches for 2D items.
                 search_request = search_request.model_copy(deep=True, update={"bbox": (west, south, east, north)})
             return await super()._search_base(search_request, request)
 
@@ -109,12 +114,15 @@ class CatalogSearchClient(CoreCrudClient):
             elif isinstance(western, Point) and isinstance(eastern, Point):
                 geometry = MultiPoint(type="MultiPoint", coordinates=[western.coordinates, eastern.coordinates])
             else:
+                # A bound exactly at +/-180 can collapse one half to a line or point;
+                # mixed geometry types need a GeometryCollection.
                 geometry = GeometryCollection(type="GeometryCollection", geometries=[western, eastern])
         else:
             geometry = bbox_to_geometry(west, south, east, north)
 
         # Copy the model without reprocessing existing filters/extensions. The
         # replacement geometry is validated above by the GeoJSON models.
+        # Clear bbox because STAC makes bbox and intersects mutually exclusive.
         backend_request = search_request.model_copy(deep=True, update={"bbox": None, "intersects": geometry})
         return await super()._search_base(backend_request, request)
 
