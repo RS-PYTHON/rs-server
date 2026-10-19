@@ -34,6 +34,7 @@ from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
+from starlette.datastructures import State
 
 TEST_STORAGE_CONFIG_DATA = [
     ["*", "*", "*", "30", "rspython-ops-catalog-all-production"],
@@ -380,11 +381,13 @@ def get_mock_app(mocker, staging_client):
     """
     mock_app = mocker.patch.object(
         staging_client.app,
-        "extra",
-        {
-            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
-        },
+        "state",
+        State(
+            {
+                "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+                "station_token_list_lock": mocker.Mock(spec=threading.Lock),
+            },
+        ),
     )
     return mock_app
 
