@@ -21,6 +21,7 @@ from importlib import reload
 import pytest
 from rs_server_common import settings as common_settings
 from rs_server_common.utils.pytest import pytest_common_tests
+from starlette.datastructures import State
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
@@ -51,12 +52,14 @@ def test_get_user_rights_user_exists(mocker):
     user = "testuser"
     mock_user_data = {"roles": ["some-role"]}
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {
-            "shutdown_event": threading.Event(),
-            "users_sync_trigger": threading.Event(),
-            "users_info": {user: mock_user_data},
-        },
+        "rs_server_osam.main.app.state",
+        State(
+            {
+                "shutdown_event": threading.Event(),
+                "users_sync_trigger": threading.Event(),
+                "users_info": {user: mock_user_data},
+            },
+        ),
     )
 
     mock_build = mocker.patch(
@@ -85,8 +88,8 @@ def test_get_user_rights_user_not_found(mocker):
     )
 
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
+        "rs_server_osam.main.app.state",
+        State({"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}}),
     )
     assert not __get_user_rights("unknown_user")
 
@@ -96,12 +99,14 @@ def test_user_rights_user_exists(mocker, osam_client):
     """Test when the user exists and rights are returned successfully."""
     mock_user_data = {"roles": ["some-role"]}
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {
-            "shutdown_event": threading.Event(),
-            "users_sync_trigger": threading.Event(),
-            "users_info": {"testuser": mock_user_data},
-        },
+        "rs_server_osam.main.app.state",
+        State(
+            {
+                "shutdown_event": threading.Event(),
+                "users_sync_trigger": threading.Event(),
+                "users_info": {"testuser": mock_user_data},
+            },
+        ),
     )
 
     mock_update = mocker.patch(
@@ -121,8 +126,8 @@ def test_user_rights_user_exists(mocker, osam_client):
 def test_user_rights_user_not_found(mocker, osam_client):
     """Test when the user does not exist (404)."""
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
+        "rs_server_osam.main.app.state",
+        State({"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}}),
     )
 
     resp = osam_client.get("/storage/account/unknown_user/rights")
@@ -135,12 +140,14 @@ def test_user_rights_user_not_found(mocker, osam_client):
 def test_user_rights_build_s3_rights_error(mocker, osam_client):
     """Test when build_s3_rights fails (500)."""
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {
-            "shutdown_event": threading.Event(),
-            "users_sync_trigger": threading.Event(),
-            "users_info": {"testuser": {"roles": ["role"]}},
-        },
+        "rs_server_osam.main.app.state",
+        State(
+            {
+                "shutdown_event": threading.Event(),
+                "users_sync_trigger": threading.Event(),
+                "users_info": {"testuser": {"roles": ["role"]}},
+            },
+        ),
     )
 
     mocker.patch(
@@ -159,12 +166,14 @@ def test_user_rights_update_s3_rights_error(mocker, osam_client):
     """Test when update_s3_rights_lists fails (500)."""
     # empty/no-op shutdown - sync trigger
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {
-            "shutdown_event": threading.Event(),
-            "users_sync_trigger": threading.Event(),
-            "users_info": {"testuser": {"roles": ["role"]}},
-        },
+        "rs_server_osam.main.app.state",
+        State(
+            {
+                "shutdown_event": threading.Event(),
+                "users_sync_trigger": threading.Event(),
+                "users_info": {"testuser": {"roles": ["role"]}},
+            },
+        ),
     )
 
     mocker.patch(
@@ -187,12 +196,14 @@ def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
     """Test when the user exists and rights are returned successfully."""
     mock_user_data = {"roles": ["some-role"]}
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {
-            "shutdown_event": threading.Event(),
-            "users_sync_trigger": threading.Event(),
-            "users_info": {"testuser": mock_user_data},
-        },
+        "rs_server_osam.main.app.state",
+        State(
+            {
+                "shutdown_event": threading.Event(),
+                "users_sync_trigger": threading.Event(),
+                "users_info": {"testuser": mock_user_data},
+            },
+        ),
     )
 
     mocker.patch(
@@ -215,8 +226,8 @@ def test_apply_user_obs_access_policy_user_exists(mocker, osam_client):
 def test_apply_user_obs_access_policy_user_not_found(mocker, osam_client):
     """Test when the user does not exist (404)."""
     mocker.patch(
-        "rs_server_osam.main.app.extra",
-        {"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}},
+        "rs_server_osam.main.app.state",
+        State({"shutdown_event": threading.Event(), "users_sync_trigger": threading.Event(), "users_info": {}}),
     )
 
     resp = osam_client.post("/storage/account/unknown_user/update")
@@ -247,12 +258,12 @@ def test_accounts_update_triggers_sync(mocker, osam_client):
     Test POST /storage/accounts/update triggers the background sync task.
 
     This test mocks the `set` method of the `users_sync_trigger` threading.Event
-    inside `app.extra` to verify it is called.
+    inside `app.state` to verify it is called.
     """
     from rs_server_osam.main import app  # pylint: disable = import-outside-toplevel
 
     mock_event = mocker.Mock()
-    app.extra["users_sync_trigger"] = mock_event
+    app.state.users_sync_trigger = mock_event
 
     response = osam_client.post("/storage/accounts/update")
 
@@ -283,11 +294,13 @@ def test_main_osam_task_with_shutdown_event_true(mocker):
     mock_event_sync.wait.return_value = True
     shutdown_event = mocker.Mock()
     shutdown_event.is_set.return_value = True
-    app.extra = {
-        "users_sync_trigger": mock_event_sync,
-        "shutdown_event": shutdown_event,
-        "users_info": {},
-    }
+    app.state = State(
+        {
+            "users_sync_trigger": mock_event_sync,
+            "shutdown_event": shutdown_event,
+            "users_info": {},
+        },
+    )
 
     mock_link = mocker.patch("rs_server_osam.main.link_rspython_users_and_obs_users")
     mock_build = mocker.patch("rs_server_osam.main.build_users_data_map")
@@ -306,7 +319,7 @@ def test_main_osam_task_runs_once_and_exits(mocker):
     - build_users_data_map is called once.
     - The loop exits after the second shutdown_event.is_set() returns True.
     """
-    # Patch app.extra and the functions it relies on
+    # Patch app.state and the functions it relies on
     os.environ["RSPY_LOCAL_MODE"] = "1"
     reload(common_settings)
     from rs_server_osam.main import (  # pylint: disable = import-outside-toplevel
@@ -319,11 +332,13 @@ def test_main_osam_task_runs_once_and_exits(mocker):
     shutdown_event = mocker.Mock()
     shutdown_event.is_set.side_effect = [False, True]  # first call False, second call True (exit loop)
 
-    app.extra = {
-        "users_sync_trigger": mock_event_sync,
-        "shutdown_event": shutdown_event,
-        "users_info": {},
-    }
+    app.state = State(
+        {
+            "users_sync_trigger": mock_event_sync,
+            "shutdown_event": shutdown_event,
+            "users_info": {},
+        },
+    )
 
     mock_link = mocker.patch("rs_server_osam.main.link_rspython_users_and_obs_users")
     mock_build = mocker.patch("rs_server_osam.main.build_users_data_map")
@@ -356,11 +371,13 @@ def test_main_osam_task_runs_with_exception(mocker):
     mock_event_sync.wait.return_value = True
     shutdown_event = mocker.Mock()
     shutdown_event.is_set.side_effect = [False, True]
-    app.extra = {
-        "users_sync_trigger": mock_event_sync,
-        "shutdown_event": shutdown_event,
-        "users_info": {},
-    }
+    app.state = State(
+        {
+            "users_sync_trigger": mock_event_sync,
+            "shutdown_event": shutdown_event,
+            "users_info": {},
+        },
+    )
     mock_link = mocker.patch("rs_server_osam.main.link_rspython_users_and_obs_users")
     mock_link.side_effect = Exception
     mock_logger_exception = mocker.patch("rs_server_osam.main.logger.exception")

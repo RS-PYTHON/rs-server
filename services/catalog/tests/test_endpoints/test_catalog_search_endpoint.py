@@ -395,7 +395,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
     """This class contains integration tests for the endpoint '/catalog/search' using advanced temporal filters.
 
     The filters used are the ones defined here:
-        https://pforge-exchange2.astrium.eads.net/confluence/display/COPRS/4.+External+data+selection+policies
+        https://home.rs-python.eu/rs-documentation/rs-client-libraries/docs/doc/flows/tasktable-payload/#auxiliary-data-selection-policies
 
     The test data follows the specifications examples. The time intervals used for the tests are :
         t0-dt0 = 2025-03-01T00:00:00Z

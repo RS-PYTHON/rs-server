@@ -13,23 +13,34 @@
 ' limitations under the License.
 
 @startuml stac-item-lifecycle
-John -> RS_Client_Libraries: Generate Product
-RS_Client_Libraries -> DPR: eopf trigger
-DPR -> DPR: +created=now()
-DPR -> DPR: +[start|end]datetime=<sensing*>
-DPR -> DPR: +asset.href=s3://<tmp_bucket>/file.zarr
-DPR --> RS_Client_Libraries: STAC item
-RS_Client_Libraries -> RS_Client_Libraries: +origin_datetime=max(input)
-RS_Client_Libraries --> John: STAC item
-John -> RS_Server_Catalog: POST /catalog/John/collections/S1L1/items
-RS_Server_Catalog -> RS_Server_Catalog: +owner=John, +collection=S1L1
-RS_Server_Catalog -> RS_Server_Catalog: +asset.alternate.href=s3://<cat_bucket>/file.zarr
-RS_Server_Catalog -> RS_Server_Catalog: +asset.href=https://rs-server//catalog/John/collections/S1L1/items/{itemId}/download/zarr
-RS_Server_Catalog -> RS_Server_Catalog: +published=now(), +updated=now()
-RS_Server_Catalog -> RS_Server_Catalog: +expires=now()+30d
-RS_Server_Catalog --> John: STAC item
-RS_DataLifecycle -> RS_DataLifecycle: -assets
-RS_DataLifecycle -> RS_DataLifecycle: +unpublished=now() (30d later)
-RS_DataLifecycle -> RS_Server_Catalog: PATCH /catalog/John/collections/S1L1/items/{itemId}
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequence {
+  ParticipantBackgroundColor #E0F2F1
+  ParticipantBorderColor #00796B
+  LifeLineBorderColor #00796B
+}
 
+actor John
+participant "Prefect flow\n(rs-client-libraries)" as flow
+participant "rs-dpr-service\n+ DPR processor" as dpr
+database "Object storage\n(S3)" as s3
+participant "rs-server-catalog" as catalog
+participant "Data lifecycle\n(periodic task\nof the catalog)" as lifecycle
+
+John -> flow : run a processing flow
+flow -> dpr : run the processor (payload file)
+dpr -> s3 : write the products\ns3://<bucket>/<owner>/<collection>/...
+dpr --> flow : job completed
+flow -> flow : create the STAC items from the products metadata\n+datetime, start_datetime, end_datetime = sensing times\n+eopf:origin_datetime = max(origin dates of the inputs)\n+processing:* and product:* metadata, derived_from links
+flow -> catalog : POST /catalog/collections/John:s3-l1/items
+catalog -> s3 : check that the assets exist
+catalog -> catalog : +owner=John, +file:checksum\n+created, +updated, +published = now()\n+expires = now() + expiration delay (bucket configuration)
+catalog --> flow : STAC item
+flow --> John : published STAC items
+
+== expiration delay later ==
+lifecycle -> catalog : search the expired items (expires < now, no unpublished date)
+lifecycle -> s3 : delete the assets
+lifecycle -> catalog : remove the assets\n+unpublished = now(), +updated = now()
 @enduml
