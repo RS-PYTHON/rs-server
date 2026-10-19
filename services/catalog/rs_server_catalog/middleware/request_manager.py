@@ -30,6 +30,11 @@ from rs_server_catalog.authentication_catalog import (
     get_authorisation,
 )
 from rs_server_catalog.data_management import timestamps_extension
+from rs_server_catalog.data_management.external_ids import (
+    EXTERNAL_IDS_PROPERTY,
+    has_external_ids,
+    translate_external_ids_filter,
+)
 from rs_server_catalog.data_management.geometry_manager import (
     validate_geometry_and_enforce_bbox,
 )
@@ -84,67 +89,6 @@ def enforce_pgstac_defaults_for_null_geometry(content: dict[str, Any]) -> dict[s
     return content
 
 
-def iter_external_id_parts(raw: Any) -> list[str]:
-    """
-    Split externalIds input into clean tokens.
-
-    Clients may send `externalIds` as a single string, a comma-separated string,
-    or a list. Normalizing early lets GET query params and POST bodies share the
-    same filter-building path.
-    """
-    parts: list[str] = []
-    values = raw if isinstance(raw, list) else [raw]
-    for value in values:
-        # Allow callers to pass a single string with comma-separated ids.
-        for part in str(value or "").split(","):
-            part = part.strip()
-            if part:
-                parts.append(part)
-    return parts
-
-
-def build_external_ids_tokens(raw: Any) -> list[str]:
-    """
-    Normalize externalIds values into the token representation stored by pgstac.
-
-    Supported input forms are `scheme:value`, `scheme:`, `:value`, plain value,
-    and comma-separated/list combinations. Duplicates are removed while keeping
-    the original order for predictable debugging.
-    """
-    tokens: list[str] = []
-    seen: set[str] = set()
-    for part in iter_external_id_parts(raw):
-        token = None
-        if ":" in part:
-            scheme, value = part.split(":", 1)
-            scheme = scheme.strip()
-            value = value.strip()
-            # Keep scheme:value, scheme-only, or value-only depending on input form.
-            if scheme and value:
-                token = f"{scheme}:{value}"
-            elif scheme and not value:
-                token = scheme
-            elif value and not scheme:
-                token = value
-        else:
-            # No scheme provided, keep raw value.
-            token = part
-        if token and token not in seen:
-            tokens.append(token)
-            seen.add(token)
-    logger.debug("Normalized externalIds input %s to tokens %s", raw, tokens)
-    return tokens
-
-
-def build_external_ids_filter(raw: Any) -> dict | None:
-    """Create a CQL2 `a_overlaps` filter for normalized externalIds tokens."""
-    tokens = build_external_ids_tokens(raw)
-    if not tokens:
-        return None
-    # pgstac expects array overlap when querying token arrays.
-    return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
-
-
 def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
     """
     Normalize a CQL2 filter to CQL2-JSON.
@@ -189,80 +133,34 @@ def combine_filters(existing: dict | None, extra: dict) -> dict:
     return {"op": "and", "args": [existing, extra]}
 
 
-def filter_has_external_ids(filter_json: Any) -> bool:
-    """Recursively check whether a CQL2 filter tree references `externalIds`."""
-    if isinstance(filter_json, dict):
-        if filter_json.get("property") == "externalIds":
-            return True
-        # Recursively scan nested operations/arguments.
-        return any(filter_has_external_ids(value) for value in filter_json.values())
-    if isinstance(filter_json, list):
-        # Lists can hold nested filter nodes.
-        return any(filter_has_external_ids(item) for item in filter_json)
-    return False
-
-
-def normalize_external_ids_in_filter(filter_json: dict) -> dict:
+def translate_external_ids_search(raw_filter: Any, filter_lang: str, raw_external_ids: Any) -> dict | None:
     """
-    Rewrite externalIds comparisons into array-overlap filters.
+    Translate the externalIds of a search into a filter that pgstac can evaluate (see `external_ids` module).
 
-    pgstac stores `externalIds` as an array of tokens. Equality/in filters sent
-    by clients therefore need to become `a_overlaps` filters to match the stored
-    representation.
-    """
-    if not isinstance(filter_json, dict):
-        return filter_json
-    op = filter_json.get("op")
-    if op in ("and", "or", "not"):
-        # Walk the boolean tree and normalize only the externalIds leaf comparisons.
-        args = filter_json.get("args", [])
-        if isinstance(args, list):
-            return {**filter_json, "args": [normalize_external_ids_in_filter(arg) for arg in args]}
-        return filter_json
-    if op in ("=", "==", "eq", "in"):
-        # STAC Browser sends "externalIds = <uuid>", but pgstac stores externalIds as an array of tokens.
-        # Using "=" against an array yields no matches, so we convert it to a_overlaps on token list.
-        args = filter_json.get("args", [])
-        if isinstance(args, list) and len(args) == 2:
-            left, right = args
-            if isinstance(left, dict) and left.get("property") == "externalIds":
-                # Normalize raw values (string, list, comma-separated) to tokens.
-                tokens = build_external_ids_tokens(right)
-                if tokens:
-                    return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
-            if isinstance(right, dict) and right.get("property") == "externalIds":
-                # Support the (value, property) argument order too.
-                tokens = build_external_ids_tokens(left)
-                if tokens:
-                    return {"op": "a_overlaps", "args": [{"property": "externalIds"}, tokens]}
-    return filter_json
-
-
-def normalize_external_ids_filter_value(raw_filter: Any, filter_lang: str) -> tuple[Any, str, bool]:
-    """
-    Normalize any externalIds expression inside a filter value.
+    Args:
+        raw_filter: the CQL2 filter of the search, if any.
+        filter_lang (str): the language of the filter.
+        raw_external_ids: the value of the externalIds search parameter, if any.
 
     Returns:
-        Tuple `(filter, filter_lang, changed)` where `changed` tells callers
-        whether the request body/query string must be rewritten.
+        dict | None: the new CQL2-JSON filter, or None if the search doesn't use externalIds.
     """
-    if raw_filter is None:
-        return raw_filter, filter_lang, False
-    if isinstance(raw_filter, str) and "externalIds" not in raw_filter:
-        return raw_filter, filter_lang, False
-    # Parse to JSON so we can rewrite externalIds operators for pgstac.
-    filter_json = parse_filter_to_json(raw_filter, filter_lang)
-    if filter_json is None or not filter_has_external_ids(filter_json):
-        return raw_filter, filter_lang, False
-    # Convert externalIds comparisons to array-overlap filters (a_overlaps).
-    normalized = normalize_external_ids_in_filter(filter_json)
-    logger.debug(
-        "Normalized externalIds filter from lang=%s filter=%s to lang=cql2-json filter=%s",
-        filter_lang,
-        raw_filter,
-        normalized,
-    )
-    return normalized, "cql2-json", True
+    filter_json = None
+    if raw_filter is not None and (not isinstance(raw_filter, str) or EXTERNAL_IDS_PROPERTY in raw_filter):
+        filter_json = parse_filter_to_json(raw_filter, filter_lang)
+    if raw_external_ids not in (None, "", []):
+        # The externalIds parameter searches any of the given ids, combined with the filter.
+        parameter_filter = {"op": "in", "args": [{"property": EXTERNAL_IDS_PROPERTY}, raw_external_ids]}
+        filter_json = combine_filters(
+            filter_json or parse_filter_to_json(raw_filter, filter_lang),
+            parameter_filter,
+        )
+    if not has_external_ids(filter_json):
+        return None
+    translated = translate_external_ids_filter(filter_json)
+    logger.info("Translated externalIds in catalog search filter %s", filter_json)
+    logger.debug("Translated catalog search filter: %s", translated)
+    return translated
 
 
 class CatalogRequestManager:
@@ -784,7 +682,7 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
         The search endpoint accepts owner hints from URL path, query/body owner,
         collections and CQL2 filters. This method resolves those hints, rewrites
-        collections to pgstac ids, normalizes `externalIds`, and checks read
+        collections to pgstac ids, translates `externalIds`, and checks read
         authorization before forwarding the request.
 
         Args:
@@ -799,27 +697,6 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             original_content = copy.deepcopy(content)
             logger.info("Managing POST catalog search request")
             logger.debug("Original POST search body: %s", original_content)
-
-            # Normalize externalIds filters coming from UI (e.g., "=" -> a_overlaps).
-            normalized_filter, normalized_lang, changed = normalize_external_ids_filter_value(
-                content.get("filter"),
-                content.get("filter-lang", "cql2-json"),
-            )
-            if changed:
-                content["filter"] = normalized_filter
-                content["filter-lang"] = normalized_lang
-                logger.info("Normalized externalIds filter for POST catalog search")
-
-            # Build a CQL2 filter for externalIds (array of objects) if requested.
-            external_ids_filter = build_external_ids_filter(content.pop("externalIds", None))
-            if external_ids_filter is not None:
-                existing_filter = parse_filter_to_json(
-                    content.get("filter"),
-                    content.get("filter-lang", "cql2-json"),
-                )
-                content["filter"] = combine_filters(existing_filter, external_ids_filter)
-                content["filter-lang"] = "cql2-json"
-                logger.info("Added externalIds filter to POST catalog search")
 
             # Pre-processing of filter extensions
             if "filter" in content:
@@ -866,6 +743,17 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
                 self.request_ids["collection_ids"] = content["collections"]
                 logger.info("POST search collections resolved to %s", self.request_ids["collection_ids"])
+
+            external_ids_filter = translate_external_ids_search(
+                content.get("filter"),
+                content.get("filter-lang", "cql2-json"),
+                content.pop("externalIds", None),
+            )
+            if external_ids_filter is not None:
+                content.pop("filter-lang", None)
+                content.pop("filter", None)
+                # The "filter-lang" field has to be placed BEFORE the filter.
+                content = {**content, "filter-lang": "cql2-json", "filter": external_ids_filter}
             if content != original_content:
                 request = self._override_request_body(request, content)
 
@@ -889,28 +777,6 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
                 logger.debug("GET search owner resolved to %s", self.request_ids["owner_id"])
-
-            # Normalize externalIds filters coming from UI (e.g., "=" -> a_overlaps).
-            normalized_filter, normalized_lang, changed = normalize_external_ids_filter_value(
-                query_params_dict.get("filter"),
-                query_params_dict.get("filter-lang", "cql2-json"),
-            )
-            if changed:
-                query_params_dict["filter"] = json.dumps(normalized_filter)
-                query_params_dict["filter-lang"] = normalized_lang
-                logger.info("Normalized externalIds filter for GET catalog search")
-
-            # Build a CQL2 filter for externalIds (array of objects) if requested.
-            external_ids_filter = build_external_ids_filter(query_params_dict.pop("externalIds", None))
-            if external_ids_filter is not None:
-                existing_filter = parse_filter_to_json(
-                    query_params_dict.get("filter"),
-                    query_params_dict.get("filter-lang", "cql2-json"),
-                )
-                combined_filter = combine_filters(existing_filter, external_ids_filter)
-                query_params_dict["filter"] = json.dumps(combined_filter)
-                query_params_dict["filter-lang"] = "cql2-json"
-                logger.info("Added externalIds filter to GET catalog search")
 
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
@@ -936,6 +802,15 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
                 logger.info("GET search collections resolved to %s", self.request_ids["collection_ids"])
+
+            external_ids_filter = translate_external_ids_search(
+                query_params_dict.get("filter"),
+                query_params_dict.get("filter-lang", "cql2-text"),
+                query_params_dict.pop("externalIds", None),
+            )
+            if external_ids_filter is not None:
+                query_params_dict["filter"] = json.dumps(external_ids_filter)
+                query_params_dict["filter-lang"] = "cql2-json"
             if query_params_dict != original_query_params:
                 request = self._override_request_query_string(request, query_params_dict)
 
