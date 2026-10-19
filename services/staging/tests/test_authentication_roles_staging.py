@@ -20,6 +20,7 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
     VALID_APIKEY_HEADER,
     init_authentication_test,
 )
+from starlette.datastructures import State
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from .resources.sample_data import sample_process_metadata_model
@@ -88,7 +89,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pyl
     mock_db_table = mocker.MagicMock()
     # Mock the job databse to allocate staging resource for this job-id
     mock_db_table.get_job.return_value = {"processID": resource}
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    mocker.patch.object(staging_client.app, "state", State({"process_manager": mock_db_table}))
     job_id = "job_id"
     assert staging_client.get(f"/jobs/{job_id}", **header).status_code != HTTP_401_UNAUTHORIZED
     assert staging_client.delete(f"/jobs/{job_id}", **header).status_code != HTTP_401_UNAUTHORIZED
@@ -131,7 +132,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pyl
 
     # Mock the jobs db, to allocate current job-id to other_staging resource.
     mock_db_table.get_job.return_value = {"processID": resource}
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    mocker.patch.object(staging_client.app, "state", State({"process_manager": mock_db_table}))
     unauthorized_resource_jobs_response = staging_client.get(f"/jobs/{job_id}", **header)
     assert unauthorized_resource_jobs_response.status_code == HTTP_401_UNAUTHORIZED
     assert (

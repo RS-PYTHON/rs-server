@@ -134,17 +134,17 @@ async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
 
     logger.info("Starting up the application...")
-    fastapi_app.extra["shutdown_event"] = threading.Event()
+    fastapi_app.state.shutdown_event = threading.Event()
     # the trigger for running the logic in the background task
-    fastapi_app.extra["users_sync_trigger"] = threading.Event()
+    fastapi_app.state.users_sync_trigger = threading.Event()
     # save info for future requests of endpoint /storage/account/{user}/rights
-    fastapi_app.extra["users_info"] = None  # dict[str, Any] | None
+    fastapi_app.state.users_info = None  # dict[str, Any] | None
     # start the background task in a thread using asyncio.to_thread
-    fastapi_app.extra["refresh_task"] = asyncio.create_task(
+    fastapi_app.state.refresh_task = asyncio.create_task(
         asyncio.to_thread(main_osam_task, DEFAULT_OSAM_FREQUENCY_SYNC),
     )
     # trigger the first run -> this was disabled by a request from ops
-    # app.extra["users_sync_trigger"].set()
+    # app.state.users_sync_trigger.set()
 
     # Init objects for dependency injection
     settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
@@ -155,11 +155,11 @@ async def app_lifespan(fastapi_app: FastAPI):
     # shutdown logic (cleanup)
     logger.info("Shutting down the application...")
     # cancel the refresh task and wait for it to exit cleanly
-    fastapi_app.extra["shutdown_event"].set()
+    fastapi_app.state.shutdown_event.set()
     # make the main_osam_task to exit from the wait sleeping
-    fastapi_app.extra["users_sync_trigger"].set()
+    fastapi_app.state.users_sync_trigger.set()
 
-    refresh_task = fastapi_app.extra.get("refresh_task")
+    refresh_task = getattr(fastapi_app.state, "refresh_task", None)
     if refresh_task:
         try:
             await refresh_task  # Ensure the task exits
@@ -237,7 +237,7 @@ async def create_and_delete_obs_accounts(request: Request):
 
     # Trigger the background task. This was also requested by the operations team: the endpoint should return
     # immediately to the user without waiting for the algorithm to complete.
-    app.extra["users_sync_trigger"].set()
+    app.state.users_sync_trigger.set()
     return JSONResponse(
         status_code=HTTP_200_OK,
         content="The algorithm for updating the Keycloak and OVH accounts has been initiated. "
@@ -265,17 +265,17 @@ def __get_user_rights(user):
     """
 
     # If the users info have not been calculated yet (by calling '/storage/accounts/update')
-    if app.extra["users_info"] is None:
+    if app.state.users_info is None:
         # We calculate them in a threading lock (so several threads won't call this at the same time)
         with LOCK:
             # Check a second time, in case another thread updated the value
-            if app.extra["users_info"] is None:
-                app.extra["users_info"] = build_users_data_map()
+            if app.state.users_info is None:
+                app.state.users_info = build_users_data_map()
 
-    if user not in app.extra["users_info"]:
+    if user not in app.state.users_info:
         return None
     logger.debug(f"Building the rights for user {user}")
-    s3_rights = build_s3_rights(user, app.extra["users_info"][user])
+    s3_rights = build_s3_rights(user, app.state.users_info[user])
     return update_s3_rights_lists(s3_rights)
 
 
@@ -443,20 +443,20 @@ def main_osam_task(timeout: int = 60):
             # for getting attributes from keycloack
             # Later Edit: The timeout was disabled because of the request from ops team
             # if this is wanted later, just add `timeout=timeout` as input param in wait()
-            triggered = app.extra["users_sync_trigger"].wait()
-            if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
+            triggered = app.state.users_sync_trigger.wait()
+            if app.state.shutdown_event.is_set():  # If shutting down, exit loop
                 logger.info("Shutting down background thread and exit")
                 break
 
             # If triggered manually (i.e. by calling .set() and not by the timeout), prepare for the next one
             if triggered:
                 logger.debug("Releasing users_sync_trigger")
-                app.extra["users_sync_trigger"].clear()
+                app.state.users_sync_trigger.clear()
 
             logger.info("Starting the sync process between keycloak accounts and ovh accounts")
 
             link_rspython_users_and_obs_users()
-            app.extra["users_info"] = build_users_data_map()
+            app.state.users_info = build_users_data_map()
 
             logger.info("Sync process finished")
 
