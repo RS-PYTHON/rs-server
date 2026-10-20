@@ -12,13 +12,13 @@ rs-server
 ├── docs/                  # This documentation: Markdown pages (doc/), PlantUML sources (uml/) and images (images/)
 ├── resources/             # Development scripts (configuration files synchronisation, dependency updates...)
 ├── services/
-│   ├── adgs/              # rs-server-adgs (AUXIP stations)
+│   ├── adgs/              # rs-server-adgs (AUXIP instances)
 │   ├── cadip/             # rs-server-cadip (CADIP stations)
 │   ├── catalog/           # rs-server-catalog
 │   ├── common/            # rs_server_common, shared by all the services
 │   ├── frontend/          # rs-server-frontend (aggregated Swagger page)
 │   ├── osam/              # rs-server-osam
-│   ├── prip/              # rs-server-prip (PRIP stations)
+│   ├── prip/              # rs-server-prip (PRIP instances)
 │   └── staging/           # rs-server-staging
 ├── tests/                 # Tests of the station services and of the common package
 ├── pyproject.toml         # Poetry project that includes all the services

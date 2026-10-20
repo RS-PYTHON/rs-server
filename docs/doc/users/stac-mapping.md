@@ -1,16 +1,30 @@
 # STAC mapping of external data
 
-The external data sources (CADIP, AUXIP, PRIP) expose their data with the [OData](https://www.odata.org/) protocol.
-rs-server maps these data as [STAC](https://stacspec.org/) items, so that the users only deal with STAC. This page
-describes the mapping applied to each data source. The mapping is configured in the `*_stac_mapper.json` files of
-the services:
+The external data sources (CADIP, AUXIP, PRIP) expose their data with the [OData](https://www.odata.org/) protocol,
+as specified by the ESA interface control documents (ICD) listed below. rs-server maps these data as
+[STAC](https://stacspec.org/) items, so that the users only deal with STAC. This page describes the mapping applied
+to each data source. The reverse mapping, used by the catalog to expose its items as OData PRIP products, is
+described in [OData PRIP interface of the catalog](odata-mapping.md). The mapping is configured in the
+`*_stac_mapper.json` files of the services:
 
-| Data source | Mapping files |
+| Data source | Interface specification | Mapping files |
+|---|---|---|
+| CADIP sessions | [CADIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-cadu-interface-delivery-point-specification/) (ESA-EOPG-EOPGC-IF-15) | [cadip_sessions_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_sessions_stac_mapper.json) |
+| CADIP files | [CADIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-cadu-interface-delivery-point-specification/) (ESA-EOPG-EOPGC-IF-15) | [cadip_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json) |
+| AUXIP products | [AUXIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-auxiliary-data-interface-delivery-point-specification/) (ESA-EOPG-EOPGC-IF-10) | [adgs_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/adgs/config/adgs_stac_mapper.json) |
+| PRIP products | [PRIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-production-interface-delivery-point-specification/) (ESA-EOPG-EOPGC-IF-3) | [prip_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/prip/config/prip_stac_mapper.json), [product_type_mapping.yaml](https://github.com/RS-PYTHON/rs-server/blob/develop/services/common/config/product_type_mapping.yaml) |
+
+The OData `Id` of the sessions, files and products is kept in the `externalIds` property of the STAC items (or
+assets for the CADIP files), defined by the [External IDs](https://github.com/stac-extensions/external-ids)
+extension: a list of `scheme` and `value` objects, the scheme being the protocol of the data source: `cadip`,
+`auxip` or `prip`. The `externalIds` search parameter and queryable of the `/cadip`, `/auxip` and `/prip` services
+are translated into an OData filter on the `Id`:
+
+| Searched external identifier | OData filter |
 |---|---|
-| CADIP sessions | [cadip_sessions_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_sessions_stac_mapper.json) |
-| CADIP files | [cadip_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json) |
-| AUXIP products | [adgs_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/adgs/config/adgs_stac_mapper.json) |
-| PRIP products | [prip_stac_mapper.json](https://github.com/RS-PYTHON/rs-server/blob/develop/services/prip/config/prip_stac_mapper.json), [product_type_mapping.yaml](https://github.com/RS-PYTHON/rs-server/blob/develop/services/common/config/product_type_mapping.yaml) |
+| `<scheme>:<value>` with the scheme of the service, or `<value>`, e.g. `prip:2b17...` or `2b17...` on `/prip` | `Id eq 2b17...` (`Id in (...)` for several values) |
+| `<scheme>:` with the scheme of the service, e.g. `prip:` on `/prip` | No filter: all the products have an identifier of this scheme. |
+| Only identifiers with another scheme, e.g. `auxip:...` on `/prip` | No product is returned. |
 
 The STAC properties come from the [STAC common metadata](https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md)
 and from the STAC extensions described in [Catalog data model and lifecycle](data-model.md#extensions).
@@ -23,6 +37,7 @@ CADIP sessions are mapped as STAC items, CADIP files as STAC assets of the sessi
 
 | CADIP session property | STAC item property | Description |
 |---|---|---|
+| `Id` | `externalIds` with the `cadip` scheme | UUID of the session in the CADIP station, e.g. `[{"scheme": "cadip", "value": "2b17b57d-fff4-4645-b539-91f305c27c69"}]`. |
 | `SessionId` | `id` | Session identifier, e.g. `S1A_20170501121534062343`: 3 characters for the satellite, the acquisition start date and time, and the acquisition orbit. |
 | `DownlinkStart` | `start_datetime` | Acquisition time of the first CADU of the session. |
 | `PublicationDate` | `datetime`, `published` | Publication date of the session (time at which the first file becomes visible to the user). |
@@ -45,6 +60,7 @@ CADIP sessions are mapped as STAC items, CADIP files as STAC assets of the sessi
 
 | CADIP file property | STAC asset property | Description |
 |---|---|---|
+| `Id` | `externalIds` with the `cadip` scheme | UUID of the file in the CADIP station. |
 | `Name` | asset key | File name, e.g. `DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw`. |
 | `Channel` | `cadip:channel` | Channel of the file (1 to 4). |
 | `BlockNumber` | `cadip:block_number` | Number of the file in its channel, starting from 1. |
@@ -60,10 +76,11 @@ AUXIP products are mapped as STAC items, the product file as their asset.
 
 | AUXIP product property | STAC property | Description |
 |---|---|---|
+| `Id` | `externalIds` with the `auxip` scheme | UUID of the product in the AUXIP instance. |
 | `Name` | item `id` (without extension), asset key | File name, e.g. `S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ`. |
 | `ContentDate/Start`, `ContentDate/End` | `start_datetime`, `datetime`, `end_datetime` | Validity period of the auxiliary data. |
 | `PublicationDate` | `published` | Publication date of the file. |
-| `EvictionDate` | `eviction_datetime` | Date when the file will be removed from the rolling archive. |
+| `EvictionDate` | asset `eviction_datetime` | Date when the file will be removed from the rolling archive of the AUXIP instance. It is not the expiration date of the product in the RS-Python catalog (`expires`), which is set by the catalog, see [Expiration and deletion](data-model.md#expiration-and-deletion). |
 | `ContentType` | asset `type` | Media type of the file. |
 | `ContentLength` | asset `file:size` | File size in bytes. |
 | `Checksum` (MD5) | asset `file:checksum` | Checksum of the file. |
@@ -78,12 +95,13 @@ PRIP products are mapped as STAC items, the product file as their asset.
 
 | PRIP product property | STAC property | Description |
 |---|---|---|
+| `Id` | `externalIds` with the `prip` scheme | UUID of the product in the PRIP instance. |
 | `Name` | item `id` (without extension), asset key | Product file name, e.g. `S1A_IW_SLC__1SDV_20160117T103451_20160117T103518_009533_00DD94_D46A.zip`. |
 | `ContentDate/Start`, `ContentDate/End` | `start_datetime`, `datetime`, `end_datetime` | Sensing period. |
 | `GeoFootprint` | `geometry`, `bbox` | Footprint of the product. |
 | `PublicationDate` | `published` | Publication date of the product. |
 | `OriginDate` | `eopf:origin_datetime` | Date when the raw data used to generate the product became available at the acquisition interface point. |
-| `EvictionDate` | `expires`, asset `eviction_datetime` | Date when the product will be removed from the rolling archive. |
+| `EvictionDate` | asset `eviction_datetime` | Date when the product will be removed from the rolling archive of the PRIP instance. It is not the expiration date of the product in the RS-Python catalog (`expires`), which is set by the catalog, see [Expiration and deletion](data-model.md#expiration-and-deletion). |
 | `ContentType`, `ContentLength`, `Checksum` | asset `type`, `file:size`, `file:checksum` | File information. |
 | `ProductionType` | `processing:lineage` | `systematic_production`, `on-demand default` or `on-demand non-default`. |
 | `Attributes/productType` | `product:type`, `processing:level`, `sar:instrument_mode`... | Legacy product type, converted into the EOPF product type and its components with the product type mapping, e.g. `IW_SLC__1S` gives `S01SIWSLC`, level `L1` and instrument mode `IW`. |

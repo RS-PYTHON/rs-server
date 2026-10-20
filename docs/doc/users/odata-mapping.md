@@ -1,0 +1,292 @@
+# OData PRIP interface of the catalog
+
+In addition to its [STAC API](catalog.md), the catalog exposes its products with the OData interface of a
+Production Interface Delivery Point (PRIP), as specified by the
+[ESA EO Framework (EOF) – CSC – Production Interface Delivery Point Specification](https://eof.esa.int/document/esa-eo-framework-eof-csc-production-interface-delivery-point-specification/)
+(ESA-EOPG-EOPGC-IF-3, issue 2.0), referred to as the **[PRIP ICD][prip-icd]** below.
+
+This interface implements the following sections of the [PRIP ICD][prip-icd]:
+
+| [PRIP ICD][prip-icd] section | Function |
+|---|---|
+| 3.2 Product Entity Model | The STAC items are presented as OData `Product` entities, see [Product mapping](#product-mapping). |
+| 3.3 Query Products Catalogue | Search the products with the OData `$filter`, `$orderby`, `$top`, `$skip`, `$count` and `$expand` options, translated into a STAC search, see [Query products](#query-products). |
+| 3.4 Product Download | Download a product by its UUID, see [Download a product](#download-a-product). |
+
+This is the reverse of the [STAC mapping of the external data](stac-mapping.md#prip): the staging maps the OData
+products of the external PRIP instances into STAC items, this interface maps the STAC items of the catalog into
+OData products.
+
+## Endpoints
+
+| Method | Endpoint | [PRIP ICD][prip-icd] | Description |
+|---|---|---|---|
+| `GET` | `/odata/v1/Products` | 3.3 | Search the products. The OData options are translated into a `/catalog/search` request. |
+| `GET` | `/odata/v1/Products(<Id>)/$value` | 3.4 | Download the product with this UUID. |
+
+The authorisation is the same as for the STAC API: a user only finds the products of the collections they can
+read (`rs_catalog_<owner>:<collection>_read` role, see [Collections and ownership](catalog.md#collections-and-ownership)),
+and only downloads the products of the collections they can download (`_download` role).
+
+## Product identifier
+
+The [PRIP ICD][prip-icd] identifies each product by its `Id`, a UUID assigned by the production system, that is used to
+download the product (`Products(<Id>)/$value`). A STAC item has no such identifier: its `id` is a free string,
+only unique in its collection. So the catalog assigns a UUID to each item, with these rules:
+
+- The catalog automatically computes a new random UUID (version 4) when an item is **added** to the catalog,
+  whatever the endpoint (`POST .../items`, with a single item or an item collection, and `POST .../bulk_items`),
+  so also when the item is added by the [staging](staging.md) or by the processing flows.
+- The UUID is stored in the `externalIds` property of the item
+  ([External IDs](https://github.com/stac-extensions/external-ids) extension), with the **`rs-odata-prip`** scheme:
+
+    ```json
+    "externalIds": [
+      {"scheme": "rs-odata-prip", "value": "2b17b57d-fff4-4645-b539-91f305c27c69"}
+    ]
+    ```
+
+    It must not be confused with the `prip` scheme, that the staging uses for the `Id` of the product in the
+    external PRIP instance it comes from.
+- The UUID is generated **once**, by the catalog only, and is **immutable**:
+    - when an item is added, any `rs-odata-prip` entry given by the user in `externalIds` is silently ignored and
+      replaced by the generated UUID. The other entries of `externalIds` are kept unchanged.
+    - when an item is replaced (`PUT`) or updated (`PATCH`), any `rs-odata-prip` entry given by the user is silently
+      ignored, and the stored UUID is kept, even if the request removes or replaces the whole `externalIds` list.
+    - these cases are not errors: the request is processed as if the user had not given this entry.
+- A deleted item loses its UUID. If the same product is added again (e.g. staged or generated again after a
+  deletion), it is a new product instance and gets a new UUID, as a PRIP instance would do.
+- All the items of the catalog have a UUID: the items added before the deployment of this interface are given
+  one, once, by a migration of the catalog database.
+
+The UUID can be searched with the STAC API as any other
+[external identifier](catalog.md#search-by-external-identifiers), e.g.
+`GET /catalog/search?externalIds=rs-odata-prip:2b17b57d-fff4-4645-b539-91f305c27c69`, which is also how the OData
+interface finds the item to download.
+
+## Product mapping
+
+Each STAC item is mapped as one OData `Product`. In the general case, the products of the catalog are Zarr products
+with two assets: the Zarr product itself, in the object storage, and its zipped archive, whose file name ends with
+`.zarr.zip`, for example:
+
+```json
+"assets": {
+  "zarr": {"href": "s3://<bucket>/<owner>/<collection>/S1SIWOCN_20220412T054447_0024_S139.zarr", "roles": ["data"]},
+  "zarr.zip": {"href": "s3://<bucket>/<owner>/<collection>/S1SIWOCN_20220412T054447_0024_S139.zarr.zip", "type": "application/zip", "roles": ["data"]}
+}
+```
+
+The **`.zarr.zip` asset**, and only this one, is exposed by the OData interface: it is the product file. The other
+assets of the item are never exposed, and the items without `.zarr.zip` asset are not OData products.
+
+The properties of the product ([PRIP ICD][prip-icd] table 1) are mapped as follows:
+
+| OData product property | M | STAC property | Description |
+|---|---|---|---|
+| `Id` | Y | `externalIds` value with the `rs-odata-prip` scheme | UUID of the product, see [Product identifier](#product-identifier). |
+| `Name` | Y | file name of the `.zarr.zip` asset `href` | Product file name, e.g. `S1SIWOCN_20220412T054447_0024_S139.zarr.zip`: the item `id` with the `.zarr.zip` extension. |
+| `ContentType` | Y | `.zarr.zip` asset `type` | Media type of the file, `application/zip`. Also returned as `@odata.mediaContentType`. |
+| `ContentLength` | Y | `.zarr.zip` asset `file:size` | File size in bytes. |
+| `OriginDate` | Y | `eopf:origin_datetime` | Date when the raw data used to generate the product became available at the acquisition interface point (for the generated products, set by the processing flows, see [Data lifecycle](data-model.md#item-lifecycle)). |
+| `PublicationDate` | Y | `published` | Publication date of the item in the catalog. |
+| `EvictionDate` | N | `expires` | Date when the product will be removed from the catalog (see [Expiration and deletion](data-model.md#expiration-and-deletion)). |
+| `Checksum` | Y | `.zarr.zip` asset `file:checksum`, decoded from multihash | List of `Algorithm`, `Value` and `ChecksumDate` objects, see [Checksum](#checksum). |
+| `ContentDate/Start` | Y | `start_datetime`, or `datetime` if not set | Sensing start. |
+| `ContentDate/End` | Y | `end_datetime`, or `datetime` if not set | Sensing stop. |
+| `ProductionType` | Y | `processing:lineage` | `systematic_production`, `on-demand default` or `on-demand non-default`. `systematic_production` if not set. |
+| `GeoFootprint` | N | `geometry` | GeoJSON footprint, with the `type` key first. Mandatory for the georeferenced products. |
+| `Footprint` | N | | Not returned: optional and deprecated in favour of `GeoFootprint`. |
+
+All the dates are formatted in UTC with milliseconds, e.g. `2018-01-17T14:46:03.788Z`.
+
+### Checksum
+
+The `file:checksum` field of the [File](https://github.com/stac-extensions/file#asset--link-object-fields) extension
+is a single [multihash](https://github.com/multiformats/multihash), encoded as a lowercase hexadecimal string: the
+code of the hash function and the length of the digest, both as unsigned varints, followed by the digest. The OData
+`Checksum` is obtained by decoding it:
+
+| `file:checksum` | Hash function (multihash code, digest length) | OData `Checksum` |
+|---|---|---|
+| `d50110e8a303bf3d85200514f727db60e7db65` | `md5` (`0xd5`, encoded `d501`; 16 bytes, encoded `10`) | `{"Algorithm": "MD5", "Value": "e8a303bf3d85200514f727db60e7db65", "ChecksumDate": "2016-01-17T11:45:00.000Z"}` |
+
+- The `Value` is the digest only, without the multihash prefix.
+- The `ChecksumDate` is the `updated` date of the item, when the catalog computed the checksum.
+- The [PRIP ICD][prip-icd] requires at least an MD5 checksum. As the File extension stores a single checksum per
+  asset, MD5 is the only hash function handled by the catalog in `file:checksum` (see
+  [Add an item](catalog.md#add-an-item)), and the OData `Checksum` list always has a single MD5 element.
+
+### Attributes
+
+The other metadata of the products are returned as OData `Attributes` ([PRIP ICD][prip-icd] table 2), a list of `Name`,
+`ValueType` and `Value` objects, when the `$expand=Attributes` option is given:
+
+| OData attribute | ValueType | STAC property | Value conversion |
+|---|---|---|---|
+| `productType` | `String` | `product:type` | EOPF product type, e.g. `S01SIWSLC`. |
+| `processingDate` | `DateTimeOffset` | `processing:datetime` | |
+| `processingCenter` | `String` | `processing:facility` | |
+| `processorVersion` | `String` | `processing:version` | |
+| `processingLevel` | `String` | `processing:level` | e.g. `L1`. |
+| `platformShortName` | `String` | `constellation` | Upper case, e.g. `sentinel-1` gives `SENTINEL-1`. |
+| `platformSerialIdentifier` | `String` | `platform` | Serial letter, e.g. `sentinel-1a` gives `A`. |
+| `instrumentShortName` | `String` | `instruments` | Reverse of the staging mapping, e.g. `c-sar` gives `SAR`. |
+| `beginningDateTime` | `DateTimeOffset` | `start_datetime`, or `datetime` if not set | |
+| `endingDateTime` | `DateTimeOffset` | `end_datetime`, or `datetime` if not set | |
+| `orbitNumber` | `Integer` | `sat:absolute_orbit` | |
+| `relativeOrbitNumber` | `Integer` | `sat:relative_orbit` | |
+| `cycleNumber` | `Integer` | `sat:orbit_cycle` | |
+| `orbitDirection` | `String` | `sat:orbit_state` | Upper case, e.g. `ascending` gives `ASCENDING`. |
+| `polarisationChannels` | `String` | `sar:polarizations` | Joined with `+`, e.g. `["HH", "HV"]` gives `HH+HV`. |
+| `datatakeID` | `Integer` | `eopf:datatake_id` | |
+| `instrumentConfigurationID` | `Integer` | `eopf:instrument_configuration_id` | |
+| `timeliness` | `String` | `product:timeliness_category` | e.g. `NRT`. |
+
+An attribute is only returned when its STAC property is set. The `ValueType` is one of the values allowed by the
+[PRIP ICD][prip-icd] only: `String`, `Integer`, `DateTimeOffset`, `Boolean` or `Double`.
+
+### Response
+
+The response of a query is an OData JSON collection ([PRIP ICD][prip-icd] 3.3.2):
+
+```json
+{
+  "@odata.context": "$metadata#Products(Attributes())",
+  "@odata.count": 1,
+  "value": [
+    {
+      "@odata.mediaContentType": "application/zip",
+      "Id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+      "Name": "S1SIWOCN_20220412T054447_0024_S139.zarr.zip",
+      "ContentType": "application/zip",
+      "ContentLength": 4737286945,
+      "OriginDate": "2016-01-17T11:16:03.788Z",
+      "PublicationDate": "2016-01-17T11:46:03.788Z",
+      "EvictionDate": "2016-01-24T11:46:03.788Z",
+      "Checksum": [
+        {"Algorithm": "MD5", "Value": "e8a303bf3d85200514f727db60e7db65", "ChecksumDate": "2016-01-17T11:45:00.000Z"}
+      ],
+      "ContentDate": {"Start": "2016-01-17T10:34:51.922Z", "End": "2016-01-17T10:35:18.872Z"},
+      "ProductionType": "systematic_production",
+      "GeoFootprint": {"type": "Polygon", "coordinates": [[[-59.3169, 2.6367], [-63.105, -14.0539], [-60.8506, -14.4245], [-57.1309, 2.3269], [-59.3169, 2.6367]]]},
+      "Attributes": [
+        {"Name": "productType", "ValueType": "String", "Value": "S01SIWSLC"},
+        {"Name": "platformShortName", "ValueType": "String", "Value": "SENTINEL-1"},
+        {"Name": "platformSerialIdentifier", "ValueType": "String", "Value": "A"},
+        {"Name": "orbitNumber", "ValueType": "Integer", "Value": 9533}
+      ]
+    }
+  ]
+}
+```
+
+- `@odata.context` is `$metadata#Products` without `$expand=Attributes`, and the `Attributes` are then omitted.
+- `@odata.count` is only returned with `$count=true`.
+- When no product matches the query, the response is `200 OK` with an empty `value` list, never `404 Not Found`.
+- The status codes are `200 OK`, `400 Bad Request` (invalid or unsupported query), `401 Unauthorized` and
+  `500 Internal Server Error`.
+
+## Query products
+
+The `GET /odata/v1/Products` endpoint translates the OData query options into a STAC search on all the
+collections the user can read (`GET /catalog/search`), then maps the resulting items into OData products. As
+allowed by OData 4.01, the options are accepted with or without their `$` prefix, e.g. `$filter` or `filter`.
+
+As the [PRIP ICD][prip-icd] requires that all the returned products are available online, the search always
+excludes the items whose assets were deleted by the [data lifecycle](data-model.md#expiration-and-deletion)
+(`unpublished` property set). As described in [Product mapping](#product-mapping), it only returns the items with a
+`.zarr.zip` asset.
+
+### Query options
+
+| OData option | STAC search parameter | Description |
+|---|---|---|
+| `$filter` | `filter` (CQL2), `filter-lang=cql2-text` | See [Filters](#filters). |
+| `$orderby=<property> [asc\|desc]` | `sortby=[+\|-]<STAC property>` | Mapped with the [product mapping](#product-mapping), e.g. `$orderby=PublicationDate desc` gives `sortby=-published`. By default (no `$orderby`), the products are sorted by ascending `PublicationDate` (`sortby=+published`), as required by the [PRIP ICD][prip-icd]. |
+| `$top` | `limit` | Maximum number of returned products. The maximum accepted value is at least 1000. |
+| `$skip` | | Number of products to skip from the start of the result, applied before `$top`. The catalog applies it on top of the token-based pagination of the STAC API. |
+| `$count=true` | `numberMatched` of the response | Returned as `@odata.count`. |
+| `$expand=Attributes` | | Return the `Attributes` of the products. |
+| `$format=json` | | Accepted for the catalogue export queries (`Products?$expand=Attributes&$format=json`, [PRIP ICD][prip-icd] 3.3.3): JSON is the only format. |
+
+### Filters
+
+The `$filter` expression ([PRIP ICD][prip-icd] 3.3.1) is translated into a CQL2 filter. Its properties are mapped with the
+[product mapping](#product-mapping), its operators and functions as follows:
+
+| OData | CQL2 | Example of OData filter | CQL2 filter |
+|---|---|---|---|
+| `eq`, `ne`, `gt`, `ge`, `lt`, `le` | `=`, `<>`, `>`, `>=`, `<`, `<=` | `PublicationDate gt 2026-05-15T00:00:00.000Z` | `published > TIMESTAMP('2026-05-15T00:00:00.000Z')` |
+| `and`, `or`, `not`, `()` | `AND`, `OR`, `NOT`, `()` | `OriginDate gt 2026-05-15T00:00:00.000Z and not (OriginDate gt 2026-05-16T00:00:00.000Z)` | `"eopf:origin_datetime" > TIMESTAMP('2026-05-15T00:00:00.000Z') AND NOT ("eopf:origin_datetime" > TIMESTAMP('2026-05-16T00:00:00.000Z'))` |
+| `in` | `IN` | `Id in (2b17b57d-..., 06c91249-...)` | `externalIds IN ('rs-odata-prip:2b17b57d-...', 'rs-odata-prip:06c91249-...')` |
+| `contains`, `startswith`, `endswith` | `LIKE` | `startswith(Name,'S1A_IW_')` | `id LIKE 'S1A\_IW\_%'` |
+| `OData.CSC.Intersects(area=geography'SRID=4326;<WKT>')` | `S_INTERSECTS` | `OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((...))')` | `S_INTERSECTS(geometry, POLYGON((...)))` |
+| `Attributes/OData.CSC.<Type>Attribute/any(att:att/Name eq '<name>' and att/OData.CSC.<Type>Attribute/Value <op> <value>)` | `<STAC property> <op> <value>` | `Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')` | `constellation = 'sentinel-1'` |
+
+The specific cases are:
+
+- **`Id`** is translated into a condition on the `externalIds` with the `rs-odata-prip` scheme, e.g. `Id eq <uuid>`
+  gives `externalIds = 'rs-odata-prip:<uuid>'`.
+- **`Name`** is translated into a condition on the item `id`, without the `.zarr.zip` extension of the given value,
+  e.g. `Name eq 'S1SIWOCN_20220412T054447_0024_S139.zarr.zip'` gives `id = 'S1SIWOCN_20220412T054447_0024_S139'`. The `%` and `_` characters of the values given to
+  `contains`, `startswith` and `endswith` are escaped in the `LIKE` pattern.
+- **`ProductionType`** values are written `OData.CSC.ProductionType'<value>'`. As `systematic_production` is the
+  default value, `ProductionType eq OData.CSC.ProductionType'systematic_production'` gives
+  `("processing:lineage" = 'systematic_production' OR "processing:lineage" IS NULL)`.
+- **`ContentDate/Start`** and **`ContentDate/End`** give `start_datetime` and `end_datetime`.
+- The **attribute values** are converted as in the [attributes mapping](#attributes), e.g. `ASCENDING` gives
+  `ascending` for `sat:orbit_state`, and `A` gives `platform LIKE '%a'` for `platformSerialIdentifier`.
+- The asset properties (`ContentType`, `ContentLength`, `Checksum`) cannot be searched with the STAC API: a filter
+  on them is refused with `400 Bad Request`, as any unknown property, attribute or function.
+
+### Examples
+
+These are the examples of the [PRIP ICD][prip-icd], and their STAC equivalents:
+
+| [PRIP ICD][prip-icd] | OData query | STAC search |
+|---|---|---|
+| 3.3.1.1 | `Products?$filter=startswith(Name,'S1B_EW_')` | `search?filter=id LIKE 'S1B\_EW\_%'&sortby=+published` |
+| 3.3.1.2 | `Products?$filter=OriginDate gt 2020-05-15T00:00:00.000Z` | `search?filter="eopf:origin_datetime" > TIMESTAMP('2020-05-15T00:00:00.000Z')&sortby=+published` |
+| 3.3.1.3 | `Products?$filter=PublicationDate gt 2017-05-15T00:00:00.000Z and ProductionType eq OData.CSC.ProductionType'systematic_production'` | `search?filter=published > TIMESTAMP('2017-05-15T00:00:00.000Z') AND ("processing:lineage" = 'systematic_production' OR "processing:lineage" IS NULL)&sortby=+published` |
+| 3.3.1.4 | `Products?$filter=ContentDate/Start gt 2019-05-15T00:00:00.000Z and ContentDate/End lt 2019-05-16T00:00:00.000Z` | `search?filter=start_datetime > TIMESTAMP('2019-05-15T00:00:00.000Z') AND end_datetime < TIMESTAMP('2019-05-16T00:00:00.000Z')&sortby=+published` |
+| 3.3.1.5 | `Products?$filter=OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((...))')` | `search?filter=S_INTERSECTS(geometry, POLYGON((...)))&sortby=+published` |
+| 3.3.1.6 | `Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'S01SIWSLC')` | `search?filter="product:type" = 'S01SIWSLC'&sortby=+published` |
+| 3.3.1.7 | `Products?$orderby=PublicationDate desc&$top=1000&$count=true` | `search?sortby=-published&limit=1000` |
+
+The `filter-lang=cql2-text` parameter, the URL encoding and the conditions that exclude the unpublished items are
+omitted for clarity.
+
+## Download a product
+
+The `GET /odata/v1/Products(<Id>)/$value` endpoint ([PRIP ICD][prip-icd] 3.4):
+
+1. searches the item with this UUID in the collections the user can read
+   (`externalIds = 'rs-odata-prip:<Id>'`),
+2. checks that the user has the `download` right on its collection,
+3. redirects the user (`307 Temporary Redirect`) to a temporary
+   [presigned URL](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html) of the `.zarr.zip`
+   asset in the object storage, as the [catalog download endpoint](catalog.md#download-the-assets) does.
+
+The object storage supports the HTTP byte range requests (e.g. `Range: bytes=0-1023`) on the presigned URL, to
+resume a download or to split it into chunks, as allowed by the [PRIP ICD][prip-icd].
+
+| Status code | Case |
+|---|---|
+| `307 Temporary Redirect` | The product exists: redirection to its file. |
+| `400 Bad Request` | The `Id` is not a valid UUID. |
+| `401 Unauthorized` | The user is not authenticated, or has not the `download` right on the collection. |
+| `404 Not Found` | No item has this UUID in the collections the user can read, or its assets were deleted (product no longer available). |
+| `500 Internal Server Error` | Unexpected error. |
+
+## Not implemented
+
+The following functions of the [PRIP ICD][prip-icd] are not implemented, and are not planned:
+
+- the **catalogue export files** (3.3.3): the periodic JSON snapshots of the catalogue made available through an
+  HTTPS file interface. The catalogue export query itself (`Products?$expand=Attributes&$format=json`) is supported,
+  see [Query options](#query-options),
+- the **subscriptions** (3.5),
+- the **quotas** (`429 Too Many Requests`, 5.1.2).
+
+[prip-icd]: https://eof.esa.int/document/esa-eo-framework-eof-csc-production-interface-delivery-point-specification/

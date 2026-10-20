@@ -11,8 +11,8 @@ To copy the data into the RS-Python object storage and catalog, use the [staging
 | Service | Endpoint | Data | Swagger section |
 |---|---|---|---|
 | [CADIP](#cadip-stations) | `/cadip` | Raw data sessions of the acquisition stations | [CADIP stations](https://rspy.ops.rs-python.eu/docs#/CADIP%20stations) |
-| [AUXIP](#auxip-adgs-stations) | `/auxip` | Auxiliary data | [ADGS stations](https://rspy.ops.rs-python.eu/docs#/ADGS%20stations) |
-| [PRIP](#prip-stations) | `/prip` | Level-0, Level-1 and Level-2 products of the production services | [PRIP stations](https://rspy.ops.rs-python.eu/docs#/PRIP%20stations) |
+| [AUXIP](#auxip-adgs-instances) | `/auxip` | Auxiliary data | [ADGS stations](https://rspy.ops.rs-python.eu/docs#/ADGS%20stations) |
+| [PRIP](#prip-instances) | `/prip` | Level-0, Level-1 and Level-2 products of the production services | [PRIP stations](https://rspy.ops.rs-python.eu/docs#/PRIP%20stations) |
 
 All of them implement the same STAC API endpoints (landing page, collections, items, search, queryables,
 sortables), described in [Browse products](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/services/browse-products.md).
@@ -35,7 +35,7 @@ files:
 
 ![CADIP STAC items](../../images/cadip-stac_001.svg)
 
-## AUXIP (ADGS) stations
+## AUXIP (ADGS) instances
 
 The [Auxiliary Data Gathering Service (ADGS)](https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-AuxiliaryDataGathering)
 delivers the auxiliary data files used by the processors (orbit files, meteorological data, calibration files...)
@@ -44,7 +44,7 @@ item with a single asset, identified by the file name without its extension.
 
 ![AUXIP STAC items](../../images/auxip-stac_001.svg)
 
-## PRIP stations
+## PRIP instances
 
 The [Production service Interface delivery Point (PRIP)](https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-SystematicProduction)
 is the interface of the Copernicus production services, one per satellite. It delivers the Level-0, Level-1 and
@@ -66,7 +66,7 @@ types to the EOPF product types (e.g. `IW_SLC__1S` to `S01SIWSLC`) with the
 
 The collections of the stations are **virtual**: they are not stored in a database, but defined in the
 configuration of rs-server, to give a view of the content of a station. A collection can contain e.g. all the
-sessions of a CADIP station, or only the products of a given type from a PRIP station. They are defined in the
+sessions of a CADIP station, or only the products of a given type from a PRIP instance. They are defined in the
 `*_search_config.yaml` files of the services (e.g. in the
 [rs-server-prip Helm chart](https://github.com/RS-PYTHON/rs-helm/tree/develop/charts/rs-server-prip/config) for the
 cluster mode):
