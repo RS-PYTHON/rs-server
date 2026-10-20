@@ -139,6 +139,81 @@ The assets are not copied by the catalog: they must already be written in the ri
 GET /catalog/search?collections=copernicus:s3-l0&filter=platform='sentinel-3a'&sortby=-datetime&limit=10
 ```
 
+## Search by external identifiers
+
+The items can carry the identifiers of the product in external systems (e.g. the PRIP or AUXIP identifier of the
+original product) in their `externalIds` property, a list of `scheme` (the system) and `value` (the identifier in
+this system) objects:
+
+```json
+"externalIds": [
+  {"scheme": "prip", "value": "11111111-2222-3333-4444-555555555555"},
+  {"scheme": "auxip", "value": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+]
+```
+
+A searched identifier has one of these forms:
+
+| Searched identifier | Matching items: one of their external identifiers has... |
+|---|---|
+| `scheme:value`, e.g. `prip:1111...` | this scheme and this value. |
+| `value`, e.g. `1111...` | this value, whatever its scheme. A value containing a colon must be written `:value`, e.g. `:urn:uuid:1111...`, because what is before the first colon is the scheme. |
+| `scheme:`, e.g. `prip:` | this scheme, whatever its value. |
+
+They can be searched with the `externalIds` search parameter, which finds the items matching **any** of the given
+identifiers, separated by commas (or given as a list in a `POST` request). It is combined with the other search
+parameters, including the `filter`, with a logical AND:
+
+```http
+GET /catalog/search?collections=copernicus:s3-l0&externalIds=prip:1111...,auxip:aaaa...
+```
+
+Or with a CQL2 filter on the `externalIds` property, with these operators only:
+
+| CQL2 filter | Matching items |
+|---|---|
+| `externalIds = 'prip:1111...'` | Items with this identifier. |
+| `externalIds IN ('prip:1111...', 'auxip:')`, `A_OVERLAPS(externalIds, ('prip:1111...', 'auxip:'))` | Items with any of these identifiers. |
+| `A_CONTAINS(externalIds, ('prip:', 'auxip:aaaa...'))` | Items with all of these identifiers. |
+
+These conditions can be combined with any other condition with `AND`, `OR` and `NOT`. As for any other property,
+an item without `externalIds` never matches a condition on them, even negated: `NOT (externalIds = 'prip:1111...')`
+only finds the items that have external identifiers, none of them being `prip:1111...`. Other operators (`LIKE`,
+`<>`, `IS NULL`...) are refused with a `400 Bad Request` error.
+
+These searches are efficient whatever the number of items in the catalog and the number of matching items: they
+are served by an index, and the results are paginated as any other search.
+
+### Implementation
+
+pgstac (>= 0.10) cannot search inside a list of objects with the standard CQL2 operators: its queryables only accept
+a JSON key path, and its array operators compare whole elements. However, each of the searches above is a
+[jsonb containment](https://www.postgresql.org/docs/current/datatype-json.html#JSON-CONTAINMENT), e.g.
+`externalIds @> '[{"scheme": "prip"}]'` for `prip:`, that a GIN index serves efficiently. So:
+
+1. When the catalog database is deployed (by [rs-server-deployment](https://github.com/RS-PYTHON/rs-server-deployment)
+   `apps/01-cloudnative-pgstac`, or by the [rs-demo](https://github.com/RS-PYTHON/rs-demo) local mode
+   `local-mode/scripts/pgstac_post_actions.py`):
+    - a GIN index is created on `content->'properties'->'externalIds'` of the items. It is created on
+      `pgstac.items`, so that PostgreSQL creates it on every partition, and on `pgstac.queryable_index_template`, so
+      that pgstac never drops it from the partitions as an unknown index.
+    - a custom CQL2 operator, `external_ids_contains`, is registered in the `pgstac.cql2_ops` table, which gives the
+      SQL template of each CQL2 operator. Its template is exactly the indexed expression:
+      `(content->'properties'->'externalIds' @> %s::jsonb)`. It is registered again at each deployment, in case a
+      pgstac migration removed it.
+2. Before forwarding a search to pgstac, the catalog translates the `externalIds` parameter and conditions into this
+   operator, e.g. `externalIds IN ('prip:1111...', 'auxip:')` becomes:
+    ```json
+    {"op": "or", "args": [
+      {"op": "external_ids_contains", "args": [[{"scheme": "prip", "value": "1111..."}]]},
+      {"op": "external_ids_contains", "args": [[{"scheme": "auxip"}]]}
+    ]}
+    ```
+3. pgstac translates the operator with its template, quoting the argument, and the search is served by the index.
+
+The details are in the `rs_server_catalog.data_management.external_ids` module. The items are stored unchanged, and
+the size of the SQL query only depends on the number of searched identifiers.
+
 ## Download the assets
 
 The `GET /catalog/collections/{owner}:{collection}/items/{item_id}/download/{asset}` endpoint checks that you have
