@@ -24,8 +24,6 @@ from typing import Any
 import fastapi
 import pytest
 
-from tests.helpers import a_feature
-
 
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
@@ -74,6 +72,71 @@ class TestCatalogSearchEndpoint:
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
 
+    @pytest.mark.parametrize("method", ["POST", "GET"])
+    @pytest.mark.parametrize(
+        "bbox, expected_count",
+        [
+            # The existing toto_S1_L1 fixture contains two items sharing a 2D footprint
+            # around (-94.62, 37.045); STAC treats both as being at elevation zero.
+            pytest.param([-95, 37, -94, 38], 2, id="2d"),
+            pytest.param([-95, 37, 0, -94, 38, 1], 2, id="3d-includes-zero"),
+            pytest.param([-95, 37, 0, -94, 38, 0], 2, id="3d-zero-height"),
+            pytest.param([-95, 37, 1, -94, 38, 2], 0, id="3d-above-zero"),
+            pytest.param([-95, 37, -2, -94, 38, -1], 0, id="3d-below-zero"),
+            pytest.param([100, 0, 0, 105, 1, 1], 0, id="bug-1230"),
+            pytest.param([-94.62, 37.045, 0, -94.62, 37.045, 1], 2, id="point"),
+            pytest.param([-94.62, 37, 0, -94.62, 38, 1], 2, id="vertical-line"),
+            pytest.param([-95, 37.045, -94, 37.045], 2, id="horizontal-line"),
+            # The wrapped interval includes the fixture via [-180, -90], not [-90, 170].
+            pytest.param([170, 37, 0, -90, 38, 1], 2, id="antimeridian-polygons"),
+            pytest.param([170, 37.045, -90, 37.045], 2, id="antimeridian-lines"),
+            pytest.param([180, 37.045, 0, -180, 37.045, 1], 0, id="antimeridian-points"),
+            # Starting at +180 collapses one split half to a line; the other remains a polygon.
+            pytest.param([180, 37, 0, -90, 38, 1], 2, id="antimeridian-line-and-polygon"),
+        ],
+    )
+    def test_search_endpoint_with_bbox(self, client, method, bbox, expected_count):
+        """Search the existing 2D items with rectangular, degenerate and 3D bboxes."""
+        if method == "POST":
+            response = client.post("/catalog/search", json={"collections": ["toto_S1_L1"], "bbox": bbox})
+        else:
+            response = client.get(
+                "/catalog/search",
+                params={"collections": "toto_S1_L1", "bbox": ",".join(map(str, bbox))},
+            )
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert content["type"] == "FeatureCollection"
+        assert len(content["features"]) == expected_count
+        if len(bbox) == 6 and not bbox[2] <= 0 <= bbox[5]:
+            assert content["numberMatched"] == content["numberReturned"] == 0
+            assert not any(link["rel"] in ("next", "prev") for link in content["links"])
+
+    @pytest.mark.parametrize("method", ["POST", "GET"])
+    @pytest.mark.parametrize(
+        "bbox, description",
+        [
+            # Strings keep the POST body valid JSON; the request model converts them to floats.
+            pytest.param(["nan", 37, -94, 38], "coordinates must be finite numbers.", id="nan"),
+            pytest.param([-95, 37, 0, -94, 38, "inf"], "coordinates must be finite numbers.", id="infinity"),
+            # The upstream validator misses west > 180, so this reaches our WGS84 check.
+            pytest.param([181, 37, 180, 38], "coordinates must be within WGS84 bounds.", id="longitude-out-of-range"),
+        ],
+    )
+    def test_search_endpoint_with_invalid_bbox(self, client, method, bbox, description):
+        """Reject non-finite coordinates and bounds not rejected by the request model."""
+        if method == "POST":
+            response = client.post("/catalog/search", json={"collections": ["toto_S1_L1"], "bbox": bbox})
+        else:
+            response = client.get(
+                "/catalog/search",
+                params={"collections": "toto_S1_L1", "bbox": ",".join(map(str, bbox))},
+            )
+
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        assert response.json()["description"] == f"Invalid bbox: {description}"
+
     def test_search_endpoint_without_owner_id(self, client):
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
         response = client.get("/catalog/search", params=test_params)
@@ -119,18 +182,6 @@ class TestCatalogSearchEndpoint:
         }
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_200_OK
-
-    def supports_external_ids(self, client) -> bool:
-        response = client.get("/catalog/queryables")
-        if response.status_code != fastapi.status.HTTP_200_OK:
-            return False
-        return "externalIds" in response.json().get("properties", {})
-
-    def add_feature_with_external_ids(self, client, item_id: str, external_id: str):
-        feature = a_feature("toto", item_id, "S1_L1").properties
-        feature["properties"]["externalIds"] = [{"scheme": "auxip", "value": external_id}]
-        response = client.post("/catalog/collections/toto:S1_L1/items", json=feature)
-        assert response.status_code in (fastapi.status.HTTP_200_OK, fastapi.status.HTTP_201_CREATED)
 
     def test_search_in_unexisting_collection(self, client):
         """Test that if the collection does not exist, an HTTP 404 error is returned."""
@@ -330,12 +381,28 @@ class TestCatalogSearchEndpointWithTemporalFilters:
     """This class contains integration tests for the endpoint '/catalog/search' using advanced temporal filters.
 
     The filters used are the ones defined here:
-        https://pforge-exchange2.astrium.eads.net/confluence/display/COPRS/4.+External+data+selection+policies
+        https://home.rs-python.eu/rs-documentation/rs-client-libraries/docs/doc/flows/tasktable-payload/#auxiliary-data-selection-policies
 
     The test data follows the specifications examples. The time intervals used for the tests are :
         t0-dt0 = 2025-03-01T00:00:00Z
         t1+dt1 = 2025-06-01T00:00:00Z
     """
+
+    def test_search_endpoint_with_odata(self, client, temporal_filters_test_data):
+        d1 = "2000-01-01T00:00:00Z"
+        d2 = "2999-01-01T00:00:00Z"
+
+        # Search with odata filter on the same dates
+        odata_params = {"filter": f"PublicationDate gt {d1} and PublicationDate lt {d2}"}
+
+        response = client.get("/odata/v1/Products?", params=odata_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        content = json.loads(response.content)
+        assert len(content) == 4
+
+        # # todo: have collections with different published dates to make sure the filter is correct
+        # for feat in content["features"]:
+        #     assert d1 < feat["properties"]["published"] < d2
 
     @pytest.mark.parametrize(
         "method",

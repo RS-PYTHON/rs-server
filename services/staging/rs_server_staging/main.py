@@ -261,7 +261,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         - If `CLUSTER_MODE` is enabled in settings, the function attempts to connect to an existing
           Dask cluster via the `Gateway`. If no existing cluster is found, a new one is created.
         - If `CLUSTER_MODE` is disabled, a `LocalCluster` is created and scaled to 8 workers.
-        - The Dask cluster information is stored in `app.extra["dask_cluster"]`.
+        - The Dask cluster information is stored in `app.state.dask_cluster`.
 
     Shutdown Logic:
         - When the application shuts down, the Dask cluster is closed if it was a `LocalCluster`.
@@ -283,12 +283,12 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
 
-    fastapi_app.extra["process_manager"] = process_manager
-    # fastapi_app.extra["db_table"] = db.table("jobs")
-    fastapi_app.extra["dask_cluster"] = cluster
+    fastapi_app.state.process_manager = process_manager
+    # fastapi_app.state.db_table = db.table("jobs")
+    fastapi_app.state.dask_cluster = cluster
     # token refereshment logic
-    fastapi_app.extra["station_token_list"] = []
-    fastapi_app.extra["station_token_list_lock"] = threading.Lock()
+    fastapi_app.state.station_token_list = []
+    fastapi_app.state.station_token_list_lock = threading.Lock()
 
     # Init objects for dependency injection
     common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
@@ -450,10 +450,10 @@ async def execute_process(
         processor = processors[processor_name]
         _, staging_status = await processor(
             request,
-            app.extra["process_manager"],
-            app.extra["dask_cluster"],
-            app.extra["station_token_list"],
-            app.extra["station_token_list_lock"],
+            app.state.process_manager,
+            app.state.dask_cluster,
+            app.state.station_token_list,
+            app.state.station_token_list_lock,
         ).execute(valid_body["inputs"])
 
         # Get identifier of the current job
@@ -465,7 +465,7 @@ async def execute_process(
             "dismissed": HTTP_500_INTERNAL_SERVER_ERROR,
         }
         id_key = [status for status in status_dict if status in staging_status][0]
-        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status[id_key]))
+        formatted_job_data = format_job_data(app.state.process_manager.get_job(staging_status[id_key]))
         validate_response(request, formatted_job_data, HTTP_201_CREATED)
         return JSONResponse(status_code=HTTP_201_CREATED, content=formatted_job_data)
     return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Processor {processor_name!r} not found")
@@ -476,7 +476,7 @@ async def execute_process(
 async def get_job_status_endpoint(request: Request, job_id=Annotated[str, Path(..., title="The ID of the job")]):
     """Used to get status of processing job."""
     try:
-        job = app.extra["process_manager"].get_job(job_id)
+        job = app.state.process_manager.get_job(job_id)
     except JobNotFoundError:  # pylint: disable=W0718
         # Handle case when job_id is not found
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
@@ -492,7 +492,7 @@ async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
         # Generate an output conform to OGC process specifications
-        formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
+        formatted_jobs_data = format_jobs_data(app.state.process_manager.get_jobs())
         validate_response(request, formatted_jobs_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
     except Exception as e:  # pylint: disable=W0718
@@ -504,13 +504,13 @@ async def get_jobs_endpoint(request: Request):
 async def delete_job_endpoint(request: Request, job_id=Annotated[str, Path(..., title="The ID of the job to delete")]):
     """Deletes a specific job from the database."""
     try:
-        job = app.extra["process_manager"].get_job(job_id)
+        job = app.state.process_manager.get_job(job_id)
     # Handle case when job_id is not found
     except JobNotFoundError:  # pylint: disable=W0718
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
 
     auth_validation("dismiss", job["processID"], request=request, staging_process=True)
-    app.extra["process_manager"].delete_job(job_id)
+    app.state.process_manager.delete_job(job_id)
     # Create job response with a status message to confirm the job deletion
     job["message"] = f"Job {job_id} deleted successfully"
     formatted_job_data = format_job_data(job)
@@ -529,7 +529,7 @@ async def get_specific_job_result_endpoint(
     """Get result from a specific job."""
     try:
         # Query the database to find the job by job_id
-        job = app.extra["process_manager"].get_job(job_id)
+        job = app.state.process_manager.get_job(job_id)
     except JobNotFoundError:
         return JSONResponse(status_code=HTTP_404_NOT_FOUND, content=f"Job with ID {job_id} not found")
 

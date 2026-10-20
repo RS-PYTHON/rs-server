@@ -1,0 +1,64 @@
+' Copyright 2023-2026 Airbus, CS Group
+'
+' Licensed under the Apache License, Version 2.0 (the "License");
+' you may not use this file except in compliance with the License.
+' You may obtain a copy of the License at
+'
+'     http://www.apache.org/licenses/LICENSE-2.0
+'
+' Unless required by applicable law or agreed to in writing, software
+' distributed under the License is distributed on an "AS IS" BASIS,
+' WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+' See the License for the specific language governing permissions and
+' limitations under the License.
+
+@startuml stac-everywhere
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam rectangle {
+  BackgroundColor #F5F9FA
+  BorderColor #00796B
+}
+skinparam component {
+  BackgroundColor #E0F2F1
+  BorderColor #00796B
+}
+skinparam cloud {
+  BackgroundColor #EDE7F6
+  BorderColor #5E35B1
+}
+skinparam database {
+  BackgroundColor #FFF8E1
+  BorderColor #F9A825
+}
+
+actor "End users" as users
+rectangle "Sentinel processing workflow\n(Prefect flow, rs-client-libraries)" as flow {
+  component "1. Find the raw and auxiliary\ninput data in the CSC\n(STAC search)" as s1
+  component "2. Stage the input data\ninto RS-Python\n(STAC + OGC API)" as s2
+  component "3. Find the input data\nin RS-Python\n(STAC search)" as s3
+  component "4. Run the processors\non Dask\n(OGC API)" as s4
+  component "5. Publish the output\nproducts in RS-Python\n(STAC transactions)" as s5
+}
+rectangle "RS-Python services" {
+  component "External data sources\nSTAC API\n(CADIP, AUXIP, PRIP)" as eds
+  component "RS-Python catalog\nSTAC API\n(raw, auxiliary,\nL0, L1, L2 data)" as catalog
+  database "Object storage" as s3db
+}
+cloud "Copernicus ground segment\n(acquisition stations, auxiliary data,\nproduction services, archives)" as csc
+
+s1 --> eds : STAC
+s2 --> eds : STAC
+s2 --> catalog : STAC
+s3 --> catalog : STAC
+s5 --> catalog : STAC
+eds --> csc : OData
+catalog --> s3db
+users --> catalog : "6. Get the products\n(STAC)"
+s1 -[hidden]down-> s2
+s2 -[hidden]down-> s3
+s3 -[hidden]down-> s4
+s4 -[hidden]down-> s5
+@enduml

@@ -1,342 +1,255 @@
+# Catalog
 
-Catalog
--------
+The **rs-server-catalog** service is a [STAC API](https://github.com/radiantearth/stac-api-spec) of the products
+managed by RS-Python: raw data sessions, auxiliary files, Level-0, Level-1 and Level-2 products. It allows to
+create, read, update and delete (CRUD) collections and items, and to search them with spatial, temporal and
+metadata criteria.
 
-The following section groups all the endpoints used to
-interact with a [STAC](https://stacspec.org/)-compatible catalog of Sentinel products, auxiliary files and CADU chunks.
+It is implemented with [stac-fastapi-pgstac](https://github.com/stac-utils/stac-fastapi-pgstac), the metadata being
+stored in a [PostgreSQL](https://www.postgresql.org/) database with the [pgstac](https://github.com/stac-utils/pgstac)
+schema, and the assets in the S3 object storage. RS-Python adds on top of it:
 
----
+- the **ownership** of the collections and the **authorisation** checks,
+- the checks of the **assets** in the object storage, their checksums, and their **download** with temporary URLs,
+- the **timestamps** and the **lifecycle** of the items, see [Catalog data model and lifecycle](data-model.md).
 
-### STAC Item
+The main use cases are:
 
-A STAC Item represents a single geospatial
-asset or dataset. Items are built upon community [extensions](https://stac-extensions.github.io/) including the eo, eopf, sar, sat, processing, proj and
-timestamps extensions. It encapsulates metadata describing the asset,
-including its spatial and temporal extent, properties, and links to
-associated data files. STAC Items provide a standardized way to
-describe individual geospatial datasets, making it easier to discover,
-access, and use such data across different platforms and tools.
+- controlling the user access to the STAC collections,
+- uploading new datasets into the catalog, with their metadata and asset references (this is done by the
+  [staging](staging.md) and by the processing flows),
+- searching the data with spatial, temporal or thematic criteria,
+- accessing and downloading the assets,
+- managing and updating the metadata of existing items,
+- visualising the data, with the catalog [STAC browser](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/services/browse-products.md#stac-browsers)
+  or any STAC-compatible application.
 
----
+## Collections and ownership
 
-### STAC Collection
+Each collection belongs to an **owner**, a user of the platform. Its identifier in the API is
+`<owner>:<collection>`, e.g. `copernicus:s3-l0`. When the owner is omitted, e.g. `s3-l0`, the owner is the
+authenticated user (the user of the API key or of the OAuth2 session). The owner is also written in the `owner`
+property of the collections and items ([ownership STAC extension](https://github.com/RS-PYTHON/ownership-stac-extension)).
 
-A STAC Collection is a logical grouping of related STAC Features. It
-serves as a container for organizing and categorizing similar datasets
-based on common characteristics, themes, or purposes. Collections can
-represent various geospatial data themes such as satellite imagery,
-aerial photography, or land cover classifications. They provide a
-structured framework for managing and querying multiple related datasets
-collectively, simplifying data organization and access workflows.
+The owner has all the rights on its collections. The other users need the
+`rs_catalog_<owner>:<collection>_<read|write|download>` roles, see
+[User rights](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/getting-started/user-rights.md#catalog).
 
----
+> **Note:** internally, the collections are stored in pgstac as `<owner>_<collection>`, because pgstac does not
+> handle the ownership. This internal identifier is never returned by the API.
 
-Using the endpoints described below, a user shall be able to:
+## Endpoints
 
--   Create / Read / Update / Delete a STAC item.
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/catalog/` | Landing page, with links to the collections you can read. |
+| `GET` | `/catalog/conformance` | Conformance classes. |
+| `GET` | `/catalog/collections` | List the collections you can read. |
+| `POST` | `/catalog/collections` | Create a collection. |
+| `GET`, `PUT`, `PATCH`, `DELETE` | `/catalog/collections/{owner}:{collection}` | Read, replace, update or delete a collection (and its items). |
+| `GET` | `/catalog/collections/{owner}:{collection}/items` | Search the items of a collection. |
+| `POST` | `/catalog/collections/{owner}:{collection}/items` | Add an item (or an item collection). |
+| `POST` | `/catalog/collections/{owner}:{collection}/bulk_items` | Add several items at once ([bulk transactions](https://stac-utils.github.io/stac-fastapi/)). |
+| `GET`, `PUT`, `PATCH`, `DELETE` | `/catalog/collections/{owner}:{collection}/items/{item_id}` | Read, replace, update or delete an item. |
+| `GET` | `/catalog/collections/{owner}:{collection}/items/{item_id}/download/{asset}` | Download an asset, see [Download](#download-the-assets). |
+| `GET`, `POST` | `/catalog/search` | Search the items of all or some collections. |
+| `GET` | `/catalog/queryables`, `/catalog/collections/{owner}:{collection}/queryables` | Properties that can be used in the filters. |
+| `GET` | `/odata/v1/Products` | Search the products with the OData PRIP interface, see [OData PRIP interface](odata-mapping.md). |
+| `GET` | `/odata/v1/Products(<Id>)/$value` | Download a product by its UUID with the OData PRIP interface. |
 
--   Create / Read / Update / Delete a collection of STAC items.
+The search parameters (`collections`, `ids`, `datetime`, `bbox`, `filter`, `sortby`, `limit`...) are described in
+[Browse products](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/services/browse-products.md#search-parameters).
+The detailed description of the endpoints is in the [Swagger page](https://rspy.ops.rs-python.eu/docs#/Catalog).
 
--   Search details of existing items and collections.
+The STAC API extensions implemented by the catalog are:
+
+| Extension | Usage |
+|---|---|
+| [Transaction](https://github.com/stac-api-extensions/transaction) and [Collection Transaction](https://github.com/stac-api-extensions/collection-transaction) | Create, update and delete the items and the collections (`POST`, `PUT`, `PATCH`, `DELETE`). |
+| [Bulk Transaction](https://stac-utils.github.io/stac-fastapi/) | Efficient insertion of many items. |
+| [Filter](https://github.com/stac-api-extensions/filter) | Search with [CQL2](https://docs.ogc.org/is/21-065r2/21-065r2.html) filters and queryables. Used e.g. to [select the auxiliary files](https://github.com/RS-PYTHON/rs-client-libraries/blob/develop/docs/doc/flows/tasktable-payload.md#auxiliary-data-selection-policies) needed by the processors. |
+| [Sort](https://github.com/stac-api-extensions/sort) | Sort the search results, e.g. to select the most recent auxiliary file. |
+
+## Examples
 
 ### Create a collection
 
-This endpoint converts a request with a correct JSON body collection
-descriptor to a database entry.
+```http
+POST /catalog/collections
+```
 
-    POST /catalog/collections
+```json
+{
+  "id": "my-collection",
+  "type": "Collection",
+  "description": "My collection",
+  "stac_version": "1.1.0",
+  "license": "other",
+  "extent": {
+    "spatial": {"bbox": [[-180, -90, 180, 90]]},
+    "temporal": {"interval": [["2026-01-01T00:00:00Z", null]]}
+  },
+  "links": []
+}
+```
 
-    {
-        "id": "test_collection",
-        "type": "Collection",
-        "description": "Collection description",
-        "stac_version": "1.1.0",
-        "owner": "test_owner"
+The collection is created for the authenticated user. To create it for another owner, add an `"owner": "<owner>"`
+field (you need the `write` right on it).
+
+### Add an item
+
+```http
+POST /catalog/collections/my-collection/items
+```
+
+```json
+{
+  "type": "Feature",
+  "stac_version": "1.1.0",
+  "stac_extensions": ["https://stac-extensions.github.io/eopf/v1.0.0/schema.json"],
+  "id": "S1SIWOCN_20220412T054447_0024_S139",
+  "collection": "my-collection",
+  "geometry": {"type": "Polygon", "coordinates": [[[-94.63, 37.06], [-94.63, 37.03], [-94.60, 37.03], [-94.60, 37.06], [-94.63, 37.06]]]},
+  "bbox": [-94.63, 37.03, -94.60, 37.06],
+  "properties": {
+    "datetime": "2022-04-12T05:44:47Z",
+    "product:type": "S01SIWOCN"
+  },
+  "assets": {
+    "zarr": {
+      "href": "s3://<bucket>/<owner>/my-collection/S1SIWOCN_20220412T054447_0024_S139.zarr",
+      "roles": ["data"]
     }
+  },
+  "links": []
+}
+```
 
-### Get a collection
+When an item is created or replaced:
 
-This endpoint returns a collection details based on parameters given in
-request. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
-user is used with the following priority:
+- the `product:type` property is mandatory (`403 Forbidden` otherwise),
+- the assets must exist in the object storage: the catalog checks them and computes their `file:checksum`. MD5 is
+  the only hash function handled by the catalog: `file:checksum` is the MD5 of the file, encoded as a
+  [multihash](https://github.com/multiformats/multihash) as required by the
+  [File](https://github.com/stac-extensions/file#asset--link-object-fields) extension, e.g.
+  `d50110e8a303bf3d85200514f727db60e7db65` (`d501` for MD5, `10` for the 16 bytes of the digest, then the digest).
+  MD5 is the checksum required by the [OData PRIP interface](odata-mapping.md#checksum), and the File extension
+  only stores one checksum per asset,
+- the catalog adds the `owner` property, the `created`, `updated`, `published` and `expires` timestamps, see
+  [Catalog data model and lifecycle](data-model.md#data-lifecycle).
 
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
+The assets are not copied by the catalog: they must already be written in the right bucket, which is what the
+[staging](staging.md) and the processing flows do.
 
-    GET /catalog/collections/{[ownerId:]collectionId}
+### Search
 
-    {
-      "collections": [
-        {
-          "id": "test_collection",
-          "type": "Collection",
-          "owner": "test_owner",
-          "description": "Collection description",
-          "stac_version": "1.1.0",
-          "links": [
-            {
-              "rel": "items",
-              "type": "application/geo+json",
-              "href": "http://testserver/catalog/test_owner/collections/test_collection/items"
-            },
-            {
-              "rel": "parent",
-              "type": "application/json",
-              "href": "http://testserver/catalog/test_owner"
-            },
-            {
-              "rel": "root",
-              "type": "application/json",
-              "href": "http://testserver/catalog/test_owner"
-            },
-            {
-              "rel": "self",
-              "type": "application/json",
-              "href": "http://testserver/catalog/test_owner/collections/test_collection"
-            }
-          ]
-        }
-      ],
-      "links": [
-        {
-          "rel": "root",
-          "type": "application/json",
-          "href": "http://testserver/catalog/test_owner"
-        },
-        {
-          "rel": "parent",
-          "type": "application/json",
-          "href": "http://testserver/catalog/test_owner"
-        },
-        {
-          "rel": "self",
-          "type": "application/json",
-          "href": "http://testserver/catalog/test_owner/collections"
-        }
-      ]
-    }
+```http
+GET /catalog/search?collections=copernicus:s3-l0&filter=platform='sentinel-3a'&sortby=-datetime&limit=10
+```
 
-### Update a collection
+## Search by external identifiers
 
-This endpoint updates a collection from STAC if it exists and request
-body json data is STAC compatible. The `ownerId` parameter is optional. If this is missing from the endpoint,
-a default user is used with the following priority:
+The items can carry the identifiers of the product in external systems (e.g. the PRIP or AUXIP identifier of the
+original product) in their `externalIds` property
+([External IDs](https://github.com/stac-extensions/external-ids) extension), a list of `scheme` (the system) and
+`value` (the identifier in this system) objects:
 
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
+```json
+"externalIds": [
+  {"scheme": "prip", "value": "11111111-2222-3333-4444-555555555555"},
+  {"scheme": "auxip", "value": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+]
+```
 
-    PUT /catalog/collections/{[ownerId:]collectionId}
+A searched identifier has one of these forms:
 
-    {
-        "id": "test_collection",
-        "type": "Collection",
-        "description": "Updated collection description",
-        "stac_version": "1.1.0",
-        "owner": "test_owner"
-    }
+| Searched identifier | Matching items: one of their external identifiers has... |
+|---|---|
+| `scheme:value`, e.g. `prip:1111...` | this scheme and this value. |
+| `value`, e.g. `1111...` | this value, whatever its scheme. A value containing a colon must be written `:value`, e.g. `:urn:uuid:1111...`, because what is before the first colon is the scheme. |
+| `scheme:`, e.g. `prip:` | this scheme, whatever its value. |
 
-### Delete a collection
+They can be searched with the `externalIds` search parameter, which finds the items matching **any** of the given
+identifiers, separated by commas (or given as a list in a `POST` request). It is combined with the other search
+parameters, including the `filter`, with a logical AND:
 
-This endpoint deletes a collection from STAC if it exists and owner has
-right to perform this action. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
-user is used with the following priority:
+```http
+GET /catalog/search?collections=copernicus:s3-l0&externalIds=prip:1111...,auxip:aaaa...
+```
 
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
+Or with a CQL2 filter on the `externalIds` property, with these operators only:
 
-    DELETE /catalog/collections/{[ownerId:]collectionId}
+| CQL2 filter | Matching items |
+|---|---|
+| `externalIds = 'prip:1111...'` | Items with this identifier. |
+| `externalIds IN ('prip:1111...', 'auxip:')`, `A_OVERLAPS(externalIds, ('prip:1111...', 'auxip:'))` | Items with any of these identifiers. |
+| `A_CONTAINS(externalIds, ('prip:', 'auxip:aaaa...'))` | Items with all of these identifiers. |
 
-### Add an Item
+These conditions can be combined with any other condition with `AND`, `OR` and `NOT`. As for any other property,
+an item without `externalIds` never matches a condition on them, even negated: `NOT (externalIds = 'prip:1111...')`
+only finds the items that have external identifiers, none of them being `prip:1111...`. Other operators (`LIKE`,
+`<>`, `IS NULL`...) are refused with a `400 Bad Request` error.
 
-This endpoint converts a request with a correct JSON body feature
-descriptor to a database entry. RS-Server Backend also move assets
-between s3 storages and updates hypertext reference of each STAC Feature
-with s3 locations. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
-user is used with the following priority:
+These searches are efficient whatever the number of items in the catalog and the number of matching items: they
+are served by an index, and the results are paginated as any other search.
 
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
+### Implementation
 
-Item creation (POST) and replacement (PUT) must include a non-empty string in `properties["product:type"]`
-(STAC-CORE-ITEM-REQ-0270). Missing, null, or blank values return HTTP 403 Forbidden
-with a message identifying the required property.
+pgstac (>= 0.10) cannot search inside a list of objects with the standard CQL2 operators: its queryables only accept
+a JSON key path, and its array operators compare whole elements. However, each of the searches above is a
+[jsonb containment](https://www.postgresql.org/docs/current/datatype-json.html#JSON-CONTAINMENT), e.g.
+`externalIds @> '[{"scheme": "prip"}]'` for `prip:`, that a GIN index serves efficiently. So:
 
-    POST /catalog/collections/{[ownerId:]collectionId}/items
+1. When the catalog database is deployed (by [rs-server-deployment](https://github.com/RS-PYTHON/rs-server-deployment)
+   `apps/01-cloudnative-pgstac`, or by the [rs-demo](https://github.com/RS-PYTHON/rs-demo) local mode
+   `local-mode/scripts/pgstac_post_actions.py`):
+    - a GIN index is created on `content->'properties'->'externalIds'` of the items. It is created on
+      `pgstac.items`, so that PostgreSQL creates it on every partition, and on `pgstac.queryable_index_template`, so
+      that pgstac never drops it from the partitions as an unknown index.
+    - a custom CQL2 operator, `external_ids_contains`, is registered in the `pgstac.cql2_ops` table, which gives the
+      SQL template of each CQL2 operator. Its template is exactly the indexed expression:
+      `(content->'properties'->'externalIds' @> %s::jsonb)`. It is registered again at each deployment, in case a
+      pgstac migration removed it.
+2. Before forwarding a search to pgstac, the catalog translates the `externalIds` parameter and conditions into this
+   operator, e.g. `externalIds IN ('prip:1111...', 'auxip:')` becomes:
+    ```json
+    {"op": "or", "args": [
+      {"op": "external_ids_contains", "args": [[{"scheme": "prip", "value": "1111..."}]]},
+      {"op": "external_ids_contains", "args": [[{"scheme": "auxip"}]]}
+    ]}
+    ```
+3. pgstac translates the operator with its template, quoting the argument, and the search is served by the index.
 
-    {
-      "collection": "S1_L2",
-      "assets": {
-        "zarr": {
-          "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-          "roles": [
-            "data"
-          ]
-        },
-        "cog": {
-          "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-          "roles": [
-            "data"
-          ]
-        },
-        "ncdf": {
-          "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-          "roles": [
-            "data"
-          ]
-        }
-      },
-      "bbox": [0],
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-          [[-94.6334839, 37.0595608],
-            [-94.6334839, 37.0332547],
-            [-94.6005249, 37.0332547],
-            [-94.6005249, 37.0595608],
-            [-94.6334839, 37.0595608]]
-        ]
-      },
-      "id": "S1SIWOCN_20220412T054447_0024_S139",
-      "links": [
-        {
-          "href": "./.zattrs.json",
-          "rel": "self",
-          "type": "application/json"
-        }
-      ],
-      "other_metadata": {},
-      "properties": {
-        "product:type": "S1SIWOCN",
-        "gsd": 0.5971642834779395,
-        "width": 2500,
-        "height": 2500,
-        "datetime": "2000-02-02T00:00:00Z",
-        "proj:epsg": 3857,
-        "orientation": "nadir"
-      },
-      "stac_extensions": [
-        "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
-      ],
-      "stac_version": "1.1.0",
-      "type": "Feature"
-    }
+The details are in the `rs_server_catalog.data_management.external_ids` module. The items are stored unchanged, and
+the size of the SQL query only depends on the number of searched identifiers.
 
-### Get an Item
+## OData PRIP interface
 
-This endpoint returns a feature details based on parameters given in
-request. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
-user is used with the following priority:
+The catalog also exposes its products with the OData interface of the ESA Production Interface Delivery Points
+(PRIP), as specified by the
+[PRIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-production-interface-delivery-point-specification/).
+Each item gets a UUID, generated once by the catalog when it is added, and stored in its `externalIds` with the
+`rs-odata-prip` scheme. See [OData PRIP interface of the catalog](odata-mapping.md) for the mapping between the STAC
+items and the OData products.
 
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
+## Download the assets
 
-    GET /catalog/collections/{[ownerId:]collectionId}/items/{featureID}
+The `GET /catalog/collections/{owner}:{collection}/items/{item_id}/download/{asset}` endpoint checks that you have
+the `download` right on the collection, then redirects you to a temporary
+[presigned URL](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html) of the asset in the
+object storage. The thumbnails of the items get an `alternate` link to this endpoint, so they can be displayed by
+the STAC browsers.
 
-    {
-      "id": "S1SIWOCN_20220412T054447_0024_S139",
-      "bbox": [0],
-      "type": "Feature",
-      "links": [
-        {
-          "rel": "collection",
-          "type": "application/json",
-          "href": "http://testserver/catalog/fixture_owner/collections/fixture_collection"
-        },
-        {
-          "rel": "parent",
-          "type": "application/json",
-          "href": "http://testserver/catalog/fixture_owner/collections/fixture_collection"
-        },
-        {
-          "rel": "root",
-          "type": "application/json",
-          "href": "http://testserver/catalog/fixture_owner"
-        },
-        {
-          "rel": "self",
-          "type": "application/geo+json",
-          "href": "http://testserver/catalog/fixture_owner/collections/fixture_collection/items/new_feature_id"
-        }
-      ],
-      "assets": {
-        "cog": {
-          "href": "s3://catalog-bucket/correct_location/some_file.cog.zip"
-          "roles": [
-            "data"
-          ],
-          "alternate": {
-            "https": {
-              "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.cog.zip/download/cog",
-            }
-          }
-        },
-        "ncdf": {
-          "href": "s3://catalog-bucket/correct_location/some_file.ncdf.zip"
-          "roles": [
-            "data"
-          ],
-          "alternate": {
-            "https": {
-              "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.ncdf.zip/download/ncdf",
-            }
-          }
-        },
-        "zarr": {
-          "href": "s3://catalog-bucket/correct_location/some_file.zarr.zip"
-          "roles": [
-            "data"
-          ],
-          "alternate": {
-            "https": {
-              "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.zarr.zip/download/zarr",
-            }
-          }
-        }
-      },
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [
-          [[-94.6334839, 37.0595608],
-            [-94.6334839, 37.0332547],
-            [-94.6005249, 37.0332547],
-            [-94.6005249, 37.0595608],
-            [-94.6334839, 37.0595608]]
-        ]
-      },
-      "collection": "fixture_collection",
-      "properties": {
-        "gsd": 0.5971642834779395,
-        "owner": "fixture_owner",
-        "width": 2500,
-        "height": 2500,
-        "datetime": "2000-02-02T00:00:00Z",
-        "proj:epsg": 3857,
-        "orientation": "nadir"
-      },
-      "stac_version": "1.1.0",
-      "stac_extensions": [
-        "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
-      ]
-    }
+You can also read the assets directly from the object storage with your own S3 credentials, see
+[OSAM](osam.md) and [Download the assets](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/services/browse-products.md#download-the-assets).
 
-### Update an Item
+## Configuration
 
-This endpoint updates content of a feature is request JSON data is
-completely STAC-compatible. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
-user is used with the following priority:
+| Environment variable | Description |
+|---|---|
+| `RSPY_DATA_LIFECYCLE_PERIOD` | Period, in seconds, of the task that unpublishes the expired items (see [Data lifecycle](data-model.md#data-lifecycle)). Negative to deactivate it. |
+| `RSPY_PRESIGNED_URL_EXPIRATION_TIME` | Lifespan, in seconds, of the presigned download URLs. |
+| `RSPY_HOST_OSAM` | URL of the OSAM service, that provides the [bucket configuration](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/administration/update-rs-server.md#object-storage-buckets-and-data-lifecycle). |
 
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
-
-    PUT /catalog/collections/{[ownerId:]collectionId}/items/{featureID}
-
-
-### Download an Item
-
-This endpoint returns a S3 presigned url that can directly download the file when accessed. The `ownerId` parameter is
-optional. If this is missing from the endpoint, a default user is used with the following priority:
-
-* the user found in the `apikey security` in the case when the process is running on `cluster`
-* the current user in the case when the process is running in `local mode`
-
-    GET /catalog/collections/{[ownerId:]collectionId}/items/{featureID}/download/{assetId}
+The other parameters of the deployment are described in the
+[rs-server-catalog Helm chart](https://github.com/RS-PYTHON/rs-helm/blob/develop/charts/rs-server-catalog/README.md).

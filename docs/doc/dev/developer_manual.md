@@ -1,115 +1,99 @@
+# rs-server developer manual
 
-Service Structure
-=================
-The RS-Server architecture is composed of several modular services, each designed to offer distinct functionalities accessible via HTTPS endpoints. Here is a detailed overview of the key aspects of the RS-Server services:
+This page describes how to develop on rs-server. The general guidelines of the project (coding environment, code
+style, git workflow, CI/CD) are described in the
+[Developers and contributors](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/developers/index.md)
+section of the documentation.
 
-1. Independence and Modularity:
-    * Each service operates independently, encapsulated within its own Docker image. This isolation ensures that services can be developed, deployed, and scaled without interdependencies.
-    * Services are designed to be stateless, which facilitates easy scaling and load distribution across multiple instances.
+## Repository structure
 
-2. Deployment Modes:
-    * **Laptop Mode**: Services can be initiated on a local machine, making it convenient for development and testing purposes.
-    * **Cluster Mode**: For production environments, services can be deployed in a cluster setup , enhancing their ability to handle multiple concurrent requests. This mode supports parallel processing, thereby improving performance and reliability.
+```text
+rs-server
+├── docs/                  # This documentation: Markdown pages (doc/), PlantUML sources (uml/) and images (images/)
+├── resources/             # Development scripts (configuration files synchronisation, dependency updates...)
+├── services/
+│   ├── adgs/              # rs-server-adgs (AUXIP instances)
+│   ├── cadip/             # rs-server-cadip (CADIP stations)
+│   ├── catalog/           # rs-server-catalog
+│   ├── common/            # rs_server_common, shared by all the services
+│   ├── frontend/          # rs-server-frontend (aggregated Swagger page)
+│   ├── osam/              # rs-server-osam
+│   ├── prip/              # rs-server-prip (PRIP instances)
+│   └── staging/           # rs-server-staging
+├── tests/                 # Tests of the station services and of the common package
+├── pyproject.toml         # Poetry project that includes all the services
+└── CHANGELOG.md
+```
 
-3. Cluster Management:
-    * The cluster is governed by **Kubernetes**, which orchestrates the deployment, scaling, and management of the containerized services. Kubernetes ensures high availability, load balancing, and efficient resource utilization across the cluster.
+Each service folder contains:
 
-4. Scalability:
-    * Due to their stateless nature, services can be scaled horizontally. This means additional instances can be spawned to manage increased loads without any complex configuration.
+- `rs_server_<service>/`: the Python package of the service,
+- `config/`: its configuration files, e.g. the [STAC mapping](../users/stac-mapping.md) and the
+  [virtual collections](../users/external-data-sources.md#collections) of the stations,
+- `tests/`: its tests (for some of them),
+- `pyproject.toml`: its own Poetry project, used to build its wheel package,
+- `.github/Dockerfile`: its Docker image, built by the CI (see [Repositories and CI/CD](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/developers/ci-cd.md)).
 
-The RS-Server's microservices architecture ensures robustness, scalability, and ease of management. By leveraging Docker for containerization and Kubernetes for orchestration, along with the rs-server-common package for shared functionalities, RS-Server offers a flexible and efficient solution for various deployment needs. This architecture supports both small-scale local deployments and large-scale production environments, providing the necessary tools and structures to handle a wide range of requests efficiently.
+The `rs_server_common` package contains the code shared by the services:
 
-Main Services, Common Structures and Mechanisms
-===============================================
-There are currently 3 main services implemented:
+| Module | Content |
+|---|---|
+| `authentication` | Authentication with API keys (checked by the API Key Manager) and OAuth2 (Keycloak), authorisation checks, authentication to the external stations. |
+| `stac_api_common`, `stac_cql2`, `stac_sortables` | Common implementation of the STAC API for the station services: collections from the configuration, conversion of the STAC search parameters and CQL2 filters into OData requests, pagination. |
+| `data_retrieval` | Access to the stations with [EODAG](https://eodag.readthedocs.io/). |
+| `s3_storage_handler` | Access to the S3 object storage, bucket configuration. |
+| `utils` | Logging, [OpenTelemetry](https://opentelemetry.io/) instrumentation, utilities. |
 
-1. CADIP service
-It facilitates the search and download of files from a CADIP server to a S3 bucket. Each instance of this service is started for a given station and provides 3 endpoints:
+## Set up and test
 
-    * A **search** endpoint that enables to search files for a time period
-    * A **download** endpoint that enables to download a file using own its name
-    * A **status** endpoint that enables the check of the current status for a downloading file.
+```shell
+poetry install --with dev
+poetry run opentelemetry-bootstrap -a install
+poetry run pre-commit install
 
+# Run the tests (the catalog tests start a pgstac database with Docker)
+poetry run pytest -m unit
+```
 
-2. ADGS service - Provides the same functionality as CADIP service, facilitates the search and download of files from an ADGS server to a S3 bucket
-3. Catalog service - facilitates the use of the main RS-Server catalog in [PySTAC](https://pystac.readthedocs.io/en/stable/) format
+The tests of the catalog use [pytest-docker](https://github.com/avast/pytest-docker) to run a
+[pgstac](https://github.com/stac-utils/pgstac) database: Docker must be installed.
 
-To maintain consistency and streamline development, all services use shared components and mechanisms provided by the ```rs-server-common package```. This package includes:
+To run the services with their dependencies (databases, station mockups, Dask, Prefect, Jupyter...), and to test
+your local source code without rebuilding the Docker images, use the
+[local mode](https://github.com/RS-PYTHON/rs-demo/blob/develop/docs/local-mode.md).
 
-* Standardized Data Structures: Ensuring uniformity in data handling across all services.
-* Common Utilities: Functions and tools that are frequently used across different services, promoting code reuse and reducing redundancy.
-* Configuration Management: Centralized configuration settings that can be applied uniformly to all services, simplifying deployment and maintenance.
+## Configuration files
 
-Start coding
-============
+The configuration files of the station services (`*_ws_config.yaml`, `*_search_config.yaml`, `rs-server.yaml`...)
+are generated from templates by the [`resources/sync_config_files.py`](https://github.com/RS-PYTHON/rs-server/blob/develop/resources/sync_config_files.py)
+script, which also copies them to the [rs-demo](https://github.com/RS-PYTHON/rs-demo) (local mode),
+[rs-helm](https://github.com/RS-PYTHON/rs-helm) and [rs-server-deployment](https://github.com/RS-PYTHON/rs-server-deployment)
+repositories. Don't modify the generated files directly: modify the templates and run the script again.
 
-To start coding on RS-Server, you have to install it first:
+## Document the endpoints
 
--   [Installation](dev/environment/installation.md)
+The endpoints are documented in their OpenAPI description, displayed in the
+[Swagger page](../users/frontend.md): describe each endpoint, its parameters and its responses in the docstring and
+the FastAPI decorators of its Python function. After a modification, the aggregated OpenAPI specification of the
+frontend is regenerated by the CI.
 
-Code Style
-==========
+## Add a service
 
-The following is the code style used in developing for RS-Server:
+1. Create the `services/<service>` folder, with the same structure as the other services.
+2. Add its package to the root `pyproject.toml` and to the CI (`publish-binaries.yml` workflow).
+3. Add it to the frontend [`services.yml`](https://github.com/RS-PYTHON/rs-server/blob/develop/services/frontend/resources/services.yml)
+   and to the [`build_aggregated_openapi.sh`](https://github.com/RS-PYTHON/rs-server/blob/develop/services/frontend/resources/build_aggregated_openapi.sh)
+   script.
+4. Add its Helm chart to [rs-helm](https://github.com/RS-PYTHON/rs-helm), its deployment to
+   [rs-server-deployment](https://github.com/RS-PYTHON/rs-server-deployment), and its container to the
+   [local mode](https://github.com/RS-PYTHON/rs-demo/blob/develop/docs/local-mode.md).
+5. Add it to the Python API documentation of [rs-documentation](https://github.com/RS-PYTHON/rs-documentation)
+   (`.github/scripts/build_pydoc.sh`).
 
--   [Code style](dev/code-style.md)
+## Add a station
 
-RS-Server REST API Documentation
-================================
-
-The frontend of the RS-Server ecosystem is a specialized service that primarily provides a REST API documentation. Here’s a detailed overview of its features and functionality:
-**Service Overview**
-
-1. Purpose:
-    * The frontend service is dedicated to displaying and managing the API documentation for all RS-Server services.
-    * It does not implement any functional endpoints of the RS-Server itself but focuses on documentation.
-
-2. Endpoints:
-    * **/doc Endpoint**: This endpoint displays the aggregated OpenAPI specification of all RS-Server services using SwaggerUI, providing an interactive interface for users to explore the API.
-    * **/openapi.json Endpoint**: This endpoint serves the same OpenAPI specification in JSON format, allowing programmatic access to the documentation.
-
-**OpenAPI Specification**
-
-1. Specification Source:
-    * The OpenAPI specification is provided by a JSON file. The location of this file is configurable via an environment variable read at the service startup.
-2. Configuration:
-    * The environment variable determines the path to the JSON file containing the OpenAPI specification, allowing flexibility in deployment and updates.
-
-**Static Documentation**
-
-1. Build Procedure:
-    * The content of the documentation is static. It is computed during the frontend build procedure and then integrated statically into the frontend service.
-    * Whenever a RS-Server service endpoint is updated, the frontend service must be rebuilt to provide up-to-date documentation.
-
-2. CI Workflow:
-    * The OpenAPI specification is constructed as part of the continuous integration (CI) workflow that builds the frontend service executable.
-    * This workflow starts all RS-Server services, retrieves their individual OpenAPI specifications, aggregates them, and stores the combined specification in a file.
-    * This file is then integrated into the Docker image of the frontend service.
-
-**Configuration Management**
-
-1. Configuration File:
-    * A configuration file defines all RS-Server services that should be included in the aggregated OpenAPI specification.
-    * Each time a new service is added, its details must be included in this configuration file to ensure it is part of the aggregated documentation.
-
-**Functionality**
-
-1. Interactive Documentation:
-    * Although the frontend does not implement the functional endpoints, the ```Try it out``` feature of SwaggerUI is functional. This is enabled by the deployment of RS-Server with an ingress controller that manages request redirection to the appropriate RS-Server services.
-
-By maintaining a clear separation between documentation and functional implementation, the frontend service ensures that users have access to comprehensive and interactive API documentation, while also facilitating easy updates and integration of new services through a structured CI workflow.
-
-Python API Library
-==================
-Please check the ```Python API Library``` link in the sidebar navigation to access the generated documentation directly from the source code.
-
-Additional information
-======================
-
-Here are some additional information that may help you in finding the answer when coding on RS-Server:
-
--   [Tree structure](dev/background/tree-structure.md)
-
--   [Workflow](dev/background/workflow.md)
-
--   [CI](dev/background/ci.md)
+1. Add the station URL and credentials in the station secrets (`rs-server.yaml` file in local mode,
+   `rs-server-station-secrets` in cluster mode).
+2. Add the station to the configuration of its service and its virtual collections to the `*_search_config.yaml`
+   file.
+3. Create the `rs_<service>_<station>_read` and `rs_processes_staging_download_<station>` Keycloak roles.
