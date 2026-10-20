@@ -1053,14 +1053,14 @@ usgs = ["usgs (>=0.3.7)"]
 
 [[package]]
 name = "fastapi"
-version = "0.150.0"
+version = "0.151.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.150.0-py3-none-any.whl", hash = "sha256:e566bc3f1347cfacf61f2f9ea1d7ab4576fbcff02eb9747c2807b8ced16d9e9a"},
-    {file = "fastapi-0.150.0.tar.gz", hash = "sha256:97583806e6de1b6fc299866bdb88730fa311ff640829af876c9e847f4c3a3b29"},
+    {file = "fastapi-0.151.0-py3-none-any.whl", hash = "sha256:498923b00b193654c839ec613dd84d1b0f98f8c20a5371e4f41100c522f114b9"},
+    {file = "fastapi-0.151.0.tar.gz", hash = "sha256:f5bd74323048882837f422b6592b11f84dda1754defc4545a4c570cfa19a7a41"},
 ]
 
 [package.dependencies]
@@ -3795,14 +3795,14 @@ starlette = ">=1.0.1"
 
 [[package]]
 name = "stac-pydantic"
-version = "3.7.0"
+version = "3.7.1"
 description = "Pydantic data models for the STAC spec"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "stac_pydantic-3.7.0-py3-none-any.whl", hash = "sha256:aa4731c303a417afabf0dacc6cffc31414694f59ed5f501e4161a8b0e3d9477e"},
-    {file = "stac_pydantic-3.7.0.tar.gz", hash = "sha256:4e9817929b1d2bba0083befe0af8453d4680c75d69bda9641978ad61d3f611af"},
+    {file = "stac_pydantic-3.7.1-py3-none-any.whl", hash = "sha256:55ca2c84dc5be09299720b145f372daf2a3ae40f5845fab2ddc383cfbf287b57"},
+    {file = "stac_pydantic-3.7.1.tar.gz", hash = "sha256:62bf04b3a7a207bb9fff785ef142c86c855a51468e55a2d0a2192b5e990bbffc"},
 ]
 
 [package.dependencies]
