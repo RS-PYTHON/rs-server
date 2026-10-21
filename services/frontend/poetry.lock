@@ -438,14 +438,14 @@ profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
 name = "fastapi"
-version = "0.154.0"
+version = "0.156.6"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.154.0-py3-none-any.whl", hash = "sha256:339a8fad10b98ecf9f15b5b1cfadc276d64556578f5fbfa475091901a45cbfd7"},
-    {file = "fastapi-0.154.0.tar.gz", hash = "sha256:8989cd9bf0a368d465b80eb696e880def8363be0ed2441518ef3c4f76b47c0cd"},
+    {file = "fastapi-0.156.6-py3-none-any.whl", hash = "sha256:5c27f77aa3866fd4e2faf961ba549f4890a22b7eaa5399308d7db6403be80b91"},
+    {file = "fastapi-0.156.6.tar.gz", hash = "sha256:d9c4e30de45331f0b76004d058698994dc86a263244462dcd698da38ebf7c8c8"},
 ]
 
 [package.dependencies]
