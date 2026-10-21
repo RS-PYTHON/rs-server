@@ -51,7 +51,9 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.13,<4"
-fastapi = ">=0.141.2"
+# prefect 3.8.x server is incompatible with fastapi >= 0.155 (Body(min_items=...) removed),
+# prefect >= 3.9.0 caps fastapi < 0.151. Remove this pin when prefect supports newer fastapi.
+fastapi = ">=0.141.2,<0.155"
 starlette = ">=1.4.1"
 boto3 = ">=1.40.2"
 botocore = ">=1.40.2"
