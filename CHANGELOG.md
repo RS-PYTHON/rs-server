@@ -24,6 +24,38 @@ Changed
 
 None
 
+[1.0a15] - Sprint 41 - 2026-10-22
+=================================
+
+## Added
+
+- RSPY-954: Update the rs-server documentation (#2028)
+- RSPY-954: Specify the OData PRIP interface (PRIP ICD 3.3 and 3.4) (#2034)
+- RSPY-954: Fix the rendering of the product identifier list in the OData PRIP mapping (#2038)
+- RSPY-1069: Update PREFECT_TAG and jupyter (#2005)
+- RSPY-1069: Update Python version to 3.13.16 (#2017)
+- RSPY-1148: Update to eodag v4.x (#2000)
+- RSPY-1205: Update CADIP configurations to use 'sat:acquisition_station' and upgrade STAC extension to v1.2.0 (#2013)
+- RSPY-1223: Query OData by publication date (#2003)
+- RSPY-1224: Catalog OSAM bearer authentication (#2007)
+- RSPY-1225: Update to stac-fastapi 7.x (#2001, #2002)
+- RSPY-1229: Download and cache the Trivy databases once per day (#2029)
+- RSPY-1230: Support 3D bbox search in catalog (#2030)
+- Restore safety 3.8.1 (#2012)
+- Update to OpenTelemetry 1.45.0/0.66b0 (#2015)
+- Update to OpenTelemetry 1.45.1/0.66b1 (#2018)
+- Update to pgstac 0.10.0 (#1957)
+- Upload notebook outputs (#2020)
+- Use dask 2026.7.1 (#2024)
+- Use rs-dpr-service_py3.13.16-2026.3.0 (#2025)
+- Dependency updates (#2004, #2006, #2014, #2019, #2021, #2027, #2031, #2036, #2037, #2039, #2040)
+
+## Fixed
+
+- RSPY-1132: Keep owner prefix for STAC Browser in unfiltered list of collections (#1998)
+- RSPY-1240: Fix the search by externalIds with pgstac 0.10 (#2032)
+- Support FastAPI 0.145+: store the application state in app.state (#2033)
+
 [1.0a14] - Sprint 40 - 2026-09-23
 =================================
 
