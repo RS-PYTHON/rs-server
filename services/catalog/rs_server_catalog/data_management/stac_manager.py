@@ -229,7 +229,7 @@ class StacManager:
 
         # Then remove any field containing an UUID from the new item, because it's forbidden to update an existing UUID
         new_items_externalids = new_item.get("properties", {}).get("externalIds", [])
-        for externalid in existing_externalids:
+        for externalid in new_items_externalids.copy():
             if externalid.get("scheme") == "rs-odata-prip":
                 new_items_externalids.remove(externalid)
 
