@@ -536,7 +536,7 @@ field is not permitted also."
                 if content:
                     if request.method == "POST":
                         # Add UUID to the item's properties
-                        if not "externalIds" in content.get("properties", {}):
+                        if "externalIds" not in content.get("properties", {}):
                             content["properties"]["externalIds"] = []
                         content["properties"]["externalIds"].append(StacManager.generate_uuid_for_stac_asset())
                         # Set timestamps for the new item
@@ -924,7 +924,8 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                             and external_id["scheme"] == "rs-odata-prip"
                         ):
                             logger.warning(
-                                "PATCH request contains an externalId with scheme 'rs-odata-prip', which is not allowed. It will be removed.",
+                                "PATCH request contains an externalId with scheme 'rs-odata-prip', "
+                                "which is not allowed. It will be removed.",
                             )
                             content["properties"]["externalIds"].remove(external_id)
 
