@@ -39,6 +39,7 @@ from rs_server_catalog.data_management.geometry_manager import (
     validate_geometry_and_enforce_bbox,
 )
 from rs_server_catalog.data_management.s3_manager import S3Manager
+from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
     get_user,
@@ -534,6 +535,11 @@ field is not permitted also."
                 content = self.s3_manager(request).update_assets_checksums(content)
                 if content:
                     if request.method == "POST":
+                        # Add UUID to the item's properties
+                        if "externalIds" not in content.get("properties", {}):
+                            content["properties"]["externalIds"] = []
+                        content["properties"]["externalIds"].append(StacManager.generate_uuid_for_stac_asset())
+                        # Set timestamps for the new item
                         content = timestamps_extension.set_timestamps_for_creation(content)
                         content = timestamps_extension.set_timestamps_for_insertion(content)
                         logger.debug("Set creation/insertion timestamps for item %s", content.get("id"))
@@ -552,6 +558,10 @@ field is not permitted also."
                             original_published=published,
                         )
                         logger.debug("Set update timestamps for item %s", content.get("id"))
+
+                        # Retrieve the existing UUID from the existing item and add it to the given item if any
+                        content = StacManager.retrieve_existing_uuid_or_create_one(existing_item=item, new_item=content)
+
                 if hasattr(content, "status_code"):
                     return content
 
@@ -902,6 +912,22 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if is_item and isinstance(content.get("assets"), dict):
                 # Validate and enrich only assets explicitly present in this PATCH.
                 content["assets"] = self.s3_manager(request).update_patch_assets(item, content["assets"])
+
+            # Remove any UUID field because it is forbidden to patch it
+            if is_item and "properties" in content and "externalIds" in content["properties"]:
+                external_ids = content["properties"]["externalIds"]
+                if isinstance(external_ids, list):
+                    for external_id in external_ids:
+                        if (
+                            isinstance(external_id, dict)
+                            and "scheme" in external_id
+                            and external_id["scheme"] == "rs-odata-prip"
+                        ):
+                            logger.warning(
+                                "PATCH request contains an externalId with scheme 'rs-odata-prip', "
+                                "which is not allowed. It will be removed.",
+                            )
+                            content["properties"]["externalIds"].remove(external_id)
 
             # Update "updated" timestamp (different field if it is an item or a collection)
             if is_item:
