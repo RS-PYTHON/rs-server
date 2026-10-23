@@ -21,7 +21,6 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import os.path as osp
 import traceback
 from collections.abc import Callable
-from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -46,7 +45,7 @@ from rs_server_common.stac_api_common import (
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
-    split_multiple_values,
+    prepare_product_search_params,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -116,19 +115,7 @@ class MockPgstacPrip(MockPgstac):
         page: int,
     ) -> stac_pydantic.ItemCollection:
         """Search prip products for the given station and OData parameters."""
-        # Preserve the input for later page requests, including dictionaries nested in query_branches.
-        odata_params = deepcopy(odata_params)
-        # Normalize a single predicate or each complete alternative in a collection union.
-        for query in odata_params.get("query_branches", [odata_params]):
-            query["Name"] = names if isinstance(names := query.get("Name"), list) else [names]
-            # Avoid EODAG's built-in product type parameter; this filters the station's productType attribute.
-            if product_type := query.pop("productType", None):
-                query["attr_ptype"] = split_multiple_values(product_type)
-
-            for key in ("platformSerialIdentifier", "platformShortName"):
-                if value := query.pop(key, None):
-                    query[key] = split_multiple_values(value)
-
+        odata_params = prepare_product_search_params(odata_params)
         return process_product_search(station, odata_params, collection_provider, limit, self.sortby, page)
 
 

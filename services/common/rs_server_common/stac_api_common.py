@@ -823,7 +823,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 branches = []
                 for collection in station_collections:
                     query, empty = self.merge_odata_params(
-                        collection.get("query") or {}, odata_params, MergeMode.INTERSECTION
+                        collection.get("query") or {},
+                        odata_params,
+                        MergeMode.INTERSECTION,
                     )
                     # Disjoint branches contribute nothing to the union; identical branches need only appear once.
                     if not empty and query not in branches:
@@ -903,7 +905,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         return None
 
     def is_entity_matching_all_criteria(  # pylint: disable=too-many-return-statements
-        self, odata_entity: dict, query: dict
+        self,
+        odata_entity: dict,
+        query: dict,
     ) -> bool:
         """
         Evaluates whether an OData entity matches all criteria defined in a query.
@@ -1643,3 +1647,20 @@ def split_multiple_values(input_value: str) -> list[str] | str:
                          otherwise the original string.
     """
     return [s.strip() for s in input_value.split(",")] if "," in input_value else input_value
+
+
+def prepare_product_search_params(odata_params: dict) -> dict:
+    """Copy and normalize AUXIP/PRIP parameters for EODAG, preserving collection alternatives."""
+    # Preserve the input for later page requests, including dictionaries nested in query_branches.
+    prepared = copy.deepcopy(odata_params)
+    # Normalize a single predicate or each complete alternative in a collection union.
+    for query in prepared.get("query_branches", [prepared]):
+        query["Name"] = names if isinstance(names := query.get("Name"), list) else [names]
+        # Avoid EODAG's built-in product type parameter; this filters the station's productType attribute.
+        if product_type := query.pop("productType", None):
+            query["attr_ptype"] = split_multiple_values(product_type)
+
+        for key in ("platformSerialIdentifier", "platformShortName"):
+            if value := query.pop(key, None):
+                query[key] = split_multiple_values(value)
+    return prepared

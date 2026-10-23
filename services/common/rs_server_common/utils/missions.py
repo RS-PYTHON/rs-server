@@ -15,7 +15,7 @@
 """Combine AUXIP/PRIP mission restrictions without losing constellation/serial associations.
 
 For example, S1A and S2B must remain two pairs: splitting them into independent
-constellation and serial lists would also allow S1B and S2A (RSPY-1216).
+constellation and serial lists would also allow S1B and S2A.
 """
 
 from itertools import product

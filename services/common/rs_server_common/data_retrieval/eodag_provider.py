@@ -96,7 +96,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
                 search is None
                 or search.type != "ODataV4Search"
                 or not {"platformShortName", "platformSerialIdentifier"}.issubset(
-                    getattr(search, "metadata_mapping", {})
+                    getattr(search, "metadata_mapping", {}),
                 )
             ):
                 continue
