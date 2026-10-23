@@ -214,7 +214,7 @@ def station_product(template, index, platform, product_type=None):
                     "platform": " SENTINEL-1A, sentinel-2b ",
                     "platformShortName": "SENTINEL-2",
                     "platformSerialIdentifier": "b",
-                }
+                },
             ],
             None,
             None,
@@ -258,7 +258,7 @@ def test_mission_search(  # pylint: disable=too-many-arguments,too-many-locals
     template = (adgs_response if service == "adgs" else prip_response)["value"][0]
     products = [station_product(template, i, platform) for i, platform in enumerate(SATELLITES)]
 
-    station_matches = []
+    station_matches: list[str] = []
 
     def station_response(request):
         query = parse_qs(urlsplit(request.url).query)
@@ -290,7 +290,7 @@ def test_mission_search(  # pylint: disable=too-many-arguments,too-many-locals
                 }
             response = client.post(f"/{'auxip' if service == 'adgs' else 'prip'}/search", json=params)
         assert response.status_code == 200, response.text
-        search_calls = [call for call in station.calls if "/Products?" in call.request.url]
+        search_calls = [call for call in station.calls if "/Products?" in (call.request.url or "")]
         assert len(search_calls) == bool(expected)
     assert set(station_matches) == expected
     assert {item["properties"]["platform"] for item in response.json()["features"]} == expected
@@ -304,7 +304,13 @@ def test_mission_search(  # pylint: disable=too-many-arguments,too-many-locals
 @pytest.mark.parametrize("method", ["GET", "POST"])
 @pytest.mark.parametrize("explicit_collections", [True, False], ids=["explicit-collections", "all-collections"])
 def test_collection_union_keeps_product_types_before_pagination(
-    mocker, client, service, method, explicit_collections, adgs_response, prip_response
+    mocker,
+    client,
+    service,
+    method,
+    explicit_collections,
+    adgs_response,
+    prip_response,
 ):
     """Crossed platform/type combinations must not consume a page or hide a valid product."""
     template = (adgs_response if service == "adgs" else prip_response)["value"][0]
