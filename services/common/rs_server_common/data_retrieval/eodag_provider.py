@@ -17,6 +17,7 @@
 import os
 import shutil
 import tempfile
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
@@ -24,6 +25,7 @@ from threading import Lock
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.config import EODAGSettings
+from eodag.plugins.search.qssearch import ODataV4Search
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -36,6 +38,7 @@ from rs_server_common.authentication.external_authentication_config import (
 )
 from rs_server_common.stac_cql2 import temporal_operations
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.missions import MISSION_PAIRS, mission_search_params
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
 
@@ -79,6 +82,38 @@ class CustomEODataAccessGateway(EODataAccessGateway):
             kwargs["settings"] = settings
 
         super().__init__(*args, **kwargs)
+        self._register_internal_filters()
+
+    def _register_internal_filters(self) -> None:
+        """Extend AUXIP/PRIP mappings in memory before this gateway is cached and shared.
+
+        missionFilter holds alternatives of mission pairs; collectionFilter holds
+        alternatives of complete collection predicates. Existing station YAMLs need no migration.
+        """
+        for provider in self._providers.values():
+            search = getattr(provider.config, "search", None)
+            if (
+                search is None
+                or search.type != "ODataV4Search"
+                or not {"platformShortName", "platformSerialIdentifier"}.issubset(
+                    getattr(search, "metadata_mapping", {})
+                )
+            ):
+                continue
+
+            search = deepcopy(search)
+            operations = getattr(search, "free_text_search_operations", {}).get("$filter", {}).get("operations", {})
+            # Both fragments must be ANDed with the station's other filters.
+            if set(operations) != {"and"} or not isinstance(operations["and"], list):
+                raise MisconfiguredError(f"{provider.name}: internal filters require a single OData AND group")
+
+            for name in ("missionFilter", "collectionFilter"):
+                # None prevents a separate URL parameter; the placeholder inserts the fragment into $filter.
+                search.metadata_mapping[name] = [None, f"$.{name}"]
+                operand = f"{{{name}}}"
+                if operand not in operations["and"]:
+                    operations["and"].append(operand)
+            provider.config.search = search
 
     def __del__(self):
         """Destructor"""
@@ -160,39 +195,21 @@ class EodagProvider(Provider):
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
+        """Quote and escape OData literals, choosing the singular (eq) or plural (in) template key."""
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
         key = plural_key if isinstance(value, list) else singular_key
-        mapped_search_args[key] = ",".join(f"'{p}'" for p in sorted(value)) if isinstance(value, list) else f"'{value}'"
+        literals = sorted(value) if isinstance(value, list) else [value]
+        mapped_search_args[key] = ",".join("'" + str(v).replace("'", "''") + "'" for v in literals)
 
-    def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-branches,too-many-locals
+    def _map_search_args(self, kwargs: dict) -> dict:  # pylint: disable=too-many-branches
+        """Map RS-server fields to EODAG parameters, consuming the converted fields from kwargs.
+
+        The caller forwards both the returned parameters and the remaining kwargs.
+        The same conversion is used for a single predicate and for each collection branch.
         """
-        Conducts a search for products using the specified OData arguments.
-
-        This private method interfaces with the EODAG client's search functionality
-        to retrieve products that match the given search parameters. It handles
-        special cases such as `PublicationDate` and session ID lists while enforcing
-        pagination constraints as per provider limitations.
-
-        Args:
-            **kwargs: Arbitrary keyword arguments specifying search parameters,
-                including all queryables defined in the provider's configuration as OData arguments.
-
-        Returns:
-            Union[SearchResult, List]: A `SearchResult` object containing the matched products
-            or an empty list if no matches are found.
-
-        Raises:
-            HTTPException: If a validation error occurs in the search query.
-            SearchProductFailed: If the search request fails due to request errors,
-                misconfiguration, or authentication issues.
-            ValueError: If authentication with EODAG fails.
-
-        Notes:
-            - Ensures compliance with provider-specific constraints, such as pagination limits.
-            - Logs encountered errors and provides detailed messages in case of failures.
-        """
-
         mapped_search_args: dict[str, str | None] = {}
+        if MISSION_PAIRS in kwargs:
+            kwargs.update(mission_search_params(kwargs.pop(MISSION_PAIRS)))
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
             self._handle_multiple_values(mapped_search_args, session_id, "SessionId", "SessionIds")
@@ -267,6 +284,16 @@ class EodagProvider(Provider):
         if intersects := kwargs.pop("intersects", None):
             mapped_search_args["geometry"] = intersects
 
+        return mapped_search_args
+
+    def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-locals
+        """Issue one station search, joining complete collection branches with OR before pagination."""
+        branches = kwargs.pop("query_branches", None)
+        # An empty branch list means no match; an absent key uses the ordinary search parameters.
+        if branches == []:
+            return []
+        mapped_search_args = self._map_search_args(kwargs)
+
         # Thread-safe access to providers config - avoid dictionary keys changed during iteration
         # error when multiple threads modify providers concurrently.
         with self.client.lock:
@@ -292,6 +319,29 @@ class EodagProvider(Provider):
                 dataset_key = next(iter(products_cfg.keys()))
             except Exception:  # pylint: disable=broad-exception-caught
                 dataset_key = "S1_SAR_RAW"  # last-resort fallback
+
+            if branches:
+                # Serialize from a snapshot so building branch filters cannot change the shared gateway config.
+                search_config = deepcopy(providers[self.provider].config.search)
+                search_config.products = deepcopy(getattr(providers[self.provider].config, "products", {}))
+
+        if branches:
+            filters: list[str] = []
+            for branch in branches:
+                branch_args = branch.copy()
+                mapped_branch = self._map_search_args(branch_args)
+                # Reuse station templates for dates, geometry, missions and other criteria without an HTTP call.
+                serializer = ODataV4Search(self.provider, deepcopy(search_config))
+                query, _ = serializer.build_query_string(dataset_key, {**branch_args, **mapped_branch})
+                parts = query.get("$filter", [])
+                if not parts:
+                    filters = []  # An unrestricted collection makes the union unrestricted.
+                    break
+                filters.append(" and ".join(parts))
+            if filters:
+                # Keep each branch together, e.g. (S1A AND type1) OR (S2B AND type2).
+                # A single HTTP search lets the station sort and paginate the union itself.
+                mapped_search_args["collectionFilter"] = "(" + " or ".join(f"({f})" for f in filters) + ")"
 
         logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
         try:

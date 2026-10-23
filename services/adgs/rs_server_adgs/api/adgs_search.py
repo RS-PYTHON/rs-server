@@ -21,6 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import os.path as osp
 import traceback
 from collections.abc import Callable
+from copy import deepcopy
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -74,6 +75,9 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 def validate(queryables: dict):
     """Function used to verify / update ADGS-specific queryables before being sent to eodag."""
+    if "query_branches" in queryables:
+        # Each branch has its own date restrictions; normalize them before EODAG builds the OR filter.
+        return {"query_branches": [validate(query) for query in queryables["query_branches"]]}
     if "PublicationDate" in queryables:
         queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
 
@@ -118,15 +122,18 @@ class MockPgstacAdgs(MockPgstac):
         page: int,
     ) -> stac_pydantic.ItemCollection:
         """Search adgs products for the given station and OData parameters."""
-        # Update odata names that shadow eodag builtins (productype)
+        # Preserve the input for later page requests, including dictionaries nested in query_branches.
+        odata_params = deepcopy(odata_params)
+        # Normalize a single predicate or each complete alternative in a collection union.
+        for query in odata_params.get("query_branches", [odata_params]):
+            query["Name"] = names if isinstance(names := query.get("Name"), list) else [names]
+            # Avoid EODAG's built-in product type parameter; this filters the station's productType attribute.
+            if product_type := query.pop("productType", None):
+                query["attr_ptype"] = split_multiple_values(product_type)
 
-        odata_params["Name"] = names if isinstance(names := odata_params.get("Name"), list) else [names]
-        if product_type := odata_params.pop("productType", None):
-            odata_params["attr_ptype"] = split_multiple_values(product_type)
-
-        for key in ("platformSerialIdentifier", "platformShortName"):
-            if value := odata_params.pop(key, None):
-                odata_params[key] = split_multiple_values(value)
+            for key in ("platformSerialIdentifier", "platformShortName"):
+                if value := query.pop(key, None):
+                    query[key] = split_multiple_values(value)
 
         return process_product_search(station, odata_params, collection_provider, limit, self.sortby, page)
 
