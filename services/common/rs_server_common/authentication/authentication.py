@@ -98,8 +98,8 @@ async def authenticate(
                 token,
                 key=key,
                 issuer=issuer,
-                audience=os.environ["OIDC_CLIENT_ID"],
                 algorithms=["RS256"],
+                options={"verify_aud": False},
             )
 
             # The result contains the auth roles we need, but still get them from keycloak
