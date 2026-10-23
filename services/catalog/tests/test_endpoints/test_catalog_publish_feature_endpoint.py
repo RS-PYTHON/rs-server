@@ -21,6 +21,7 @@ import json
 import time
 from datetime import datetime
 from unittest.mock import patch
+from uuid import UUID
 
 import fastapi
 import pytest
@@ -53,6 +54,10 @@ class TestCatalogPublishFeature:
         assert returned_features["features"][0]["id"] == a_correct_feature["id"]
         assert returned_features["features"][0]["geometry"] == a_correct_feature["geometry"]
         assert returned_features["features"][0]["properties"]["owner"] == "fixture_owner"
+        external_ids = returned_features["features"][0]["properties"]["externalIds"]
+        generated_uuids = [external_id for external_id in external_ids if external_id["scheme"] == "rs-odata-prip"]
+        assert len(generated_uuids) == 1
+        assert str(UUID(generated_uuids[0]["value"])) == generated_uuids[0]["value"]
         # Get feature using specific endpoint with featureID
         feature_id = a_correct_feature["id"]
         specific_feature_response = client.get(
@@ -157,6 +162,7 @@ class TestCatalogPublishFeature:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
+        updated_feature_sent["properties"]["externalIds"] = feature_post_response.json()["properties"]["externalIds"]
 
         feature_put_response = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
@@ -172,6 +178,7 @@ class TestCatalogPublishFeature:
         # Test that ID has changed, but other arbitrary field not
         assert updated_feature["bbox"] == updated_feature_sent["bbox"]
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
+        assert updated_feature["properties"]["externalIds"] == feature_post_response.json()["properties"]["externalIds"]
         assert (
             client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
             == fastapi.status.HTTP_200_OK
@@ -203,6 +210,7 @@ class TestCatalogPublishFeature:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
+        updated_feature_sent["properties"]["externalIds"] = feature_post_response.json()["properties"]["externalIds"]
 
         # Test that updated field is correctly updated.
         updated_timestamp = json.loads(feature_post_response.content)["properties"]["updated"]
@@ -389,6 +397,7 @@ class TestCatalogPublishFeature:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = "Incorrect_bbox_value"
         del updated_feature_sent["collection"]
+        updated_feature_sent["properties"]["externalIds"] = feature_post_response.json()["properties"]["externalIds"]
 
         response = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
