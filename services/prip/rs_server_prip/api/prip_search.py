@@ -45,7 +45,7 @@ from rs_server_common.stac_api_common import (
     check_bbox_input,
     create_stac_collection,
     handle_exceptions,
-    split_multiple_values,
+    prepare_product_search_params,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -72,6 +72,9 @@ PRIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 def validate(queryables: dict):
     """Function used to verify / update PRIP-specific queryables before being sent to eodag."""
+    if "query_branches" in queryables:
+        # Each branch has its own date restrictions; normalize them before EODAG builds the OR filter.
+        return {"query_branches": [validate(query) for query in queryables["query_branches"]]}
     if "PublicationDate" in queryables:
         queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
 
@@ -112,16 +115,7 @@ class MockPgstacPrip(MockPgstac):
         page: int,
     ) -> stac_pydantic.ItemCollection:
         """Search prip products for the given station and OData parameters."""
-        # Update odata names that shadow eodag builtins (productype)
-
-        odata_params["Name"] = names if isinstance(names := odata_params.get("Name"), list) else [names]
-        if product_type := odata_params.pop("productType", None):
-            odata_params["attr_ptype"] = split_multiple_values(product_type)
-
-        for key in ("platformSerialIdentifier", "platformShortName"):
-            if value := odata_params.pop(key, None):
-                odata_params[key] = split_multiple_values(value)
-
+        odata_params = prepare_product_search_params(odata_params)
         return process_product_search(station, odata_params, collection_provider, limit, self.sortby, page)
 
 

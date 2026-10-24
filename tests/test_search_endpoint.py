@@ -2428,14 +2428,23 @@ def test_cql2_in_operator(
             expected_satellites=["S2B"],
         )
     else:
+        # OR complete pairs, then AND the entire group with the requested product types.
+        mission_clauses = [
+            "(Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            f"att/OData.CSC.StringAttribute/Value eq '{constellation}') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            f"att/OData.CSC.StringAttribute/Value eq '{serial}'))"
+            for constellation, serial in (("SENTINEL-1", "C"), ("SENTINEL-2", "B"), ("SENTINEL-3", "A"))
+        ]
         call_mocked_search(
             cols=["col_noconf"],
             request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
             request_product_types=[ptype, "type2", "type4"],
-            # odata = everything the user requested, because there is no criteria on the collection
-            expected_constellations=["SENTINEL-1", "SENTINEL-2", "SENTINEL-3"],
-            expected_platforms=["A", "B", "C"],
-            expected_product_types=[ptype, "type2", "type4"],
+            expected_filter=(
+                "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+                f"att/OData.CSC.StringAttribute/Value in ('{ptype}','type2','type4')) and "
+                "(" + " or ".join(mission_clauses) + ")"
+            ),
         )
         call_mocked_search(
             cols=["col_with_conf"],
@@ -2443,10 +2452,9 @@ def test_cql2_in_operator(
             request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
             request_product_types=[ptype, "type2", "type4"],
             # odata = intersection with the collection config
-            # NOTE: there is a bug here, we would expect only S2B
-            # see: RSPY-1216
-            expected_constellations=["SENTINEL-1", "SENTINEL-2"],
-            expected_platforms=["A", "B"],
+            # Only S2B satisfies both the requested pairs and the collection's legacy restrictions.
+            expected_constellations=["SENTINEL-2"],
+            expected_platforms=["B"],
             expected_product_types=[ptype, "type2"],
         )
 
@@ -2510,23 +2518,27 @@ def test_search_on_several_collections(
         expected_platforms=["A"],
     )
 
-    # If the user requests s1a from the s1a and product type collections,
-    # we expect that the odata will request the station for s1a with this product type
+    def attribute(name, value):
+        return (
+            f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{name}' and "
+            f"att/OData.CSC.StringAttribute/Value eq '{value}')"
+        )
+
+    s1a = attribute("platformSerialIdentifier", "A") + " and " + attribute("platformShortName", "SENTINEL-1")
+    s2c = attribute("platformSerialIdentifier", "C") + " and " + attribute("platformShortName", "SENTINEL-2")
+    product_type = attribute("productType", ptype)
+
+    # The S1A collection accepts every product type; the other collection's type cannot restrict it.
     call_mocked_search(
         request_platforms=["sentinel-1a"],
         cols=["col_s1a", "col_ptype"],
-        expected_constellations=["SENTINEL-1"],
-        expected_platforms=["A"],
-        expected_product_types=[ptype],
+        expected_filter=f"(({product_type} and {s1a}) or ({s1a}))",
     )
 
-    # If the user requests everything from these 3 collections,
-    # we expect that the odata will request the station for s1a and s2c with this product type
+    # Match the product-type collection OR S1A OR S2C; no condition is shared by all three collections.
     call_mocked_search(
         cols=["col_s1a", "col_s2c", "col_ptype"],
-        expected_constellations=["SENTINEL-1", "SENTINEL-2"],
-        expected_platforms=["A", "c"],
-        expected_product_types=[ptype],
+        expected_filter=f"(({product_type}) or ({s1a}) or ({s2c}))",
     )
 
     # If the user requests s3b from s1a and s2c collections,
