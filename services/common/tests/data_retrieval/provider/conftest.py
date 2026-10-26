@@ -105,24 +105,10 @@ def cadip_config(eodag_config_folder) -> EodagConfiguration:
     return EodagConfiguration("cadip", eodag_config_folder / "cadip.yaml")
 
 
-@pytest.fixture(scope="package")
-def not_found_config(eodag_config_folder) -> EodagConfiguration:
+@pytest.fixture
+def not_found_config(tmp_path) -> EodagConfiguration:
+    """Use an unknown provider and a missing config path to test initialization failure.
+
+    EODAG may create a fallback config at this path, so keep it in the test's temporary directory.
     """
-    Pytest fixture to provide a deliberately misconfigured EodagConfiguration object.
-
-    This fixture is designed to create an EodagConfiguration instance with an
-    intentionally incorrect configuration name and a non-existent configuration
-    file. It is useful for testing error handling and exception scenarios related
-    to configuration loading in EODAG. The scope of the fixture is set to 'package',
-    which means it will be executed once per test session for a test package.
-
-    Args:
-        eodag_config_folder (Path): The path to the EODAG configuration folder,
-                                    typically provided by the `eodag_config_folder` fixture.
-
-    Returns:
-        EodagConfiguration: An improperly configured EodagConfiguration instance,
-                            initialized with a non-existent 'not_found.yml' file and
-                            a wrong configuration name.
-    """
-    return EodagConfiguration("WRONG", eodag_config_folder / "not_found.yml")
+    return EodagConfiguration("WRONG", tmp_path / "not_found.yml")
