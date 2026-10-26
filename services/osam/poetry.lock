@@ -1665,14 +1665,14 @@ jsonpointer = ">=3.2"
 
 [[package]]
 name = "jsonpath-ng"
-version = "1.13.0"
+version = "1.14.0"
 description = "A final implementation of JSONPath for Python that aims to be standard compliant, including arithmetic and binary comparison operators and providing clear AST for metaprogramming."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "jsonpath_ng-1.13.0-py3-none-any.whl", hash = "sha256:f58e7f88cdd2eb04a402c0d542e7d6db71909e521f4c23c62f4d2ee73266361e"},
-    {file = "jsonpath_ng-1.13.0.tar.gz", hash = "sha256:da54eff64eef303b90a8491f50c607e6beb2eb4a6e66828edab948766d40c531"},
+    {file = "jsonpath_ng-1.14.0-py3-none-any.whl", hash = "sha256:748ffe4fce1a5f7f67f5414206ab4919bab99f800598de1f60df280a211d71df"},
+    {file = "jsonpath_ng-1.14.0.tar.gz", hash = "sha256:8c8b0b32c24421ba150621863c6a943e84861edbe6a4414261d1ad7cba7828bc"},
 ]
 
 [[package]]
