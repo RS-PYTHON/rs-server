@@ -37,6 +37,7 @@ only unique in its collection. So the catalog assigns a UUID to each item, with 
 - The catalog automatically computes a new random UUID (version 4) when an item is **added** to the catalog,
   whatever the endpoint (`POST .../items`, with a single item or an item collection, and `POST .../bulk_items`),
   so also when the item is added by the [staging](staging.md) or by the processing flows.
+
 - The UUID is stored in the `externalIds` property of the item
   ([External IDs](https://github.com/stac-extensions/external-ids) extension), with the **`rs-odata-prip`** scheme:
 
@@ -48,14 +49,18 @@ only unique in its collection. So the catalog assigns a UUID to each item, with 
 
     It must not be confused with the `prip` scheme, that the staging uses for the `Id` of the product in the
     external PRIP instance it comes from.
+
 - The UUID is generated **once**, by the catalog only, and is **immutable**:
+
     - when an item is added, any `rs-odata-prip` entry given by the user in `externalIds` is silently ignored and
       replaced by the generated UUID. The other entries of `externalIds` are kept unchanged.
     - when an item is replaced (`PUT`) or updated (`PATCH`), any `rs-odata-prip` entry given by the user is silently
       ignored, and the stored UUID is kept, even if the request removes or replaces the whole `externalIds` list.
     - these cases are not errors: the request is processed as if the user had not given this entry.
+
 - A deleted item loses its UUID. If the same product is added again (e.g. staged or generated again after a
   deletion), it is a new product instance and gets a new UUID, as a PRIP instance would do.
+
 - All the items of the catalog have a UUID: the items added before the deployment of this interface are given
   one, once, by a migration of the catalog database.
 
