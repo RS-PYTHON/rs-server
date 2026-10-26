@@ -35,11 +35,12 @@ Why a custom CQL2 operator:
     whose template is exactly the expression of the GIN index
     (SQL_CREATE_EXTERNAL_IDS_INDEXES), so that PostgreSQL uses the index:
 
-        {"op": "external_ids_contains", "args": [[{"scheme": "prip", "value": "U1"}]]}
-        -> (content->'properties'->'externalIds' @> to_text('[{"scheme": "prip", "value": "U1"}]')::jsonb)
+        {"op": "external_ids_contains", "args": ["[{\"scheme\": \"prip\", \"value\": \"U1\"}]"]}
+        -> (content->'properties'->'externalIds' @> '[{"scheme": "prip", "value": "U1"}]'::jsonb)
 
-    The argument is a literal, quoted by pgstac (no SQL injection), and folded into
-    a constant by PostgreSQL (`to_text` is immutable).
+    The argument is the JSON of the terms as a string, so that the filter is valid
+    CQL2 (stac-fastapi-pgstac validates it with cql2). It is a literal, quoted by
+    pgstac (no SQL injection), and a constant for PostgreSQL.
 
 What the catalog does:
     Before forwarding a search to pgstac, the catalog replaces the `externalIds`
@@ -159,8 +160,13 @@ def has_external_ids(node: Any) -> bool:
 
 
 def external_ids_contains(terms: Terms) -> dict:
-    """Return the CQL2-JSON condition selecting the items whose externalIds contain all the terms."""
-    return {"op": EXTERNAL_IDS_OPERATOR, "args": [terms]}
+    """
+    Return the CQL2-JSON condition selecting the items whose externalIds contain all the terms.
+
+    The terms are given as a JSON string: a list of objects is not a CQL2 expression, so
+    stac-fastapi-pgstac (>= 7.2.0) would reject the filter when validating it with cql2.
+    """
+    return {"op": EXTERNAL_IDS_OPERATOR, "args": [json.dumps(terms)]}
 
 
 def translate_external_ids_filter(node: Any) -> Any:
