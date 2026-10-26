@@ -874,8 +874,13 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
             is_item = "/items/" in request.scope["path"]
             item = None
-            if is_item and ("geometry" in content or "bbox" in content or "assets" in content):
-                # Spatial validation and asset enrichment need the complete item context.
+            if is_item and (
+                "geometry" in content
+                or "bbox" in content
+                or "assets" in content
+                or "externalIds" in content.get("properties", {})
+            ):
+                # PATCH validation needs the complete item context.
                 item = await self._get_item_from_collection(request)
                 if not item:
                     raise HTTPException(
@@ -913,21 +918,30 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 # Validate and enrich only assets explicitly present in this PATCH.
                 content["assets"] = self.s3_manager(request).update_patch_assets(item, content["assets"])
 
-            # Remove any UUID field because it is forbidden to patch it
+            # Keep the existing UUID when externalIds are patched.
             if is_item and "properties" in content and "externalIds" in content["properties"]:
                 external_ids = content["properties"]["externalIds"]
                 if isinstance(external_ids, list):
-                    for external_id in external_ids:
-                        if (
-                            isinstance(external_id, dict)
-                            and "scheme" in external_id
-                            and external_id["scheme"] == "rs-odata-prip"
-                        ):
-                            logger.warning(
-                                "PATCH request contains an externalId with scheme 'rs-odata-prip', "
-                                "which is not allowed. It will be removed.",
-                            )
-                            content["properties"]["externalIds"].remove(external_id)
+                    # From the PATCH request, keep the externalIds element EXCEPT the one with an UUID if any
+                    external_ids = [
+                        external_id
+                        for external_id in external_ids
+                        if not (isinstance(external_id, dict) and external_id.get("scheme") == "rs-odata-prip")
+                    ]
+                    # From the existing item, retrieve the UUID if any and add it to the externalIds list
+                    if item:
+                        existing_external_ids = item.get("properties", {}).get("externalIds", [])
+                        existing_uuid = next(
+                            (
+                                external_id
+                                for external_id in existing_external_ids
+                                if external_id.get("scheme") == "rs-odata-prip"
+                            ),
+                            None,
+                        )
+                        if existing_uuid:
+                            external_ids.append(existing_uuid)
+                    content["properties"]["externalIds"] = external_ids
 
             # Update "updated" timestamp (different field if it is an item or a collection)
             if is_item:
