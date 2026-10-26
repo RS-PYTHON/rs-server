@@ -14,6 +14,9 @@
 
 """Unit tests of the translation of the externalIds conditions of a catalog search."""
 
+import json
+
+import cql2
 import pytest
 from fastapi import HTTPException
 from rs_server_catalog.data_management.external_ids import (
@@ -29,7 +32,7 @@ OTHER = {"op": "=", "args": [{"property": "width"}, 2500]}
 
 def contains(*terms: dict) -> dict:
     """Return the condition expected for externalIds containing all the terms."""
-    return {"op": "external_ids_contains", "args": [list(terms)]}
+    return {"op": "external_ids_contains", "args": [json.dumps(list(terms))]}
 
 
 @pytest.mark.parametrize(
@@ -126,6 +129,23 @@ def test_has_external_ids(node, expected):
 def test_translate_external_ids_condition(node, expected):
     """Any of the ids gives one operator per id combined with or, all of the ids gives one operator."""
     assert translate_external_ids_filter(node) == expected
+
+
+@pytest.mark.parametrize(
+    "node",
+    [
+        pytest.param({"op": "=", "args": [PROP, "prip:U1"]}, id="equal"),
+        pytest.param({"op": "in", "args": [PROP, ["U1", "auxip:"]]}, id="in"),
+        pytest.param({"op": "a_contains", "args": [PROP, ["prip:U1", "U2"]]}, id="a_contains"),
+        pytest.param(
+            {"op": "and", "args": [OTHER, {"op": "not", "args": [{"op": "=", "args": [PROP, "U1"]}]}]},
+            id="boolean",
+        ),
+    ],
+)
+def test_translated_filter_is_valid_cql2(node):
+    """The translated filter is valid CQL2, as required by stac-fastapi-pgstac that validates it with cql2."""
+    cql2.Expr(translate_external_ids_filter(node)).validate()  # pylint: disable=no-member
 
 
 def test_translate_external_ids_in_boolean_filter():
