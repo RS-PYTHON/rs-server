@@ -24,6 +24,47 @@ Changed
 
 None
 
+[1.0a15] - Sprint 41 - 2026-10-21
+=================================
+
+## Added
+
+- RSPY-136: Solution to perform maintenance tasks on the nodes (ssh)
+- RSPY-187: Create / Update documentation for all rs-server endpoints
+- RSPY-1004: Fill the Mockup Section for 'how-to guides'
+- RSPY-1005: Fill the Mockup Section for 'Advanced' section dedicated to developer
+- RSPY-1006: Fill the Mockup Section for deploying the rs-python solution
+- RSPY-1009: Fill the Mockup Section for administration tasks
+- RSPY-1069: Update Python 3.13.16, Jupyter 4.6.4+ and Prefect 3.8.3+
+- RSPY-1097: Support standard Python logging outside Prefect flows
+- RSPY-1142: Gateway API migration: remove ingress-nginx and oauth2-proxy
+- RSPY-1143: Use the configurable shared disk for processor payload
+- RSPY-1148: Update to EODAG v4
+- RSPY-1150: Update to stac-browser 5.1.0
+- RSPY-1157: Convert ADF_OL* L2 aux files
+- RSPY-1180: Generate CPMv3 payloads
+- RSPY-1181: Migrate S3L0 processing to CPMv3
+- RSPY-1182: Migrate S3 OLCI processing to CPMv3
+- RSPY-1186: Migrate SAFE product conversion to CPM v3
+- RSPY-1187: Support CPM "Triggering S3 output staging"
+- RSPY-1204: Provide a Jupyter Server Docker Image for CPM dev on RSPY and deploy in jupyterHub
+- RSPY-1205: Add sat:acquisition_station property to CADIP sessions
+- RSPY-1206: Copy sat:acquisition_station property from input products to output products
+- RSPY-1221: Benchmark a real processing flow
+- RSPY-1223: Query oData by product publication date
+- RSPY-1225: Adapt RS Server Catalog to stac-fastapi 7.x configuration changes
+- RSPY-1226: Sprint 41 corrections of issues
+- RSPY-1229: CI/CD: Download and cache the Trivy databases
+- RSPY-1238: Remove the ability to mount a shared disk as read-only in Dask cluster
+
+## Fixed
+
+- RSPY-1129: Wrong links in https://home.rs-python.eu/rs-documentation/ (2 pts)
+- RSPY-1132: Collections search returns unfiltered list of collections (3 pts)
+- RSPY-1224: Georeferenced TIFF not displayed in STAC Browser ( 3 pts )
+- RSPY-1230: catalog/search by 3D bbox returns internal error 500 "Unknown geometry type: 13 - PolyhedralSurface" (1 pt)
+- RSPY-1240: Search by externalIds broken with pgstac 0.10 (3 pts)
+
 [1.0a14] - Sprint 40 - 2026-09-23
 =================================
 
