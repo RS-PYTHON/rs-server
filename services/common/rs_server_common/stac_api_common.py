@@ -104,6 +104,8 @@ logger = Logging.default(__name__)
 
 DEFAULT_STAC_VERSION = "1.1.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+UTC_OFFSET = "+00:00"
+UTC_DESIGNATOR = "Z"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 DATE_INTERVAL_KEYS = ["PublicationDate", "ContentDate/Start", "ContentDate/End"]
@@ -1175,19 +1177,29 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
         logger.debug(f"Resolving date interval conflict resolution between {value1} and {value2}")
 
-        # Read both start and stop dates
-        _, start1, stop1 = validate_inputs_format(value1, raise_errors=True)
-        _, start2, stop2 = validate_inputs_format(value2, raise_errors=True)
+        # The parser returns fixed dates separately; use that instant as both interval bounds.
+        fixed1, start1, stop1 = validate_inputs_format(value1, raise_errors=True)
+        fixed2, start2, stop2 = validate_inputs_format(value2, raise_errors=True)
+        start1, stop1 = fixed1 or start1, fixed1 or stop1
+        start2, stop2 = fixed2 or start2, fixed2 or stop2
 
-        # Calculate the union or intersection
         if mode == MergeMode.UNION:
-            start = min(start1, start2)
-            stop = max(stop1, stop2)
+            # An absent bound is unbounded and remains so in the union.
+            start = min(start1, start2) if start1 is not None and start2 is not None else None
+            stop = max(stop1, stop2) if stop1 is not None and stop2 is not None else None
         else:
-            start = max(start1, start2)
-            stop = min(stop1, stop2)
+            # Keep the tighter defined bounds; an open bound adds no restriction.
+            start = max((bound for bound in (start1, start2) if bound is not None), default=None)
+            stop = min((bound for bound in (stop1, stop2) if bound is not None), default=None)
 
-        return f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}", start >= stop
+        # Bounds are inclusive: equal endpoints select a valid instant, not an empty interval.
+        if start is not None and start == stop:
+            return start.isoformat().replace(UTC_OFFSET, UTC_DESIGNATOR), False
+        # Preserve fractional seconds and timezone information; serialize open bounds as "..".
+        start_text = start.isoformat().replace(UTC_OFFSET, UTC_DESIGNATOR) if start is not None else ".."
+        stop_text = stop.isoformat().replace(UTC_OFFSET, UTC_DESIGNATOR) if stop is not None else ".."
+        empty = start is not None and stop is not None and start > stop
+        return f"{start_text}/{stop_text}", empty
 
     def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any, mode: MergeMode) -> tuple[Any, bool]:
         """
