@@ -412,17 +412,17 @@ def test_stac_to_odata_single_asset():
                     "eviction_datetime": "2026-01-01T00:00:00Z",
                     "start_datetime": "2025-01-01T09:00:00Z",
                     "processing:lineage": "operational",
+                    "externalIds": [
+                        {
+                            "scheme": "rs-odata-prip",
+                            "value": "12345678-1234-5678-1234-567812345678",
+                        },
+                    ],
                 },
                 "assets": {
                     "data": {
                         "file:size": 1024,
                         "file:checksum": "abc123",
-                        "externalIds": [
-                            {
-                                "scheme": "rs-odata-prip",
-                                "value": "12345678-1234-5678-1234-567812345678",
-                            },
-                        ],
                     },
                 },
             },
