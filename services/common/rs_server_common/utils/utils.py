@@ -609,8 +609,7 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
         for _, asset_props in feature["assets"].items():
 
             # Retrieve UUID from asset properties
-            # Dummy value in case we get an item that was created before the addition of UUID, to remove?
-            feature_uuid = "0000-0000-0000-0000"
+            feature_uuid = ""
             feature_externalids = prop.get("externalIds", [])
             for externalid in feature_externalids:
                 if externalid.get("scheme") == "rs-odata-prip":
