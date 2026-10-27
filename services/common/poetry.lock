@@ -211,18 +211,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.43.118"
+version = "1.43.119"
 description = "The AWS SDK for Python (Boto3)"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.43.118-py3-none-any.whl", hash = "sha256:ab8f3d2c622ef039338b4f228d97ea55f1abd573d84bb9b9a5ee8cb6780c0ccd"},
-    {file = "boto3-1.43.118.tar.gz", hash = "sha256:c0620f799e0f0c222ba42c337b65cdbcd3da38a3121187f634d8926cbbb28a9c"},
+    {file = "boto3-1.43.119-py3-none-any.whl", hash = "sha256:d1718edae48c3241d289c0ece8a515399a7242c406e35328b9685c4d24039186"},
+    {file = "boto3-1.43.119.tar.gz", hash = "sha256:e12c3b1d81713e14bd6947b7412d9d0ea49b320642d795ded1d64d6483ca6f49"},
 ]
 
 [package.dependencies]
-botocore = ">=1.43.118,<1.44.0"
+botocore = ">=1.43.119,<1.44.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.19.0,<0.20.0"
 
@@ -231,14 +231,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.43.118"
+version = "1.43.119"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.43.118-py3-none-any.whl", hash = "sha256:a45d7ae570674161e4a3542d8c68633bf7503f92d1de781ef7361b79488eda6f"},
-    {file = "botocore-1.43.118.tar.gz", hash = "sha256:7f3f9d88cc9e847587690f82a42e3c3c292c3026c92c1e60d68a9310018e003f"},
+    {file = "botocore-1.43.119-py3-none-any.whl", hash = "sha256:6026aec97914a4fa116915fd3b05af899912eff51b93fb8dff95aa228a3e761b"},
+    {file = "botocore-1.43.119.tar.gz", hash = "sha256:ed11934be6e6d398ac21b7fe03778c9584368eeff8ba5371581f19bb47db0b6a"},
 ]
 
 [package.dependencies]
@@ -404,23 +404,23 @@ files = [
 
 [[package]]
 name = "brotli-asgi"
-version = "1.6.0"
+version = "1.7.0"
 description = "A compression AGSI middleware using brotli"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "brotli_asgi-1.6.0-py3-none-any.whl", hash = "sha256:09d956bdc3cdfc495758fe6485f644731a9523a5f85696ea7a9227783ab363ef"},
-    {file = "brotli_asgi-1.6.0.tar.gz", hash = "sha256:f9985d99ecb082cf5e67486a58c27b7f39b2d3be8d9d13c38abc12328cedce9a"},
+    {file = "brotli_asgi-1.7.0-py3-none-any.whl", hash = "sha256:29d410f30e3fe5c062780270d907e212af2ea05ee79449179c9d72487b6ba5b5"},
+    {file = "brotli_asgi-1.7.0.tar.gz", hash = "sha256:ff6ef116800d8f13b33ed6b1db2168ac5a27da7426f85f40d7ea3db1f03519a6"},
 ]
 
 [package.dependencies]
-brotli = ">=1.0.9"
+brotli = ">=1.2.1"
 starlette = ">=0.25.0"
 
 [package.extras]
 test-brotli = ["mypy (>=0.770)", "requests (>=2.23.0)"]
-test-brotlipy = ["brotlipy (>=0.7.0)", "mypy (>=0.770)", "requests (>=2.23.0)"]
+test-brotlicffi = ["brotlicffi (>=1.2.1.0)", "mypy (>=0.770)", "requests (>=2.23.0)"]
 
 [[package]]
 name = "buildpg"
@@ -436,14 +436,14 @@ files = [
 
 [[package]]
 name = "cachetools"
-version = "7.2.5"
+version = "7.2.6"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "cachetools-7.2.5-py3-none-any.whl", hash = "sha256:9033308cc26b678784a27b096aab1541b9e698d785c3e9918b691ccd458d88df"},
-    {file = "cachetools-7.2.5.tar.gz", hash = "sha256:a2223b80de434291ddf4c105354e533bbaf4d29382f5d1bc3e4b9332cb31061e"},
+    {file = "cachetools-7.2.6-py3-none-any.whl", hash = "sha256:8722e08fc36ae0838a9a0a2ab9935554720de3343a62dad7aae7c595854c8623"},
+    {file = "cachetools-7.2.6.tar.gz", hash = "sha256:1096513bdeed468ba505df3d123e4578a5a22c955f4a9ba3912fd71f3f95363a"},
 ]
 
 [[package]]
@@ -1588,14 +1588,14 @@ files = [
 
 [[package]]
 name = "jsonpatch"
-version = "1.37"
+version = "1.38"
 description = "Apply JSON-Patches (RFC 6902) "
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "jsonpatch-1.37-py3-none-any.whl", hash = "sha256:7905646db52668a89d10945a07ca1c10337094dcf07d172ca384dccfca0b7438"},
-    {file = "jsonpatch-1.37.tar.gz", hash = "sha256:04288ef93e60084bcb118101cd9d53424e627b91bb47ec5a95c02ec3795f6d23"},
+    {file = "jsonpatch-1.38-py3-none-any.whl", hash = "sha256:46260c5df952abd4734a098f94512dc00bc38539152ac3ef069ed0475e4f5695"},
+    {file = "jsonpatch-1.38.tar.gz", hash = "sha256:debc3e7bdc3d446468d64987f51a0e7a9deea42987ff90a6d1005a489b471c19"},
 ]
 
 [package.dependencies]
@@ -1615,14 +1615,14 @@ files = [
 
 [[package]]
 name = "jsonpointer"
-version = "3.5"
+version = "3.6"
 description = "Identify specific nodes in a JSON document (RFC 6901) "
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "jsonpointer-3.5-py3-none-any.whl", hash = "sha256:8728c42f6bc07b1436af31600267bdbb1495ac5a61f31d9583ff319ecf7da09c"},
-    {file = "jsonpointer-3.5.tar.gz", hash = "sha256:81f28618a019cf1b011a6cf757439737972de1ccbeca2e1f86dfb4d661800792"},
+    {file = "jsonpointer-3.6-py3-none-any.whl", hash = "sha256:a45c858f8a9e171f6b3790ed9446c9382782f6c4cb4589176813c5a553f4cfcd"},
+    {file = "jsonpointer-3.6.tar.gz", hash = "sha256:82e839a3ba3a9e2b54394fda8b3d276c2459d80408d06ef9a6fbc369d7544ffc"},
 ]
 
 [[package]]
