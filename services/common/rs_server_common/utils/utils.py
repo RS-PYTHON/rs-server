@@ -610,11 +610,11 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
 
             # Retrieve UUID from asset properties
             # Dummy value in case we get an item that was created before the addition of UUID, to remove?
-            asset_uuid = "0000-0000-0000-0000"
-            asset_externalids = asset_props.get("externalIds", [])
-            for externalid in asset_externalids:
+            feature_uuid = "0000-0000-0000-0000"
+            feature_externalids = prop.get("externalIds", [])
+            for externalid in feature_externalids:
                 if externalid.get("scheme") == "rs-odata-prip":
-                    asset_uuid = externalid.get("value")
+                    feature_uuid = externalid.get("value")
                     break
 
             # Build odata property dictionary for the asset
@@ -637,7 +637,7 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                 },
                 "ProductionType": prop.get("processing:lineage", "systematic_production"),
                 # For the moment, only a random uuid is used (see RSPY#1223)
-                "Id": asset_uuid,
+                "Id": feature_uuid,
             }
 
             if odata_prop:
