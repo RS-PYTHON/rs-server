@@ -326,22 +326,42 @@ class EodagProvider(Provider):
                 search_config.products = deepcopy(getattr(providers[self.provider].config, "products", {}))
 
         if branches:
-            filters: list[str] = []
+            mapped_branches = []
             for branch in branches:
                 branch_args = branch.copy()
                 mapped_branch = self._map_search_args(branch_args)
-                # Reuse station templates for dates, geometry, missions and other criteria without an HTTP call.
+                mapped_branches.append({**branch_args, **mapped_branch})
+
+            # Compare complete mapped values: date bounds are resolved and mission OR groups stay intact.
+            common = {
+                key: value
+                for key, value in mapped_branches[0].items()
+                if all(key in branch and branch[key] == value for branch in mapped_branches[1:])
+            }
+
+            def serialize_filter(query_args: dict) -> str:
+                # Use the station templates without an HTTP call or changes to the shared gateway config.
                 serializer = ODataV4Search(self.provider, deepcopy(search_config))
-                query, _ = serializer.build_query_string(dataset_key, {**branch_args, **mapped_branch})
-                parts = query.get("$filter", [])
-                if not parts:
-                    filters = []  # An unrestricted collection makes the union unrestricted.
+                query, _ = serializer.build_query_string(dataset_key, query_args)
+                return " and ".join(query.get("$filter", []))
+
+            common_filter = serialize_filter(common)
+            filters: list[str] = []
+            for branch in mapped_branches:
+                branch_filter = serialize_filter({key: value for key, value in branch.items() if key not in common})
+                if not branch_filter:
+                    # One collection adds no restriction beyond the common filters, so the OR is unrestricted.
+                    filters = []
                     break
-                filters.append(" and ".join(parts))
+                filters.append(branch_filter)
+
+            # Emit shared predicates once, e.g. geometry AND ((S1A AND type1) OR (S2B AND type2)).
+            # Parentheses keep OR groups together when combined with the common AND predicates.
+            clauses = [f"({common_filter})"] if common_filter else []
             if filters:
-                # Keep each branch together, e.g. (S1A AND type1) OR (S2B AND type2).
-                # A single HTTP search lets the station sort and paginate the union itself.
-                mapped_search_args["collectionFilter"] = "(" + " or ".join(f"({f})" for f in filters) + ")"
+                clauses.append("(" + " or ".join(f"({f})" for f in filters) + ")")
+            if clauses:
+                mapped_search_args["collectionFilter"] = " and ".join(clauses)
 
         logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
         try:

@@ -14,6 +14,7 @@
 
 """Exercise mission filters through STAC, EODAG and a station with decoy products."""
 
+import itertools
 import json
 import re
 from copy import deepcopy
@@ -23,12 +24,18 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 import responses
 import yaml
+from dateutil.parser import isoparse
+from eodag.api.search_result import SearchResult
 from eodag.plugins.search.qssearch import ODataV4Search
 from eodag.utils.exceptions import MisconfiguredError
 from pygeofilter.backends.native.evaluate import NativeEvaluator
 from pygeofilter.parsers.cql2_text import parse
 from rs_server_adgs import adgs_utils
-from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
+from rs_server_common.data_retrieval.eodag_provider import (
+    CustomEODataAccessGateway,
+    EodagProvider,
+)
+from rs_server_common.stac_api_common import prepare_product_search_params
 from rs_server_common.utils.pytest.pytest_utils import create_mock_collection
 from rs_server_prip import prip_utils
 
@@ -371,3 +378,99 @@ def test_collection_union_keeps_product_types_before_pagination(
     # /search fetches the first limit * page items per station, then sorts and slices the combined results locally.
     assert [q["$top"] for q in station_queries] == [["1"], ["2"]]
     assert all(q["$skip"] == ["0"] for q in station_queries)
+
+
+@pytest.mark.parametrize(
+    "case,expected,geometry_count",
+    [
+        (
+            "shared-geometry-and-pairs",
+            "spatial and ((platformShortName = 'SENTINEL-1' and platformSerialIdentifier = 'A') or "
+            "(platformShortName = 'SENTINEL-2' and platformSerialIdentifier = 'B')) "
+            "and productType in ('RAW','OTHER')",
+            1,
+        ),
+        ("geometry-in-one-branch", "(spatial and productType = 'RAW') or productType = 'OTHER'", 1),
+        ("unrestricted-remainder", "spatial", 1),
+        (
+            "different-pairs-and-types",
+            "(platformShortName = 'SENTINEL-1' and platformSerialIdentifier = 'A' and productType = 'RAW') or "
+            "(platformShortName = 'SENTINEL-2' and platformSerialIdentifier = 'B' and productType = 'OTHER')",
+            0,
+        ),
+        (
+            "shared-start-with-different-ends",
+            "content_start >= TIMESTAMP('2024-01-01T00:00:00Z') and "
+            "((productType = 'RAW' and content_end <= TIMESTAMP('2024-01-03T00:00:00Z')) or "
+            "(productType = 'OTHER' and content_end <= TIMESTAMP('2024-01-05T00:00:00Z')))",
+            0,
+        ),
+    ],
+)
+def test_collection_filter_factors_common_predicates(mocker, case, expected, geometry_count):
+    """Emit common predicates once while preserving each collection's remaining restrictions."""
+    geometry = "POLYGON((0 0,1 0,1 1,0 0))"
+    pairs = (("SENTINEL-1", "A"), ("SENTINEL-2", "B"))
+    queries = {
+        "shared-geometry-and-pairs": [
+            {"intersects": geometry, "mission_pairs": pairs, "productType": "RAW"},
+            {"intersects": geometry, "mission_pairs": pairs, "productType": "OTHER"},
+        ],
+        "geometry-in-one-branch": [
+            {"intersects": geometry, "productType": "RAW"},
+            {"productType": "OTHER"},
+        ],
+        "unrestricted-remainder": [{"intersects": geometry, "productType": "RAW"}, {"intersects": geometry}],
+        "different-pairs-and-types": [
+            {"mission_pairs": (pairs[0],), "productType": "RAW"},
+            {"mission_pairs": (pairs[1],), "productType": "OTHER"},
+        ],
+        "shared-start-with-different-ends": [
+            {"Start": "2024-01-01T00:00:00Z", "End": "2024-01-03T00:00:00Z", "productType": "RAW"},
+            {"Start": "2024-01-01T00:00:00Z", "End": "2024-01-05T00:00:00Z", "productType": "OTHER"},
+        ],
+    }
+    source = Path(__file__).parents[1] / "services/prip/config/prip_ws_config.yaml"
+    gateway = CustomEODataAccessGateway.create(source.as_posix())
+    provider = object.__new__(EodagProvider)
+    provider.client, provider.provider = gateway, "s2b"
+    search = mocker.patch.object(gateway, "search", return_value=SearchResult([]))
+    params = prepare_product_search_params({"query_branches": queries[case]})
+    original = deepcopy(params)
+    provider._specific_search(**params, limit=10)  # pylint: disable=protected-access
+    assert params == original
+    search.assert_called_once()
+    odata_filter = search.call_args.kwargs["collectionFilter"]
+    assert odata_filter.count("OData.CSC.Intersects") == geometry_count
+    if case == "shared-geometry-and-pairs":
+        assert odata_filter.count("Value eq 'SENTINEL-1'") == 1
+        assert odata_filter.count("Value eq 'SENTINEL-2'") == 1
+
+    # Evaluate the final Boolean grouping independently, including products outside the common geometry.
+    cql = re.sub(r"OData\.CSC\.Intersects\(area=geography'[^']*'\)", "(spatial = TRUE)", odata_filter)
+    operators = {"eq": "=", "gt": ">", "lt": "<"}
+    cql = re.sub(
+        r"ContentDate/(Start|End) (eq|gt|lt) ([^\s)]+)",
+        lambda match: f"content_{match[1].lower()} {operators[match[2]]} TIMESTAMP('{match[3]}')",
+        cql,
+    )
+    predicate = station_predicate(cql)
+    expected_predicate = NativeEvaluator(use_getattr=False).evaluate(
+        parse(re.sub(r"\bspatial\b", "(spatial = TRUE)", expected)),
+    )
+    for pair, product_type, spatial, start, end in itertools.product(
+        [("SENTINEL-1", "A"), ("SENTINEL-1", "B"), ("SENTINEL-2", "A"), ("SENTINEL-2", "B")],
+        ["RAW", "OTHER", "DECOY"],
+        [False, True],
+        ["2023-12-31T00:00:00Z", "2024-01-02T00:00:00Z"],
+        ["2024-01-02T00:00:00Z", "2024-01-04T00:00:00Z", "2024-01-06T00:00:00Z"],
+    ):
+        row = {
+            "platformShortName": pair[0],
+            "platformSerialIdentifier": pair[1],
+            "productType": product_type,
+            "spatial": spatial,
+            "content_start": isoparse(start),
+            "content_end": isoparse(end),
+        }
+        assert predicate(row) == expected_predicate(row), (case, row, odata_filter)

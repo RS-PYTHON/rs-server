@@ -2654,7 +2654,7 @@ def test_search_on_several_collections(
     call_mocked_search(
         request_platforms=["sentinel-1a"],
         cols=["col_s1a", "col_ptype"],
-        expected_filter=f"(({product_type} and {s1a}) or ({s1a}))",
+        expected_filter=f"({s1a})",
     )
 
     # Match the product-type collection OR S1A OR S2C; no condition is shared by all three collections.
