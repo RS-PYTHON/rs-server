@@ -365,7 +365,7 @@ jobs:
      packages: write # needed for 'docker push'
     steps:
       - name: Log into Docker registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
