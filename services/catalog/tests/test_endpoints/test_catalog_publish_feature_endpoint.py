@@ -21,6 +21,7 @@ import json
 import time
 from datetime import datetime
 from unittest.mock import patch
+from uuid import UUID
 
 import fastapi
 import pytest
@@ -53,6 +54,10 @@ class TestCatalogPublishFeature:
         assert returned_features["features"][0]["id"] == a_correct_feature["id"]
         assert returned_features["features"][0]["geometry"] == a_correct_feature["geometry"]
         assert returned_features["features"][0]["properties"]["owner"] == "fixture_owner"
+        external_ids = returned_features["features"][0]["properties"]["externalIds"]
+        generated_uuids = [external_id for external_id in external_ids if external_id["scheme"] == "rs-odata-prip"]
+        assert len(generated_uuids) == 1
+        assert str(UUID(generated_uuids[0]["value"])) == generated_uuids[0]["value"]
         # Get feature using specific endpoint with featureID
         feature_id = a_correct_feature["id"]
         specific_feature_response = client.get(
@@ -62,6 +67,88 @@ class TestCatalogPublishFeature:
         specific_feature = json.loads(check_features_response.content)
         # Check that specific feature is exactly match for previous one
         assert specific_feature["features"][0] == returned_features["features"][0]
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
+
+    def test_create_update_item_uuid(self, init_buckets, client, a_minimal_collection, a_correct_feature):
+        """Test that an item's UUID is generated on creation and cannot be changed by PUT or PATCH."""
+        feature = copy.deepcopy(a_correct_feature)
+        feature["collection"] = "fixture_collection"
+        items_url = "/catalog/collections/fixture_owner:fixture_collection/items"
+        item_url = f"{items_url}/{feature['id']}"
+
+        # Create a new item
+        create_response = client.post(items_url, json=feature)
+        assert create_response.status_code == fastapi.status.HTTP_201_CREATED
+
+        # Retrieve the UUID generated for this new item
+        created_item_response = client.get(item_url)
+        assert created_item_response.status_code == fastapi.status.HTTP_200_OK
+        original_item = created_item_response.json()
+        original_uuid = next(
+            external_id["value"]
+            for external_id in original_item["properties"]["externalIds"]
+            if external_id["scheme"] == "rs-odata-prip"
+        )
+        assert str(UUID(original_uuid)) == original_uuid
+
+        # Update the item with a PUT request including a different UUID
+        new_uuid = "00000000-0000-0000-0000-000000000001"
+        updated_feature = copy.deepcopy(feature)
+        updated_feature.pop("collection")
+        updated_feature["properties"]["externalIds"] = copy.deepcopy(original_item["properties"]["externalIds"])
+        updated_uuid = next(
+            external_id
+            for external_id in updated_feature["properties"]["externalIds"]
+            if external_id["scheme"] == "rs-odata-prip"
+        )
+        updated_uuid["value"] = new_uuid
+        updated_feature["properties"]["width"] = 3000
+
+        update_response = client.put(item_url, json=updated_feature)
+        assert update_response.status_code == fastapi.status.HTTP_200_OK
+
+        # Check that the item was correctly updated but that the UUID is still the original one
+        updated_item_response = client.get(item_url)
+        assert updated_item_response.status_code == fastapi.status.HTTP_200_OK
+        updated_item = updated_item_response.json()
+        assert (
+            next(
+                external_id["value"]
+                for external_id in updated_item["properties"]["externalIds"]
+                if external_id["scheme"] == "rs-odata-prip"
+            )
+            == original_uuid
+        )
+        assert updated_item["properties"]["width"] == 3000
+
+        # Same with a PATCH request
+        patch_response = client.patch(
+            item_url,
+            json={
+                "properties": {
+                    "externalIds": [{"scheme": "rs-odata-prip", "value": new_uuid}],
+                    "width": 3500,
+                },
+            },
+        )
+        assert patch_response.status_code == fastapi.status.HTTP_200_OK
+
+        # Check also that the item is correctly updated but that the UUID is still the original one
+        patched_item_response = client.get(item_url)
+        assert patched_item_response.status_code == fastapi.status.HTTP_200_OK
+        patched_item = patched_item_response.json()
+        assert (
+            next(
+                external_id["value"]
+                for external_id in patched_item["properties"]["externalIds"]
+                if external_id["scheme"] == "rs-odata-prip"
+            )
+            == original_uuid
+        )
+        assert patched_item["properties"]["width"] == 3500
         assert (
             client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
             == fastapi.status.HTTP_200_OK
@@ -157,6 +244,7 @@ class TestCatalogPublishFeature:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
+        updated_feature_sent["properties"]["externalIds"] = feature_post_response.json()["properties"]["externalIds"]
 
         feature_put_response = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
@@ -172,6 +260,7 @@ class TestCatalogPublishFeature:
         # Test that ID has changed, but other arbitrary field not
         assert updated_feature["bbox"] == updated_feature_sent["bbox"]
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
+        assert updated_feature["properties"]["externalIds"] == feature_post_response.json()["properties"]["externalIds"]
         assert (
             client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
             == fastapi.status.HTTP_200_OK
@@ -203,6 +292,7 @@ class TestCatalogPublishFeature:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = copy.deepcopy(a_correct_feature["bbox"])
         del updated_feature_sent["collection"]
+        updated_feature_sent["properties"]["externalIds"] = feature_post_response.json()["properties"]["externalIds"]
 
         # Test that updated field is correctly updated.
         updated_timestamp = json.loads(feature_post_response.content)["properties"]["updated"]
@@ -389,6 +479,7 @@ class TestCatalogPublishFeature:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = "Incorrect_bbox_value"
         del updated_feature_sent["collection"]
+        updated_feature_sent["properties"]["externalIds"] = feature_post_response.json()["properties"]["externalIds"]
 
         response = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",

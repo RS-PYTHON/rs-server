@@ -39,6 +39,7 @@ from rs_server_catalog.data_management.geometry_manager import (
     validate_geometry_and_enforce_bbox,
 )
 from rs_server_catalog.data_management.s3_manager import S3Manager
+from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
     get_user,
@@ -534,6 +535,11 @@ field is not permitted also."
                 content = self.s3_manager(request).update_assets_checksums(content)
                 if content:
                     if request.method == "POST":
+                        # Add UUID to the item's properties
+                        if "externalIds" not in content.get("properties", {}):
+                            content["properties"]["externalIds"] = []
+                        content["properties"]["externalIds"].append(StacManager.generate_uuid_for_stac_asset())
+                        # Set timestamps for the new item
                         content = timestamps_extension.set_timestamps_for_creation(content)
                         content = timestamps_extension.set_timestamps_for_insertion(content)
                         logger.debug("Set creation/insertion timestamps for item %s", content.get("id"))
@@ -552,6 +558,10 @@ field is not permitted also."
                             original_published=published,
                         )
                         logger.debug("Set update timestamps for item %s", content.get("id"))
+
+                        # Retrieve the existing UUID from the existing item and add it to the given item if any
+                        content = StacManager.retrieve_existing_uuid_or_create_one(existing_item=item, new_item=content)
+
                 if hasattr(content, "status_code"):
                     return content
 
@@ -864,8 +874,13 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
             is_item = "/items/" in request.scope["path"]
             item = None
-            if is_item and ("geometry" in content or "bbox" in content or "assets" in content):
-                # Spatial validation and asset enrichment need the complete item context.
+            if is_item and (
+                "geometry" in content
+                or "bbox" in content
+                or "assets" in content
+                or "externalIds" in content.get("properties", {})
+            ):
+                # PATCH validation needs the complete item context.
                 item = await self._get_item_from_collection(request)
                 if not item:
                     raise HTTPException(
@@ -902,6 +917,31 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if is_item and isinstance(content.get("assets"), dict):
                 # Validate and enrich only assets explicitly present in this PATCH.
                 content["assets"] = self.s3_manager(request).update_patch_assets(item, content["assets"])
+
+            # Keep the existing UUID when externalIds are patched.
+            if is_item and "properties" in content and "externalIds" in content["properties"]:
+                external_ids = content["properties"]["externalIds"]
+                if isinstance(external_ids, list):
+                    # From the PATCH request, keep the externalIds element EXCEPT the one with an UUID if any
+                    external_ids = [
+                        external_id
+                        for external_id in external_ids
+                        if not (isinstance(external_id, dict) and external_id.get("scheme") == "rs-odata-prip")
+                    ]
+                    # From the existing item, retrieve the UUID if any and add it to the externalIds list
+                    if item:
+                        existing_external_ids = item.get("properties", {}).get("externalIds", [])
+                        existing_uuid = next(
+                            (
+                                external_id
+                                for external_id in existing_external_ids
+                                if external_id.get("scheme") == "rs-odata-prip"
+                            ),
+                            None,
+                        )
+                        if existing_uuid:
+                            external_ids.append(existing_uuid)
+                    content["properties"]["externalIds"] = external_ids
 
             # Update "updated" timestamp (different field if it is an item or a collection)
             if is_item:

@@ -18,7 +18,6 @@ import os
 import os.path as osp
 import re
 import traceback
-import uuid
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -608,6 +607,16 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
 
         # Return assets, not features
         for _, asset_props in feature["assets"].items():
+
+            # Retrieve UUID from asset properties
+            feature_uuid = ""
+            feature_externalids = prop.get("externalIds", [])
+            for externalid in feature_externalids:
+                if externalid.get("scheme") == "rs-odata-prip":
+                    feature_uuid = externalid.get("value")
+                    break
+
+            # Build odata property dictionary for the asset
             odata_prop = {
                 "Name": feature["id"],
                 "ContentType": prop.get("type"),
@@ -626,8 +635,7 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                     "ChecksumDate": prop.get("eopf:origin_datetime"),
                 },
                 "ProductionType": prop.get("processing:lineage", "systematic_production"),
-                # For the moment, only a random uuid is used (see RSPY#1223)
-                "Id": str(uuid.uuid4()),
+                "Id": feature_uuid,
             }
 
             if odata_prop:
