@@ -267,7 +267,9 @@ def call_mocked_search(
             values = [values]
 
         if request == "odata2":
-            odata_dict[odata_key] = " or ".join(f"contains({key},'{v}')" for v in values)
+            # Group the OR conditions so every name remains subject to the other filters.
+            alternatives = " or ".join(f"contains({key},'{v}')" for v in values)
+            odata_dict[odata_key] = f"({alternatives})" if len(values) > 1 else alternatives
             return
 
         joined = ""

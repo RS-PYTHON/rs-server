@@ -303,6 +303,40 @@ def test_mission_search(  # pylint: disable=too-many-arguments,too-many-locals
     assert {item["properties"]["platform"] for item in response.json()["features"]} == expected
 
 
+@pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=True)
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_multiple_ids_remain_grouped_with_mission_pairs(mocker, client, method):
+    """Keep both ID alternatives subject to the mission restriction."""
+    collections = mock_collections(mocker, "adgs", [{}])
+    names = ["S1A_OPER_AUX_OBMEMC_PDMC_20240106T000000", "ZZZ_NONEXISTENT"]
+    params: dict = {"collections": [collections[0]["id"]]}
+    endpoint = "/auxip/search"
+    with responses.RequestsMock() as station:
+        station.get(re.compile(r"http://127\.0\.0\.1:5000/Products\?"), json={"value": []})
+        if method == "GET":
+            params["collections"] = collections[0]["id"]
+            params["filter"] = f"id in ('{names[0]}','{names[1]}') and platform in ('sentinel-1c','sentinel-2b')"
+            response = client.get(endpoint, params=params)
+        else:
+            params["filter"] = {
+                "op": "and",
+                "args": [
+                    {"op": "in", "args": [{"property": "id"}, names]},
+                    {"op": "in", "args": [{"property": "platform"}, ["sentinel-1c", "sentinel-2b"]]},
+                ],
+            }
+            response = client.post(endpoint, json=params)
+        assert response.status_code == 200, response.text
+        search_calls = [call for call in station.calls if "/Products?" in (call.request.url or "")]
+        assert len(search_calls) == 1
+        request_url = search_calls[0].request.url
+        assert isinstance(request_url, str)
+        odata_filter = parse_qs(urlsplit(request_url).query)["$filter"][0]
+    # Check that the OR conditions are grouped so both IDs remain subject to the satellite restriction.
+    assert f"(contains(Name,'{names[0]}') or contains(Name,'{names[1]}')) and (" in odata_filter
+    assert "Value eq 'C'" in odata_filter and "Value eq 'B'" in odata_filter
+
+
 @pytest.mark.parametrize(
     "fastapi_app,service",
     [(ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_PRIP, "prip")],

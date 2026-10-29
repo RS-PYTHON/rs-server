@@ -220,7 +220,9 @@ class EodagProvider(Provider):
                 # already adds the quotes.
                 mapped_search_args["Name"] = names[0]
             else:
-                mapped_search_args["NameContains"] = " or ".join(f"contains(Name,'{name}')" for name in sorted(names))
+                # Group the OR conditions so every name remains subject to the other filters.
+                alternatives = " or ".join(f"contains(Name,'{name}')" for name in sorted(names))
+                mapped_search_args["NameContains"] = f"({alternatives})"
 
         if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
