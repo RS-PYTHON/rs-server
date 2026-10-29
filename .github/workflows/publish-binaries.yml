@@ -47,9 +47,22 @@ jobs:
           # Checkout branch not pr (needed by git push)
           ref: ${{ case(github.event_name == 'pull_request', github.head_ref, '') }}
           fetch-depth: 0 # to have file history
+      - id: set-binary-env
+        name: Call action 'set-binary-env'
+        uses: RS-PYTHON/actions/.github/actions/set-binary-env@develop
+        with:
+          add_docker_tags: ${{ inputs.add_docker_tags }}
+      - id: dpr-branch
+        name: Check if branch exists in rs-dpr-service
+        uses: RS-PYTHON/actions/.github/actions/get-repo-branch@develop
+        with:
+          repo: RS-PYTHON/rs-dpr-service
+          # Try current branch, then develop
+          branches: ${{ steps.set-binary-env.outputs.branch_name }},develop
       - uses: actions/checkout@v7
         with:
           repository: RS-PYTHON/rs-dpr-service
+          ref: ${{ steps.dpr-branch.outputs.branch }}
           path: rs-dpr-service
           fetch-depth: 0
       - id: find
@@ -107,6 +120,9 @@ jobs:
       - id: generate
         name: Generate the aggregated openapi.json/swagger
         if: ${{ steps.find.outputs.regenerate == 'true'}}
+        env:
+          # Use the rs-dpr-service image with the same tag as the current branch, else latest
+          DPR_IMAGE_TAGS: ${{ steps.set-binary-env.outputs.docker_tags }},latest
         run: |
           set -x
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
