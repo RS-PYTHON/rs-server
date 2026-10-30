@@ -201,18 +201,22 @@ def call_mocked_search(
     expected_pagination="&$orderby=PublicationDate desc&$top=10&$skip=0",
     # We don't expect any results if the user request does not match the collection config
     expect_result: bool = True,
+    expected_filter: str | None = None,
 ) -> list[dict]:
     """
     Create a user stac request from parameters.
     Then mock the odata request, that is calculated by rspy from the collection configurations
     and the user request, and is sent to the station.
     Then call the /search and check result.
+
+    expected_filter overrides the generated flat AND filter to check grouped mission or collection alternatives.
     """
     adgs = service == "adgs"
     cadip = service == "cadip"
     prip = service == "prip"
 
     # Spy on eodag.plugins.search.qssearch::QueryStringSearch if it's not already mocked, or reset the mock
+    spy_search: Any
     try:
         spy_search = QueryStringSearch.do_search
         spy_search.reset_mock()
@@ -263,7 +267,9 @@ def call_mocked_search(
             values = [values]
 
         if request == "odata2":
-            odata_dict[odata_key] = " or ".join(f"contains({key},'{v}')" for v in values)
+            # Group the OR conditions so every name remains subject to the other filters.
+            alternatives = " or ".join(f"contains({key},'{v}')" for v in values)
+            odata_dict[odata_key] = f"({alternatives})" if len(values) > 1 else alternatives
             return
 
         joined = ""
@@ -394,7 +400,9 @@ def call_mocked_search(
 
     # Build the mocked odata
     odata = "http://127.0.0.1:5000/" + ("Sessions" if cadip else "Products") + "?"
-    if odata_filters:
+    if expected_filter is not None:
+        odata += "$filter=" + expected_filter
+    elif odata_filters:
         odata += "$filter=" + " and ".join(ordered_odata)
     odata += expected_pagination
     odata += "&$expand=Attributes" if not cadip else ""
