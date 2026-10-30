@@ -3780,19 +3780,20 @@ stac-fastapi-types = ">=7.0,<8.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "7.1.0"
+version = "7.2.0"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "stac_fastapi_pgstac-7.1.0-py3-none-any.whl", hash = "sha256:c7c0a1823fcfe390585b76b1c4a7c40cc01094163543387ae5af1f6603911f17"},
-    {file = "stac_fastapi_pgstac-7.1.0.tar.gz", hash = "sha256:74cba500e61ee7b16880cba85176c0f14ae611286a4122914c3312ab4075d93d"},
+    {file = "stac_fastapi_pgstac-7.2.0-py3-none-any.whl", hash = "sha256:38a2f36b4c0e930cdd3f761085fcdfe26086be44df72048b3e44d7e23af97f9b"},
+    {file = "stac_fastapi_pgstac-7.2.0.tar.gz", hash = "sha256:00bc724eeb02f90e43a1b55ab572d37801392fed248ceeb8c872d7ee90dee462"},
 ]
 
 [package.dependencies]
 asyncpg = "*"
 attrs = "*"
+brotli = ">=1.2.1"
 brotli-asgi = "*"
 buildpg = "*"
 cql2 = ">=0.3.6"
@@ -3807,7 +3808,7 @@ stac-fastapi-extensions = ">=7.0,<8.0"
 stac-fastapi-types = ">=7.0,<8.0"
 
 [package.extras]
-catalogs = ["stac-fastapi-catalogs-extension (==0.4.0)"]
+catalogs = ["stac-fastapi-catalogs-extension (>=1.0.0,<2.0)"]
 metrics = ["stac-fastapi-api[metrics]"]
 server = ["uvicorn[standard] (==0.38.0)"]
 validation = ["stac-pydantic[validation]"]
@@ -4138,4 +4139,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "b3168b8604c165983bf1a4a505712afbb99329f63dad6a53c423aa4a9880a45f"
+content-hash = "c11d76a7cf75b2f41294c5bc06c2f02f843e57b57c5e8e462cb96016dd659c1e"
