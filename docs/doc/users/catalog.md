@@ -147,6 +147,20 @@ The assets are not copied by the catalog: they must already be written in the ri
 GET /catalog/search?collections=copernicus:s3-l0&filter=platform='sentinel-3a'&sortby=-datetime&limit=10
 ```
 
+## Search by bounding box
+
+The `bbox` search parameter (`GET` and `POST` on `/catalog/search` and on the items of a collection) accepts the 2D
+form `west,south,east,north` and the 3D form `west,south,min_elevation,east,north,max_elevation`. The geometries of the
+items are 2D, so they are considered to be at elevation zero, as required by the STAC API specification:
+
+- with a 3D `bbox`, the elevations only select the items: if the interval `[min_elevation, max_elevation]` does not
+  contain zero, no item matches (an empty result is returned), otherwise the items are searched with the 2D `bbox`.
+- a `bbox` with `west` greater than `east` crosses the antimeridian: it is split at longitude 180/-180 and the items
+  intersecting any of the two parts are returned.
+- a `bbox` with zero width and/or zero height, i.e. a point or a line, finds the items intersecting this point or line.
+- a `bbox` with a non-finite coordinate (`NaN`, infinity) or outside the WGS84 bounds (longitude in `[-180, 180]`,
+  latitude in `[-90, 90]`) is refused with a `400 Bad Request` error.
+
 ## Search by external identifiers
 
 The items can carry the identifiers of the product in external systems (e.g. the PRIP or AUXIP identifier of the
@@ -230,7 +244,8 @@ The catalog also exposes its products with the OData interface of the ESA Produc
 [PRIP ICD](https://eof.esa.int/document/esa-eo-framework-eof-csc-production-interface-delivery-point-specification/).
 Each item gets a UUID, generated once by the catalog when it is added, and stored in its `externalIds` with the
 `rs-odata-prip` scheme. See [OData PRIP interface of the catalog](odata-mapping.md) for the mapping between the STAC
-items and the OData products.
+items and the OData products, and its [implementation status](odata-mapping.md#implementation-status): only a subset
+of this interface is currently available.
 
 ## Download the assets
 
