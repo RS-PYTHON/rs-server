@@ -60,6 +60,8 @@ def intersect_missions(left: MissionSelection, right: MissionSelection) -> Missi
     if right is None:
         return left
     # Combine only compatible pairs; an empty selection naturally produces no pairs.
+    # lc/ls are the left pair's constellation/serial; rc/rs are the right pair's.
+    # A None component is a wildcard, so keep the concrete value from either pair.
     return normalize_missions(
         (lc or rc, ls or rs)
         for (lc, ls), (rc, rs) in product(left, right)
@@ -101,10 +103,14 @@ def extract_missions(query: dict) -> tuple[dict, MissionSelection]:
 
 def matches_mission(entity: dict, missions: MissionSelection) -> bool:
     """Check an OData product's collection membership using the same pairs as station filtering."""
+    # No mission restriction means every product is eligible.
     if missions is None:
         return True
+    # Normalize product attributes to the same case as the configured pairs.
     constellation = str(entity.get("platformShortName") or "").strip().upper()
     serial = str(entity.get("platformSerialIdentifier") or "").strip().upper()
+    # Both attributes must match within one pair; None accepts any value for that attribute.
+    # Any matching pair is sufficient, while an empty selection matches no product.
     return any((c is None or c == constellation) and (s is None or s == serial) for c, s in missions)
 
 
@@ -120,7 +126,7 @@ def mission_search_params(missions: MissionSelection) -> dict:
         return {"missionFilter": "false"}
     constellations = {c for c, _ in missions}
     serials = {s for _, s in missions}
-    # Separate filters are safe only if recombining the attributes adds no new pairs.
+    # Separate filters are safe only if recombining the attributes adds no new pairs: S1A/S1B is safe, S1A/S2B is not.
     # An attribute can be omitted only when it is a wildcard in every pair.
     if set(product(constellations, serials)) == set(missions) and all(
         None not in values or values == {None} for values in (constellations, serials)
@@ -132,9 +138,11 @@ def mission_search_params(missions: MissionSelection) -> dict:
         }
 
     clauses = []
+    # Build one AND group per pair, then join those groups with OR.
     for constellation, serial in missions:
         attributes = []
         for name, value in (("platformShortName", constellation), ("platformSerialIdentifier", serial)):
+            # A wildcard adds no condition for this attribute.
             if value is not None:
                 # OData string literals escape apostrophes by doubling them.
                 literal = value.replace("'", "''")

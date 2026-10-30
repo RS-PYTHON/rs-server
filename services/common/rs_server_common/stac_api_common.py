@@ -833,7 +833,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     if not empty and query not in branches:
                         branches.append(query)
                 if branches:
-                    # Keep complete predicates together, including each collection's product types.
+                    # One branch uses the ordinary search path; multiple branches need an internal OR filter.
                     odata_params_by_station[station] = (
                         branches[0] if len(branches) == 1 else {"query_branches": branches}
                     )
@@ -1667,6 +1667,7 @@ def prepare_product_search_params(odata_params: dict) -> dict:
     prepared = copy.deepcopy(odata_params)
     # Normalize a single predicate or each complete alternative in a collection union.
     for query in prepared.get("query_branches", [prepared]):
+        # The provider expects a list when choosing between single-name and multiple-name filters.
         query["Name"] = names if isinstance(names := query.get("Name"), list) else [names]
         # Avoid EODAG's built-in product type parameter; this filters the station's productType attribute.
         if product_type := query.pop("productType", None):

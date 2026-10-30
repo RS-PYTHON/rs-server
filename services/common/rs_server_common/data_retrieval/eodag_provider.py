@@ -90,6 +90,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         missionFilter holds alternatives of mission pairs; collectionFilter holds
         alternatives of complete collection predicates. Existing station YAMLs need no migration.
         """
+        # Add internal filters only to OData V4 searches that map both mission attributes.
         for provider in self._providers.values():
             search = getattr(provider.config, "search", None)
             if (
@@ -101,14 +102,18 @@ class CustomEODataAccessGateway(EODataAccessGateway):
             ):
                 continue
 
+            # Extend a private copy so other providers sharing this configuration are not changed.
             search = deepcopy(search)
+            # Read the templates EODAG uses to assemble $filter so internal expressions can be added to its AND group.
             operations = getattr(search, "free_text_search_operations", {}).get("$filter", {}).get("operations", {})
             # Both fragments must be ANDed with the station's other filters.
+            # Reject other group layouts rather than changing their Boolean meaning.
             if set(operations) != {"and"} or not isinstance(operations["and"], list):
                 raise MisconfiguredError(f"{provider.name}: internal filters require a single OData AND group")
 
             for name in ("missionFilter", "collectionFilter"):
                 # None prevents a separate URL parameter; the placeholder inserts the fragment into $filter.
+                # Only the expression is sent to the station, never the internal parameter name.
                 search.metadata_mapping[name] = [None, f"$.{name}"]
                 operand = f"{{{name}}}"
                 if operand not in operations["and"]:
@@ -209,6 +214,7 @@ class EodagProvider(Provider):
         """
         mapped_search_args: dict[str, str | None] = {}
         if MISSION_PAIRS in kwargs:
+            # Convert pairs only after the request and collection restrictions have been intersected.
             kwargs.update(mission_search_params(kwargs.pop(MISSION_PAIRS)))
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
@@ -328,13 +334,16 @@ class EodagProvider(Provider):
                 search_config.products = deepcopy(getattr(providers[self.provider].config, "products", {}))
 
         if branches:
+            # Each branch combines the request with one collection; map it without changing the original parameters.
             mapped_branches = []
             for branch in branches:
                 branch_args = branch.copy()
                 mapped_branch = self._map_search_args(branch_args)
+                # The mapper removes converted keys; retain the other station parameters alongside its output.
                 mapped_branches.append({**branch_args, **mapped_branch})
 
             # Compare complete mapped values: date bounds are resolved and mission OR groups stay intact.
+            # A shared raw date bound alone does not imply that the resulting date predicates are identical.
             common = {
                 key: value
                 for key, value in mapped_branches[0].items()
@@ -347,8 +356,10 @@ class EodagProvider(Provider):
                 query, _ = serializer.build_query_string(dataset_key, query_args)
                 return " and ".join(query.get("$filter", []))
 
+            # Serialize predicates common to every branch once.
             common_filter = serialize_filter(common)
             filters: list[str] = []
+            # Build each OR alternative from its remaining predicates.
             for branch in mapped_branches:
                 branch_filter = serialize_filter({key: value for key, value in branch.items() if key not in common})
                 if not branch_filter:
