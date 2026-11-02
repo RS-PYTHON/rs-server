@@ -169,8 +169,8 @@ class TestCatalogExternalIdsSearch:
                 ["item-same-value"],
                 id="not",
             ),
-            # As for any property, an item without externalIds doesn't match, even negated
-            pytest.param(f"NOT (externalIds = '{U1}')", ["item-multi"], id="not-only"),
+            # The item with no client-provided externalIds still has the UUID added on creation.
+            pytest.param(f"NOT (externalIds = '{U1}')", ["item-multi", "item-none"], id="not-only"),
             pytest.param("externalIds = 'cadip:'", ["item-multi", "item-same-value"], id="equal-scheme-only"),
             pytest.param(f"A_CONTAINS(externalIds, ('auxip:', '{U2}'))", ["item-multi"], id="a_contains-scheme-only"),
             pytest.param("A_CONTAINS(externalIds, ('cadip:', 'other:'))", ["item-multi"], id="a_contains-schemes"),

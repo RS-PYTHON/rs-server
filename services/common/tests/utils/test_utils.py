@@ -14,9 +14,7 @@
 
 """Unit tests for utility funtions defined in utils.py."""
 
-import uuid
 from datetime import datetime
-from unittest.mock import patch
 
 import pytest
 from rs_server_common.utils.utils import (
@@ -381,10 +379,8 @@ def test_repair_and_orient_geojson_geometry_returns_non_polygonal_make_valid_out
     }
 
 
-@patch("rs_server_common.utils.utils.uuid.uuid4")
-def test_stac_to_odata_single_asset(mock_uuid4):
+def test_stac_to_odata_single_asset():
     """Test the conversion script of a STAC feature."""
-    mock_uuid4.return_value = uuid.UUID("12345678-1234-5678-1234-567812345678")
 
     # Test with empty list
     assert not stac_to_odata({"features": []})
@@ -416,6 +412,12 @@ def test_stac_to_odata_single_asset(mock_uuid4):
                     "eviction_datetime": "2026-01-01T00:00:00Z",
                     "start_datetime": "2025-01-01T09:00:00Z",
                     "processing:lineage": "operational",
+                    "externalIds": [
+                        {
+                            "scheme": "rs-odata-prip",
+                            "value": "12345678-1234-5678-1234-567812345678",
+                        },
+                    ],
                 },
                 "assets": {
                     "data": {
