@@ -538,6 +538,11 @@ field is not permitted also."
                         # Add UUID to the item's properties
                         if "externalIds" not in content.get("properties", {}):
                             content["properties"]["externalIds"] = []
+                        else:
+                            # If there is already an externalIds property, remove any "rs-odata-prip" UUID that it contains
+                            content["properties"]["externalIds"] = StacManager.remove_uuid_from_stac_asset_external_ids(
+                                content["properties"]["externalIds"],
+                            )
                         content["properties"]["externalIds"].append(StacManager.generate_uuid_for_stac_asset())
                         # Set timestamps for the new item
                         content = timestamps_extension.set_timestamps_for_creation(content)

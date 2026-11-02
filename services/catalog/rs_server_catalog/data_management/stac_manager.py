@@ -202,6 +202,19 @@ class StacManager:
         return {"scheme": "rs-odata-prip", "value": asset_uuid}
 
     @staticmethod
+    def remove_uuid_from_stac_asset_external_ids(asset_external_ids: list[dict]) -> list[dict]:
+        """
+        Remove any UUID with scheme "rs-odata-prip" from the "externalIds" property of a STAC asset.
+
+        Args:
+            asset (list): The "externalIds" content of a STAC asset from which to remove the UUID.
+
+        Returns:
+            list: The updated "externalIds" content of the STAC asset without the UUID.
+        """
+        return [external_id for external_id in asset_external_ids if external_id.get("scheme") != "rs-odata-prip"]
+
+    @staticmethod
     def retrieve_existing_uuid_or_create_one(existing_item: dict, new_item: dict) -> dict:
         """
         Retrieve the existing UUID from the existing item or create a new one if it doesn't exist.
@@ -229,11 +242,11 @@ class StacManager:
 
         # Then remove any field containing an UUID from the new item, because it's forbidden to update an existing UUID
         new_items_externalids = new_item.get("properties", {}).get("externalIds", [])
-        for externalid in new_items_externalids.copy():
-            if externalid.get("scheme") == "rs-odata-prip":
-                new_items_externalids.remove(externalid)
+        new_item.setdefault("properties", {})["externalIds"] = StacManager.remove_uuid_from_stac_asset_external_ids(
+            new_items_externalids,
+        )
 
         # Finally, add the existing or newly generated UUID to the new item
-        new_item["properties"].setdefault("externalIds", []).append(uuid_dict)
+        new_item["properties"]["externalIds"].append(uuid_dict)
 
         return new_item
