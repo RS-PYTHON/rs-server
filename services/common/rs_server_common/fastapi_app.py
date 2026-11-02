@@ -14,13 +14,16 @@
 
 """Init the FastAPI application."""
 
+import json
 import typing
 from contextlib import asynccontextmanager
 from types import MethodType
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI
+from cql2 import Expr
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.routing import (  # pylint: disable=no-name-in-module
     APIRoute,
     _IncludedRouter,
@@ -63,6 +66,39 @@ logger = Logging.default(__name__)
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
+
+
+class MockPgstacCrudClient(CoreCrudClient):
+    """
+    CoreCrudClient of the services that mock pgstac (auxip, cadip, prip, see MockPgstac).
+
+    Since 7.2.0, stac-fastapi-pgstac validates the CQL2 filters of the GET requests with cql2 before
+    searching pgstac. These services translate the filters into OData themselves (MockPgstac.sync_search),
+    and also accept filters that are not valid CQL2, e.g. `T_BEFORE(start_datetime, '2025-04-01T00:00:00Z')`
+    (a string instead of a TIMESTAMP) or `intersects=POLYGON(...)`, so the filters are only parsed, as before.
+    """
+
+    def _clean_search_args(  # type: ignore[override]
+        self,
+        base_args: dict[str, Any],
+        filter_query: str | None = None,
+        filter_lang: str | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Clean up the search arguments, parse the filter without validating it."""
+        clean = super()._clean_search_args(base_args, **kwargs)
+        if filter_query:
+            try:
+                if filter_lang == "cql2-text":
+                    clean["filter"] = Expr(filter_query).to_json()
+                    clean["filter_lang"] = "cql2-json"
+                else:
+                    clean["filter"] = json.loads(filter_query)
+                    clean["filter_lang"] = filter_lang
+            # cql2 raises a bare Exception on parse errors
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid filter: {e}") from e
+        return clean
 
 
 def flatten_routes(routes: list[BaseRoute]) -> list[BaseRoute]:
@@ -141,7 +177,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         # BulkTransactionExtension(client=BulkTransactionsClient()),
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
-    app.state.pgstac_client = CoreCrudClient(pgstac_search_model=search_post_request_model)
+    app.state.pgstac_client = MockPgstacCrudClient(pgstac_search_model=search_post_request_model)
 
     # patch the pgstac_client.landing_page method to add "rel": "child" link for each collection
     async def patched_landing_page(self, request, **kwargs):

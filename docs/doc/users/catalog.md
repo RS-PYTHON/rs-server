@@ -214,10 +214,13 @@ a JSON key path, and its array operators compare whole elements. However, each o
    operator, e.g. `externalIds IN ('prip:1111...', 'auxip:')` becomes:
     ```json
     {"op": "or", "args": [
-      {"op": "external_ids_contains", "args": [[{"scheme": "prip", "value": "1111..."}]]},
-      {"op": "external_ids_contains", "args": [[{"scheme": "auxip"}]]}
+      {"op": "external_ids_contains", "args": ["[{\"scheme\": \"prip\", \"value\": \"1111...\"}]"]},
+      {"op": "external_ids_contains", "args": ["[{\"scheme\": \"auxip\"}]"]}
     ]}
     ```
+    The argument of the operator is the JSON of the searched terms as a string, so that the filter remains valid
+    CQL2: stac-fastapi-pgstac validates the filters with [cql2](https://github.com/developmentseed/cql2-rs) before
+    searching.
 3. pgstac translates the operator with its template, quoting the argument, and the search is served by the index.
 
 The details are in the `rs_server_catalog.data_management.external_ids` module. The items are stored unchanged, and
