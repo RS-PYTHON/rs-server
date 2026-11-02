@@ -207,7 +207,7 @@ class StacManager:
         Remove any UUID with scheme "rs-odata-prip" from the "externalIds" property of a STAC asset.
 
         Args:
-            asset (list): The "externalIds" content of a STAC asset from which to remove the UUID.
+            asset_external_ids (list): The "externalIds" content of a STAC asset from which to remove the UUID.
 
         Returns:
             list: The updated "externalIds" content of the STAC asset without the UUID.

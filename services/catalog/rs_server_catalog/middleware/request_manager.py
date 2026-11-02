@@ -539,7 +539,7 @@ field is not permitted also."
                         if "externalIds" not in content.get("properties", {}):
                             content["properties"]["externalIds"] = []
                         else:
-                            # If there is already an externalIds property, remove any "rs-odata-prip" UUID that it contains
+                            # If there is already an externalIds property, remove any "rs-odata-prip" UUID it contains
                             content["properties"]["externalIds"] = StacManager.remove_uuid_from_stac_asset_external_ids(
                                 content["properties"]["externalIds"],
                             )
