@@ -365,7 +365,7 @@ jobs:
      packages: write # needed for 'docker push'
     steps:
       - name: Log into Docker registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
@@ -420,7 +420,7 @@ jobs:
           path: ./dist
           merge-multiple: true
       - name: Publish wheel and sdist packages
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
         with:
           skip-existing: true
           packages-dir: ./dist
