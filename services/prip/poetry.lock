@@ -250,14 +250,14 @@ files = [
 
 [[package]]
 name = "authlib"
-version = "1.9.2"
+version = "1.9.3"
 description = "The ultimate Python library in building OAuth and OpenID Connect servers and clients."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "authlib-1.9.2-py2.py3-none-any.whl", hash = "sha256:4a39f59fa7b94160859cc447514caf199e133b7ca64a351fb4065bf5006d5a40"},
-    {file = "authlib-1.9.2.tar.gz", hash = "sha256:83271024b7d3b9992f0d928abd87c5f6e89cfb5aaada294972b860aa807ddafc"},
+    {file = "authlib-1.9.3-py2.py3-none-any.whl", hash = "sha256:95e13a6ea7d6008615b1463a695a35c3acc846547a90e4f767b7d476098af30a"},
+    {file = "authlib-1.9.3.tar.gz", hash = "sha256:2f834630f452d2e01d787b5477cf37341b73577073bfab38f10d988782da018b"},
 ]
 
 [package.dependencies]
@@ -1225,14 +1225,14 @@ standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[stand
 
 [[package]]
 name = "filelock"
-version = "4.2.6"
+version = "4.2.7"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "filelock-4.2.6-py3-none-any.whl", hash = "sha256:fd7d4fca497bf3e3d0945a13261f8e684f2aef12ce7cf76aef26e13bf7388b88"},
-    {file = "filelock-4.2.6.tar.gz", hash = "sha256:ee7af8ede36dcaf12e1016d9f7c3a63ecd5497d46f85dab21b8c779b8f944e97"},
+    {file = "filelock-4.2.7-py3-none-any.whl", hash = "sha256:d08972bbca2b8767ee552aff877b091dd111ffb1d22de7de885766ea7d719d5e"},
+    {file = "filelock-4.2.7.tar.gz", hash = "sha256:31f6f7e3a8b6f0bd89114d30c5d5218ea1cfb63e5c4aa695b7559314a209bc7f"},
 ]
 
 [[package]]
@@ -1638,18 +1638,18 @@ files = [
 
 [[package]]
 name = "jsonpatch"
-version = "1.39"
+version = "1.41"
 description = "Apply JSON-Patches (RFC 6902) "
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "jsonpatch-1.39-py3-none-any.whl", hash = "sha256:8c1849545b8b245623274b881e18cf5606dc4f11272cde327d3c1f3997181097"},
-    {file = "jsonpatch-1.39.tar.gz", hash = "sha256:d0a314128ec7fc7dba7155b0b19f94913198f54acbbef9c7817d5063d998bc27"},
+    {file = "jsonpatch-1.41-py3-none-any.whl", hash = "sha256:fd493e82a57da7dd60e22ff2521f75d2be3ce41d76a845799d898de6da682922"},
+    {file = "jsonpatch-1.41.tar.gz", hash = "sha256:1aca06402f94e5cd7bc133af0cb4f7b2c2f9c0bc172f9de52c9aa4c6104b0d1c"},
 ]
 
 [package.dependencies]
-jsonpointer = ">=3.2"
+jsonpointer = ">=3.8"
 
 [[package]]
 name = "jsonpath-ng"
@@ -1665,14 +1665,14 @@ files = [
 
 [[package]]
 name = "jsonpointer"
-version = "3.7"
+version = "3.8"
 description = "Identify specific nodes in a JSON document (RFC 6901) "
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "jsonpointer-3.7-py3-none-any.whl", hash = "sha256:41005d228d8a6ec517b727d2821b7fa16e6bfc7c695ca3339f8331cccaba3887"},
-    {file = "jsonpointer-3.7.tar.gz", hash = "sha256:58734c45431c9a268df029a39bce8d57e8aebe32f1d58d28a17c9aa246e10929"},
+    {file = "jsonpointer-3.8-py3-none-any.whl", hash = "sha256:d69af85adaea202111bbc931067ead68dc16bca4592c74e1a1953152e2a330ab"},
+    {file = "jsonpointer-3.8.tar.gz", hash = "sha256:a627a255641390bfb4d51d4cfbb90648078ae855b45804ef7e19ea13a4cca355"},
 ]
 
 [[package]]
@@ -3980,14 +3980,14 @@ stac-fastapi-types = ">=7.0,<8.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "7.2.0"
+version = "7.2.1"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-7.2.0-py3-none-any.whl", hash = "sha256:38a2f36b4c0e930cdd3f761085fcdfe26086be44df72048b3e44d7e23af97f9b"},
-    {file = "stac_fastapi_pgstac-7.2.0.tar.gz", hash = "sha256:00bc724eeb02f90e43a1b55ab572d37801392fed248ceeb8c872d7ee90dee462"},
+    {file = "stac_fastapi_pgstac-7.2.1-py3-none-any.whl", hash = "sha256:74604c652da4f2087c2e35c66e4ed04ad9ab1239f80fb0d65abf4d1bcd5e7e13"},
+    {file = "stac_fastapi_pgstac-7.2.1.tar.gz", hash = "sha256:ad1228c9b6466ca1430ef47370150a7538497633f20a27fc12761befd5e6ca0f"},
 ]
 
 [package.dependencies]
