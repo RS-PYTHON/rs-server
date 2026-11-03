@@ -43,7 +43,7 @@ created:
   type: datetime
   title: created
   format: datetime
-  description: PublicationDate
+  description: OriginDate
 datetime:
   type: datetime
   title: datetime

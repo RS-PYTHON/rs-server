@@ -87,10 +87,11 @@ DEFAULT_FILES_LIMIT = 1000
 
 
 def validate(queryables: dict):
-    """Function used to verify / update CADIP-specific queryables before being sent to eodag."""
+    """Normalize CADIP values for EODAG, preserving validated exact-date lists for IN."""
     for queryable_name, queryable_data in queryables.items():
         if queryable_name == "PublicationDate":
-            queryables[queryable_name] = validate_inputs_format(queryable_data)
+            if not isinstance(queryable_data, list):
+                queryables[queryable_name] = validate_inputs_format(queryable_data)
         elif isinstance(queryable_data, (str, list)):
             queryables[queryable_name] = validate_str_list(queryable_data)
 

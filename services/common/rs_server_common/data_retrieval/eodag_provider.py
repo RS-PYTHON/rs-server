@@ -15,15 +15,18 @@
 """EODAG Provider."""
 
 import os
+import re
 import shutil
 import tempfile
 from copy import deepcopy
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.api.product.metadata_mapping import format_metadata
 from eodag.config import EODAGSettings
 from eodag.plugins.search.qssearch import ODataV4Search
 from eodag.utils.exceptions import (
@@ -39,12 +42,17 @@ from rs_server_common.authentication.external_authentication_config import (
 from rs_server_common.stac_cql2 import temporal_operations
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.missions import MISSION_PAIRS, mission_search_params
+from rs_server_common.utils.utils import validate_inputs_format
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
 
 logger = Logging.default(__name__)
 
 global_lock = Lock()
+
+# Match a single eq placeholder, preserving literal quotes, type prefixes and attribute wrappers for IN.
+# Compound interval predicates contain multiple placeholders and must be handled separately.
+EQ_OPERAND = re.compile(r"^(?P<field>[^{}]*\S) eq (?P<literal>[^\s{}]*\{(?P<key>[^{}#]+)(?:#[^{}]*)?\}'?)(?P<end>\)*)$")
 
 
 class CustomEODataAccessGateway(EODataAccessGateway):
@@ -55,6 +63,8 @@ class CustomEODataAccessGateway(EODataAccessGateway):
 
         self.lock = Lock()
         self.all_auth_providers = []  # all authenticated providers
+        # Reuse each provider's eq literal format when serializing IN values.
+        self.in_literals: dict[str, dict[str, str]] = {}
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -85,40 +95,92 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         self._register_internal_filters()
 
     def _register_internal_filters(self) -> None:
-        """Extend AUXIP/PRIP mappings in memory before this gateway is cached and shared.
+        """Register IN operands and internal filters on provider-specific copies of OData mappings.
 
-        missionFilter holds alternatives of mission pairs; collectionFilter holds
-        alternatives of complete collection predicates. Existing station YAMLs need no migration.
+        Each '<field> eq <value>' operand gets a '<field> in (<values>)' counterpart for the CQL2 IN operator.
+        On AUXIP/PRIP, NameContains holds alternatives of product names, missionFilter holds
+        alternatives of mission pairs and collectionFilter holds alternatives of complete collection predicates.
         """
-        # Add internal filters only to OData V4 searches that map both mission attributes.
         for provider in self._providers.values():
             search = getattr(provider.config, "search", None)
-            if (
-                search is None
-                or search.type != "ODataV4Search"
-                or not {"platformShortName", "platformSerialIdentifier"}.issubset(
-                    getattr(search, "metadata_mapping", {}),
-                )
-            ):
+            if search is None or search.type != "ODataV4Search":
                 continue
+            # Add the AUXIP/PRIP internal filters only to searches that map both mission attributes.
+            products_search = {"platformShortName", "platformSerialIdentifier"}.issubset(
+                getattr(search, "metadata_mapping", {}),
+            )
 
             # Extend a private copy so other providers sharing this configuration are not changed.
             search = deepcopy(search)
-            # Read the templates EODAG uses to assemble $filter so internal expressions can be added to its AND group.
+            # Internal expressions share the AND group with the station's other filters.
             operations = getattr(search, "free_text_search_operations", {}).get("$filter", {}).get("operations", {})
-            # Both fragments must be ANDed with the station's other filters.
+            # The added operands must be ANDed with the station's other filters.
             # Reject other group layouts rather than changing their Boolean meaning.
             if set(operations) != {"and"} or not isinstance(operations["and"], list):
-                raise MisconfiguredError(f"{provider.name}: internal filters require a single OData AND group")
+                if products_search:
+                    raise MisconfiguredError(f"{provider.name}: internal filters require a single OData AND group")
+                continue
 
-            for name in ("missionFilter", "collectionFilter"):
-                # None prevents a separate URL parameter; the placeholder inserts the fragment into $filter.
-                # Only the expression is sent to the station, never the internal parameter name.
-                search.metadata_mapping[name] = [None, f"$.{name}"]
-                operand = f"{{{name}}}"
-                if operand not in operations["and"]:
-                    operations["and"].append(operand)
+            operands = operations["and"]
+            # These CADIP fields are Edm.String: their eq literals need quotes, also reused by IN.
+            for key in ("AntennaId", "AcquisitionId", "StationId", "FrontEndId"):
+                operands[:] = [operand.replace(f"{key} eq {{{key}}}", f"{key} eq '{{{key}}}'") for operand in operands]
+            if products_search:
+                search.metadata_mapping["DatetimeEnd"] = [None, "$.ContentDate.End"]
+                if not any("ContentDate/End eq {DatetimeEnd" in operand for operand in operands):
+                    operands.append("ContentDate/End eq {DatetimeEnd}")
+                # Use the same AUXIP fields for filtering, returned metadata and created sorting.
+                if "created" in search.metadata_mapping:
+                    search.metadata_mapping["processingDate"] = [
+                        None,
+                        "$.Attributes[?(@.Name=='processingDate')].Value",
+                    ]
+                    operands[:] = [
+                        operand.replace("{OriginDate", "{created").replace("{processing:datetime", "{processingDate")
+                        for operand in operands
+                    ]
+                    search.sort["sort_param_mapping"]["created"] = "OriginDate"
+                # Keep request interval bounds independent of exact-date filters on ContentDate.
+                for key, field, comparison in (
+                    ("requestStart", "ContentDate/Start", "gt"),
+                    ("requestEnd", "ContentDate/End", "lt"),
+                ):
+                    search.metadata_mapping[key] = [None, f"$.{key}"]
+                    operands.append(f"({field} {comparison} {{{key}}} or {field} eq {{{key}}})")
+                search.metadata_mapping["requestDatetime"] = [None, "$.requestDatetime"]
+                operands.append("ContentDate/Start eq {requestDatetime}")
+            # Preserve validated ISO instants; EODAG's converter truncates sub-millisecond precision.
+            operands[:] = [re.sub(r"\{([^{}]+)#to_iso_utc_datetime\}", r"{\1}", operand) for operand in operands]
+            search.metadata_mapping["publicationDateFilter"] = [None, "$.publicationDateFilter"]
+            operands.append("{publicationDateFilter}")
+            self.in_literals[provider.name] = self._register_in_operands(operands)
+            if products_search:
+                # Combine product-name, mission and collection alternatives with the other filters.
+                for name in ("NameContains", "missionFilter", "collectionFilter"):
+                    # None keeps the internal parameter out of the URL; its expression goes into $filter.
+                    search.metadata_mapping[name] = [None, f"$.{name}"]
+                    operand = f"{{{name}}}"
+                    if operand not in operations["and"]:
+                        operations["and"].append(operand)
             provider.config.search = search
+
+    @staticmethod
+    def _register_in_operands(operands: list[str]) -> dict[str, str]:
+        """Derive IN operands from eq operands and retain their literal formats for value serialization.
+
+        Quotes, converters and attribute wrappers follow the corresponding eq operand.
+        """
+        literals: dict[str, str] = {}
+        for operand in list(operands):
+            if not (match := EQ_OPERAND.match(operand)):
+                continue
+            key = match["key"]
+            literals[key] = match["literal"]
+            # Reuse configured plural operands to avoid duplicate predicates.
+            plural = f"{key}s"
+            if not any(f"{{{plural}}}" in other or f"{{{plural}#" in other for other in operands):
+                operands.append(f"{match['field']} in ({{{plural}}}){match['end']}")
+        return literals
 
     def __del__(self):
         """Destructor"""
@@ -213,6 +275,13 @@ class EodagProvider(Provider):
         The same conversion is used for a single predicate and for each collection branch.
         """
         mapped_search_args: dict[str, str | None] = {}
+
+        def date_literal(value):
+            if value is None:
+                return None
+            date = datetime.fromisoformat(value) if isinstance(value, str) else value
+            return date.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
         if MISSION_PAIRS in kwargs:
             # Convert pairs only after the request and collection restrictions have been intersected.
             kwargs.update(mission_search_params(kwargs.pop(MISSION_PAIRS)))
@@ -222,8 +291,7 @@ class EodagProvider(Provider):
 
         if names := kwargs.pop("Name", None):
             if len(names) == 1:
-                # Don't use _handle_multiple_values here because the Name template
-                # already adds the quotes.
+                # The Name template supplies the literal's quotes.
                 mapped_search_args["Name"] = names[0]
             else:
                 # Group the OR conditions so every name remains subject to the other filters.
@@ -240,19 +308,48 @@ class EodagProvider(Provider):
             if values := kwargs.pop(multivalued_key, None):
                 self._handle_multiple_values(mapped_search_args, values, multivalued_key, multivalued_key + "s")
 
-        if date_time := kwargs.pop("PublicationDate", False):
-            # Since now both for files and sessions, time interval is optional, map it if provided.
-            fixed, start, end = (str(date) if date else None for date in date_time)
-            mapped_search_args.update(
-                {
-                    "PublicationDate": fixed,
-                    "StartPublicationDate": start,
-                    "StopPublicationDate": end,
-                },
-            )
+        if date_time := kwargs.get("PublicationDate"):
+            if isinstance(date_time, list) and any("/" in value for value in date_time):
+                # A collection union can contain both exact instants and intervals.
+                terms = []
+                for value in kwargs.pop("PublicationDate"):
+                    fixed, start, end = validate_inputs_format(value)
+                    bounds = []
+                    if fixed:
+                        bounds.append(f"PublicationDate eq {date_literal(fixed)}")
+                    if start:
+                        bounds.append(
+                            f"(PublicationDate gt {date_literal(start)} or PublicationDate eq {date_literal(start)})"
+                        )
+                    if end:
+                        bounds.append(
+                            f"(PublicationDate lt {date_literal(end)} or PublicationDate eq {date_literal(end)})"
+                        )
+                    terms.append("(" + " and ".join(bounds) + ")" if bounds else "true")
+                mapped_search_args["publicationDateFilter"] = "(" + " or ".join(terms) + ")"
+            elif not isinstance(date_time, list):
+                kwargs.pop("PublicationDate")
+                fixed, start, end = (date_literal(date) if date else None for date in date_time)
+                mapped_search_args.update(
+                    {"PublicationDate": fixed, "StartPublicationDate": start, "StopPublicationDate": end},
+                )
+
+        if interval := kwargs.pop("request_datetime_interval", None):
+            fixed, start, end = validate_inputs_format(interval)
+            if fixed:
+                mapped_search_args["requestDatetime"] = date_literal(fixed)
+            else:
+                mapped_search_args.update(
+                    {
+                        "requestStart": date_literal(start) if start else None,
+                        "requestEnd": date_literal(end) if end else None,
+                    }
+                )
 
         date_time = kwargs.pop("DatetimeStart", None)
-        if date_time:
+        if isinstance(date_time, list):
+            kwargs["DatetimeStart"] = date_time
+        elif date_time:
             fixed = start = end = None
 
             if isinstance(date_time, str):
@@ -264,19 +361,26 @@ class EodagProvider(Provider):
                     fixed = date_time
 
             else:
-                # Tuple/list: (fixed, start, end)
-                fixed, start, end = (str(date) if date else None for date in date_time)
+                # Parsed interval tuple: (fixed, start, end).
+                fixed, start, end = (date_literal(date) if date else None for date in date_time)
 
             mapped_search_args.update(
                 {
-                    "DatetimeStart": fixed,
-                    "Start": start,
-                    "End": end,
+                    "DatetimeStart": date_literal(fixed),
+                    "Start": date_literal(start),
+                    "End": date_literal(end),
                 },
             )
 
         start_time = kwargs.pop("Start", None)
         end_time = kwargs.pop("End", None)
+        for key, value in (("DatetimeStart", start_time), ("DatetimeEnd", end_time)):
+            if isinstance(value, list):
+                kwargs[key] = value
+        if isinstance(start_time, list):
+            start_time = None
+        if isinstance(end_time, list):
+            end_time = None
         if start_time and end_time:
             mapped_search_args["Start"] = start_time
             mapped_search_args["End"] = end_time
@@ -291,6 +395,22 @@ class EodagProvider(Provider):
 
         if intersects := kwargs.pop("intersects", None):
             mapped_search_args["geometry"] = intersects
+
+        if isinstance(external_ids := kwargs.pop("externalIdss", None), list):
+            # Edm.Guid lists use comma-separated, unquoted literals.
+            mapped_search_args["externalIdss"] = ",".join(sorted(external_ids))
+
+        # Serialize singleton lists with eq and multiple values with IN, preserving literal formats and escaping.
+        in_literals = self.client.in_literals.get(self.provider, {})
+        for key in [key for key, values in kwargs.items() if key in in_literals and isinstance(values, list)]:
+            values = kwargs.pop(key)
+            if len(values) == 1:
+                mapped_search_args[key] = values[0]
+            elif values:
+                mapped_search_args[f"{key}s"] = ",".join(
+                    format_metadata(in_literals[key], **{key: str(value).replace("'", "''")})
+                    for value in sorted(values, key=str)
+                )
 
         return mapped_search_args
 

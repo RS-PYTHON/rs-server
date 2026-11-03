@@ -53,9 +53,9 @@ SATELLITES = {
 
 
 @pytest.mark.parametrize("service", ["adgs", "prip"])
-@pytest.mark.parametrize("predeclared", [False, True], ids=["legacy-yaml", "already-declared"])
+@pytest.mark.parametrize("predeclared", [False, True], ids=["implicit-filters", "explicit-filters"])
 def test_internal_filters_with_existing_station_config(tmp_path, service, predeclared):
-    """Existing YAMLs work without migration; previously added declarations do not duplicate filters."""
+    """Filter registration preserves YAML files and avoids duplicate internal predicates."""
     source = Path(__file__).parents[1] / "services" / service / "config" / f"{service}_ws_config.yaml"
     configuration = yaml.safe_load(source.read_text())
     for provider in configuration.values():
@@ -109,15 +109,31 @@ def test_incompatible_filter_configuration_fails_at_initialization(tmp_path, ser
         CustomEODataAccessGateway.create(config_path.as_posix())
 
 
-def test_internal_filters_leave_cadip_configuration_unchanged():
-    """CADIP uses complete satellite codes and does not need AUXIP/PRIP fragments."""
+def test_internal_filters_extend_cadip_configuration_in_memory():
+    """Verify CADIP IN operands and filter normalization without modifying the station YAML."""
     source = Path(__file__).parents[1] / "services/cadip/config/cadip_ws_config.yaml"
-    configuration = yaml.safe_load(source.read_text())
+    original = source.read_text()
+    configuration = yaml.safe_load(original)
     gateway = CustomEODataAccessGateway.create(source.as_posix())
     for name, configured in configuration.items():
         search = gateway.providers[name].config.search
-        assert search.free_text_search_operations == configured["search"]["free_text_search_operations"]
-        assert not {"missionFilter", "collectionFilter"}.intersection(search.metadata_mapping)
+        configured_filter = configured["search"]["free_text_search_operations"]["$filter"]
+        actual_filter = search.free_text_search_operations["$filter"]
+        original_operands = configured_filter["operations"]["and"]
+        operands = actual_filter["operations"]["and"]
+        normalized = [re.sub(r"\{([^{}]+)#to_iso_utc_datetime\}", r"{\1}", operand) for operand in original_operands]
+        assert operands[: len(original_operands)] == normalized
+        for key in ("AcquisitionId", "AntennaId", "StationId", "FrontEndId"):
+            if any(operand.startswith(f"{key} eq ") for operand in original_operands):
+                # String quoting is required for both eq and the derived IN literals.
+                assert f"{key} eq '{{{key}}}'" in operands
+                assert f"{key} in ({{{key}s}})" in operands
+                assert gateway.in_literals[name][key] == f"'{{{key}}}'"
+        assert len(operands) == len(set(operands))
+        assert actual_filter["union"] == configured_filter["union"]
+        assert actual_filter["wrapper"] == configured_filter["wrapper"]
+        assert not {"NameContains", "missionFilter", "collectionFilter"}.intersection(search.metadata_mapping)
+    assert source.read_text() == original
 
 
 def station_predicate(odata_filter):
