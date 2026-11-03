@@ -84,7 +84,16 @@ if [[ " $@ " == *" --run-services "* ]]; then
 
     # DPR service. Use this image or any other py<python-version>-<dask-version> image,
     # they all have the same swagger contents.
-    dpr_image="ghcr.io/rs-python/rs-dpr-service_py3.13.16-2026.7.1:latest"
+    # Use the first existing tag from DPR_IMAGE_TAGS (e.g. 'my-branch-name,latest'), else 'latest'.
+    dpr_image_name="ghcr.io/rs-python/rs-dpr-service_py3.13.18-2026.7.1"
+    dpr_image="${dpr_image_name}:latest"
+    dpr_image_tags="${DPR_IMAGE_TAGS:-}"
+    for tag in ${dpr_image_tags//,/ }; do
+        if docker manifest inspect "${dpr_image_name}:${tag}" > /dev/null 2>&1; then
+            dpr_image="${dpr_image_name}:${tag}"
+            break
+        fi
+    done
     if ! docker ps --format '{{.Names}}' | grep -q "^$dpr_container\$"; then
         docker pull "$dpr_image"
         docker run --rm --network=$network --name=$dpr_container \

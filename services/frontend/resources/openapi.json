@@ -4346,7 +4346,7 @@
             "content": {
               "application/geo+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ItemCollection-Output"
+                  "$ref": "#/components/schemas/stac_pydantic__api__item_collection__ItemCollection"
                 }
               }
             }
@@ -4757,7 +4757,7 @@
             "content": {
               "application/geo+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ItemCollection-Output"
+                  "$ref": "#/components/schemas/stac_pydantic__api__item_collection__ItemCollection"
                 }
               }
             }
@@ -5078,7 +5078,7 @@
           "Catalog (Transaction Extension)"
         ],
         "summary": "Create Collection",
-        "description": "Endpoint.",
+        "description": "Create collection endpoint with Location header.",
         "operationId": "Create_Collection_catalog_collections_post",
         "security": [
           {
@@ -5276,6 +5276,7 @@
                   }
                 ],
                 "title": "PartialCollection",
+                "additionalProperties": true,
                 "description": "Partial STAC Collection.",
                 "properties": {
                   "type": {
@@ -5350,8 +5351,11 @@
                   "links": {
                     "anyOf": [
                       {
-                        "additionalProperties": true,
-                        "type": "object"
+                        "items": {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        "type": "array"
                       },
                       {
                         "type": "null"
@@ -5707,6 +5711,7 @@
             },
             "application/merge-patch+json": {
               "schema": {
+                "additionalProperties": true,
                 "description": "Partial STAC Collection.",
                 "properties": {
                   "type": {
@@ -5781,8 +5786,11 @@
                   "links": {
                     "anyOf": [
                       {
-                        "additionalProperties": true,
-                        "type": "object"
+                        "items": {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        "type": "array"
                       },
                       {
                         "type": "null"
@@ -6209,7 +6217,7 @@
             "content": {
               "application/geo+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ItemCollection-Output"
+                  "$ref": "#/components/schemas/stac_pydantic__api__item_collection__ItemCollection"
                 }
               }
             }
@@ -6234,7 +6242,7 @@
           "Catalog (Transaction Extension)"
         ],
         "summary": "Create Item",
-        "description": "Endpoint.",
+        "description": "Create item endpoint with Location header.\n\nThe Transaction extension requires a `Location` header with the URI\nof the newly created Item for single-Item payloads.",
         "operationId": "Create_Item_catalog_collections__collection_id__items_post",
         "security": [
           {
@@ -6277,7 +6285,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/stac_pydantic__item__Item-Output"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/stac_pydantic__item__Item-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/stac_pydantic__item_collection__ItemCollection-Output"
+                    }
+                  ],
+                  "title": "Response 201 Create Item Catalog Collections  Collection Id  Items Post"
                 }
               },
               "application/geo+json": {}
@@ -10103,113 +10119,6 @@
         "title": "ItemCollection",
         "description": "This is a less strict implementation of ItemCollection.\nIt only implements the FeatureCollection Specs\nnot enforcing required links as specified in STAC-API-FEATURES specs.\nUse `stac_pydantic.api.ItemCollection` to enforce link relationships and extra fields."
       },
-      "ItemCollection-Output": {
-        "properties": {
-          "bbox": {
-            "anyOf": [
-              {
-                "prefixItems": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "type": "array",
-                "maxItems": 4,
-                "minItems": 4
-              },
-              {
-                "prefixItems": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "number"
-                  }
-                ],
-                "type": "array",
-                "maxItems": 6,
-                "minItems": 6
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bbox"
-          },
-          "type": {
-            "type": "string",
-            "const": "FeatureCollection",
-            "title": "Type"
-          },
-          "features": {
-            "items": {
-              "$ref": "#/components/schemas/stac_pydantic__api__item__Item"
-            },
-            "type": "array",
-            "title": "Features"
-          },
-          "links": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/stac_pydantic__api__links__Links"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "numberMatched": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Numbermatched"
-          },
-          "numberReturned": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Numberreturned"
-          }
-        },
-        "type": "object",
-        "required": [
-          "type",
-          "features"
-        ],
-        "title": "ItemCollection",
-        "description": "https://github.com/radiantearth/stac-api-spec/blob/v1.0.0/fragments/itemcollection/README.md\nhttps://github.com/radiantearth/stac-api-spec/blob/v1.0.0/item-search/README.md#link-relations"
-      },
       "Items": {
         "properties": {
           "items": {
@@ -10388,8 +10297,11 @@
           "links": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -10474,6 +10386,7 @@
             "title": "Assets"
           }
         },
+        "additionalProperties": true,
         "type": "object",
         "title": "PartialCollection",
         "description": "Partial STAC Collection."
@@ -11159,6 +11072,113 @@
         ],
         "title": "Item"
       },
+      "stac_pydantic__api__item_collection__ItemCollection": {
+        "properties": {
+          "bbox": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 4,
+                "minItems": 4
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 6,
+                "minItems": 6
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox"
+          },
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/stac_pydantic__api__item__Item"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "links": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/stac_pydantic__api__links__Links"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "numberMatched": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numbermatched"
+          },
+          "numberReturned": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numberreturned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "features"
+        ],
+        "title": "ItemCollection",
+        "description": "https://github.com/radiantearth/stac-api-spec/blob/v1.0.0/fragments/itemcollection/README.md\nhttps://github.com/radiantearth/stac-api-spec/blob/v1.0.0/item-search/README.md#link-relations"
+      },
       "stac_pydantic__collection__Collection-Output": {
         "properties": {
           "id": {
@@ -11471,6 +11491,91 @@
         ],
         "title": "Item",
         "description": "https://github.com/radiantearth/stac-spec/blob/v1.0.0/item-spec/item-spec.md"
+      },
+      "stac_pydantic__item_collection__ItemCollection-Output": {
+        "properties": {
+          "bbox": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 4,
+                "minItems": 4
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 6,
+                "minItems": 6
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox"
+          },
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/stac_pydantic__item__Item-Output"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "links": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/stac_pydantic__links__Links"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "features"
+        ],
+        "title": "ItemCollection",
+        "description": "This is a less strict implementation of ItemCollection.\nIt only implements the FeatureCollection Specs\nnot enforcing required links as specified in STAC-API-FEATURES specs.\nUse `stac_pydantic.api.ItemCollection` to enforce link relationships and extra fields."
       },
       "Feature": {
         "properties": {
