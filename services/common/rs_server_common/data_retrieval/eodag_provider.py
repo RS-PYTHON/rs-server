@@ -159,6 +159,14 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
+    @property
+    def max_items_per_page(self) -> int:
+        """Maximum number of results supported by one provider request."""
+        with self.client.lock:
+            return int(
+                self.client._providers[self.provider].config.search.pagination["max_items_per_page"]
+            )
+
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
         key = plural_key if isinstance(value, list) else singular_key
@@ -280,8 +288,8 @@ class EodagProvider(Provider):
                         f"Requesting {limit_value} exceeds maximum of {max_items_allowed} "
                         "allowed for this provider!",
                     )
-                    logger.warning(f"Number of items per page was set to {max_items_allowed - 1}.")
-                    kwargs["limit"] = max_items_allowed - 1
+                    logger.warning(f"Number of items per page was set to {max_items_allowed}.")
+                    kwargs["limit"] = max_items_allowed
                 else:
                     kwargs["limit"] = limit_value
 
