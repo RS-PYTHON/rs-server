@@ -205,3 +205,4 @@ external_data_sources:
       auth_type: s3
       access_key: example_s3_access_key
       secret_key: example_s3_secret_key
+    max_requests_per_minute: 10

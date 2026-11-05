@@ -33,6 +33,7 @@ import boto3
 import botocore
 import botocore.exceptions
 import requests
+import urllib3.exceptions
 from rs_server_common.ftp_handler.ftp_handler import FTPClient
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import S3Credentials
@@ -1247,6 +1248,10 @@ retried for %s times. Aborting",
                 e,
                 (
                     requests.exceptions.RequestException,
+                    # The source is read through `response.raw`, so a connection dropped by the provider
+                    # during the transfer (e.g. IncompleteRead) surfaces as a raw urllib3 ProtocolError,
+                    # not wrapped by requests. It is transient and must be retried like other network errors.
+                    urllib3.exceptions.HTTPError,
                     botocore.client.ClientError,
                     botocore.exceptions.BotoCoreError,
                 ),
