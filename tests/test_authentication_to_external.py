@@ -981,3 +981,30 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
         body = request.body
         if isinstance(body, (str, bytes)):
             assert b"refresh_token" in body if isinstance(body, bytes) else "refresh_token" in body
+
+
+@pytest.mark.unit
+def test_read_configuration_from_env_vars(mocker):
+    """Test that the RSPY__TOKEN__ env vars are read, including a station key that contains "_"."""
+    mocker.patch.dict(
+        os.environ,
+        {
+            "RSPY__TOKEN__STAC__CDSE__DOMAIN": "download.dataspace.copernicus.eu",
+            "RSPY__TOKEN__STAC__CDSE__MAX_REQUESTS_PER_MINUTE": "10",
+            "RSPY__TOKEN__STAC__CDSE__AUTHENTICATION__AUTH__TYPE": "stac",
+            "RSPY__TOKEN__STAC__CDSE__TRUSTEDDOMAINS": "[download.dataspace.copernicus.eu]",
+        },
+        clear=True,
+    )
+    config = getattr(authentication_to_external, "__read_configuration")()
+    assert config == {
+        "external_data_sources": {
+            "cdse": {
+                "service": {"name": "stac"},
+                "domain": "download.dataspace.copernicus.eu",
+                "max_requests_per_minute": "10",
+                "authentication": {"auth_type": "stac"},
+                "trusteddomains": ["download.dataspace.copernicus.eu"],
+            },
+        },
+    }
