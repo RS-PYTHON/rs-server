@@ -163,9 +163,8 @@ class EodagProvider(Provider):
     def max_items_per_page(self) -> int:
         """Maximum number of results supported by one provider request."""
         with self.client.lock:
-            return int(
-                self.client._providers[self.provider].config.search.pagination["max_items_per_page"]
-            )
+            providers = self.client._providers  # pylint: disable=protected-access
+            return int(providers[self.provider].config.search.pagination["max_items_per_page"])
 
     def _handle_multiple_values(self, mapped_search_args: dict, values: list | str, singular_key: str, plural_key: str):
         value = values[0] if isinstance(values, list) and len(values) == 1 else values
