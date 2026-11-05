@@ -50,7 +50,9 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
     # Read all the env vars. The pattern for all the env vars used is:
     # RSPY__TOKEN__<service>__<station>__<section_name>__<rest of the info for key>
     # Regular expression to match the pattern RSPY__TOKEN__<service>__<station>__<section>__<rest_of_the_key>
-    pattern = r"^RSPY__TOKEN__([^__]+)__([^__]+)__([^__]+)(__.*)?$"
+    # "__" separates the parts, a single "_" is allowed inside a part (e.g. <section> = MAX_REQUESTS_PER_MINUTE)
+    part = r"((?:[^_]|_(?!_))+)"
+    pattern = rf"^RSPY__TOKEN__{part}__{part}__{part}(__.*)?$"
 
     # Iterate over all environment variables
     for var, value in os.environ.items():
