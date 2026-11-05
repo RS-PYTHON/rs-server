@@ -24,6 +24,7 @@ from rs_server_common.utils.utils import (
     apply_external_ids,
     check_and_fix_timerange,
     find_product_type,
+    multihash_to_md5,
     normalize_external_ids,
     repair_and_orient_geojson_geometry,
     stac_to_odata,
@@ -459,3 +460,21 @@ def test_stac_to_odata_single_asset():
         "ProductionType": "operational",
         "Id": "12345678-1234-5678-1234-567812345678",
     }
+
+
+def test_mh_to_md5():
+    """Test the conversion of a multihash to an MD5 digest."""
+    # Test convert from multihash md5 to md5
+    with open(__file__, "rb") as f:
+        digest = hashlib.file_digest(f, "md5").digest()
+
+    digest = bytes.fromhex(digest.hex())
+    mh = multihash.wrap(digest, "md5").hex()
+    assert multihash_to_md5(mh) == digest.hex()
+
+    # Test hash from multihash sha-256 (should fail)
+    with open(__file__, "rb") as f:
+        digest = hashlib.file_digest(f, "sha2-256").digest()
+
+    with pytest.raises(ValueError):
+        multihash_to_md5(multihash.wrap(digest, "sha2-256").hex())
