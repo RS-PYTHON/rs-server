@@ -1413,18 +1413,18 @@ class TestFeatureCollectionOdataStacMapping:
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=10000000",
                 "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
-                "desc&$top=9999&$skip=0&$expand=Attributes",
+                "desc&$top=10000&$skip=0&$expand=Attributes",
             ),
             (
                 "/prip/collections/S1A_L0_IW_RAW/items?limit=10000000",
                 "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'productType' and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')&$orderby=PublicationDate "
-                "desc&$top=9999&$skip=0&$expand=Attributes",
+                "desc&$top=10000&$skip=0&$expand=Attributes",
             ),
             (
                 "/cadip/collections/cadip_session_by_id/items?limit=10000000",
                 "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312'&$orderby="
-                "PublicationDate desc&$top=9999&$skip=0",
+                "PublicationDate desc&$top=10000&$skip=0",
             ),
         ],
     )
@@ -1432,9 +1432,9 @@ class TestFeatureCollectionOdataStacMapping:
     def test_bigger_limit_than_allowed(self, client, endpoint, odata):
         """
         Test that if user request with a limit value bigger than max allowed in config
-        the limit value is set to max_allowed - 1.
-        Limit in request is set to 1_000_000, for given collection max allowed is set to 10000, therefore
-        in the final odata request, $top is set to 9999.
+        the limit value is set to max_allowed.
+        Limit in request is set to 10_000_000, for given collection max allowed is set to 10000, therefore
+        in the final odata request, $top is set to 10000.
         """
         responses.add(responses.GET, odata, json={"value": []}, status=200)
         response = client.get(endpoint)
