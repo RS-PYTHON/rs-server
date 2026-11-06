@@ -65,6 +65,13 @@ from rs_server_common.stac_cql2 import temporal_op_query, temporal_operations
 from rs_server_common.utils import utils2
 from rs_server_common.utils.cql2_filter_extension import process_filter_extensions
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.missions import (
+    MISSION_PAIRS,
+    extract_missions,
+    intersect_missions,
+    matches_mission,
+    normalize_missions,
+)
 from rs_server_common.utils.utils import (
     extract_eo_product,
     find_product_type,
@@ -97,6 +104,8 @@ logger = Logging.default(__name__)
 
 DEFAULT_STAC_VERSION = "1.1.0"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+UTC_OFFSET = "+00:00"
+UTC_DESIGNATOR = "Z"
 SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 DATE_INTERVAL_KEYS = ["PublicationDate", "ContentDate/Start", "ContentDate/End"]
@@ -701,19 +710,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     detail=f"Invalid combination of platform/constellation: {platform}/{constellation}",
                 )
 
-            # But these mission odata values are still saved with stac keys for now
-            if len(mission) == 1:
-                if self.cadip:
-                    stac_params["platform"] = mission.pop()  # type: ignore
-                else:  # auxip and prip
-                    stac_params["constellation"], stac_params["platform"] = mission.pop()  # type: ignore
+            if self.cadip:
+                stac_params["platform"] = mission[0] if len(mission) == 1 else mission
             else:
-                if self.cadip:
-                    stac_params["platform"] = mission
-                else:  # auxip and prip
-                    c, p = zip(*mission)
-                    stac_params["constellation"] = list(set(c))
-                    stac_params["platform"] = list(set(p))
+                # Keep mapped pairs in an internal field until OData serialization.
+                # Separate constellation/serial lists would broaden S1A/S2B to include S1B/S2A.
+                stac_params.pop("platform", None)
+                stac_params.pop("constellation", None)
+                stac_params[MISSION_PAIRS] = normalize_missions(mission)
 
         # Map platform/constellation fields
         map_missions(stac_params.get("platform"), stac_params.get("constellation"))
@@ -773,10 +777,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Only keep the authorized collections
         allowed: list[dict] = filter_allowed_collections(self.all_collections(), self.service, self.request)
         allowed_ids: set[str] = {collection["id"] for collection in allowed}
+        # Apply AUXIP/PRIP collection restrictions before pagination even without an explicit collection selection.
         all_results: list[Sequence[Item] | Exception] = (
             self.search_collections_by_station(list(allowed_ids.intersection(collection_ids)), odata_params, True)
             if collection_ids
-            else self.search_collections_by_station(list(allowed_ids), odata_params, False)
+            else self.search_collections_by_station(list(allowed_ids), odata_params, self.auxip or self.prip)
         )
 
         # Return results as a dict
@@ -795,6 +800,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         OData search parameters per station, and executes the searches in parallel threads.
         If multiple collections belong to the same station, and `aggregate_search_params` is True,
         their queries are merged to reduce the number of calls.
+        For AUXIP/PRIP, each branch is the intersection of the request and one collection;
+        non-empty branches are joined with OR in the station's OData filter.
 
         Args:
             collection_ids (list[str]): List of collection identifiers to search within.
@@ -813,6 +820,24 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         odata_params_by_station: dict[str, dict] = {}
         for station, station_collections in collections_by_station.items():
+            if aggregate_search_params and (self.auxip or self.prip):
+                # Preserve request AND collection as a whole; combining fields independently loses associations.
+                branches = []
+                for collection in station_collections:
+                    query, empty = self.merge_odata_params(
+                        collection.get("query") or {},
+                        odata_params,
+                        MergeMode.INTERSECTION,
+                    )
+                    # Disjoint branches contribute nothing to the union; identical branches need only appear once.
+                    if not empty and query not in branches:
+                        branches.append(query)
+                if branches:
+                    # One branch uses the ordinary search path; multiple branches need an internal OR filter.
+                    odata_params_by_station[station] = (
+                        branches[0] if len(branches) == 1 else {"query_branches": branches}
+                    )
+                continue
             if aggregate_search_params:
                 # Aggregates all search params for this station to make a single call
                 odata_merged: dict = {}
@@ -881,7 +906,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 return collection["id"]
         return None
 
-    def is_entity_matching_all_criteria(self, odata_entity: dict, query: dict) -> bool:
+    def is_entity_matching_all_criteria(  # pylint: disable=too-many-return-statements
+        self,
+        odata_entity: dict,
+        query: dict,
+    ) -> bool:
         """
         Evaluates whether an OData entity matches all criteria defined in a query.
 
@@ -908,6 +937,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if os.getenv("PYTHONDEBUG", "False").lower() in ("1", "true", "yes"):
                 logger.debug(f"Entity {odata_entity} does not match {crit_type} criteria {key}={value}")
             return False
+
+        if self.auxip or self.prip:
+            # Collection assignment must enforce the same mission pairs as the outgoing station filter.
+            query, missions = extract_missions(query)
+            if not matches_mission(odata_entity, missions):
+                return False
 
         for crit_key, crit_val in query.items():
             if crit_key not in ("top", "skip", "orderby"):
@@ -1077,21 +1112,31 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         Hardcoded parameters take precedence in the merge. If a parameter exists in both sources,
         conflicts are resolved based on the parameter type:
-        - For date intervals (e.g., "PublicationDate"), the intersection is computed.
-        - For comma-separated lists (e.g., "platformShortName", "productType"), the common values are retained.
+        - During AUXIP/PRIP intersections, missions are compared as complete constellation/serial pairs.
+        - Date intervals and comma-separated lists are combined according to the requested merge mode.
 
         Args:
             odata_hardcoded (dict): Hardcoded parameters defined in the collection configuration.
             odata_params (dict): OData parameters provided by the user.
-            mode (str): Resolution strategy: "union" or "intersection" of parameters
+            mode (MergeMode): Whether to compute the union or intersection of restrictions.
 
         Returns:
             tuple[dict, bool]: A tuple containing the merged OData parameters and a boolean flag indicating
             whether the result of the merge leads to an empty selection (e.g., no intersecting values).
         """
+        missions = None
+        if (self.auxip or self.prip) and mode == MergeMode.INTERSECTION:
+            # Remove mission fields first so the generic field-by-field merge cannot break their pairing.
+            odata_hardcoded, collection_missions = extract_missions(odata_hardcoded)
+            odata_params, request_missions = extract_missions(odata_params)
+            missions = intersect_missions(collection_missions, request_missions)
+
         # Merge the user input params with the hardcoded params (which have higher priority)
         odata_merged = {**odata_params, **odata_hardcoded}
-        empty_selection = False
+        # None means unrestricted; an empty tuple means the station must not be searched for this branch.
+        empty_selection = missions == ()
+        if missions is not None:
+            odata_merged[MISSION_PAIRS] = missions
 
         # Handle conflicts, i.e. for each key that is defined in both params
         for key in sorted(set(odata_params) & set(odata_hardcoded)):
@@ -1132,19 +1177,29 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
         logger.debug(f"Resolving date interval conflict resolution between {value1} and {value2}")
 
-        # Read both start and stop dates
-        _, start1, stop1 = validate_inputs_format(value1, raise_errors=True)
-        _, start2, stop2 = validate_inputs_format(value2, raise_errors=True)
+        # The parser returns fixed dates separately; use that instant as both interval bounds.
+        fixed1, start1, stop1 = validate_inputs_format(value1, raise_errors=True)
+        fixed2, start2, stop2 = validate_inputs_format(value2, raise_errors=True)
+        start1, stop1 = fixed1 or start1, fixed1 or stop1
+        start2, stop2 = fixed2 or start2, fixed2 or stop2
 
-        # Calculate the union or intersection
         if mode == MergeMode.UNION:
-            start = min(start1, start2)
-            stop = max(stop1, stop2)
+            # An absent bound is unbounded and remains so in the union.
+            start = min(start1, start2) if start1 is not None and start2 is not None else None
+            stop = max(stop1, stop2) if stop1 is not None and stop2 is not None else None
         else:
-            start = max(start1, start2)
-            stop = min(stop1, stop2)
+            # Keep the tighter defined bounds; an open bound adds no restriction.
+            start = max((bound for bound in (start1, start2) if bound is not None), default=None)
+            stop = min((bound for bound in (stop1, stop2) if bound is not None), default=None)
 
-        return f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}", start >= stop
+        # Bounds are inclusive: equal endpoints select a valid instant, not an empty interval.
+        if start is not None and start == stop:
+            return start.isoformat().replace(UTC_OFFSET, UTC_DESIGNATOR), False
+        # Preserve fractional seconds and timezone information; serialize open bounds as "..".
+        start_text = start.isoformat().replace(UTC_OFFSET, UTC_DESIGNATOR) if start is not None else ".."
+        stop_text = stop.isoformat().replace(UTC_OFFSET, UTC_DESIGNATOR) if stop is not None else ".."
+        empty = start is not None and stop is not None and start > stop
+        return f"{start_text}/{stop_text}", empty
 
     def resolve_comma_separated_list_conflict(self, value1: Any, value2: Any, mode: MergeMode) -> tuple[Any, bool]:
         """
@@ -1604,3 +1659,21 @@ def split_multiple_values(input_value: str) -> list[str] | str:
                          otherwise the original string.
     """
     return [s.strip() for s in input_value.split(",")] if "," in input_value else input_value
+
+
+def prepare_product_search_params(odata_params: dict) -> dict:
+    """Copy and normalize AUXIP/PRIP parameters for EODAG, preserving collection alternatives."""
+    # Preserve the input for later page requests, including dictionaries nested in query_branches.
+    prepared = copy.deepcopy(odata_params)
+    # Normalize a single predicate or each complete alternative in a collection union.
+    for query in prepared.get("query_branches", [prepared]):
+        # The provider expects a list when choosing between single-name and multiple-name filters.
+        query["Name"] = names if isinstance(names := query.get("Name"), list) else [names]
+        # Avoid EODAG's built-in product type parameter; this filters the station's productType attribute.
+        if product_type := query.pop("productType", None):
+            query["attr_ptype"] = split_multiple_values(product_type)
+
+        for key in ("platformSerialIdentifier", "platformShortName"):
+            if value := query.pop(key, None):
+                query[key] = split_multiple_values(value)
+    return prepared

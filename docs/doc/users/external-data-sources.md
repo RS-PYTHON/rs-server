@@ -87,6 +87,24 @@ collections:
 
 The `/<service>/collections` endpoint only returns the collections of the stations that you are allowed to read.
 
+For AUXIP and PRIP, use complete STAC platform names to restrict a collection to specific satellites:
+
+```yaml
+query:
+  platform: [sentinel-1a, sentinel-2b]
+```
+
+`platform` accepts a YAML list or a comma-separated string. It preserves the association between
+the constellation and serial identifier: this example selects S1A or S2B, never S1B or S2A.
+Names are case-insensitive in the collection configuration. An empty list selects no products.
+The existing `platformShortName` and `platformSerialIdentifier` fields remain independent restrictions;
+their lists are not paired by position. When combined with `platform`, all restrictions must match.
+
+Search requests are intersected with each selected collection. Collections on the same station
+are combined as complete alternatives, preserving their satellite and product-type restrictions.
+When `collections` is omitted, the same rules apply to all collections the user is allowed to read.
+OData applies these filters before sorting and pagination.
+
 ## Access to the stations
 
 The URLs and credentials of the stations are set by the administrators in the `rs-server-station-secrets`

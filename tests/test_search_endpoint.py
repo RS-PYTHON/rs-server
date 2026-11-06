@@ -32,6 +32,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
+from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common import stac_api_common
@@ -73,6 +74,127 @@ class TestOperatorDefinedCollections:
     ):
         """Test cases with invalid defined collections requests send to /session endpoint"""
         assert client.get(endpoint).status_code == code
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "left,right,mode,expected,empty",
+        [
+            # Identical fixed dates previously led to comparisons between None values.
+            ("2024-01-02T00:00:00.522Z", "2024-01-02T00:00:00.522Z", "intersection", "2024-01-02T00:00:00.522Z", False),
+            (
+                "2024-01-02T00:00:00.522Z",
+                "2024-01-01T00:00:00Z/2024-01-03T00:00:00Z",
+                "intersection",
+                "2024-01-02T00:00:00.522Z",
+                False,
+            ),
+            # Intervals sharing an endpoint still overlap at that instant.
+            (
+                "2024-01-01T00:00:00Z/2024-01-02T00:00:00Z",
+                "2024-01-02T00:00:00Z/2024-01-03T00:00:00Z",
+                "intersection",
+                "2024-01-02T00:00:00Z",
+                False,
+            ),
+            # A one-millisecond difference must remain a disjoint selection.
+            (
+                "2024-01-02T00:00:00.522Z",
+                "2024-01-02T00:00:00.523Z",
+                "intersection",
+                "2024-01-02T00:00:00.523Z/2024-01-02T00:00:00.522Z",
+                True,
+            ),
+            (
+                "../2024-01-03T00:00:00Z",
+                "2024-01-01T00:00:00Z/..",
+                "intersection",
+                "2024-01-01T00:00:00Z/2024-01-03T00:00:00Z",
+                False,
+            ),
+            ("../2024-01-01T00:00:00Z", "2024-01-03T00:00:00Z/..", "union", "../..", False),
+        ],
+        ids=[
+            "same-fixed-date",
+            "fixed-inside-interval",
+            "touching-intervals",
+            "disjoint-milliseconds",
+            "open-intersection",
+            "unbounded-union",
+        ],
+    )
+    def test_temporal_collection_bounds(self, left, right, mode, expected, empty):
+        """Keep fixed instants and inclusive bounds without losing precision or comparing None values."""
+        actual, actual_empty = MockPgstacAdgs().resolve_date_interval_conflict(
+            left,
+            right,
+            stac_api_common.MergeMode(mode),
+        )
+        assert actual_empty is empty
+        # Compare timestamps rather than their spelling (e.g. .522Z and .522000Z).
+        assert common_utils.validate_inputs_format(actual) == common_utils.validate_inputs_format(expected)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app,service",
+        [(ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_PRIP, "prip")],
+        indirect=["fastapi_app"],
+    )
+    # Cover implicit collection selection in GET and explicit selection in POST.
+    @pytest.mark.parametrize("method,explicit_collections", [("GET", False), ("POST", True)])
+    @responses.activate
+    def test_fixed_publication_date_search(
+        self,
+        mocker,
+        client,
+        service,
+        method,
+        explicit_collections,
+        adgs_response,
+        prip_response,
+    ):
+        """Intersect identical fixed dates through the API, including searches without collections."""
+        published = "2024-01-02T00:00:00.522Z"
+        service_utils = adgs_utils if service == "adgs" else prip_utils
+        # The collection and request constrain published to the same instant.
+        collection = pytest_utils.create_mock_collection(
+            service,
+            service_utils,
+            "dated_collection",
+            {"PublicationDate": published},
+        )
+        # Expose only this collection so an unrestricted one cannot mask the failure.
+        mocker.patch(
+            "rs_server_common.stac_api_common.MockPgstac.all_collections",
+            new_callable=mocker.PropertyMock,
+            return_value=lambda: [collection],
+        )
+        mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": [collection]})
+        product = deepcopy((adgs_response if service == "adgs" else prip_response)["value"][0])
+        product["PublicationDate"] = published
+        # Match the complete OData query so truncating the milliseconds also fails the test.
+        responses.add(
+            responses.GET,
+            f"http://127.0.0.1:5000/Products?$filter=PublicationDate eq {published}"
+            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            json={"value": [product]},
+            status=200,
+        )
+        params: dict = {"filter-lang": "cql2-json" if method == "POST" else "cql2-text"}
+        if explicit_collections:
+            params["collections"] = [collection["id"]]
+        params["filter"] = (
+            {"op": "=", "args": [{"property": "published"}, published]}
+            if method == "POST"
+            else f"published='{published}'"
+        )
+        url = f"/{'auxip' if service == 'adgs' else 'prip'}/search"
+        response = client.post(url, json=params) if method == "POST" else client.get(url, params=params)
+        assert response.status_code == 200, response.text
+        features = response.json()["features"]
+        assert len(features) == 1
+        assert common_utils.validate_inputs_format(features[0]["properties"]["published"]) == (
+            common_utils.validate_inputs_format(published)
+        )
 
 
 class TestConstellationMapping:
@@ -2428,14 +2550,23 @@ def test_cql2_in_operator(
             expected_satellites=["S2B"],
         )
     else:
+        # OR complete pairs, then AND the entire group with the requested product types.
+        mission_clauses = [
+            "(Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
+            f"att/OData.CSC.StringAttribute/Value eq '{constellation}') and "
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
+            f"att/OData.CSC.StringAttribute/Value eq '{serial}'))"
+            for constellation, serial in (("SENTINEL-1", "C"), ("SENTINEL-2", "B"), ("SENTINEL-3", "A"))
+        ]
         call_mocked_search(
             cols=["col_noconf"],
             request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
             request_product_types=[ptype, "type2", "type4"],
-            # odata = everything the user requested, because there is no criteria on the collection
-            expected_constellations=["SENTINEL-1", "SENTINEL-2", "SENTINEL-3"],
-            expected_platforms=["A", "B", "C"],
-            expected_product_types=[ptype, "type2", "type4"],
+            expected_filter=(
+                "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
+                f"att/OData.CSC.StringAttribute/Value in ('{ptype}','type2','type4')) and "
+                "(" + " or ".join(mission_clauses) + ")"
+            ),
         )
         call_mocked_search(
             cols=["col_with_conf"],
@@ -2443,10 +2574,9 @@ def test_cql2_in_operator(
             request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
             request_product_types=[ptype, "type2", "type4"],
             # odata = intersection with the collection config
-            # NOTE: there is a bug here, we would expect only S2B
-            # see: RSPY-1216
-            expected_constellations=["SENTINEL-1", "SENTINEL-2"],
-            expected_platforms=["A", "B"],
+            # Only S2B satisfies both the requested pairs and the collection's legacy restrictions.
+            expected_constellations=["SENTINEL-2"],
+            expected_platforms=["B"],
             expected_product_types=[ptype, "type2"],
         )
 
@@ -2510,23 +2640,27 @@ def test_search_on_several_collections(
         expected_platforms=["A"],
     )
 
-    # If the user requests s1a from the s1a and product type collections,
-    # we expect that the odata will request the station for s1a with this product type
+    def attribute(name, value):
+        return (
+            f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{name}' and "
+            f"att/OData.CSC.StringAttribute/Value eq '{value}')"
+        )
+
+    s1a = attribute("platformSerialIdentifier", "A") + " and " + attribute("platformShortName", "SENTINEL-1")
+    s2c = attribute("platformSerialIdentifier", "C") + " and " + attribute("platformShortName", "SENTINEL-2")
+    product_type = attribute("productType", ptype)
+
+    # The S1A collection accepts every product type; the other collection's type cannot restrict it.
     call_mocked_search(
         request_platforms=["sentinel-1a"],
         cols=["col_s1a", "col_ptype"],
-        expected_constellations=["SENTINEL-1"],
-        expected_platforms=["A"],
-        expected_product_types=[ptype],
+        expected_filter=f"({s1a})",
     )
 
-    # If the user requests everything from these 3 collections,
-    # we expect that the odata will request the station for s1a and s2c with this product type
+    # Match the product-type collection OR S1A OR S2C; no condition is shared by all three collections.
     call_mocked_search(
         cols=["col_s1a", "col_s2c", "col_ptype"],
-        expected_constellations=["SENTINEL-1", "SENTINEL-2"],
-        expected_platforms=["A", "c"],
-        expected_product_types=[ptype],
+        expected_filter=f"(({product_type}) or ({s1a}) or ({s2c}))",
     )
 
     # If the user requests s3b from s1a and s2c collections,
