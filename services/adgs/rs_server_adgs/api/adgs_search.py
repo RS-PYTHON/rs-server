@@ -73,14 +73,14 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 def validate(queryables: dict):
-    """Function used to verify / update ADGS-specific queryables before being sent to eodag."""
+    """Normalize ADGS date intervals for EODAG, preserving validated exact-date lists for IN."""
     if "query_branches" in queryables:
         # Each branch has its own date restrictions; normalize them before EODAG builds the OR filter.
         return {"query_branches": [validate(query) for query in queryables["query_branches"]]}
-    if "PublicationDate" in queryables:
+    if "PublicationDate" in queryables and not isinstance(queryables["PublicationDate"], list):
         queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
 
-    if "DatetimeStart" in queryables:
+    if "DatetimeStart" in queryables and not isinstance(queryables["DatetimeStart"], list):
         queryables["DatetimeStart"] = validate_inputs_format(queryables["DatetimeStart"])
 
     return queryables

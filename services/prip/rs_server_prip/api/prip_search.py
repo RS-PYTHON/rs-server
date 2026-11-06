@@ -71,11 +71,11 @@ PRIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 def validate(queryables: dict):
-    """Function used to verify / update PRIP-specific queryables before being sent to eodag."""
+    """Normalize PRIP date intervals for EODAG, preserving validated exact-date lists for IN."""
     if "query_branches" in queryables:
         # Each branch has its own date restrictions; normalize them before EODAG builds the OR filter.
         return {"query_branches": [validate(query) for query in queryables["query_branches"]]}
-    if "PublicationDate" in queryables:
+    if "PublicationDate" in queryables and not isinstance(queryables["PublicationDate"], list):
         queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
 
     return queryables

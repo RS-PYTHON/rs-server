@@ -74,6 +74,10 @@ template:
       DatetimeStart:
       - null
       - $.ContentDate.Start
+      # Exact end instants use a separate parameter from the interval upper bound (End).
+      DatetimeEnd:
+      - null
+      - $.ContentDate.End
       Start:
       - null
       - $.ContentDate.Start
@@ -179,6 +183,7 @@ template:
           - ModificationDate eq {ModificationDate#to_iso_utc_datetime}
           - OriginDate eq {OriginDate#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
+          - ContentDate/End eq {DatetimeEnd#to_iso_utc_datetime}
           - (ContentDate/Start gt {Start#to_iso_utc_datetime} or ContentDate/Start eq {Start#to_iso_utc_datetime})
           - (ContentDate/End lt {End#to_iso_utc_datetime} or ContentDate/End eq {End#to_iso_utc_datetime})
           # ---- ContentLength (numeric) ----

@@ -15,6 +15,7 @@
 """Mission selection semantics independent of the station and transport."""
 
 from copy import deepcopy
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -45,7 +46,7 @@ def test_constellation_restrictions_do_not_enumerate_known_satellites():
 
 
 def test_legacy_lists_remain_independent():
-    """Legacy configurations cannot silently acquire positional pairing semantics."""
+    """Separate constellation and serial lists select their Cartesian product."""
     query = {"platformShortName": "sentinel-1,sentinel-2", "platformSerialIdentifier": "a,b", "productType": "RAW"}
     original = deepcopy(query)
     remaining, selected = extract_missions(query)
@@ -86,5 +87,8 @@ def test_odata_literal_escaping():
     assert "Value eq 'O''NEIL'" in fragment
     params = mission_search_params((("O'NEIL", "A"),))
     provider = object.__new__(EodagProvider)
+    # Supply gateway metadata for the isolated mapper without initializing a station connection.
+    provider.provider = "station"
+    provider.client = SimpleNamespace(in_literals={})
     mapped = provider._map_search_args(params)  # pylint: disable=protected-access
     assert mapped["platformShortName"] == "'O''NEIL'"
