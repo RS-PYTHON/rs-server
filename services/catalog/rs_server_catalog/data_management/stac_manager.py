@@ -136,13 +136,16 @@ class StacManager:
         for collection in collections:
             owner_id = collection["owner"]
 
-            # Keep the owner prefix for the stac browser
+            collection_id = collection["id"].removeprefix(f"{owner_id}_")
+
+            # Keep the owner prefix for the stac browser, but always rewrite
+            # links using the unprefixed ID expected by add_user_prefix.
             if not common_settings.request_from_stacbrowser(request):
-                collection["id"] = collection["id"].removeprefix(f"{owner_id}_")
+                collection["id"] = collection_id
 
             for link in collection["links"]:
                 link_parser = urlparse(link["href"])
-                new_path = add_user_prefix(link_parser.path, owner_id, collection["id"])
+                new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
                 link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
 
