@@ -40,6 +40,7 @@ from typing import (
     Optional,
     Self,
     TypeAlias,
+    cast,
 )
 
 import stac_pydantic
@@ -761,7 +762,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             if self.cadip:
                 # Flatten constellation mappings into individual satellite codes for OData serialization.
-                satellites = sorted({sat.strip() for m in mission for sat in m.split(",")})
+                satellites = sorted({sat.strip() for m in mission for sat in cast(str, m).split(",")})
                 stac_params["platform"] = satellites[0] if len(satellites) == 1 else satellites
             else:
                 # Keep mapped pairs in an internal field until OData serialization.
@@ -1017,7 +1018,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         def match(odata_entity: dict, crit_type: str, key: str, value: str):
             logger.debug(f"Entity {odata_entity} matches {crit_type} criteria {key}={value}")
 
-        def nomatch(odata_entity: dict, crit_type: str, key: str, value: str):
+        def nomatch(odata_entity: dict, crit_type: str, key: str, value: str | list[str]):
             if os.getenv("PYTHONDEBUG", "False").lower() in ("1", "true", "yes"):
                 logger.debug(f"Entity {odata_entity} does not match {crit_type} criteria {key}={value}")
             return False
@@ -1035,7 +1036,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     date = dt.fromisoformat(value) if value else None
                     if isinstance(crit_val, list):
                         if date is None or not any(
-                            not self.resolve_date_interval_conflict(value, term, MergeMode.INTERSECTION)[1]
+                            not self.resolve_date_interval_conflict(cast(str, value), term, MergeMode.INTERSECTION)[1]
                             for term in crit_val
                         ):
                             return nomatch(odata_entity, "date list", crit_key, crit_val)
@@ -1278,8 +1279,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 merged = sorted(
                     set(
                         (value1 if isinstance(value1, list) else [value1])
-                        + (value2 if isinstance(value2, list) else [value2])
-                    )
+                        + (value2 if isinstance(value2, list) else [value2]),
+                    ),
                 )
             else:
                 left = value1 if isinstance(value1, list) else [value1]
@@ -1288,7 +1289,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 for first, second in itertools.product(left, right):
                     intersection, empty = self.resolve_date_interval_conflict(first, second, mode)
                     if not empty and intersection not in merged:
-                        merged.append(intersection)
+                        merged.append(cast(str, intersection))
             return merged, not merged
 
         # The parser returns fixed dates separately; use that instant as both interval bounds.

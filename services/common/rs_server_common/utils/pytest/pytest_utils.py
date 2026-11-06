@@ -254,9 +254,9 @@ def call_mocked_search(
         if request.startswith("odata_range"):  # datetime range as min/max str
             assert isinstance(values, str)
             # Date bounds retain their precision in canonical ISO representation.
-            date_min, date_max = [
+            date_min, date_max = (
                 datetime.fromisoformat(value).isoformat().replace("+00:00", "Z") for value in values.split("/")
-            ]
+            )
             if request == "odata_range1":
                 odata_dict[odata_key] = (
                     f"({key} gt {date_min} or {key} eq {date_min}) and ({key} lt {date_max} or {key} eq {date_max})"

@@ -1558,7 +1558,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=10000000",
                 "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
-                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
+                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=OriginDate "
                 "desc&$top=10000&$skip=0&$expand=Attributes",
             ),
             (
@@ -2752,7 +2752,7 @@ def test_cql2_in_datetime_values(mocker, client, method, service):
         fields["processing:datetime"] = "processingDate"
         if service == "prip":
             fields.update(
-                {"eopf:origin_datetime": "OriginDate", "expires": "EvictionDate", "eviction_datetime": "EvictionDate"}
+                {"eopf:origin_datetime": "OriginDate", "expires": "EvictionDate", "eviction_datetime": "EvictionDate"},
             )
     instants = ["2024-01-02T00:00:00.123456Z", "2024-01-03T00:00:00.123456Z"]
     endpoint = f"/{'auxip' if service == 'adgs' else service}/search"
@@ -2787,23 +2787,29 @@ def test_cql2_in_datetime_values(mocker, client, method, service):
                 )
             with responses.RequestsMock() as station:
                 station.add(
-                    responses.GET, re.compile(r"http://127\.0\.0\.1:5000/(Products|Sessions)\?"), json={"value": []}
+                    responses.GET,
+                    re.compile(r"http://127\.0\.0\.1:5000/(Products|Sessions)\?"),
+                    json={"value": []},
                 )
                 response = search(prop, values)
                 assert response.status_code == 200, (prop, response.text)
                 assert response.json()["features"] == []
-                searches = [call for call in station.calls if "$filter=" in call.request.url]
-                assert len(searches) == 1
-                assert parse_qs(urlsplit(searches[0].request.url).query)["$filter"] == [expected]
+                search_urls = [
+                    call.request.url for call in station.calls if call.request.url and "$filter=" in call.request.url
+                ]
+                assert len(search_urls) == 1
+                assert parse_qs(urlsplit(search_urls[0]).query)["$filter"] == [expected]
 
     interval = "2024-01-01T00:00:00Z/2024-01-02T12:00:00Z"
     with responses.RequestsMock() as station:
         station.add(responses.GET, re.compile(r"http://127\.0\.0\.1:5000/(Products|Sessions)\?"), json={"value": []})
         response = search("datetime", instants, interval)
         assert response.status_code == 200, response.text
-        searches = [call for call in station.calls if "$filter=" in call.request.url]
-        assert len(searches) == 1
-        odata = parse_qs(urlsplit(searches[0].request.url).query)["$filter"][0]
+        search_urls = [
+            call.request.url for call in station.calls if call.request.url and "$filter=" in call.request.url
+        ]
+        assert len(search_urls) == 1
+        odata = parse_qs(urlsplit(search_urls[0]).query)["$filter"][0]
         if service == "cadip":
             assert odata == f"PublicationDate eq {instants[0]}"
         else:

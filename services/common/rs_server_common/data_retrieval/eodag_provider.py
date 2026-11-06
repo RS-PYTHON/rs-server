@@ -326,11 +326,11 @@ class EodagProvider(Provider):
                         bounds.append(f"PublicationDate eq {date_literal(fixed)}")
                     if start:
                         bounds.append(
-                            f"(PublicationDate gt {date_literal(start)} or PublicationDate eq {date_literal(start)})"
+                            f"(PublicationDate gt {date_literal(start)} or PublicationDate eq {date_literal(start)})",
                         )
                     if end:
                         bounds.append(
-                            f"(PublicationDate lt {date_literal(end)} or PublicationDate eq {date_literal(end)})"
+                            f"(PublicationDate lt {date_literal(end)} or PublicationDate eq {date_literal(end)})",
                         )
                     terms.append("(" + " and ".join(bounds) + ")" if bounds else "true")
                 mapped_search_args["publicationDateFilter"] = "(" + " or ".join(terms) + ")"
@@ -350,7 +350,7 @@ class EodagProvider(Provider):
                     {
                         "requestStart": date_literal(start) if start else None,
                         "requestEnd": date_literal(end) if end else None,
-                    }
+                    },
                 )
 
         date_time = kwargs.pop("DatetimeStart", None)
