@@ -17,10 +17,14 @@
 # pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
 
 
+import io
+from unittest.mock import MagicMock
+
 import botocore
 import pytest
 import requests
 import responses
+import urllib3.exceptions
 from botocore.exceptions import ClientError, EndpointConnectionError
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
@@ -388,6 +392,41 @@ def test_s3_streaming_upload_fail(mocker):
         boto_mocker.deactivate()
 
     server.stop()
+
+
+class _TruncatedStream(io.RawIOBase):
+    """Non-seekable source stream that breaks like a provider closing the connection mid-transfer."""
+
+    def readable(self):
+        return True
+
+    def read(self, size=-1):
+        raise urllib3.exceptions.ProtocolError(
+            "Connection broken: IncompleteRead(205738364 bytes read, 8954892754 more expected)",
+            urllib3.exceptions.IncompleteRead(205738364, 8954892754),
+        )
+
+
+def test_s3_streaming_upload_incomplete_read_is_connection_error(mocker):
+    """A connection dropped by the provider during the download must raise a retryable ConnectionError.
+
+    The source is read through `response.raw`, so the urllib3 ProtocolError (IncompleteRead) reaches
+    boto3 unwrapped by requests. It used to be reported as a "General exception" RuntimeError, which made
+    the staging task fail immediately instead of retrying the transfer.
+    """
+    response = MagicMock(status_code=200, raw=_TruncatedStream())
+    response.__enter__.return_value = response
+    mocker.patch("requests.Session.send", return_value=response)
+
+    export_aws_credentials()
+    s3_handler = S3StorageHandler(S3Credentials(None, None, "http://localhost:5001", ""))
+
+    with pytest.raises(ConnectionError) as con_exc:
+        s3_handler.s3_streaming_from_http("http://127.0.0.1:6000/file", [], None, "bucket", "key")
+
+    assert "Failed to stream the file from" in str(con_exc.value)
+    assert "General exception" not in str(con_exc.value)
+    assert isinstance(con_exc.value.__cause__, urllib3.exceptions.ProtocolError)
 
 
 def test_check_s3_key_on_bucket_forbidden(mocker):

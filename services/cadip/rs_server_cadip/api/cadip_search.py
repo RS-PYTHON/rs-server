@@ -156,6 +156,10 @@ class MockPgstacCadip(MockPgstac):
         features_ids = ",".join(feature.id for feature in session_features)
         logger.debug(f"Searching for CADIP files at station {station} for session ids: {features_ids}")
 
+        page_size = min(
+            DEFAULT_FILES_LIMIT,
+            cadip_retriever.init_cadip_provider(station).max_items_per_page,
+        )
         assets: list[dict] = []
         page = 1
         while True:
@@ -163,12 +167,13 @@ class MockPgstacCadip(MockPgstac):
                 station,
                 {"SessionId": features_ids},
                 map_to_session=True,
+                limit=page_size,
                 page=page,
             )
             # Gather results into assets list for later allocation
             assets.extend(chunked_assets)
 
-            if len(chunked_assets) < DEFAULT_FILES_LIMIT:
+            if len(chunked_assets) < page_size:
                 # If assets are less than maximum limit, then session is complete.
                 break
             # If assets are equal to maximum limit, then send another request for the next page
