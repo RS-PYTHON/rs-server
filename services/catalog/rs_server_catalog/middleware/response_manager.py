@@ -31,7 +31,6 @@ from rs_server_catalog.data_management.user_handler import (
     CATALOG_COLLECTIONS,
     adapt_links,
     adapt_object_links,
-    add_user_prefix,
 )
 from rs_server_catalog.utils import (
     CATALOG_PREFIX,
@@ -460,14 +459,10 @@ class CatalogResponseManager:
 
         # Manage local landing page of the catalog
         if request.scope["path"] in (CATALOG_PREFIX, CATALOG_PREFIX + "/"):
-            regex_catalog = CATALOG_COLLECTIONS + r"/(?P<owner_id>.+?)_(?P<collection_id>.*)"
-            for link in content["links"]:
-                link_parser = urlparse(link["href"])
-
-                if match := re.match(regex_catalog, link_parser.path):
-                    groups = match.groupdict()
-                    new_path = add_user_prefix(link_parser.path, groups["owner_id"], groups["collection_id"])
-                    link["href"] = link_parser._replace(path=new_path).geturl()
+            # Rebuild collection children from the access-filtered list below.
+            # Upstream links use internal IDs and may otherwise expose the same
+            # collection alongside its public owner:collection URL.
+            content["links"] = [link for link in content["links"] if link.get("rel") != "child"]
             url = request.url._url  # pylint: disable=protected-access
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
