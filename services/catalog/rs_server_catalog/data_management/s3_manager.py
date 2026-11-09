@@ -16,11 +16,14 @@
 
 import os
 import traceback
+from base64 import b64decode
+from binascii import Error as Base64Error
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 import botocore
 from fastapi import HTTPException
+from multiformats import multihash
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
@@ -412,8 +415,9 @@ class S3Manager:
 
     def update_assets_checksums(self, content: dict) -> dict:
         """
-        Update each asset with checksum data returned by S3 GetObjectAttributes.
+        Update asset checksums, preferring MD5 encoded as a hexadecimal multihash.
 
+        Other S3 checksums are stored as-is when MD5 is unavailable.
         Missing checksum metadata is non-fatal: publication can continue because
         object presence was already checked separately.
         """
@@ -441,15 +445,22 @@ class S3Manager:
                 logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
                 continue
 
-            # GetObjectAttributes returns the checksum values in the S3/AWS format:
-            # a "Checksum" dict containing one or more algorithm-specific base64 values
-            # such as ChecksumCRC32, ChecksumCRC32C, ChecksumSHA1 or ChecksumSHA256.
-            # For now we store the first checksum value returned by the object storage
-            # into the STAC asset field; the multihash/STAC-normalized conversion can
-            # build on this once we preserve the selected algorithm alongside the value.
             checksum = object_attributes.get("Checksum", {})
+            # ChecksumMD5 is provider-specific, not a standard S3 checksum attribute.
+            if md5_checksum := checksum.get("ChecksumMD5"):
+                try:
+                    digest = b64decode(md5_checksum, validate=True)
+                    if len(digest) != 16:
+                        raise ValueError("MD5 digest must be 16 bytes")
+                except (Base64Error, ValueError) as error:
+                    logger.warning("Invalid MD5 checksum for asset %s: %s", asset_name, error)
+                else:
+                    asset_info["file:checksum"] = multihash.wrap(digest, "md5").hex()
+                    logger.debug("Updated checksum for asset %s using ChecksumMD5", asset_name)
+                    continue
+
             for checksum_key, checksum_value in checksum.items():
-                if checksum_key.startswith("Checksum") and checksum_value:
+                if checksum_key != "ChecksumMD5" and checksum_key.startswith("Checksum") and checksum_value:
                     asset_info["file:checksum"] = checksum_value
                     logger.debug("Updated checksum for asset %s using %s", asset_name, checksum_key)
                     break
