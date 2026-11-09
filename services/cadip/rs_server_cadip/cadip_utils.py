@@ -288,6 +288,7 @@ def prepare_collection(collection: ItemCollection) -> ItemCollection:
             "sentinel-1": "S01CADU__",
             "sentinel-2": "S02CADU__",
             "sentinel-3": "S03CADU__",
+            "cristal": "CRICADU__",
         }.get(feature.properties.constellation or "")
         if product_type is not None:
             setattr(feature.properties, "product:type", product_type)

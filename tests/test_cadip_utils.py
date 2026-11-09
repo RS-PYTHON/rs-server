@@ -152,6 +152,7 @@ def test_map_dag_file_to_asset_adds_external_ids():
         ("S2C", "S02CADU__"),
         ("S3A", "S03CADU__"),
         ("S3B", "S03CADU__"),
+        ("CRA", "CRACADU__"),
         ("S5P", None),
         ("unknown", None),
         (None, None),

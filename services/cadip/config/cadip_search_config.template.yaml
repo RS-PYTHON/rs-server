@@ -150,3 +150,10 @@ collections:
       Satellite: S5P
     title: "Sentinel-5 'sgs' station"
     description: "Sentinel-5 'sgs' station"
+
+  - id: sgs_cristal
+    station: sgs
+    query:
+      Satellite: CRA
+    title: "Cristal 'sgs' station"
+    description: "Cristal 'sgs' station"

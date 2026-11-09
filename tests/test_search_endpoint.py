@@ -231,8 +231,10 @@ class TestConstellationMapping:
             ("sentinel-1a", None, "sentinel-1", "A"),
             ("sentinel-2b", None, "sentinel-2", "B"),
             ("sentinel-5p", None, "sentinel-5P", None),
+            ("cristal-a", None, "cristal", "A"),
             (None, "sentinel-1", "sentinel-1", None),
             (None, "sentinel-2", "sentinel-2", None),
+            (None, "cristal", "cristal", None),
             (None, "sentinel-5P", "sentinel-5P", None),
         ],
     )
@@ -245,10 +247,15 @@ class TestConstellationMapping:
         "platform, constellation",
         [
             ("sentinel-invalid", None),  # invalid platform
+            ("cristal-invalid", None),  # invalid platform
             (None, "sentinel-invalid"),  # invalid constellation
+            (None, "cristal-invalid"),  # invalid constellation
             ("sentinel-invalid", "sentinel-1"),  # invalid platform, valid constellation
+            ("cristal-invalid", "cristal"),  # invalid platform, valid constellation
             ("sentinel-1a", "sentinel-invalid"),  # valid platform, invalid constellation
+            ("cristal-a", "cristal-invalid"),  # valid platform, invalid constellation
             ("sentinel-1a", "sentinel-5p"),  # invalid relation between platform and const
+            ("cristal-a", "sentinel-1"),  # invalid relation between platform and const
         ],
     )
     def test_invalid_adgs_mapping(self, platform, constellation):
@@ -267,13 +274,16 @@ class TestConstellationMapping:
             ("sentinel-1a", None, "S1A"),
             ("sentinel-2b", None, "S2B"),
             ("sentinel-5p", None, "S5P"),
+            ("cristal-a", None, "CRA"),
             # if both plaftorm and const are defined, priority is to get platform since it is more precise
             ("sentinel-2b", "sentinel-2", "S2B"),
             ("sentinel-1a", "sentinel-1", "S1A"),
             ("sentinel-5p", "sentinel-5P", "S5P"),
+            ("cristal-a", "cristal", "CRA"),
             (None, "sentinel-1", "S1A,S1B,S1C,S1D"),
             (None, "sentinel-2", "S2A,S2B,S2C"),
             (None, "sentinel-5P", "S5P"),
+            (None, "cristal", "CRA"),
         ],
     )
     def test_valid_cadip_mapping(self, platform, constellation, satellite):
@@ -285,9 +295,11 @@ class TestConstellationMapping:
         "platform, constellation",
         [
             ("sentinel-invalid", None),  # invalid platform
+            ("cristal-invalid", None),  # invalid platform
             ("sentinel-1a", "sentinel-invalid"),  # valid platform, invalid constellation
+            ("cristal-a", "cristal-invalid"),  # valid platform, invalid constellation
             ("sentinel-1a", "sentinel-5p"),  # invalid relation between platform and const
-            ("sentinel-2a", "sentinel-1"),
+            ("cristal-a", "sentinel-1"),  # invalid relation between platform and const
         ],
     )
     def test_invalid_cadip_mapping(self, platform, constellation):
@@ -652,6 +664,7 @@ class TestFeatureOdataStacMapping:
             ("S1A", "sentinel-1", "S01CADU__"),
             ("S2A", "sentinel-2", "S02CADU__"),
             ("S3A", "sentinel-3", "S03CADU__"),
+            ("CRA", "cristal", "CRACADU__"),
         ],
     )
     def test_cadip_feature_mapping(

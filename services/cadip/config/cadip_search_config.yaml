@@ -585,3 +585,42 @@ collections:
     roles:
     - host
     url: https://home.rs-python.eu/
+
+- id: sgs_cristal
+  station: sgs
+  query:
+    Satellite: CRA
+  stac_extensions: []
+  title: Cristal 'sgs' station
+  description: Cristal 'sgs' station
+  license: other
+  extent:
+    spatial:
+      bbox:
+      - - -180
+        - -82.85
+        - 180
+        - 82.82
+    temporal:
+      interval:
+      - - '2024-06-12T02:57:21.459000Z'
+        - '2024-08-22T11:30:12.767000Z'
+  links:
+  - rel: license
+    href: https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice
+    title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
+  providers:
+  - name: European Union/ESA/Copernicus
+    roles:
+    - producer
+    - licensor
+    url: https://sentiwiki.copernicus.eu/web/cristal
+  - name: Reference System
+    roles:
+    - host
+    url: https://home.rs-python.eu/
