@@ -126,6 +126,9 @@ class CustomEODataAccessGateway(EODataAccessGateway):
             for key in ("AntennaId", "AcquisitionId", "StationId", "FrontEndId"):
                 operands[:] = [operand.replace(f"{key} eq {{{key}}}", f"{key} eq '{{{key}}}'") for operand in operands]
             if products_search:
+                # Keep exact station names separate from extension-free STAC id searches.
+                search.metadata_mapping["NameExact"] = [None, "$.Name"]
+                operands.insert(0, "Name eq {NameExact}")
                 search.metadata_mapping["DatetimeEnd"] = [None, "$.ContentDate.End"]
                 if not any("ContentDate/End eq {DatetimeEnd" in operand for operand in operands):
                     operands.append("ContentDate/End eq {DatetimeEnd}")
@@ -295,6 +298,9 @@ class EodagProvider(Provider):
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
             self._handle_multiple_values(mapped_search_args, session_id, "SessionId", "SessionIds")
+
+        if exact_names := kwargs.pop("NameExact", None):
+            self._handle_multiple_values(mapped_search_args, exact_names, "NameExact", "NameExacts")
 
         if names := kwargs.pop("Name", None):
             if len(names) == 1:

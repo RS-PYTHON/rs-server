@@ -194,31 +194,31 @@ template:
           # ---- ContentType (string) ----
           - ContentType eq '{ContentType}'
           - ContentType in ({ContentTypes})
-          # ---- ProductionType (string) ----
-          - ProductionType eq '{ProductionType}'
+          # ---- ProductionType (OData enum) ----
+          - ProductionType eq OData.CSC.ProductionType'{ProductionType}'
           # ---- Spatial Intersects  ----
           # Provide a full WKT geometry like: POLYGON((-60 0,-62 -10,-58 -10,-56 0,-60 0))
           - OData.CSC.Intersects(area=geography'SRID=4326;{geometry}')
-          # ---- Attributes[...] == value (StringAttribute) ----
+          # ---- Attribute predicates use the declared OData value type ----
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value in ({attr_ptypes}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq {platformShortName#to_upper})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq {platformSerialIdentifier})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value in ({platformSerialIdentifiers}))
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
+          - Attributes/OData.CSC.DateTimeOffsetAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.DateTimeOffsetAttribute/Value eq {processingDate#to_iso_utc_datetime})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processingCenter}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and att/OData.CSC.StringAttribute/Value eq '{processorVersion}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentShortName' and att/OData.CSC.StringAttribute/Value eq '{instrumentShortName#to_upper}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'polarisationChannels' and att/OData.CSC.StringAttribute/Value eq '{polarisationChannels}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productClass' and att/OData.CSC.StringAttribute/Value eq {productClass})
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.StringAttribute/Value eq '{orbitNumber}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.StringAttribute/Value eq '{relativeOrbitNumber}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.StringAttribute/Value eq '{cycleNumber}')
+          - Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'orbitNumber' and att/OData.CSC.IntegerAttribute/Value eq {orbitNumber})
+          - Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'relativeOrbitNumber' and att/OData.CSC.IntegerAttribute/Value eq {relativeOrbitNumber})
+          - Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'cycleNumber' and att/OData.CSC.IntegerAttribute/Value eq {cycleNumber})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and att/OData.CSC.StringAttribute/Value eq '{orbitDirection#to_upper}')
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.StringAttribute/Value eq '{datatakeID}')
+          - Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'datatakeID' and att/OData.CSC.IntegerAttribute/Value eq {datatakeID})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'coordinates' and att/OData.CSC.StringAttribute/Value eq {coordinates})
-          - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.StringAttribute/Value eq '{instrumentConfigurationID}')
+          - Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'instrumentConfigurationID' and att/OData.CSC.IntegerAttribute/Value eq {instrumentConfigurationID})
           - "{t_before}"
           - "{t_after}"
           - "{t_meets}"

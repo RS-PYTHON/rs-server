@@ -676,8 +676,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                     )
                 value = kv[1].strip().strip("'\"")
-                if self.get_queryables()[prop].type == "datetime":
-                    # Reuse the validated CQL2 value to preserve TIMESTAMP literals.
+                if self.get_queryables()[prop].type == "datetime" or prop == "Name":
+                    # Reuse parsed timestamps and filename literals, including escaped apostrophes.
                     return
                 value = normalize_integer_values(prop, value)
                 check_input_type(self.get_queryables(), prop, value)
@@ -695,7 +695,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 stripped = kv[0][1].strip(" \t()")
                 values = [v.strip().strip("'\"") for v in stripped.split(",")]
                 values = normalize_integer_values(prop, values)
-                if self.get_queryables()[prop].type == "datetime":
+                if self.get_queryables()[prop].type == "datetime" or prop == "Name":
                     return
                 check_input_type(self.get_queryables(), prop, values)
                 # Update stac params
@@ -851,7 +851,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             )
             if empty:
                 return self.build_response_payload(ItemCollection(features=[], type="FeatureCollection"))
-        odata_params: dict = self.stac_to_odata(stac_params)
+        # Raw Name matches the complete station filename; STAC id retains its extension-free mapping.
+        odata_params: dict = self.stac_to_odata({key: value for key, value in stac_params.items() if key != "Name"})
+        if "Name" in stac_params:
+            odata_params["NameExact"] = stac_params["Name"]
         if datetime and (self.auxip or self.prip) and stac_params.get("datetime") != datetime:
             # Apply both request ContentDate bounds alongside the filter's exact-date predicates.
             odata_params["request_datetime_interval"] = datetime

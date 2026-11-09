@@ -1280,7 +1280,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA",
-                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and Attributes/OData.CSC."
+                "http://127.0.0.1:5000/Products?$filter=Name eq 'AUX_PPA' and Attributes/OData.CSC."
                 "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
                 " eq 'SENTINEL-1')&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
@@ -1289,7 +1289,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA AND published="
                 "'2020-02-16T12:00:00.000Z'",
-                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and PublicationDate eq "
+                "http://127.0.0.1:5000/Products?$filter=Name eq 'AUX_PPA' and PublicationDate eq "
                 "2020-02-16T12:00:00Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
                 "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2631,15 +2631,15 @@ def test_cql2_in_queryable_values(
     if service == "prip":
         product["Attributes"].append({"Name": "orbitNumber", "Value": 43829, "ValueType": "Integer"})
         cases = [
-            ([43829, 47051], "in ('43829','47051')", True),
-            ([43829.0, 47051.0], "in ('43829','47051')", True),
-            ([43829], "eq '43829'", True),
-            ([43829.0], "eq '43829'", True),
-            (43829.0, "eq '43829'", True),
-            ([99999], "eq '99999'", False),
+            ([43829, 47051], "in (43829,47051)", True),
+            ([43829.0, 47051.0], "in (43829,47051)", True),
+            ([43829], "eq 43829", True),
+            ([43829.0], "eq 43829", True),
+            (43829.0, "eq 43829", True),
+            ([99999], "eq 99999", False),
         ]
         if method == "POST":
-            cases.append(([43829.5], "eq '43829.5'", False))
+            cases.append(([43829.5], "eq 43829.5", False))
     elif service == "cadip":
         cases = [
             (["MSP21", "other"], "in ('MSP21','other')", True),
@@ -2675,9 +2675,10 @@ def test_cql2_in_queryable_values(
     for values, comparison, matches in cases:
         odata_filter = f"{field} {comparison}"
         if service != "cadip":
+            attribute_type = "IntegerAttribute" if service == "prip" else "StringAttribute"
             odata_filter = (
-                f"Attributes/OData.CSC.StringAttribute/any(att:att/Name eq '{field}' and "
-                f"att/OData.CSC.StringAttribute/Value {comparison})"
+                f"Attributes/OData.CSC.{attribute_type}/any(att:att/Name eq '{field}' and "
+                f"att/OData.CSC.{attribute_type}/Value {comparison})"
             )
         odata_url = (
             f"http://127.0.0.1:5000/{'Sessions' if service == 'cadip' else 'Products'}?$filter={odata_filter}"
@@ -2780,10 +2781,12 @@ def test_cql2_in_datetime_values(mocker, client, method, service):
             comparison = f"in ({','.join(values)})" if len(values) > 1 else f"eq {values[0]}"
             expected = f"{field} {comparison}"
             if field == "processingDate":
-                comparison = f"in ({','.join(repr(v) for v in values)})" if len(values) > 1 else f"eq '{values[0]}'"
+                attribute_type = "DateTimeOffsetAttribute" if service == "prip" else "StringAttribute"
+                if service == "adgs":
+                    comparison = f"in ({','.join(repr(v) for v in values)})" if len(values) > 1 else f"eq '{values[0]}'"
                 expected = (
-                    "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and "
-                    f"att/OData.CSC.StringAttribute/Value {comparison})"
+                    f"Attributes/OData.CSC.{attribute_type}/any(att:att/Name eq 'processingDate' and "
+                    f"att/OData.CSC.{attribute_type}/Value {comparison})"
                 )
             with responses.RequestsMock() as station:
                 station.add(
@@ -3053,7 +3056,7 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "filter": "Name=ABCD AND constellation='sentinel-1'"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and "
+            "$filter=Name eq 'ABCD' and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
@@ -3125,7 +3128,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "$filter=Name eq 'ABCD' and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
@@ -3179,7 +3182,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "$filter=Name eq 'ABCD' and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
             "and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') "
@@ -3201,7 +3204,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "$filter=Name eq 'ABCD' and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
             "and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
@@ -3310,8 +3313,8 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
             "att/OData.CSC.StringAttribute/Value eq 'A') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and "
-            "att/OData.CSC.StringAttribute/Value eq '2022-06-26T06:30:34.558000Z')"
+            "Attributes/OData.CSC.DateTimeOffsetAttribute/any(att:att/Name eq 'processingDate' and "
+            "att/OData.CSC.DateTimeOffsetAttribute/Value eq 2022-06-26T06:30:34.558000Z)"
             "&$orderby=ContentLength desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -3338,8 +3341,8 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "att/OData.CSC.StringAttribute/Value eq 'A') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
             "att/OData.CSC.StringAttribute/Value eq '2.0') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
-            "att/OData.CSC.StringAttribute/Value eq '10000') and "
+            "Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.IntegerAttribute/Value eq 10000) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
             "att/OData.CSC.StringAttribute/Value eq 'DESCENDING')&$orderby=PublicationDate desc"
             "&$top=10&$skip=0&$expand=Attributes",
@@ -3364,10 +3367,10 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
             "att/OData.CSC.StringAttribute/Value eq '2.0') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
-            "att/OData.CSC.StringAttribute/Value eq '43829') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and "
-            "att/OData.CSC.StringAttribute/Value eq '43829') and "
+            "Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.IntegerAttribute/Value eq 43829) and "
+            "Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'relativeOrbitNumber' and "
+            "att/OData.CSC.IntegerAttribute/Value eq 43829) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
             "att/OData.CSC.StringAttribute/Value eq 'ASCENDING')&$orderby=PublicationDate desc"
             "&$top=10&$skip=0&$expand=Attributes",
@@ -3729,3 +3732,73 @@ def test_build_summaries_prip_valid(monkeypatch):
             "S01SIWSLC",
         ],
     }
+
+
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app,service,prop,values,operand,literal",
+    [
+        (ROUTER_PREFIX_AUXIP, "adgs", "Name", ["S1", "O'Hare.zip"], "Name", "'{value}'"),
+        (ROUTER_PREFIX_PRIP, "prip", "Name", ["S1", "O'Hare.zip"], "Name", "'{value}'"),
+        (
+            ROUTER_PREFIX_PRIP,
+            "prip",
+            "processing:lineage",
+            ["systematic_production", "on-demand default"],
+            "ProductionType",
+            "OData.CSC.ProductionType'{value}'",
+        ),
+        (ROUTER_PREFIX_PRIP, "prip", "sat:absolute_orbit", [43829, 47051], "orbitNumber", "{value}"),
+        (ROUTER_PREFIX_PRIP, "prip", "eopf:datatake_id", [342911, 424242], "datatakeID", "{value}"),
+        (
+            ROUTER_PREFIX_PRIP,
+            "prip",
+            "eopf:instrument_configuration_id",
+            [7, 8],
+            "instrumentConfigurationID",
+            "{value}",
+        ),
+    ],
+    indirect=["fastapi_app"],
+)
+def test_cql2_exact_names_and_typed_literals(mocker, client, method, service, prop, values, operand, literal):
+    """Check station filter syntax independently of mock support for enums and typed attributes."""
+    service_utils = adgs_utils if service == "adgs" else prip_utils
+    collection = pytest_utils.create_mock_collection(service, service_utils, "col_typed_filters", {})
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: [collection],
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": [collection]})
+    endpoint = f"/{'auxip' if service == 'adgs' else service}/search"
+    for selection in (values[:1], values):
+        formatted = [literal.format(value=str(v).replace("'", "''")) for v in sorted(selection, key=str)]
+        comparison = f"eq {formatted[0]}" if len(selection) == 1 else f"in ({','.join(formatted)})"
+        expected = f"{operand} {comparison}"
+        if prop in ("sat:absolute_orbit", "eopf:datatake_id", "eopf:instrument_configuration_id"):
+            expected = (
+                f"Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq '{operand}' and "
+                f"att/OData.CSC.IntegerAttribute/Value {comparison})"
+            )
+        with responses.RequestsMock() as station:
+            station.add(responses.GET, re.compile(r"http://127\.0\.0\.1:5000/Products\?"), json={"value": []})
+            if method == "GET":
+                constants = ["'" + str(v).replace("'", "''") + "'" if isinstance(v, str) else str(v) for v in selection]
+                response = client.get(
+                    endpoint,
+                    params={"collections": collection["id"], "filter": f"{prop} IN ({','.join(constants)})"},
+                )
+            else:
+                response = client.post(
+                    endpoint,
+                    json={
+                        "collections": [collection["id"]],
+                        "filter-lang": "cql2-json",
+                        "filter": {"op": "in", "args": [{"property": prop}, selection]},
+                    },
+                )
+            assert response.status_code == 200, response.text
+            urls = [call.request.url for call in station.calls if call.request.url and "$filter=" in call.request.url]
+            assert len(urls) == 1
+            assert parse_qs(urlsplit(urls[0]).query)["$filter"] == [expected]
