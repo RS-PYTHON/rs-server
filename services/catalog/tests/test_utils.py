@@ -512,9 +512,19 @@ class TestGetS3Handler:
         # Make sure that item can't be published
         assert s3_manager.check_if_item_can_be_published(content) is False
 
-    def test_update_assets_checksums(self, mocker, s3_manager):
+    @pytest.mark.parametrize(
+        ("md5_checksum", "expected_checksum"),
+        [
+            (None, "checksum-1"),
+            ("", "checksum-1"),
+            ("invalid-base64", "checksum-1"),
+            ("YWJj", "checksum-1"),
+            ("1B2M2Y8AsgTpgAmY7PhCfg==", "d50110d41d8cd98f00b204e9800998ecf8427e"),
+        ],
+    )
+    def test_update_assets_checksums(self, mocker, s3_manager, md5_checksum, expected_checksum):
         """
-        Test that S3 object checksum attributes are added to each STAC asset.
+        Test MD5 multihash priority and the unchanged fallback to other S3 checksums.
         """
         content = {
             "collection": "test_collection",
@@ -530,14 +540,14 @@ class TestGetS3Handler:
             s3_manager.s3_handler,
             "get_object_attributes",
             side_effect=[
-                {"Checksum": {"ChecksumSHA256": "checksum-1"}},
+                {"Checksum": {"ChecksumSHA256": "checksum-1", "ChecksumMD5": md5_checksum}},
                 {"Checksum": {"ChecksumCRC32": "checksum-2"}},
             ],
         )
 
         result = s3_manager.update_assets_checksums(content)
 
-        assert result["assets"]["asset1"]["file:checksum"] == "checksum-1"
+        assert result["assets"]["asset1"]["file:checksum"] == expected_checksum
         assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
         assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "file1"),
