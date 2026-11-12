@@ -114,9 +114,9 @@ adgs:
       platformShortNames:
       - null
       - $.platformShortName
-      processing:datetime:
+      processingDate:
       - null
-      - $.processing:datetime
+      - $.Attributes[?(@.Name=='processingDate')].Value
       processingCenter:
       - null
       - $.processingCenter
@@ -143,7 +143,7 @@ adgs:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - OriginDate eq {OriginDate#to_iso_utc_datetime}
+          - OriginDate eq {created#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
@@ -157,7 +157,7 @@ adgs:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
             and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
+            and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
@@ -188,7 +188,7 @@ adgs:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        created: PublicationDate
+        created: OriginDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
       sort_order_mapping:
@@ -304,9 +304,9 @@ adgs2:
       platformShortNames:
       - null
       - $.platformShortName
-      processing:datetime:
+      processingDate:
       - null
-      - $.processing:datetime
+      - $.Attributes[?(@.Name=='processingDate')].Value
       processingCenter:
       - null
       - $.processingCenter
@@ -333,7 +333,7 @@ adgs2:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - OriginDate eq {OriginDate#to_iso_utc_datetime}
+          - OriginDate eq {created#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq {attr_ptype})
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
@@ -347,7 +347,7 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
             and att/OData.CSC.StringAttribute/Value in ({platformShortNames#to_upper}))
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
+            and att/OData.CSC.StringAttribute/Value eq '{processingDate#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
@@ -378,7 +378,7 @@ adgs2:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        created: PublicationDate
+        created: OriginDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
       sort_order_mapping:
