@@ -688,6 +688,7 @@ class TestFeatureOdataStacMapping:
         cadip_feature["properties"]["platform"] = f"{constellation}a"
         cadip_feature["properties"]["constellation"] = constellation
         cadip_feature["properties"]["product:type"] = product_type
+        cadip_feature["properties"]["platform"] = "cristal-a" if constellation == "cristal" else f"{constellation}a"
         # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,

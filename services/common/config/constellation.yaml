@@ -66,5 +66,6 @@ satellites:
         active: true
     - cristal-a:
         constellation: cristal
-        code: A
+        code: CRA
+        serialid: A
         active: true
