@@ -159,7 +159,8 @@ def test_patch_collection(client):
     assert response.status_code == fastapi.status.HTTP_200_OK
     response_content = json.loads(response.content)
     # Check that values are correctly written in catalogDB
-    assert response_content["id"] == minimal_collection["id"]
+    # The returned collection id is prefixed by its owner
+    assert response_content["id"] == f"{minimal_collection['owner']}_{minimal_collection['id']}"
     assert response_content["owner"] == minimal_collection["owner"]
     assert response_content["description"] == minimal_collection["description"]
     created_timestamp = response_content["created"]
@@ -178,7 +179,8 @@ def test_patch_collection(client):
     assert response.status_code == fastapi.status.HTTP_200_OK
     response_content = json.loads(response.content)
     # Check that values are correctly written in catalogDB
-    assert response_content["id"] == minimal_collection["id"]
+    # The returned collection id is prefixed by its owner
+    assert response_content["id"] == f"{minimal_collection['owner']}_{minimal_collection['id']}"
     assert response_content["owner"] == minimal_collection["owner"]
     assert response_content["description"] == patch_values["description"]  # Check patched value
     assert response_content["created"] == created_timestamp  # Check that "created" date didn't change

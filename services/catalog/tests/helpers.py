@@ -160,6 +160,9 @@ class Collection:
     def as_returned(self, cluster_mode: bool) -> dict[str, Any]:
         """Returns the Collection as if returned by the catalog service"""
         properties = self.properties
+        # The catalog returns the collection id prefixed by its owner, whereas the links use "<owner>:<name>"
+        if self.user:
+            properties["id"] = f"{self.user}_{self.name}"
         auth_refs = AUTH_REFS if cluster_mode else {}
 
         # Add links

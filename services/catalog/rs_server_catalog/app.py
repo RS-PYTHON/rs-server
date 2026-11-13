@@ -64,27 +64,6 @@ def must_be_authenticated(route_path: str) -> bool:
     return not no_auth
 
 
-def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
-    """Add the owner id dictionnary to the parameter list.
-
-    Args:
-        parameters (list[dict]): the parameters list
-        where we want to add the owner id parameter.
-    Returns:
-        dict: the new parameters list with the owner id parameter.
-    """
-    description = "Catalog owner id"
-    to_add = {
-        "description": description,
-        "required": False,
-        "schema": {"type": "string", "title": description, "description": description},
-        "name": "owner_id",
-        "in": "path",
-    }
-    parameters.append(to_add)
-    return parameters
-
-
 app: FastAPI = api.app
 
 # Add middlewares. When sending a request, the middleware order must be:
