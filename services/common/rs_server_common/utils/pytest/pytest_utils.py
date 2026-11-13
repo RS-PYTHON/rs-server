@@ -16,6 +16,7 @@
 
 import os
 from copy import deepcopy
+from datetime import datetime
 from types import ModuleType
 from typing import Any, Literal
 
@@ -198,7 +199,7 @@ def call_mocked_search(
     # Pagination
     request_sortby: tuple[Literal["-", "+"], str] | None = None,
     request_limit: int | None = None,
-    expected_pagination="&$orderby=PublicationDate desc&$top=10&$skip=0",
+    expected_pagination: str | None = None,
     # We don't expect any results if the user request does not match the collection config
     expect_result: bool = True,
     expected_filter: str | None = None,
@@ -210,10 +211,13 @@ def call_mocked_search(
     Then call the /search and check result.
 
     expected_filter overrides the generated flat AND filter to check grouped mission or collection alternatives.
+    Default pagination follows each service's default sort field.
     """
     adgs = service == "adgs"
     cadip = service == "cadip"
     prip = service == "prip"
+    if expected_pagination is None:
+        expected_pagination = f"&$orderby={'OriginDate' if adgs else 'PublicationDate'} desc&$top=10&$skip=0"
 
     # Spy on eodag.plugins.search.qssearch::QueryStringSearch if it's not already mocked, or reset the mock
     spy_search: Any
@@ -249,8 +253,10 @@ def call_mocked_search(
 
         if request.startswith("odata_range"):  # datetime range as min/max str
             assert isinstance(values, str)
-            date_min = values.split("/", maxsplit=1)[0]
-            date_max = values.split("/")[1]
+            # Date bounds retain their precision in canonical ISO representation.
+            date_min, date_max = (
+                datetime.fromisoformat(value).isoformat().replace("+00:00", "Z") for value in values.split("/")
+            )
             if request == "odata_range1":
                 odata_dict[odata_key] = (
                     f"({key} gt {date_min} or {key} eq {date_min}) and ({key} lt {date_max} or {key} eq {date_max})"
@@ -313,10 +319,8 @@ def call_mocked_search(
         _add_filter("stac", "id", ids)
     if cadip:
         _add_filter("odata", "SessionId", ids)
-    elif adgs:
+    elif adgs or prip:
         _add_filter("odata2", "Name", ids)
-    elif prip:
-        _add_filter("odata2", "Name", ids, kwargs_key="NameContains")
 
     _add_filter("stac", "platform", request_platforms)
     _add_filter("stac", "constellation", request_constellations)

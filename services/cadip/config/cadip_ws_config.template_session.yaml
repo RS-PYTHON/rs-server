@@ -156,11 +156,12 @@ template:
             - DownlinkStart eq {DownlinkStart}
             - DownlinkStop eq {DownlinkStop}
             - NumChannels eq {NumChannels}
-            - AcquisitionId eq {AcquisitionId}
-            - AntennaId eq {AntennaId}
-            - StationId eq {StationId}
+            # Edm.String literals require quotes, also used when deriving IN operands.
+            - AcquisitionId eq '{AcquisitionId}'
+            - AntennaId eq '{AntennaId}'
+            - StationId eq '{StationId}'
             - StationUnitId eq {StationUnitId}
-            - FrontEndId eq {FrontEndId}
+            - FrontEndId eq '{FrontEndId}'
             - PlannedDataStart eq {PlannedDataStart}
             - PlannedDataStop eq {PlannedDataStop}
             - Retransfer eq {Retransfer}

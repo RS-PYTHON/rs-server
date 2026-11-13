@@ -869,11 +869,11 @@ cadip_session:
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationId eq {StationId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationId eq '{StationId}'
           - StationUnitId eq {StationUnitId}
-          - FrontEndId eq {FrontEndId}
+          - FrontEndId eq '{FrontEndId}'
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
@@ -1065,11 +1065,11 @@ ins_session:
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationId eq {StationId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationId eq '{StationId}'
           - StationUnitId eq {StationUnitId}
-          - FrontEndId eq {FrontEndId}
+          - FrontEndId eq '{FrontEndId}'
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
@@ -1261,11 +1261,11 @@ mps_session:
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationId eq {StationId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationId eq '{StationId}'
           - StationUnitId eq {StationUnitId}
-          - FrontEndId eq {FrontEndId}
+          - FrontEndId eq '{FrontEndId}'
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
@@ -1457,11 +1457,11 @@ mti_session:
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationId eq {StationId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationId eq '{StationId}'
           - StationUnitId eq {StationUnitId}
-          - FrontEndId eq {FrontEndId}
+          - FrontEndId eq '{FrontEndId}'
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
@@ -1653,11 +1653,11 @@ nsg_session:
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationId eq {StationId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationId eq '{StationId}'
           - StationUnitId eq {StationUnitId}
-          - FrontEndId eq {FrontEndId}
+          - FrontEndId eq '{FrontEndId}'
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
@@ -1849,11 +1849,11 @@ sgs_session:
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationId eq {StationId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationId eq '{StationId}'
           - StationUnitId eq {StationUnitId}
-          - FrontEndId eq {FrontEndId}
+          - FrontEndId eq '{FrontEndId}'
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}

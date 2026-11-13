@@ -116,14 +116,14 @@ eopf:origin_datetime:
   format: datetime
   description: string
 eopf:datatake_id:
-  type: string
+  type: integer
   title: eopf:datatake_id
-  format: string
+  format: integer
   description: string
 eopf:instrument_configuration_id:
-  type: string
+  type: integer
   title: eopf:instrument_configuration_id
-  format: string
+  format: integer
   description: string
 expires:
   type: datetime

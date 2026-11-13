@@ -28,6 +28,7 @@ from collections import defaultdict
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+from datetime import UTC
 from datetime import datetime as dt
 from enum import Enum
 from functools import lru_cache
@@ -39,6 +40,7 @@ from typing import (
     Optional,
     Self,
     TypeAlias,
+    cast,
 )
 
 import stac_pydantic
@@ -532,6 +534,39 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Only the queryable properties are allowed
         allowed_properties = sorted(self.get_queryables().keys())
 
+        def normalize_integer_values(prop: str, value: Any):
+            """Keep integral JSON numbers and text literals equivalent before OData string conversion."""
+            if self.get_queryables()[prop].type != "integer":
+                return value
+            values = value if isinstance(value, list) else [value]
+            normalized = []
+            for v in values:
+                if isinstance(v, float) and v.is_integer():
+                    v = int(v)
+                elif isinstance(v, str) and re.fullmatch(r"[0-9]+\.0+", v):
+                    v = v.partition(".")[0]
+                normalized.append(v)
+            return normalized if isinstance(value, list) else normalized[0]
+
+        def normalize_dates(value: Any):
+            """Validate exact instants, including CQL2 TIMESTAMP literals, without losing precision."""
+            values = value if isinstance(value, list) else [value]
+            normalized = []
+            for instant in values:
+                if isinstance(instant, dict):
+                    instant = instant.get("timestamp")
+                try:
+                    if not isinstance(value, list) and isinstance(instant, str) and "/" in instant:
+                        validate_inputs_format(instant, raise_errors=True)
+                        return instant
+                    date = dt.fromisoformat(instant)
+                    if date.tzinfo is None:
+                        raise ValueError("A timezone is required")
+                    normalized.append(date.astimezone(UTC).isoformat().replace("+00:00", "Z"))
+                except (TypeError, ValueError) as exc:
+                    raise HTTPException(422, f"Invalid datetime value: {instant!r}") from exc
+            return normalized if isinstance(value, list) else normalized[0]
+
         def read_property(prop: str, value: Any):
             """Read a query or CQL filter property"""
             nonlocal stac_params  # noqa: F824
@@ -540,11 +575,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
-            if isinstance(value, dict):
+            if self.get_queryables()[prop].type == "datetime":
+                value = normalize_dates(value)
+            elif isinstance(value, dict):
                 value = value.get("property")
             if isinstance(value, str):
                 value = value.strip()
-            # NOTE: for a list, keep the value as it is
+            value = normalize_integer_values(prop, value)
             stac_params[prop] = value
 
         # helper: GeoJSON -> WKT (used by POST 'intersects' and CQL2 JSON)
@@ -558,8 +595,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 ring = ring + [ring[0]]
             return "POLYGON((" + ", ".join(f"{x} {y}" for x, y in ring) + "))"
 
+        # An empty id IN makes the AND selection empty, even if another predicate sets id again.
+        empty_id_selection = False
+
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
+            nonlocal empty_id_selection
             if not filt:
                 return
             op: str = filt.get("op")  # type: ignore
@@ -590,6 +631,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     )
                 value = args[1]
                 read_property(prop, value)
+                if op.lower() == "in" and prop == "id" and value == []:
+                    empty_id_selection = True
                 return
 
             # Read temporal operators
@@ -633,6 +676,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                     )
                 value = kv[1].strip().strip("'\"")
+                if self.get_queryables()[prop].type == "datetime" or prop == "Name":
+                    # Reuse parsed timestamps and filename literals, including escaped apostrophes.
+                    return
+                value = normalize_integer_values(prop, value)
                 check_input_type(self.get_queryables(), prop, value)
                 # Update stac params
                 stac_params[prop] = value  # type: ignore
@@ -647,6 +694,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     )
                 stripped = kv[0][1].strip(" \t()")
                 values = [v.strip().strip("'\"") for v in stripped.split(",")]
+                values = normalize_integer_values(prop, values)
+                if self.get_queryables()[prop].type == "datetime" or prop == "Name":
+                    return
                 check_input_type(self.get_queryables(), prop, values)
                 # Update stac params
                 stac_params[prop] = values  # type: ignore
@@ -711,7 +761,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 )
 
             if self.cadip:
-                stac_params["platform"] = mission[0] if len(mission) == 1 else mission
+                # Flatten constellation mappings into individual satellite codes for OData serialization.
+                satellites = sorted({sat.strip() for m in mission for sat in cast(str, m).split(",")})
+                stac_params["platform"] = satellites[0] if len(satellites) == 1 else satellites
             else:
                 # Keep mapped pairs in an internal field until OData serialization.
                 # Separate constellation/serial lists would broaden S1A/S2B to include S1B/S2A.
@@ -770,8 +822,42 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         #
         # Step 2: do the search
 
-        # Convert search params from STAC keys to OData keys
-        odata_params: dict = self.stac_to_odata(stac_params)
+        # Resolve empty selections and date constraints before mapping to OData or calling a station.
+        if empty_id_selection:
+            return self.build_response_payload(ItemCollection(features=[], type="FeatureCollection"))
+        if self.cadip and "datetime" in stac_params:
+            # CADIP datetime and published both restrict PublicationDate and must be intersected.
+            instants = stac_params.pop("datetime")
+            if "published" in stac_params:
+                instants, empty = self.resolve_date_interval_conflict(
+                    instants,
+                    stac_params["published"],
+                    MergeMode.INTERSECTION,
+                )
+                if empty:
+                    return self.build_response_payload(ItemCollection(features=[], type="FeatureCollection"))
+            stac_params["published"] = instants
+        if any(
+            value == [] and self.get_queryables()[prop].type == "datetime"
+            for prop, value in stac_params.items()
+            if prop in allowed_properties
+        ):
+            return self.build_response_payload(ItemCollection(features=[], type="FeatureCollection"))
+        if datetime and self.cadip:
+            stac_params["published"], empty = self.resolve_date_interval_conflict(
+                stac_params["published"],
+                datetime,
+                MergeMode.INTERSECTION,
+            )
+            if empty:
+                return self.build_response_payload(ItemCollection(features=[], type="FeatureCollection"))
+        # Raw Name matches the complete station filename; STAC id retains its extension-free mapping.
+        odata_params: dict = self.stac_to_odata({key: value for key, value in stac_params.items() if key != "Name"})
+        if "Name" in stac_params:
+            odata_params["NameExact"] = stac_params["Name"]
+        if datetime and (self.auxip or self.prip) and stac_params.get("datetime") != datetime:
+            # Apply both request ContentDate bounds alongside the filter's exact-date predicates.
+            odata_params["request_datetime_interval"] = datetime
         logger.debug(f"STAC/OData parameters mapping: {stac_params} => {odata_params}")
 
         # Only keep the authorized collections
@@ -855,6 +941,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         MergeMode.INTERSECTION,
                     )
                     only_empty = only_empty and empty_selection
+                    if empty_selection:
+                        continue
 
                     # Calculate union between all collections
                     odata_merged, _ = self.merge_odata_params(odata_collection, odata_merged, MergeMode.UNION)
@@ -933,7 +1021,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         def match(odata_entity: dict, crit_type: str, key: str, value: str):
             logger.debug(f"Entity {odata_entity} matches {crit_type} criteria {key}={value}")
 
-        def nomatch(odata_entity: dict, crit_type: str, key: str, value: str):
+        def nomatch(odata_entity: dict, crit_type: str, key: str, value: str | list[str]):
             if os.getenv("PYTHONDEBUG", "False").lower() in ("1", "true", "yes"):
                 logger.debug(f"Entity {odata_entity} does not match {crit_type} criteria {key}={value}")
             return False
@@ -949,6 +1037,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 value = odata_entity.get(crit_key, None)
                 if crit_key in DATE_INTERVAL_KEYS:
                     date = dt.fromisoformat(value) if value else None
+                    if isinstance(crit_val, list):
+                        if date is None or not any(
+                            not self.resolve_date_interval_conflict(cast(str, value), term, MergeMode.INTERSECTION)[1]
+                            for term in crit_val
+                        ):
+                            return nomatch(odata_entity, "date list", crit_key, crit_val)
+                        continue
                     fixed, start, stop = validate_inputs_format(crit_val, raise_errors=False)
                     if fixed and date != fixed:
                         return nomatch(odata_entity, "fixed date", crit_key, crit_val)
@@ -1162,20 +1257,43 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return odata_merged, empty_selection
 
-    def resolve_date_interval_conflict(self, value1: str, value2: str, mode: MergeMode) -> tuple[str, bool]:
-        """
-        Resolves a conflict between two date interval strings by computing their union or intersection.
+    def resolve_date_interval_conflict(
+        self,
+        value1: str | list[str],
+        value2: str | list[str],
+        mode: MergeMode,
+    ) -> tuple[str | list[str], bool]:
+        """Merge ISO 8601 instants, intervals or lists according to the requested mode.
 
         Args:
-            value1 (str): The first date interval in ISO 8601 format.
-            value2 (str): The second date interval in ISO 8601 format.
-            mode (str): Resolution strategy: "union" or "intersection" of both intervals
+            value1: First instant, interval or list of alternatives.
+            value2: Second instant, interval or list of alternatives.
+            mode: Union or intersection of the two selections.
 
         Returns:
-            tuple[str, bool]: A tuple containing the merged or intersected date interval as a string,
-                and a boolean indicating whether the selection is empty (True if no overlap).
+            The merged selection and a flag indicating whether it is empty.
+            Lists retain separate alternatives; intersections compare each pair of alternatives.
         """
         logger.debug(f"Resolving date interval conflict resolution between {value1} and {value2}")
+
+        if isinstance(value1, list) or isinstance(value2, list):
+            if mode == MergeMode.UNION:
+                # Preserve disjoint instants/intervals; taking their enclosing interval would broaden the query.
+                merged = sorted(
+                    set(
+                        (value1 if isinstance(value1, list) else [value1])
+                        + (value2 if isinstance(value2, list) else [value2]),
+                    ),
+                )
+            else:
+                left = value1 if isinstance(value1, list) else [value1]
+                right = value2 if isinstance(value2, list) else [value2]
+                merged = []
+                for first, second in itertools.product(left, right):
+                    intersection, empty = self.resolve_date_interval_conflict(first, second, mode)
+                    if not empty and intersection not in merged:
+                        merged.append(cast(str, intersection))
+            return merged, not merged
 
         # The parser returns fixed dates separately; use that instant as both interval bounds.
         fixed1, start1, stop1 = validate_inputs_format(value1, raise_errors=True)

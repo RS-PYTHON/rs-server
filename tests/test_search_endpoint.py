@@ -21,7 +21,7 @@ import os
 import re
 from copy import deepcopy
 from types import SimpleNamespace
-from urllib.parse import quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import pytest
 import requests
@@ -79,7 +79,7 @@ class TestOperatorDefinedCollections:
     @pytest.mark.parametrize(
         "left,right,mode,expected,empty",
         [
-            # Identical fixed dates previously led to comparisons between None values.
+            # Equal instants form a nonempty intersection.
             ("2024-01-02T00:00:00.522Z", "2024-01-02T00:00:00.522Z", "intersection", "2024-01-02T00:00:00.522Z", False),
             (
                 "2024-01-02T00:00:00.522Z",
@@ -112,6 +112,21 @@ class TestOperatorDefinedCollections:
                 False,
             ),
             ("../2024-01-01T00:00:00Z", "2024-01-03T00:00:00Z/..", "union", "../..", False),
+            (
+                ["2024-01-01T00:00:00Z", "2024-01-03T00:00:00Z"],
+                "2024-01-02T00:00:00Z/2024-01-04T00:00:00Z",
+                "intersection",
+                ["2024-01-03T00:00:00Z"],
+                False,
+            ),
+            (["2024-01-01T00:00:00Z"], ["2024-01-03T00:00:00Z"], "intersection", [], True),
+            (
+                ["2024-01-01T00:00:00Z"],
+                "2024-01-03T00:00:00Z/2024-01-04T00:00:00Z",
+                "union",
+                ["2024-01-01T00:00:00Z", "2024-01-03T00:00:00Z/2024-01-04T00:00:00Z"],
+                False,
+            ),
         ],
         ids=[
             "same-fixed-date",
@@ -120,10 +135,13 @@ class TestOperatorDefinedCollections:
             "disjoint-milliseconds",
             "open-intersection",
             "unbounded-union",
+            "list-intersects-interval",
+            "disjoint-lists",
+            "union-retains-alternatives",
         ],
     )
     def test_temporal_collection_bounds(self, left, right, mode, expected, empty):
-        """Keep fixed instants and inclusive bounds without losing precision or comparing None values."""
+        """Preserve exact instants, inclusive bounds and separate list alternatives when merging dates."""
         actual, actual_empty = MockPgstacAdgs().resolve_date_interval_conflict(
             left,
             right,
@@ -131,7 +149,12 @@ class TestOperatorDefinedCollections:
         )
         assert actual_empty is empty
         # Compare timestamps rather than their spelling (e.g. .522Z and .522000Z).
-        assert common_utils.validate_inputs_format(actual) == common_utils.validate_inputs_format(expected)
+        if isinstance(expected, list):
+            assert [common_utils.validate_inputs_format(value) for value in actual] == [
+                common_utils.validate_inputs_format(value) for value in expected
+            ]
+        else:
+            assert common_utils.validate_inputs_format(actual) == common_utils.validate_inputs_format(expected)
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -171,11 +194,12 @@ class TestOperatorDefinedCollections:
         mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": [collection]})
         product = deepcopy((adgs_response if service == "adgs" else prip_response)["value"][0])
         product["PublicationDate"] = published
-        # Match the complete OData query so truncating the milliseconds also fails the test.
+        # Match the complete query, including timestamp precision and the service's default sort field.
         responses.add(
             responses.GET,
-            f"http://127.0.0.1:5000/Products?$filter=PublicationDate eq {published}"
-            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2024-01-02T00:00:00.522000Z"
+            f"&$orderby={'OriginDate' if service == 'adgs' else 'PublicationDate'} desc"
+            "&$top=10&$skip=0&$expand=Attributes",
             json={"value": [product]},
             status=200,
         )
@@ -701,7 +725,7 @@ class TestFeatureOdataStacMapping:
             "http://127.0.0.1:5001/Products?$filter=contains(Name, "
             "'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF') and Attributes/OData.CSC.StringAttribute"
             "/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')"
-            "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -721,7 +745,7 @@ class TestFeatureOdataStacMapping:
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=contains(Name, 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411"
             "_0001.EOF') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC."
-            "StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            "StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             json={"value": []},
             status=200,
         )
@@ -815,7 +839,7 @@ class TestFeatureOdataStacMapping:
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/INVALID_ITEM",
                 "http://127.0.0.1:5001/Products?$filter=contains(Name, 'INVALID_ITEM') and Attributes/OData.CSC."
                 "StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq "
-                "'AUX_OBMEMC')&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "'AUX_OBMEMC')&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 {"code": "NotFound", "description": "AUXIP item 'INVALID_ITEM' not found."},
             ),
             (
@@ -966,7 +990,7 @@ class TestFeatureCollectionOdataStacMapping:
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
             "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')"
-            "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -1215,7 +1239,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "/cadip/collections/cadip_session_by_satellite/items?filter=id='S1A_20200105072204051312' AND datetime="
                 "'2020-02-16T12:00:00.000Z'",
                 "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312' and Satellite eq 'S1A'"
-                " and PublicationDate eq 2020-02-16T12:00:00.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
+                " and PublicationDate eq 2020-02-16T12:00:00Z&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
@@ -1250,25 +1274,25 @@ class TestFeatureCollectionOdataStacMapping:
                 "/auxip/collections/adgs_by_platform/items",
                 "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC."
                 "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
-                " eq 'SENTINEL-1')&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                " eq 'SENTINEL-1')&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA",
-                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and Attributes/OData.CSC."
+                "http://127.0.0.1:5000/Products?$filter=Name eq 'AUX_PPA' and Attributes/OData.CSC."
                 "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
-                " eq 'SENTINEL-1')&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                " eq 'SENTINEL-1')&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA AND published="
                 "'2020-02-16T12:00:00.000Z'",
-                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and PublicationDate eq "
-                "2020-02-16T12:00:00.000Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+                "http://127.0.0.1:5000/Products?$filter=Name eq 'AUX_PPA' and PublicationDate eq "
+                "2020-02-16T12:00:00Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1277,7 +1301,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name"
                 " eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
                 "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
-                "att/OData.CSC.StringAttribute/Value eq 'PDMC')&$orderby=PublicationDate desc&$top=10"
+                "att/OData.CSC.StringAttribute/Value eq 'PDMC')&$orderby=OriginDate desc&$top=10"
                 "&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1349,7 +1373,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=100.0,0.0,105.0,1.0",
                 "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
-                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
+                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=OriginDate "
                 "desc&$top=10&$skip=0&$expand=Attributes",
             ),
             (
@@ -1373,7 +1397,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&bbox=100.0,0.0,105.0,1.0",
-                "http://127.0.0.1:5000/Products?$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5000/Products?$orderby=OriginDate%20desc&$top=10&$skip=0&$expand=Attributes",
             ),
             (
                 ROUTER_PREFIX_CADIP,
@@ -1417,10 +1441,10 @@ class TestFeatureCollectionOdataStacMapping:
         """POST /cadip/search should intersect request datetime with collection PublicationDate."""
         expected_odata = (
             "http://127.0.0.1:5000/Sessions?$filter=Satellite%20eq%20'S1A'%20and%20"
-            "(PublicationDate%20gt%202021-06-01T00:00:00.000Z"
-            "%20or%20PublicationDate%20eq%202021-06-01T00:00:00.000Z)"
-            "%20and%20(PublicationDate%20lt%202021-06-02T00:00:00.000Z"
-            "%20or%20PublicationDate%20eq%202021-06-02T00:00:00.000Z)"
+            "(PublicationDate%20gt%202021-06-01T00:00:00Z"
+            "%20or%20PublicationDate%20eq%202021-06-01T00:00:00Z)"
+            "%20and%20(PublicationDate%20lt%202021-06-02T00:00:00Z"
+            "%20or%20PublicationDate%20eq%202021-06-02T00:00:00Z)"
             "&$orderby=PublicationDate desc&$top=10&$skip=0"
         )
         responses.add(responses.GET, expected_odata, json={"value": []}, status=200)
@@ -1534,7 +1558,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=10000000",
                 "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
-                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
+                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=OriginDate "
                 "desc&$top=10000&$skip=0&$expand=Attributes",
             ),
             (
@@ -1606,33 +1630,33 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.888Z",
-                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.888Z"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.888000Z"
+                "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(ContentDate/Start gt 2018-02-12T23:20:50.000Z or ContentDate/Start eq 2018-02-12T23:20:50.000Z) and "
-                "(ContentDate/End lt 2019-02-12T23:20:50.001Z or ContentDate/End eq 2019-02-12T23:20:50.001Z)"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                "(ContentDate/Start gt 2018-02-12T23:20:50Z or ContentDate/Start eq 2018-02-12T23:20:50Z) and "
+                "(ContentDate/End lt 2019-02-12T23:20:50.001000Z or ContentDate/End eq 2019-02-12T23:20:50.001000Z)"
+                "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(ContentDate/Start gt 2018-02-12T23:20:50.000Z or ContentDate/Start eq 2018-02-12T23:20:50.000Z)"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                "(ContentDate/Start gt 2018-02-12T23:20:50Z or ContentDate/Start eq 2018-02-12T23:20:50Z)"
+                "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(ContentDate/End lt 2018-02-12T23:20:50.000Z or ContentDate/End eq 2018-02-12T23:20:50.000Z)"
-                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                "(ContentDate/End lt 2018-02-12T23:20:50Z or ContentDate/End eq 2018-02-12T23:20:50Z)"
+                "&$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (ROUTER_PREFIX_AUXIP, "/auxip/search?collections=adgs&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
@@ -1648,18 +1672,18 @@ class TestFeatureCollectionOdataStacMapping:
                 "x",
                 status.HTTP_400_BAD_REQUEST,
             ),
-            # datime without miliseconds
+            # Datetime without fractional seconds.
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50.000Z&$orderby="
-                "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5000/Products?$filter=ContentDate/Start eq 2018-02-12T23:20:50Z&$orderby="
+                "OriginDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_PRIP,
                 "/prip/search?collections=prip&datetime=2018-02-12T23:20:50.888Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888000Z"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1667,8 +1691,8 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_PRIP,
                 "/prip/search?collections=prip&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
-                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
+                "(PublicationDate gt 2018-02-12T23:20:50Z or PublicationDate eq 2018-02-12T23:20:50Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.001000Z or PublicationDate eq 2019-02-12T23:20:50.001000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1676,7 +1700,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_PRIP,
                 "/prip/search?collections=prip&datetime=2018-02-12T23:20:50Z/..",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
+                "(PublicationDate gt 2018-02-12T23:20:50Z or PublicationDate eq 2018-02-12T23:20:50Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1684,7 +1708,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_PRIP,
                 "/prip/search?collections=prip&datetime=../2018-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter="
-                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
+                "(PublicationDate lt 2018-02-12T23:20:50.001000Z or PublicationDate eq 2018-02-12T23:20:50.001000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -1701,18 +1725,18 @@ class TestFeatureCollectionOdataStacMapping:
                 "x",
                 status.HTTP_400_BAD_REQUEST,
             ),
-            # datime without miliseconds
+            # Datetime without fractional seconds.
             (
                 ROUTER_PREFIX_PRIP,
                 "/prip/search?collections=prip&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50Z&$orderby="
                 "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50.777Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777Z"
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777000Z"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1720,8 +1744,8 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
-                "(PublicationDate lt 2019-02-12T23:20:50.000Z or PublicationDate eq 2019-02-12T23:20:50.000Z)"
+                "(PublicationDate gt 2018-02-12T23:20:50Z or PublicationDate eq 2018-02-12T23:20:50Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50Z or PublicationDate eq 2019-02-12T23:20:50Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1729,7 +1753,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/..",
                 "http://127.0.0.1:5000/Sessions?$filter="
-                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
+                "(PublicationDate gt 2018-02-12T23:20:50Z or PublicationDate eq 2018-02-12T23:20:50Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1737,7 +1761,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter="
-                "(PublicationDate lt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
+                "(PublicationDate lt 2018-02-12T23:20:50Z or PublicationDate eq 2018-02-12T23:20:50Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1757,7 +1781,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50Z&$orderby="
                 "PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1808,7 +1832,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start lt 2025-04-01T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1818,7 +1842,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start gt 2025-04-01T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1828,7 +1852,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/End eq 2025-04-01T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1838,7 +1862,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start eq 2025-04-02T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1848,7 +1872,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start lt 2025-04-01T00:00:00.000Z and 2025-04-01T00:00:00.000Z lt ContentDate/End and ContentDate/End lt 2025-04-02T00:00:00.000Z)"  # noqa: E501 # pylint: disable=line-too-long
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1858,7 +1882,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(2025-04-01T00:00:00.000Z lt ContentDate/Start and ContentDate/Start lt 2025-04-02T00:00:00.000Z and ContentDate/End gt 2025-04-02T00:00:00.000Z)"  # noqa: E501 # pylint: disable=line-too-long
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             # TODO enable these tests when pygeofilter supports these operators
@@ -1869,7 +1893,7 @@ class TestFeatureCollectionOdataStacMapping:
             #    "&sortby=-properties.created&limit=1",
             #    "http://127.0.0.1:5000/Products?$filter="
             #    "(ContentDate/Start eq 2025-04-01T00:00:00.000Z and ContentDate/End lt 2025-04-02T00:00:00.000Z)"
-            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             #    status.HTTP_200_OK,
             # ),
             # (
@@ -1879,7 +1903,7 @@ class TestFeatureCollectionOdataStacMapping:
             #    "&sortby=-properties.created&limit=1",
             #    "http://127.0.0.1:5000/Products?$filter="
             #    "(ContentDate/Start eq 2025-04-01T00:00:00.000Z and ContentDate/End gt 2025-04-02T00:00:00.000Z)"
-            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             #    status.HTTP_200_OK,
             # ),
             (
@@ -1889,7 +1913,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start gt 2025-04-01T00:00:00.000Z and ContentDate/End lt 2025-04-02T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1899,7 +1923,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start lt 2025-04-01T00:00:00.000Z and ContentDate/End gt 2025-04-02T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             # TODO enable these tests when pygeofilter supports these operators
@@ -1910,7 +1934,7 @@ class TestFeatureCollectionOdataStacMapping:
             #    "&sortby=-properties.created&limit=1",
             #    "http://127.0.0.1:5000/Products?$filter="
             #    "(ContentDate/Start gt 2025-04-01T00:00:00.000Z and ContentDate/End eq 2025-04-02T00:00:00.000Z)"
-            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             #    status.HTTP_200_OK,
             # ),
             # (
@@ -1920,7 +1944,7 @@ class TestFeatureCollectionOdataStacMapping:
             #    "&sortby=-properties.created&limit=1",
             #    "http://127.0.0.1:5000/Products?$filter="
             #    "(ContentDate/Start lt 2025-04-01T00:00:00.000Z and ContentDate/End eq 2025-04-02T00:00:00.000Z)"
-            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             #    status.HTTP_200_OK,
             # ),
             (
@@ -1930,7 +1954,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start eq 2025-04-01T00:00:00.000Z and ContentDate/End eq 2025-04-02T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             # TODO enable these tests when pygeofilter supports these operators
@@ -1941,7 +1965,7 @@ class TestFeatureCollectionOdataStacMapping:
             #    "&sortby=-properties.created&limit=1",
             #    "http://127.0.0.1:5000/Products?$filter="
             #    "not (ContentDate/Start le 2025-04-02T00:00:00.000Z and ContentDate/End ge 2025-04-01T00:00:00.000Z)"
-            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
             #    status.HTTP_200_OK,
             # ),
             (
@@ -1951,7 +1975,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(ContentDate/Start le 2025-04-01T00:00:00.000Z and ContentDate/Start ge 2025-04-01T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -1961,7 +1985,7 @@ class TestFeatureCollectionOdataStacMapping:
                 "&sortby=-properties.created&limit=1",
                 "http://127.0.0.1:5000/Products?$filter="
                 "(PublicationDate gt 2025-04-01T00:00:00.000Z and PublicationDate lt 2025-04-02T00:00:00.000Z)"
-                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                "&$orderby=OriginDate desc&$top=1&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
         ],
@@ -1987,7 +2011,7 @@ class TestFeatureCollectionOdataStacMapping:
     )
     @responses.activate
     def test_temporal_operators(self, client, endpoint, odata, expected_code):
-        """Test used to group tests au temporal operators used to retrieve auxiliary data with DPR CQL2 filters."""
+        """Verify temporal CQL2 operators against the complete AUXIP station query."""
         responses.add(responses.GET, odata, json={"value": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == expected_code
@@ -2042,7 +2066,7 @@ class TestFeatureCollectionOdataStacMapping:
             "http://127.0.0.1:5001/Products?"
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
             "att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')&"
-            "$orderby=PublicationDate%20desc&"
+            "$orderby=OriginDate%20desc&"
             f"$top=10&$skip={(int(page) - 1) * 10}&"
             "$expand=Attributes"
         )
@@ -2352,7 +2376,7 @@ def test_search_parameters(
         )
 
     # Test ids and pagination
-    expected_orderby = "processingDate" if prip else "PublicationDate"
+    expected_orderby = "processingDate" if prip else "OriginDate" if adgs else "PublicationDate"
     call_mocked_search(
         cols=["col_noconf"],
         # Note: the expected ids are calculated automatically depending on the service
@@ -2574,11 +2598,242 @@ def test_cql2_in_operator(
             request_platforms=["sentinel-1c", "sentinel-2b", "sentinel-3a"],
             request_product_types=[ptype, "type2", "type4"],
             # odata = intersection with the collection config
-            # Only S2B satisfies both the requested pairs and the collection's legacy restrictions.
+            # Only S2B satisfies both the requested pairs and the collection's independent restrictions.
             expected_constellations=["SENTINEL-2"],
             expected_platforms=["B"],
             expected_product_types=[ptype, "type2"],
         )
+
+
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app,service",
+    [(ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_PRIP, "prip")],
+    indirect=["fastapi_app"],
+)
+def test_cql2_in_queryable_values(
+    mocker,
+    client,
+    method,
+    service,
+    adgs_response,
+    cadip_session_response,
+    cadip_file_response,
+    prip_response,
+):
+    """Verify IN filters, empty selections and equivalent integral number representations."""
+    service_utils, payload, prop, field = {
+        "adgs": (adgs_utils, adgs_response, "processing:facility", "processingCenter"),
+        "cadip": (cadip_utils, cadip_session_response, "cadip:antenna_id", "AntennaId"),
+        "prip": (prip_utils, prip_response, "sat:absolute_orbit", "orbitNumber"),
+    }[service]
+    product = deepcopy(payload["value"][0])
+    if service == "prip":
+        product["Attributes"].append({"Name": "orbitNumber", "Value": 43829, "ValueType": "Integer"})
+        cases = [
+            ([43829, 47051], "in (43829,47051)", True),
+            ([43829.0, 47051.0], "in (43829,47051)", True),
+            ([43829], "eq 43829", True),
+            ([43829.0], "eq 43829", True),
+            (43829.0, "eq 43829", True),
+            ([99999], "eq 99999", False),
+        ]
+        if method == "POST":
+            cases.append(([43829.5], "eq 43829.5", False))
+    elif service == "cadip":
+        cases = [
+            (["MSP21", "other"], "in ('MSP21','other')", True),
+            (["MSP21"], "eq 'MSP21'", True),
+            (["absent"], "eq 'absent'", False),
+        ]
+    else:
+        cases = [
+            (["FOS", "other"], "in ('FOS','other')", True),
+            (["FOS"], "eq 'FOS'", True),
+            (["absent"], "eq 'absent'", False),
+        ]
+
+    collection = pytest_utils.create_mock_collection(service, service_utils, "col_in_values", {})
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: [collection],
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": [collection]})
+    if method == "POST":
+        # An empty id IN keeps the entire AND selection empty, including repeated id predicates.
+        empty = {"op": "in", "args": [{"property": "id"}, []]}
+        for filt in [empty, {"op": "and", "args": [empty, {"op": "in", "args": [{"property": "id"}, ["existing"]]}]}]:
+            with responses.RequestsMock() as station:
+                response = client.post(
+                    f"/{'auxip' if service == 'adgs' else service}/search",
+                    json={"collections": [collection["id"]], "filter-lang": "cql2-json", "filter": filt},
+                )
+                assert response.status_code == 200, response.text
+                assert response.json()["features"] == []
+                assert not station.calls
+    for values, comparison, matches in cases:
+        odata_filter = f"{field} {comparison}"
+        if service != "cadip":
+            attribute_type = "IntegerAttribute" if service == "prip" else "StringAttribute"
+            odata_filter = (
+                f"Attributes/OData.CSC.{attribute_type}/any(att:att/Name eq '{field}' and "
+                f"att/OData.CSC.{attribute_type}/Value {comparison})"
+            )
+        odata_url = (
+            f"http://127.0.0.1:5000/{'Sessions' if service == 'cadip' else 'Products'}?$filter={odata_filter}"
+            f"&$orderby={'OriginDate' if service == 'adgs' else 'PublicationDate'} desc&$top=10&$skip=0"
+        )
+        if service != "cadip":
+            odata_url += "&$expand=Attributes"
+        with responses.RequestsMock() as station:
+            station.add(responses.GET, odata_url, json={"value": [product] if matches else []})
+            if service == "cadip" and matches:
+                station.add(
+                    responses.GET,
+                    "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0",
+                    json=cadip_file_response,
+                )
+            endpoint = f"/{'auxip' if service == 'adgs' else service}/search"
+            if method == "GET":
+                literals = [
+                    repr(v) if isinstance(v, str) else str(v)
+                    for v in (values if isinstance(values, list) else [values])
+                ]
+                expression = (
+                    f"{prop} in ({','.join(literals)})" if isinstance(values, list) else f"{prop}={literals[0]}"
+                )
+                response = client.get(endpoint, params={"collections": collection["id"], "filter": expression})
+            else:
+                response = client.post(
+                    endpoint,
+                    json={
+                        "collections": [collection["id"]],
+                        "filter-lang": "cql2-json",
+                        "filter": {
+                            "op": "in" if isinstance(values, list) else "=",
+                            "args": [{"property": prop}, values],
+                        },
+                    },
+                )
+            assert response.status_code == 200, (values, response.text)
+            features = response.json()["features"]
+            assert len(features) == int(matches), values
+            if matches:
+                assert features[0]["properties"]["externalIds"][0]["value"] == product["Id"]
+
+
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app,service",
+    [(ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_PRIP, "prip")],
+    indirect=["fastapi_app"],
+)
+def test_cql2_in_datetime_values(mocker, client, method, service):
+    """Serialize exact-date lists for each service and retain the request's independent datetime bounds."""
+    service_utils = {"adgs": adgs_utils, "cadip": cadip_utils, "prip": prip_utils}[service]
+    collection = pytest_utils.create_mock_collection(service, service_utils, "col_in_dates", {})
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: [collection],
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": [collection]})
+    fields = {"published": "PublicationDate"}
+    if service == "cadip":
+        fields.update(
+            datetime="PublicationDate",
+            start_datetime="DownlinkStart",
+            end_datetime="DownlinkStop",
+        )
+        fields.update({"cadip:planned_data_start": "PlannedDataStart", "cadip:planned_data_stop": "PlannedDataStop"})
+    else:
+        fields.update(datetime="ContentDate/Start", start_datetime="ContentDate/Start", end_datetime="ContentDate/End")
+        fields.update({"created": "OriginDate" if service == "adgs" else "processingDate"})
+        fields["processing:datetime"] = "processingDate"
+        if service == "prip":
+            fields.update(
+                {"eopf:origin_datetime": "OriginDate", "expires": "EvictionDate", "eviction_datetime": "EvictionDate"},
+            )
+    instants = ["2024-01-02T00:00:00.123456Z", "2024-01-03T00:00:00.123456Z"]
+    endpoint = f"/{'auxip' if service == 'adgs' else service}/search"
+
+    def search(prop, values, interval=None):
+        params = {"collections": collection["id"]}
+        if interval:
+            params["datetime"] = interval
+        if method == "GET":
+            params["filter"] = f"{prop} IN ({','.join(f'TIMESTAMP({v!r})' for v in values)})"
+            return client.get(endpoint, params=params)
+        return client.post(
+            endpoint,
+            json={
+                **params,
+                "collections": [collection["id"]],
+                "filter-lang": "cql2-json",
+                "filter": {"op": "in", "args": [{"property": prop}, [{"timestamp": v} for v in values]]},
+            },
+        )
+
+    for prop, field in fields.items():
+        # Check singleton eq and multi-value IN independently of station response contents.
+        for values in (instants[:1], instants):
+            comparison = f"in ({','.join(values)})" if len(values) > 1 else f"eq {values[0]}"
+            expected = f"{field} {comparison}"
+            if field == "processingDate":
+                attribute_type = "DateTimeOffsetAttribute" if service == "prip" else "StringAttribute"
+                if service == "adgs":
+                    comparison = f"in ({','.join(repr(v) for v in values)})" if len(values) > 1 else f"eq '{values[0]}'"
+                expected = (
+                    f"Attributes/OData.CSC.{attribute_type}/any(att:att/Name eq 'processingDate' and "
+                    f"att/OData.CSC.{attribute_type}/Value {comparison})"
+                )
+            with responses.RequestsMock() as station:
+                station.add(
+                    responses.GET,
+                    re.compile(r"http://127\.0\.0\.1:5000/(Products|Sessions)\?"),
+                    json={"value": []},
+                )
+                response = search(prop, values)
+                assert response.status_code == 200, (prop, response.text)
+                assert response.json()["features"] == []
+                search_urls = [
+                    call.request.url for call in station.calls if call.request.url and "$filter=" in call.request.url
+                ]
+                assert len(search_urls) == 1
+                assert parse_qs(urlsplit(search_urls[0]).query)["$filter"] == [expected]
+
+    interval = "2024-01-01T00:00:00Z/2024-01-02T12:00:00Z"
+    with responses.RequestsMock() as station:
+        station.add(responses.GET, re.compile(r"http://127\.0\.0\.1:5000/(Products|Sessions)\?"), json={"value": []})
+        response = search("datetime", instants, interval)
+        assert response.status_code == 200, response.text
+        search_urls = [
+            call.request.url for call in station.calls if call.request.url and "$filter=" in call.request.url
+        ]
+        assert len(search_urls) == 1
+        odata = parse_qs(urlsplit(search_urls[0]).query)["$filter"][0]
+        if service == "cadip":
+            assert odata == f"PublicationDate eq {instants[0]}"
+        else:
+            assert f"ContentDate/Start in ({','.join(instants)})" in odata
+            assert "ContentDate/Start gt 2024-01-01T00:00:00Z" in odata
+            assert "ContentDate/End lt 2024-01-02T12:00:00Z" in odata
+
+    # Invalid dates and empty date lists must not reach the station.
+    with responses.RequestsMock() as station:
+        response = search("published", ["invalid"])
+        assert response.status_code == 422, response.text
+        if method == "POST":
+            response = search("published", [])
+            assert response.status_code == 200, response.text
+            assert response.json()["features"] == []
+        if service == "cadip":
+            # PublicationDate instants outside the request interval produce an empty selection locally.
+            response = search("published", instants, "2025-01-01T00:00:00Z/2025-01-02T00:00:00Z")
+            assert response.status_code == 200, response.text
+            assert response.json()["features"] == []
+        assert not station.calls
 
 
 @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], ids=[""], indirect=["fastapi_app"])
@@ -2689,7 +2944,7 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z and "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558000Z and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2697,7 +2952,7 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z", "sortby": "+published"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z and "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558000Z and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate asc&$top=10&$skip=0&$expand=Attributes",
@@ -2705,10 +2960,10 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=(ContentDate/Start gt 2022-06-26T06:30:34.558Z or "
-            "ContentDate/Start eq 2022-06-26T06:30:34.558Z) and "
-            "(ContentDate/End lt 2023-06-26T06:30:34.558Z or "
-            "ContentDate/End eq 2023-06-26T06:30:34.558Z) and "
+            "$filter=(ContentDate/Start gt 2022-06-26T06:30:34.558000Z or "
+            "ContentDate/Start eq 2022-06-26T06:30:34.558000Z) and "
+            "(ContentDate/End lt 2023-06-26T06:30:34.558000Z or "
+            "ContentDate/End eq 2023-06-26T06:30:34.558000Z) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2727,7 +2982,7 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z and "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558000Z and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2735,9 +2990,9 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "datetime": "2022-06-26T06:30:34.558Z/2023-06-26T06:30:34.558Z"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=(ContentDate/Start gt 2022-06-26T06:30:34.558Z or "
-            "ContentDate/Start eq 2022-06-26T06:30:34.558Z) and "
-            "(ContentDate/End lt 2023-06-26T06:30:34.558Z or ContentDate/End eq 2023-06-26T06:30:34.558Z) and "
+            "$filter=(ContentDate/Start gt 2022-06-26T06:30:34.558000Z or "
+            "ContentDate/Start eq 2022-06-26T06:30:34.558000Z) and "
+            "(ContentDate/End lt 2023-06-26T06:30:34.558000Z or ContentDate/End eq 2023-06-26T06:30:34.558000Z) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2801,7 +3056,7 @@ def test_search_on_several_collections(
         (
             {"collections": "S1A_L0_IW_RAW", "filter": "Name=ABCD AND constellation='sentinel-1'"},
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and "
+            "$filter=Name eq 'ABCD' and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and "
@@ -2873,7 +3128,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "$filter=Name eq 'ABCD' and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
         ),
@@ -2886,7 +3141,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "sortby": [{"field": "published", "direction": "desc"}],
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558Z "
+            "$filter=ContentDate/Start eq 2022-06-26T06:30:34.558000Z "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2906,9 +3161,9 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "sortby": [{"field": "published", "direction": "desc"}],
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=(ContentDate/Start gt 2020-06-26T06:30:34.558Z or "
-            "ContentDate/Start eq 2020-06-26T06:30:34.558Z) and "
-            "(ContentDate/End lt 2023-06-26T06:30:34.558Z or ContentDate/End eq 2023-06-26T06:30:34.558Z) "
+            "$filter=(ContentDate/Start gt 2020-06-26T06:30:34.558000Z or "
+            "ContentDate/Start eq 2020-06-26T06:30:34.558000Z) and "
+            "(ContentDate/End lt 2023-06-26T06:30:34.558000Z or ContentDate/End eq 2023-06-26T06:30:34.558000Z) "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and "
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N')"
             "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
@@ -2927,7 +3182,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "$filter=Name eq 'ABCD' and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
             "and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') "
@@ -2949,7 +3204,7 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
                 "limit": 10,
             },
             "http://127.0.0.1:5000/Products?"
-            "$filter=contains(Name, 'ABCD') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+            "$filter=Name eq 'ABCD' and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
             "and att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') "
             "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
             "and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
@@ -3058,8 +3313,8 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and "
             "att/OData.CSC.StringAttribute/Value eq 'A') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and "
-            "att/OData.CSC.StringAttribute/Value eq '2022-06-26T06:30:34.558Z')"
+            "Attributes/OData.CSC.DateTimeOffsetAttribute/any(att:att/Name eq 'processingDate' and "
+            "att/OData.CSC.DateTimeOffsetAttribute/Value eq 2022-06-26T06:30:34.558000Z)"
             "&$orderby=ContentLength desc&$top=10&$skip=0&$expand=Attributes",
         ),
         (
@@ -3086,8 +3341,8 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "att/OData.CSC.StringAttribute/Value eq 'A') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
             "att/OData.CSC.StringAttribute/Value eq '2.0') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
-            "att/OData.CSC.StringAttribute/Value eq '10000') and "
+            "Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.IntegerAttribute/Value eq 10000) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
             "att/OData.CSC.StringAttribute/Value eq 'DESCENDING')&$orderby=PublicationDate desc"
             "&$top=10&$skip=0&$expand=Attributes",
@@ -3112,10 +3367,10 @@ def test_get_search_parameters_prip(client, mocker, prip_response, collection_pa
             "att/OData.CSC.StringAttribute/Value eq 'IW_RAW__0N') and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processorVersion' and "
             "att/OData.CSC.StringAttribute/Value eq '2.0') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitNumber' and "
-            "att/OData.CSC.StringAttribute/Value eq '43829') and "
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'relativeOrbitNumber' and "
-            "att/OData.CSC.StringAttribute/Value eq '43829') and "
+            "Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'orbitNumber' and "
+            "att/OData.CSC.IntegerAttribute/Value eq 43829) and "
+            "Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq 'relativeOrbitNumber' and "
+            "att/OData.CSC.IntegerAttribute/Value eq 43829) and "
             "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'orbitDirection' and "
             "att/OData.CSC.StringAttribute/Value eq 'ASCENDING')&$orderby=PublicationDate desc"
             "&$top=10&$skip=0&$expand=Attributes",
@@ -3191,7 +3446,7 @@ def test_search_all_collections(
     with responses.RequestsMock() as rsps:
         rsps.add(
             responses.GET,
-            "http://127.0.0.1:5000/Products?$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5000/Products?$orderby=OriginDate desc&$top=10&$skip=0&$expand=Attributes",
             status=status.HTTP_200_OK,
             json=adgs_response,
         )
@@ -3477,3 +3732,73 @@ def test_build_summaries_prip_valid(monkeypatch):
             "S01SIWSLC",
         ],
     }
+
+
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app,service,prop,values,operand,literal",
+    [
+        (ROUTER_PREFIX_AUXIP, "adgs", "Name", ["S1", "O'Hare.zip"], "Name", "'{value}'"),
+        (ROUTER_PREFIX_PRIP, "prip", "Name", ["S1", "O'Hare.zip"], "Name", "'{value}'"),
+        (
+            ROUTER_PREFIX_PRIP,
+            "prip",
+            "processing:lineage",
+            ["systematic_production", "on-demand default"],
+            "ProductionType",
+            "OData.CSC.ProductionType'{value}'",
+        ),
+        (ROUTER_PREFIX_PRIP, "prip", "sat:absolute_orbit", [43829, 47051], "orbitNumber", "{value}"),
+        (ROUTER_PREFIX_PRIP, "prip", "eopf:datatake_id", [342911, 424242], "datatakeID", "{value}"),
+        (
+            ROUTER_PREFIX_PRIP,
+            "prip",
+            "eopf:instrument_configuration_id",
+            [7, 8],
+            "instrumentConfigurationID",
+            "{value}",
+        ),
+    ],
+    indirect=["fastapi_app"],
+)
+def test_cql2_exact_names_and_typed_literals(mocker, client, method, service, prop, values, operand, literal):
+    """Check station filter syntax independently of mock support for enums and typed attributes."""
+    service_utils = adgs_utils if service == "adgs" else prip_utils
+    collection = pytest_utils.create_mock_collection(service, service_utils, "col_typed_filters", {})
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: [collection],
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": [collection]})
+    endpoint = f"/{'auxip' if service == 'adgs' else service}/search"
+    for selection in (values[:1], values):
+        formatted = [literal.format(value=str(v).replace("'", "''")) for v in sorted(selection, key=str)]
+        comparison = f"eq {formatted[0]}" if len(selection) == 1 else f"in ({','.join(formatted)})"
+        expected = f"{operand} {comparison}"
+        if prop in ("sat:absolute_orbit", "eopf:datatake_id", "eopf:instrument_configuration_id"):
+            expected = (
+                f"Attributes/OData.CSC.IntegerAttribute/any(att:att/Name eq '{operand}' and "
+                f"att/OData.CSC.IntegerAttribute/Value {comparison})"
+            )
+        with responses.RequestsMock() as station:
+            station.add(responses.GET, re.compile(r"http://127\.0\.0\.1:5000/Products\?"), json={"value": []})
+            if method == "GET":
+                constants = ["'" + str(v).replace("'", "''") + "'" if isinstance(v, str) else str(v) for v in selection]
+                response = client.get(
+                    endpoint,
+                    params={"collections": collection["id"], "filter": f"{prop} IN ({','.join(constants)})"},
+                )
+            else:
+                response = client.post(
+                    endpoint,
+                    json={
+                        "collections": [collection["id"]],
+                        "filter-lang": "cql2-json",
+                        "filter": {"op": "in", "args": [{"property": prop}, selection]},
+                    },
+                )
+            assert response.status_code == 200, response.text
+            urls = [call.request.url for call in station.calls if call.request.url and "$filter=" in call.request.url]
+            assert len(urls) == 1
+            assert parse_qs(urlsplit(urls[0]).query)["$filter"] == [expected]
