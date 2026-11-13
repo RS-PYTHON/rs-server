@@ -22,7 +22,6 @@ from fastapi import HTTPException
 from rs_server_catalog.data_management.s3_manager import S3Manager, logger
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
-    get_temp_bucket_name,
     is_s3_path,
     verify_existing_item_from_catalog,
 )
@@ -270,31 +269,6 @@ class TestIsS3Path:
         """Test an invalid S3 path with invalid characters."""
         assert is_s3_path("s3://my-bucket/my-object$%") is False
         assert is_s3_path("s3://my-bucket/invalid#object") is False
-
-
-class TestGetTempBucketName:
-    """Class to group the test cases for get_temp_bucket_name function"""
-
-    def test_get_temp_bucket_name_single_bucket(self):
-        """Test with a single valid S3 bucket."""
-        files_s3_key = ["s3://my-temp-bucket/file1", "s3://my-temp-bucket/file2"]
-        assert get_temp_bucket_name(files_s3_key) == "my-temp-bucket"
-
-    def test_get_temp_bucket_name_multiple_buckets(self):
-        """Test with multiple buckets, expecting an exception."""
-        files_s3_key = ["s3://bucket1/file1", "s3://bucket2/file2"]
-        with pytest.raises(RuntimeError, match="A single temporary S3 bucket should be used"):
-            get_temp_bucket_name(files_s3_key)
-
-    def test_get_temp_bucket_name_invalid_s3_key(self):
-        """Test with an invalid S3 key, expecting an exception."""
-        files_s3_key = ["s3://my-temp-bucket/file1", "invalid_s3_key"]
-        with pytest.raises(RuntimeError, match="does not match the correct S3 path pattern"):
-            get_temp_bucket_name(files_s3_key)
-
-    def test_get_temp_bucket_name_empty_list(self):
-        """Test with an empty list, expecting None."""
-        assert get_temp_bucket_name([]) is None
 
 
 class TestGetS3Handler:

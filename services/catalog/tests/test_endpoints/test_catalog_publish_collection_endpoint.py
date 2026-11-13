@@ -45,8 +45,8 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.post("/catalog/collections", json=minimal_collection)
         # Check that collection status code is 201
         assert response.status_code == fastapi.status.HTTP_201_CREATED
-        # Check that internal collection id is set to owner_collection
-        assert json.loads(response.content)["id"] == "test_collection"
+        # Check that the returned collection id is prefixed by its owner
+        assert json.loads(response.content)["id"] == "test_owner_test_collection"
         assert json.loads(response.content)["owner"] == "test_owner"
 
         # # Call search endpoint to verify presence of collection in catalog
@@ -58,8 +58,8 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.get("/catalog/collections/test_owner:test_collection")
         assert response.status_code == fastapi.status.HTTP_200_OK
         response_content = json.loads(response.content)
-        # Check that values are correctly written in catalogDB
-        assert response_content["id"] == minimal_collection["id"]
+        # Check that values are correctly written in catalogDB (the id is prefixed by its owner)
+        assert response_content["id"] == f"{minimal_collection['owner']}_{minimal_collection['id']}"
         assert response_content["owner"] == minimal_collection["owner"]
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]
@@ -87,8 +87,8 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.post("/catalog/collections", json=minimal_collection)
         # Check that collection status code is 201
         assert response.status_code == fastapi.status.HTTP_201_CREATED
-        # Check that internal collection id is set to owner_collection
-        assert json.loads(response.content)["id"] == "test_collection_without_user"
+        # Check that the returned collection id is prefixed by its owner
+        assert json.loads(response.content)["id"] == f"{getpass.getuser()}_test_collection_without_user"
         assert json.loads(response.content)["owner"] == getpass.getuser()
 
         # # Call search endpoint to verify presence of collection in catalog
@@ -100,8 +100,8 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.get("/catalog/collections/test_collection_without_user")
         assert response.status_code == fastapi.status.HTTP_200_OK
         response_content = json.loads(response.content)
-        # Check that values are correctly written in catalogDB
-        assert response_content["id"] == minimal_collection["id"]
+        # Check that values are correctly written in catalogDB (the id is prefixed by its owner)
+        assert response_content["id"] == f"{getpass.getuser()}_{minimal_collection['id']}"
         assert response_content["owner"] == getpass.getuser()
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]
@@ -254,10 +254,10 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == "Cannot create or update more than one collection !"
 
-    @patch("rs_server_catalog.data_management.user_handler.remove_owner_from_collection_name_in_collection")
+    @patch("rs_server_catalog.data_management.user_handler._owner_and_short_collection_id")
     def test_failure_to_create_collection_generic_exception(
         self,
-        mock_remove_owner_from_collection_name_in_collection,
+        mock_owner_and_short_collection_id,
         client,
     ):
         """
@@ -265,7 +265,7 @@ class TestCatalogPublishCollectionEndpoint:
         Endpoint: POST /catalog/collections
         """
         mock_exc = "ValueError"
-        mock_remove_owner_from_collection_name_in_collection.side_effect = ValueError(mock_exc)
+        mock_owner_and_short_collection_id.side_effect = ValueError(mock_exc)
 
         minimal_collection = {
             "id": "test_collection_01",
@@ -287,10 +287,10 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["code"] == "BadRequest"
         assert response_content["description"] == f"Bad request: {mock_exc}"
 
-    @patch("rs_server_catalog.data_management.user_handler.remove_owner_from_collection_name_in_collection")
+    @patch("rs_server_catalog.data_management.user_handler._owner_and_short_collection_id")
     def test_failure_to_create_collection_runtime_error(
         self,
-        mock_remove_owner_from_collection_name_in_collection,
+        mock_owner_and_short_collection_id,
         client,
     ):
         """
@@ -298,7 +298,7 @@ class TestCatalogPublishCollectionEndpoint:
         Endpoint: POST /catalog/collections
         """
         mock_exc = "RuntimeError"
-        mock_remove_owner_from_collection_name_in_collection.side_effect = RuntimeError(mock_exc)
+        mock_owner_and_short_collection_id.side_effect = RuntimeError(mock_exc)
 
         minimal_collection = {
             "id": "test_collection_02",

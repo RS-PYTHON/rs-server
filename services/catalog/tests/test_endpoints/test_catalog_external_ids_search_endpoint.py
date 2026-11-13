@@ -213,11 +213,12 @@ class TestCatalogExternalIdsSearch:
         response = search_response(client, method, f"prip:{U1}", collections=both)
         assert response.status_code == fastapi.status.HTTP_200_OK, response.text
         found = sorted((feature["collection"], feature["id"]) for feature in response.json()["features"])
-        assert found == [(COLLECTION, "item-prip"), (OTHER_COLLECTION, "item-prip")]
+        # The collection ids of the returned items are prefixed by their owner
+        assert found == [(PGSTAC_COLLECTION, "item-prip"), (PGSTAC_OTHER_COLLECTION, "item-prip")]
 
         response = search_response(client, method, f"prip:{U1}", collections=(PGSTAC_OTHER_COLLECTION,))
         assert [(f["collection"], f["id"]) for f in response.json()["features"]] == [
-            (OTHER_COLLECTION, "item-prip"),
+            (PGSTAC_OTHER_COLLECTION, "item-prip"),
         ]
 
     @pytest.mark.parametrize("method", ["GET", "POST"])
@@ -226,7 +227,11 @@ class TestCatalogExternalIdsSearch:
         response = search_response(client, method, f"prip:{U1},other:X42", collections=())
         assert response.status_code == fastapi.status.HTTP_200_OK, response.text
         found = sorted((feature["collection"], feature["id"]) for feature in response.json()["features"])
-        assert found == [(COLLECTION, "item-multi"), (COLLECTION, "item-prip"), (OTHER_COLLECTION, "item-prip")]
+        assert found == [
+            (PGSTAC_COLLECTION, "item-multi"),
+            (PGSTAC_COLLECTION, "item-prip"),
+            (PGSTAC_OTHER_COLLECTION, "item-prip"),
+        ]
 
     @pytest.mark.parametrize("method", ["GET", "POST"])
     @pytest.mark.parametrize(

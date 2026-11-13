@@ -18,10 +18,9 @@ import getpass
 
 import pytest
 from rs_server_catalog.data_management.user_handler import (
+    adapt_object_links,
     add_user_prefix,
     get_user,
-    remove_owner_from_collection_name_in_collection,
-    remove_owner_from_collection_name_in_feature,
     reroute_url,
 )
 from starlette.requests import Request
@@ -39,16 +38,6 @@ def collection_toto_1_fixture() -> dict:
     return {
         "Value": "1",
         "id": "toto_S1_L1",
-        "count": "15",
-    }
-
-
-@pytest.fixture(name="collection_toto_1_output")
-def collection_toto_1_output_fixture() -> dict:
-    """Create a collection for testing."""
-    return {
-        "Value": "1",
-        "id": "S1_L1",
         "count": "15",
     }
 
@@ -92,26 +81,6 @@ def collections_fixture(
 ) -> list[dict]:
     """Create a list of collections for testing."""
     return [collection_toto_1, collection_toto_2, collection_titi_1, collection_titi_2]
-
-
-@pytest.fixture(name="feature")
-def feature_fixture() -> dict:
-    """Create a feature for testing."""
-    return {
-        "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
-        "collection": "titi_S1_L1",
-        "properties": {"owner": "titi"},
-    }
-
-
-@pytest.fixture(name="feature_output")
-def feature_output_fixture() -> dict:
-    """Create a feature for testing."""
-    return {
-        "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
-        "collection": "S1_L1",
-        "properties": {"owner": "titi"},
-    }
 
 
 def test_get_user():
@@ -325,19 +294,45 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
         assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"
 
 
-class TestRemoveUserFromObject:  # pylint: disable=missing-function-docstring
-    """This Class contains unit tests for the function remove_owner_from_collection_name_in_collection."""
+class TestAdaptObjectLinks:  # pylint: disable=missing-function-docstring
+    """Unit tests for adapt_object_links: the ids keep their owner prefix, but the links never contain it."""
 
-    def test_remove_the_user_in_the_collection_id_property(
-        self,
-        collection_toto_1: dict,
-        collection_toto_1_output: dict,
-    ):
-        assert remove_owner_from_collection_name_in_collection(collection_toto_1, "baduser") == (collection_toto_1, "")
-        assert remove_owner_from_collection_name_in_collection(collection_toto_1, "toto") == (
-            collection_toto_1_output,
-            "toto",
-        )
+    def test_collection_id_is_kept_and_links_are_adapted(self):
+        collection = {
+            "id": "toto_joplin",
+            "owner": "toto",
+            "links": [{"rel": "self", "href": "http://testserver/catalog/collections/toto_joplin"}],
+        }
+        result = adapt_object_links(collection)
+        assert result["id"] == "toto_joplin"
+        assert result["links"][0]["href"] == "http://testserver/catalog/collections/toto:joplin"
 
-    def test_remove_the_user_in_the_feature_id_property(self, feature: dict, feature_output: dict):
-        assert remove_owner_from_collection_name_in_feature(feature, "baduser") == (feature_output, "titi")
+    def test_item_collection_is_kept_and_links_are_adapted(self):
+        item = {
+            "id": "item1",
+            "collection": "toto_joplin",
+            "properties": {"owner": "toto"},
+            "links": [{"rel": "self", "href": "http://testserver/catalog/collections/toto_joplin/items/item1"}],
+        }
+        result = adapt_object_links(item)
+        assert result["collection"] == "toto_joplin"
+        assert result["links"][0]["href"] == "http://testserver/catalog/collections/toto:joplin/items/item1"
+
+    def test_current_user_is_the_default_owner(self):
+        collection = {
+            "id": "toto_joplin",
+            "links": [{"rel": "items", "href": "http://testserver/catalog/collections/toto_joplin/items"}],
+        }
+        result = adapt_object_links(collection, "toto")
+        assert result["id"] == "toto_joplin"
+        assert result["links"][0]["href"] == "http://testserver/catalog/collections/toto:joplin/items"
+
+    def test_nothing_is_changed_if_the_id_has_no_owner_prefix(self):
+        collection = {
+            "id": "joplin",
+            "owner": "toto",
+            "links": [{"rel": "self", "href": "http://testserver/catalog/collections/joplin"}],
+        }
+        result = adapt_object_links(collection)
+        assert result["id"] == "joplin"
+        assert result["links"][0]["href"] == "http://testserver/catalog/collections/joplin"
