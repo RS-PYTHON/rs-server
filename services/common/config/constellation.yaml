@@ -64,3 +64,8 @@ satellites:
         constellation: sentinel-5P
         code: S5P
         active: true
+    - cristal-a:
+        constellation: cristal
+        code: CRA
+        serialid: A
+        active: true

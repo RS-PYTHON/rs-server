@@ -152,6 +152,7 @@ def test_map_dag_file_to_asset_adds_external_ids():
         ("S2C", "S02CADU__"),
         ("S3A", "S03CADU__"),
         ("S3B", "S03CADU__"),
+        ("CRA", "CRACADU__"),
         ("S5P", None),
         ("unknown", None),
         (None, None),
@@ -171,6 +172,10 @@ def test_prepare_collection_product_type(satellite, product_type):
     properties = collection.model_dump()["features"][0]["properties"]
     if product_type is None:
         assert "product:type" not in properties
+    elif satellite.startswith("CR"):
+        assert properties["product:type"] == product_type
+        assert properties["platform"] == f"cristal-{satellite[2:].lower()}"
+        assert properties["constellation"] == "cristal"
     else:
         assert properties["product:type"] == product_type
         assert properties["platform"] == f"sentinel-{satellite[1:].lower()}"

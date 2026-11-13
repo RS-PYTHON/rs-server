@@ -58,7 +58,7 @@ inventory variable).
 
 The lifecycle of the items is handled with these dynamic fields:
 
-| Field | Meaning | CADIP sessions | AUXIP auxiliary files | S1, S2, S3 products |
+| Field | Meaning | CADIP sessions | AUXIP auxiliary files | S1, S2, S3, Cristal products |
 |---|---|---|---|---|
 | `start_datetime` | Data capture start | `DownlinkStart` of the session | Validity start (`ContentDate/Start`) | Sensing start, written by the processor |
 | `datetime` | Data capture, by ESA convention the start | `PublicationDate` of the session | Validity start | Sensing start |
