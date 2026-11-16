@@ -14,6 +14,7 @@
 
 """Module handling all operations on S3 bucket."""
 
+import hashlib
 import os
 import traceback
 from base64 import b64decode
@@ -446,24 +447,31 @@ class S3Manager:
                 continue
 
             checksum = object_attributes.get("Checksum", {})
-            # ChecksumMD5 is provider-specific, not a standard S3 checksum attribute.
+            md5_digest = None
+
             if md5_checksum := checksum.get("ChecksumMD5"):
                 try:
-                    digest = b64decode(md5_checksum, validate=True)
-                    if len(digest) != 16:
+                    md5_digest = b64decode(md5_checksum, validate=True)
+                    if len(md5_digest) != 16:
                         raise ValueError("MD5 digest must be 16 bytes")
                 except (Base64Error, ValueError) as error:
                     logger.warning("Invalid MD5 checksum for asset %s: %s", asset_name, error)
-                else:
-                    asset_info["file:checksum"] = multihash.wrap(digest, "md5").hex()
-                    logger.debug("Updated checksum for asset %s using ChecksumMD5", asset_name)
+
+            if md5_digest is None:
+                try:
+                    md5 = hashlib.md5()
+                    s3_object = self.s3_handler.s3_client.get_object(Bucket=bucket_name, Key=key)
+                    body = s3_object["Body"]
+                    for chunk in iter(lambda: body.read(1024 * 1024), b""):
+                        md5.update(chunk)
+                    md5_digest = md5.digest()
+                    logger.debug("Computed MD5 checksum for asset %s from S3 object content", asset_name)
+                except Exception as error:
+                    logger.warning("Failed to compute MD5 checksum for asset %s: %s", asset_name, error)
                     continue
 
-            for checksum_key, checksum_value in checksum.items():
-                if checksum_key != "ChecksumMD5" and checksum_key.startswith("Checksum") and checksum_value:
-                    asset_info["file:checksum"] = checksum_value
-                    logger.debug("Updated checksum for asset %s using %s", asset_name, checksum_key)
-                    break
+            asset_info["file:checksum"] = multihash.wrap(md5_digest, "md5").hex()
+            logger.debug("Updated checksum for asset %s as MD5 multihash", asset_name)
 
         return content
 
