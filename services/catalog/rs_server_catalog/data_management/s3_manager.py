@@ -22,6 +22,7 @@ from binascii import Error as Base64Error
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import replace
+from functools import partial
 
 import botocore
 from fastapi import HTTPException
@@ -463,7 +464,7 @@ class S3Manager:
                     self.s3_handler.connect_s3()
                     s3_object = self.s3_handler.s3_client.get_object(Bucket=bucket_name, Key=key)
                     with closing(s3_object["Body"]) as body:
-                        for chunk in iter(lambda: body.read(1024 * 1024), b""):  # nosec B324
+                        for chunk in iter(partial(body.read, 1024 * 1024), b""):
                             md5.update(chunk)
                     md5_digest = md5.digest()
                     logger.debug("Computed MD5 checksum for asset %s from S3 object content", asset_name)
