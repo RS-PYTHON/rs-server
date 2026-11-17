@@ -14,13 +14,19 @@
 
 """Module handling all operations on S3 bucket."""
 
+import hashlib
 import os
 import traceback
+from base64 import b64decode
+from binascii import Error as Base64Error
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from dataclasses import replace
+from functools import partial
 
 import botocore
 from fastapi import HTTPException
+from multiformats import multihash
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
@@ -412,10 +418,9 @@ class S3Manager:
 
     def update_assets_checksums(self, content: dict) -> dict:
         """
-        Update each asset with checksum data returned by S3 GetObjectAttributes.
+        Store each asset checksum as an MD5 multihash.
 
-        Missing checksum metadata is non-fatal: publication can continue because
-        object presence was already checked separately.
+        Compute MD5 from the object if the storage does not provide it.
         """
         if self.is_catalog_local_mode:
             logger.debug("Skipping checksum update in local catalog mode")
@@ -439,20 +444,44 @@ class S3Manager:
                 object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
             except RuntimeError as error:
                 logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
-                continue
+                object_attributes = {}
 
-            # GetObjectAttributes returns the checksum values in the S3/AWS format:
-            # a "Checksum" dict containing one or more algorithm-specific base64 values
-            # such as ChecksumCRC32, ChecksumCRC32C, ChecksumSHA1 or ChecksumSHA256.
-            # For now we store the first checksum value returned by the object storage
-            # into the STAC asset field; the multihash/STAC-normalized conversion can
-            # build on this once we preserve the selected algorithm alongside the value.
             checksum = object_attributes.get("Checksum", {})
-            for checksum_key, checksum_value in checksum.items():
-                if checksum_key.startswith("Checksum") and checksum_value:
-                    asset_info["file:checksum"] = checksum_value
-                    logger.debug("Updated checksum for asset %s using %s", asset_name, checksum_key)
-                    break
+            md5_digest = None
+
+            if md5_checksum := checksum.get("ChecksumMD5"):
+                try:
+                    digest = b64decode(md5_checksum, validate=True)
+                    if len(digest) != 16:
+                        raise ValueError("MD5 digest must be 16 bytes")
+                    md5_digest = digest
+                except (Base64Error, ValueError) as error:
+                    logger.warning("Invalid MD5 checksum for asset %s: %s", asset_name, error)
+
+            if md5_digest is None:
+                try:
+                    md5 = hashlib.md5(usedforsecurity=False)
+                    self.s3_handler.connect_s3()
+                    s3_object = self.s3_handler.s3_client.get_object(Bucket=bucket_name, Key=key)
+                    with closing(s3_object["Body"]) as body:
+                        for chunk in iter(partial(body.read, 1024 * 1024), b""):
+                            md5.update(chunk)
+                    md5_digest = md5.digest()
+                    logger.debug("Computed MD5 checksum for asset %s from S3 object content", asset_name)
+                except (
+                    botocore.exceptions.BotoCoreError,
+                    botocore.exceptions.ClientError,
+                    OSError,
+                    RuntimeError,
+                ) as error:
+                    logger.exception("Failed to compute MD5 checksum for asset %s", asset_name)
+                    raise HTTPException(
+                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Failed to compute MD5 checksum for asset {asset_name}",
+                    ) from error
+
+            asset_info["file:checksum"] = multihash.wrap(md5_digest, "md5").hex()
+            logger.debug("Updated checksum for asset %s as MD5 multihash", asset_name)
 
         return content
 
