@@ -26,6 +26,7 @@ from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog.data_management.data_lifecycle import DataLifecycle
 from rs_server_catalog.middleware.catalog_middleware import CatalogMiddleware
+from rs_server_catalog.odata_api import router as odata_router
 from rs_server_catalog.stac_api import api, with_transactions
 from rs_server_catalog.utils import CATALOG_PREFIX
 from rs_server_common import settings as common_settings
@@ -35,7 +36,6 @@ from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     HealthMiddleware,
-    OdataRequestToStacMiddleware,
     PaginationLinksMiddleware,
     apply_middlewares,
     insert_middleware_after,
@@ -86,6 +86,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
 
 
 app: FastAPI = api.app
+app.include_router(odata_router)
 
 # Add middlewares. When sending a request, the middleware order must be:
 # Health -> CORS -> HandleExceptions -> Session -> Authentication -> [any other middlewares ...] -> Catalog
@@ -108,13 +109,6 @@ insert_middleware_after(
     CORSMiddleware,
     AuthenticationMiddleware,
     must_be_authenticated=must_be_authenticated,
-)
-
-# Middleware to deal with odata requests
-insert_middleware_after(
-    app,
-    PaginationLinksMiddleware,
-    OdataRequestToStacMiddleware,
 )
 
 # In cluster mode, add the oauth2 authentication and the SessionMiddleware
