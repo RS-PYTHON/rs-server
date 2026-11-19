@@ -78,7 +78,7 @@ class TestStagingCatalog:
             f"{staging_instance.catalog_url}/catalog/search",
             headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
             params=expected_filter_object,
-            timeout=5,
+            timeout=staging_instance.catalog_check_timeout,
         )
         mock_create_streaming_list.assert_called_once()
 
@@ -105,6 +105,8 @@ class TestStagingCatalog:
         """docstring to be added"""
         # Setting up the catalog_url and headers
         staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
+        # Timeouts are retried: don't really wait between retries
+        mocker.patch("rs_server_staging.processors.processor_staging.time.sleep")
 
         # Loop trough all possible exception raised during request.get and check if failure happen
         for possible_exception in [
@@ -133,7 +135,7 @@ class TestStagingCatalog:
             mock_log_job_execution.assert_called_once_with(
                 JobStatus.failed,
                 0,
-                f"Failed to create catalog collection: {get_err_msg}",
+                f"Failed to check catalog collection: {get_err_msg}",
             )
 
         # Mock the requests.get method
@@ -178,6 +180,130 @@ class TestStagingCatalog:
 
         result = await self._call_check_catalog(staging_instance, staging_inputs)
         assert result is False
+
+    def test_check_if_collection_exists_timeout_retry_success(self, mocker, staging_instance: Staging):
+        """A collection check that times out is retried, and succeeds once the catalog answers."""
+        mock_sleep = mocker.patch("rs_server_staging.processors.processor_staging.time.sleep")
+        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution")
+        ok_response = mocker.Mock(status_code=200)
+        mock_get = mocker.patch(
+            "requests.get",
+            side_effect=[
+                requests.exceptions.ReadTimeout("timed out"),
+                requests.exceptions.ReadTimeout("timed out"),
+                ok_response,
+            ],
+        )
+
+        assert staging_instance.check_if_collection_exists("test_collection") is True
+        assert mock_get.call_count == 3
+        assert all(call.kwargs["timeout"] == staging_instance.catalog_check_timeout for call in mock_get.call_args_list)
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_called_with(staging_instance.catalog_check_retry_delay)
+        mock_log_job_execution.assert_not_called()
+
+    def test_check_if_collection_exists_timeout_retry_exhausted(self, mocker, staging_instance: Staging):
+        """When the collection check keeps timing out, the job fails cleanly after the last retry."""
+        mock_sleep = mocker.patch("rs_server_staging.processors.processor_staging.time.sleep")
+        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution")
+        mock_get = mocker.patch("requests.get", side_effect=requests.exceptions.ReadTimeout("timed out"))
+
+        assert staging_instance.check_if_collection_exists("test_collection") is False
+        assert mock_get.call_count == staging_instance.catalog_check_max_retries + 1
+        assert mock_sleep.call_count == staging_instance.catalog_check_max_retries
+        mock_log_job_execution.assert_called_once_with(
+            JobStatus.failed,
+            0,
+            "Failed to check catalog collection: timed out",
+        )
+
+    def test_check_if_collection_exists_missing_collection(self, mocker, staging_instance: Staging):
+        """A missing collection is not created by the staging: the job fails with an explicit message."""
+        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution")
+        mocker.patch("requests.get", return_value=mocker.Mock(status_code=404))
+        mock_post = mocker.patch("requests.post")
+
+        assert staging_instance.check_if_collection_exists("test_collection") is False
+        mock_post.assert_not_called()
+        mock_log_job_execution.assert_called_once_with(
+            JobStatus.failed,
+            0,
+            "Catalog collection 'test_collection' does not exist: it must be created before staging items into it",
+        )
+
+    @pytest.mark.asyncio
+    async def test_check_catalog_search_timeout_retry_success(
+        self,
+        mocker,
+        staging_instance: Staging,
+        staging_inputs: dict,
+    ):
+        """A catalog search that times out is retried, and succeeds once the catalog answers."""
+        mock_sleep = mocker.patch(
+            "rs_server_staging.processors.processor_staging.asyncio.sleep",
+            new=mocker.AsyncMock(),
+        )
+        mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
+        mock_create_streaming_list = mocker.patch.object(staging_instance, "create_streaming_list")
+        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution")
+        ok_response = mocker.Mock()
+        ok_response.json.return_value = {"type": "FeatureCollection", "features": []}
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        mock_get = mocker.patch(
+            "httpx.AsyncClient.get",
+            side_effect=[httpx.ReadTimeout(""), ok_response],
+        )
+
+        assert await self._call_check_catalog(staging_instance, staging_inputs) is True
+        assert mock_get.call_count == 2
+        mock_sleep.assert_awaited_once_with(staging_instance.catalog_check_retry_delay)
+        mock_create_streaming_list.assert_called_once()
+        mock_log_job_execution.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_check_catalog_search_timeout_retry_exhausted(
+        self,
+        mocker,
+        staging_instance: Staging,
+        staging_inputs: dict,
+    ):
+        """When the catalog search keeps timing out, the job fails cleanly instead of raising (HTTP 500)."""
+        mock_sleep = mocker.patch(
+            "rs_server_staging.processors.processor_staging.asyncio.sleep",
+            new=mocker.AsyncMock(),
+        )
+        mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
+        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution")
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        # httpx timeouts have an empty message: the job message must still be meaningful
+        mock_get = mocker.patch("httpx.AsyncClient.get", side_effect=httpx.ReadTimeout(""))
+
+        assert await self._call_check_catalog(staging_instance, staging_inputs) is False
+        assert mock_get.call_count == staging_instance.catalog_check_max_retries + 1
+        assert mock_sleep.await_count == staging_instance.catalog_check_max_retries
+        mock_log_job_execution.assert_called_once_with(JobStatus.failed, 0, "Failed to search catalog: ReadTimeout")
+
+    @pytest.mark.asyncio
+    async def test_check_catalog_search_http_error(self, mocker, staging_instance: Staging, staging_inputs: dict):
+        """An HTTP error status from the catalog search fails the job cleanly, without retry."""
+        mocker.patch.object(staging_instance, "check_if_collection_exists", return_value=True)
+        mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution")
+        error_response = mocker.Mock()
+        error_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "503 Service Unavailable",
+            request=mocker.Mock(),
+            response=mocker.Mock(),
+        )
+        mocker.patch("rs_server_common.settings.http_client", return_value=httpx.AsyncClient())
+        mock_get = mocker.patch("httpx.AsyncClient.get", return_value=error_response)
+
+        assert await self._call_check_catalog(staging_instance, staging_inputs) is False
+        mock_get.assert_called_once()
+        mock_log_job_execution.assert_called_once_with(
+            JobStatus.failed,
+            0,
+            "Failed to search catalog: 503 Service Unavailable",
+        )
 
     @pytest.mark.asyncio
     async def test_check_catalog_keeps_input_assets_for_expired_items(
