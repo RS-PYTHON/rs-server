@@ -46,6 +46,7 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+from urllib3.exceptions import HTTPWarning
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 # Max number of parallel threads when checking asset existence on S3 during publication
@@ -467,21 +468,15 @@ class S3Manager:
                         for chunk in iter(partial(body.read, 1024 * 1024), b""):
                             md5.update(chunk)
                     md5_digest = md5.digest()
-                    logger.debug("Computed MD5 checksum for asset %s from S3 object content", asset_name)
+                    asset_info["file:checksum"] = multihash.wrap(md5_digest, "md5").hex()
+                    logger.debug("Updated checksum for asset %s as MD5 multihash", asset_name)
                 except (
                     botocore.exceptions.BotoCoreError,
                     botocore.exceptions.ClientError,
                     OSError,
                     RuntimeError,
-                ) as error:
-                    logger.exception("Failed to compute MD5 checksum for asset %s", asset_name)
-                    raise HTTPException(
-                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Failed to compute MD5 checksum for asset {asset_name}",
-                    ) from error
-
-            asset_info["file:checksum"] = multihash.wrap(md5_digest, "md5").hex()
-            logger.debug("Updated checksum for asset %s as MD5 multihash", asset_name)
+                ) as _:
+                    logger.warning("Failed to compute MD5 checksum for asset %s", asset_name)
 
         return content
 
