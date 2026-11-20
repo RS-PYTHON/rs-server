@@ -466,7 +466,7 @@ async def test_authorization_landing_page(
             {
                 "rel": "child",
                 "type": "application/json",
-                "title": col.collection_id,
+                "title": f"{col.owner_id}_{col.collection_id}",
                 "href": f"http://testserver/catalog/collections/{col.owner_id}:{col.collection_id}",
                 **AUTH_REFS,
             }
@@ -677,7 +677,8 @@ async def test_authorization_post_and_delete_one_collection(
             assert post_response.status_code == HTTP_201_CREATED
             returned_col = json.loads(post_response.content)
             assert returned_col["owner"] == owner
-            assert returned_col["id"] == collection_id
+            # The returned collection id is prefixed by its owner
+            assert returned_col["id"] == f"{owner}_{collection_id}"
         else:
             assert post_response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -696,7 +697,7 @@ async def test_authorization_post_and_delete_one_collection(
 
         elif should_succeed:
             assert delete_response.status_code == HTTP_200_OK
-            assert json.loads(delete_response.content) == {"deleted collection": "new_collection"}
+            assert json.loads(delete_response.content) == {"deleted collection": f"{owner}_new_collection"}
 
         # NOTE: in this case, the collection has not been created.
         # But we still receive a 401 not 404 even though the colleciton does not exist.
@@ -741,7 +742,8 @@ async def test_authorization_put_one_collection(
             assert response.status_code == HTTP_200_OK
             returned_col = json.loads(response.content)
             assert returned_col["owner"] == owner
-            assert returned_col["id"] == collection_id
+            # The returned collection id is prefixed by its owner
+            assert returned_col["id"] == f"{owner}_{collection_id}"
         else:
             assert response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -941,7 +943,8 @@ async def test_authorization_post_and_delete_one_item(
             assert post_response.status_code == HTTP_201_CREATED
             returned_feature = json.loads(post_response.content)
             assert returned_feature["id"] == feature_id
-            assert returned_feature["collection"] == collection_id
+            # The returned collection id is prefixed by its owner
+            assert returned_feature["collection"] == f"{owner}_{collection_id}"
         else:
             assert post_response.status_code == HTTP_401_UNAUTHORIZED
 
@@ -1002,7 +1005,8 @@ async def test_authorization_put_one_item(
             assert response.status_code == HTTP_200_OK
             returned_feature = json.loads(response.content)
             assert returned_feature["id"] == feature_id
-            assert returned_feature["collection"] == collection_id
+            # The returned collection id is prefixed by its owner
+            assert returned_feature["collection"] == f"{owner}_{collection_id}"
         else:
             assert response.status_code == HTTP_401_UNAUTHORIZED
 

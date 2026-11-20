@@ -37,7 +37,6 @@ BULK_ITEMS_REGEX = CATALOG_COLLECTIONS + r"/((?P<owner_id>.+):)?(?P<collection_i
 
 # Regexp for search endpoints
 CATALOG_SEARCH = CATALOG_PREFIX + "/search"
-CATALOG_SEARCH_QUERY_PARAMS = CATALOG_SEARCH + r"\?((?P<owner_id>.+):)?(?P<collection_id>.+)"  # noqa: W605
 
 logger = Logging.default(__name__)
 
@@ -225,58 +224,22 @@ def add_user_prefix(
     return new_path
 
 
-def remove_owner_from_collection_name_in_feature(feature: dict, current_user: str = "") -> tuple[dict, str]:
-    """Remove the owner name from the collection name in the feature.
-    The owner name used is the "owner" field of the properties if there is any,
-    or by default the currently connected user.
-    Returns the updated feature and the owner name actually removed.
-    If nothing was removed, returns the original feature and an empty owner name.
+def _owner_and_short_collection_id(collection_id: str, owner: str) -> tuple[str, str]:
+    """Split a pgstac collection id "<owner>_<short_id>" without modifying any STAC object.
+
+    The result is only meant to build links: the id of the STAC object itself keeps its owner prefix.
 
     Args:
-        feature (dict): a geojson that contains georeferenced
-            data and metadata like the collection name.
-        current_user (str): current user connected (optional)
+        collection_id (str): The collection id as stored in pgstac (normally prefixed by its owner).
+        owner (str): The owner that is expected as prefix.
 
     Returns:
-        dict: the feature with a new collection name without the owner name.
-        str: the name removed, if any.
+        tuple[str, str]: The owner and the collection id without the owner prefix. If the id doesn't
+            start with "<owner>_", the owner is empty and the id is returned as is.
     """
-    if "owner" in feature["properties"]:
-        user = feature["properties"]["owner"]
-    else:
-        user = current_user
-
-    if feature["collection"].startswith(f"{user}_"):
-        feature["collection"] = feature["collection"].removeprefix(f"{user}_")
-        return feature, user
-    return feature, ""
-
-
-def remove_owner_from_collection_name_in_collection(collection: dict, current_user: str = "") -> tuple[dict, str]:
-    """Remove the owner name from the given collection name.
-    The owner name used is the "owner" field of the collection if there is any,
-    or by default the currently connected user.
-    Returns the updated collection and the owner name actually removed.
-    If nothing was removed, returns the original collection and an empty owner name.
-
-    Args:
-        collection (dict): A dictionary that contains metadata
-            about the collection content like the id of the collection.
-        current_user (str): current user connected (optional)
-
-    Returns:
-        dict: The collection without the owner name in the id section.
-        str: the name removed, if any.
-    """
-    if "owner" in collection:
-        user = collection["owner"]
-    else:
-        user = current_user
-
-    if collection["id"].startswith(f"{user}_"):
-        collection["id"] = collection["id"].removeprefix(f"{user}_")
-        return collection, user
-    return collection, ""
+    if collection_id.startswith(f"{owner}_"):
+        return owner, collection_id.removeprefix(f"{owner}_")
+    return "", collection_id
 
 
 def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
@@ -291,16 +254,26 @@ def adapt_object_links(object_content: dict, current_user: str = "") -> dict:
     """
     user = collection_id = feature_id = ""
 
+    # The collection ids returned to the user keep their "<owner_id>_" prefix, so that they are unique
+    # (STAC requires collection ids to be unique in the catalog) and identical to the ones stored in pgstac.
+    # The prefix is only removed from the local `collection_id` variable, which is used to build the links:
+    # the hrefs must contain "<owner_id>:<collection_id>" and never the prefixed id.
+    # The objects are therefore never modified here, except for their links.
+
     # Case when object is an item
     if "properties" in object_content and "collection" in object_content:
-        object_content, user = remove_owner_from_collection_name_in_feature(object_content, current_user)
-        collection_id = object_content["collection"]
+        user, collection_id = _owner_and_short_collection_id(
+            object_content["collection"],
+            object_content["properties"].get("owner", current_user),
+        )
         feature_id = object_content["id"]
 
     # Case when object is a collection
     elif "id" in object_content:
-        object_content, user = remove_owner_from_collection_name_in_collection(object_content, current_user)
-        collection_id = object_content["id"]
+        user, collection_id = _owner_and_short_collection_id(
+            object_content["id"],
+            object_content.get("owner", current_user),
+        )
 
     # Update links with user, collection and feature values retrieved from previous steps
     links = object_content.get("links", [])
