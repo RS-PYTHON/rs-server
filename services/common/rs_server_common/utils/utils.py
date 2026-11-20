@@ -31,6 +31,7 @@ import yaml
 from dateutil.parser import isoparse
 from eodag import EOProduct
 from fastapi import HTTPException, status
+from multiformats import multihash, varint
 from rs_server_common.footprint_facility import (
     check_raw_antimeridian_jump,
     rework_to_polygon_geometry,
@@ -617,6 +618,9 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                     break
 
             # Build odata property dictionary for the asset
+            checksum = asset_props.get("file:checksum")
+            if checksum is not None:
+                checksum = multihash_to_md5(checksum)
             odata_prop = {
                 "Name": feature["id"],
                 "ContentType": prop.get("type"),
@@ -631,7 +635,7 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                 "ContentLength": asset_props.get("file:size"),
                 "Checksum": {
                     "Algorithm": "MD5",
-                    "Value": asset_props.get("file:checksum"),
+                    "Value": checksum,
                     "ChecksumDate": prop.get("eopf:origin_datetime"),
                 },
                 "ProductionType": prop.get("processing:lineage", "systematic_production"),
@@ -642,3 +646,25 @@ def stac_to_odata(stac_params: dict) -> list[dict]:
                 odata_properties.append(odata_prop)
 
     return odata_properties
+
+
+def multihash_to_md5(hash_to_convert: str) -> str:
+    """
+    Convert a multihash to an MD5 hash.
+
+    Args:
+        hash_to_convert (str): The multihash to convert.
+
+    Returns:
+        str: The corresponding MD5 hash.
+
+    Raises:
+        ValueError: If the multihash does not use the MD5 algorithm.
+    """
+    raw = bytes.fromhex(hash_to_convert)
+
+    code, _, _ = varint.decode_raw(raw)
+    if code != multihash.get("md5").code:
+        raise ValueError("Invalid checksum algorithm")
+
+    return multihash.unwrap(raw).hex()

@@ -37,7 +37,8 @@ or by the processing flows, that search the products then call this service with
 
 The body of the `POST /processes/staging/execution` request contains:
 
-- `collection`: the catalog collection where the items are published. It is created if it doesn't exist.
+- `collection`: the catalog collection where the items are published. It must exist: the staging does not create
+  it, see [Create a collection](catalog.md#create-a-collection). Otherwise the job fails.
 - `items`: the items to stage, either:
     - `{"value": <STAC Feature or FeatureCollection>}`, e.g. the result of a search on the external data sources,
     - or `{"href": "<URL>"}`, a URL that returns a STAC FeatureCollection, e.g. a search URL of the CADIP service.

@@ -24,6 +24,53 @@ Changed
 
 None
 
+[1.0a16] - Sprint 42 - 2026-11-18
+=================================
+
+## Added
+
+RSPY-1025: Update S1-ARD processor to the new repository/version
+RSPY-1134: Convert S01x_ADF_CALIB aux file
+RSPY-1175: Route rs-dpr-service log forwarding to the correct service
+RSPY-1184: Drop Python 3.11 / Dask 2024 / CPMv2 dask clusters
+RSPY-1185: Migrate DPR Service to Python 3.13
+RSPY-1188: Support CPM "Fast_zarr" and obstore
+RSPY-1193: Migrate S1L0 processing to CPMv3
+RSPY-1201: Configure CPM V3 runners on RSPY
+RSPY-1202: Migrate CPM S3 Test Data from SDE to RSPY
+RSPY-1203: Define RSPY shared-Disk for CPM tests
+RSPY-1214: Fix CVE P2 on the Publication Service
+RSPY-1227: Add an asset with format ZARR.ZIP on the rs-catalog
+RSPY-1234: Systematic processing flow for S3OLCI1
+RSPY-1236: Use the Zarr library to support Zarr v2 and v3 across RS-PYTHON
+RSPY-1237: Update to stac-browser 5.2.0
+RSPY-1239: Add generated UUID in catalog items
+RSPY-1241: Provide pytest coverage for OLCI operational flows
+RSPY-1242: Store MD5 checksums
+RSPY-1244: Sprint 42 corrections of issues
+RSPY-1251: Add the CRISTAL mission and cristal-a satellite
+RSPY-1254: Update to Python 3.13.18
+RSPY-1255: Update to Wordpress 7.1.4 and disable XML-RPC-API on Publication Service
+RSPY-1263: Update to Prefect 3.9.1
+RSPY-1264: Deploy all Prefect automations in a single Ansible application
+RSPY-1268: Name Dask cluster pods after their type instead of a bare uuid
+RSPY-1270: Implement mitigation to avoid dask deadlock
+RSPY-1271: Remove automatic creation of processing collections, check them first
+RSPY-1273: Convert S1 SLC SAFE to ZARR in a format compatible with S1 ARD processor
+
+## Fixed
+
+RSPY-1209: Payload generator still have specific S1/S3 code ( 2 points )
+RSPY-1216: Wrong OData implementation for constellation/platform in rs-server-adgs/prip (5 pts)
+RSPY-1217: CQL2 IN operator does not work on all fields (including the prip id) (5 pts)
+RSPY-1151: [S3_L0](SRAL/SLSL) Missing product at session transition compared with legacy production (0 pt)
+RSPY-1152: [S3_L0](SRAL/SLSL) Incorrect relative orbit assignment for products compared with legacy production (0 pt)
+RSPY-1249: [RS-SERVER-CADIP] Missing raw displayed and staged from CADIP server ( 1 pt)
+RSPY-1250: Lost logs in live prefect UI logs window ( 5 pts )
+RSPY-1256: [stac-browser] Duplicate collection in the stac browser catalog ( 1 pt )
+RSPY-1262: Scheduled flows are not launched anymore with Prefect 3.8.7 (1 pt)
+RSPY-1269: [RS-SERVER-CATALOG] Unsupported geometry type: GeometryCollection (1 pt)
+
 [1.0a15] - Sprint 41 - 2026-10-21
 =================================
 

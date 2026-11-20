@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for utility funtions defined in utils.py."""
+"""Unit tests for utility functions defined in utils.py."""
 
+import hashlib
 from datetime import datetime
 
 import pytest
+from multiformats import multihash
 from rs_server_common.utils.utils import (
     _iter_external_id_parts,
     apply_external_ids,
     check_and_fix_timerange,
     find_product_type,
+    multihash_to_md5,
     normalize_external_ids,
     repair_and_orient_geojson_geometry,
     stac_to_odata,
@@ -400,6 +403,11 @@ def test_stac_to_odata_single_asset():
     assert not stac_to_odata(stac_params_1)
 
     # Test with real stac data
+
+    with open(__file__, "rb") as f:
+        digest = hashlib.file_digest(f, "md5").digest()
+    mh = multihash.wrap(digest, "md5").hex()
+
     stac_params_2: dict = {
         "features": [
             {
@@ -422,7 +430,7 @@ def test_stac_to_odata_single_asset():
                 "assets": {
                     "data": {
                         "file:size": 1024,
-                        "file:checksum": "abc123",
+                        "file:checksum": mh,
                     },
                 },
             },
@@ -446,9 +454,27 @@ def test_stac_to_odata_single_asset():
         "ContentLength": 1024,
         "Checksum": {
             "Algorithm": "MD5",
-            "Value": "abc123",
+            "Value": digest.hex(),
             "ChecksumDate": "2025-01-01T10:00:00Z",
         },
         "ProductionType": "operational",
         "Id": "12345678-1234-5678-1234-567812345678",
     }
+
+
+def test_mh_to_md5():
+    """Test the conversion of a multihash to an MD5 digest."""
+    # Test convert from multihash md5 to md5
+    with open(__file__, "rb") as f:
+        digest = hashlib.file_digest(f, "md5").digest()
+
+    digest = bytes.fromhex(digest.hex())
+    mh = multihash.wrap(digest, "md5").hex()
+    assert multihash_to_md5(mh) == digest.hex()
+
+    # Test hash from multihash sha-256 (should fail)
+    with open(__file__, "rb") as f:
+        digest = hashlib.file_digest(f, "sha2-256").digest()
+
+    with pytest.raises(ValueError):
+        multihash_to_md5(multihash.wrap(digest, "sha2-256").hex())

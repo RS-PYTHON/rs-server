@@ -22,13 +22,15 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from datetime import datetime
-from json import JSONDecodeError, dumps
+from json import JSONDecodeError
 from queue import Empty
 from urllib.parse import urlparse
 
 import boto3
 import botocore
+import httpx
 import pygeoapi.process.manager.postgresql as postgresql_manager
 import requests
 from dask.distributed import (
@@ -73,17 +75,20 @@ from rs_server_staging.processors.authentication import (
 from rs_server_staging.processors.tasks import prepare_streaming_tasks, streaming_task
 from rs_server_staging.utils.asset_info import AssetInfo
 from rs_server_staging.utils.rspy_models import Feature, FeatureCollectionModel
-from rs_server_staging.utils.tools import get_minimal_collection_body
 from starlette.requests import Request
 from starlette.status import (
     HTTP_200_OK,
-    HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
 )
 
 # Override function to return table model because the one from pygeoapi has a wrong field name
 postgresql_manager.get_table_model = rspy_get_table_model
+
+
+def _describe_exception(exc: Exception) -> str:
+    """Return the exception message, or its type name when the message is empty (e.g. httpx.ReadTimeout)."""
+    return str(exc) or type(exc).__name__
 
 
 class Staging(
@@ -179,6 +184,10 @@ class Staging(
         self.catalog_publish_timeout: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_TIMEOUT", "120"))
         self.catalog_publish_max_retries: int = int(os.environ.get("RSPY_CATALOG_PUBLISH_MAX_RETRIES", "3"))
         self.catalog_publish_retry_delay: float = float(os.environ.get("RSPY_CATALOG_PUBLISH_RETRY_DELAY", "30"))
+        # Catalog checks done before staging (collection check, search of existing items)
+        self.catalog_check_timeout: float = float(os.environ.get("RSPY_CATALOG_CHECK_TIMEOUT", "3"))
+        self.catalog_check_max_retries: int = int(os.environ.get("RSPY_CATALOG_CHECK_MAX_RETRIES", "3"))
+        self.catalog_check_retry_delay: float = float(os.environ.get("RSPY_CATALOG_CHECK_RETRY_DELAY", "3"))
         self.staging_user: str = "staging_user"
         #################
         # Database section
@@ -511,24 +520,82 @@ class Staging(
         self.db_process_manager.update_job(self.job_id, update_data)
         return self._get_execute_result()
 
-    def check_if_collection_exists(self, catalog_collection):
+    def _catalog_check_retry_warning(self, description: str, attempt: int, exc: Exception):
+        """Log a warning before retrying a catalog check request that timed out."""
+        self.logger.warning(
+            "Timeout while %s for job %s (%s). Retry %d/%d in %ss",
+            description,
+            self.job_id,
+            _describe_exception(exc),
+            attempt + 1,
+            self.catalog_check_max_retries,
+            self.catalog_check_retry_delay,
+        )
+
+    def _sync_catalog_check_request(
+        self,
+        request_method: Callable[..., requests.Response],
+        url: str,
+        description: str,
+        **kwargs,
+    ) -> requests.Response:
         """
-        Checks if a catalog collection exists in the remote catalog service.
-        If the collection does not exist (HTTP 404), attempts to create it.
+        Send a synchronous request to the catalog, retrying it when it times out.
+
+        Raises:
+            requests.exceptions.Timeout: if the request still times out after all retries.
+            RequestException: for any other request error (not retried).
+        """
+        for attempt in range(self.catalog_check_max_retries + 1):
+            try:
+                return request_method(url, timeout=self.catalog_check_timeout, **kwargs)
+            except requests.exceptions.Timeout as exc:
+                if attempt >= self.catalog_check_max_retries:
+                    raise
+                self._catalog_check_retry_warning(description, attempt, exc)
+                time.sleep(self.catalog_check_retry_delay)
+        raise RuntimeError("unreachable")  # pragma: no cover
+
+    async def _async_catalog_check_get(self, url: str, description: str, **kwargs) -> httpx.Response:
+        """
+        Send an asynchronous GET request to the catalog, retrying it when it times out.
+
+        Raises:
+            httpx.TimeoutException: if the request still times out after all retries.
+            httpx.HTTPError: for any other request error (not retried).
+        """
+        for attempt in range(self.catalog_check_max_retries + 1):
+            try:
+                return await common_settings.http_client().get(url, timeout=self.catalog_check_timeout, **kwargs)
+            except httpx.TimeoutException as exc:
+                if attempt >= self.catalog_check_max_retries:
+                    raise
+                self._catalog_check_retry_warning(description, attempt, exc)
+                await asyncio.sleep(self.catalog_check_retry_delay)
+        raise RuntimeError("unreachable")  # pragma: no cover
+
+    def check_if_collection_exists(self, catalog_collection: str) -> bool:
+        """
+        Checks that the target catalog collection exists in the remote catalog service.
+        The staging does not create the collection: it is the responsibility of the caller.
 
         Args:
-            catalog_collection (str): The identifier of the catalog collection to check or create.
+            catalog_collection (str): The identifier of the catalog collection to check.
 
         Returns:
-            bool: True if the collection exists or was successfully created; False otherwise.
+            bool: True if the collection exists; False otherwise (the job is then marked as failed).
         """
         collection_url = f"{self.catalog_url}/catalog/collections/{catalog_collection}"
         self.logger.info("Checking catalog collection %s for job %s", catalog_collection, self.job_id)
         self.logger.debug("Catalog collection check URL for job %s: %s", self.job_id, collection_url)
 
         try:
-            # Check if collection exists in catalog
-            response = requests.get(collection_url, headers=self.auth_headers, timeout=5)
+            response = self._sync_catalog_check_request(
+                requests.get,
+                collection_url,
+                f"checking catalog collection {catalog_collection}",
+                headers=self.auth_headers,
+            )
             self.logger.debug(
                 "Catalog collection check response for job %s collection %s: status=%s",
                 self.job_id,
@@ -537,47 +604,33 @@ class Staging(
             )
 
             if response.status_code == HTTP_200_OK:
-                self.logger.info("Catalog collection %s already exists for job %s", catalog_collection, self.job_id)
-                return True  # Collection exists
+                self.logger.info("Catalog collection %s exists for job %s", catalog_collection, self.job_id)
+                return True
 
             if response.status_code == HTTP_404_NOT_FOUND:
-                # If status is not found, create collection body and try to post it.
-                self.logger.info(
-                    "Catalog collection %s not found; creating it for job %s",
-                    catalog_collection,
-                    self.job_id,
+                self.log_job_execution(
+                    JobStatus.failed,
+                    0,
+                    f"Catalog collection '{catalog_collection}' does not exist: "
+                    "it must be created before staging items into it",
                 )
-                minimal_collection = get_minimal_collection_body(catalog_collection)
-                self.logger.debug("Minimal collection body for job %s: %s", self.job_id, minimal_collection)
-                create_response = requests.post(
-                    f"{self.catalog_url}/catalog/collections",
-                    headers={
-                        **self.auth_headers,
-                        "Content-Type": "application/json",
-                    },
-                    data=dumps(minimal_collection),
-                    timeout=5,
-                )
-                create_response.raise_for_status()
-                self.logger.info(
-                    "Catalog collection %s creation finished for job %s with status %s",
-                    catalog_collection,
-                    self.job_id,
-                    create_response.status_code,
-                )
-                return create_response.status_code == HTTP_201_CREATED
+                return False
 
             response.raise_for_status()
 
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
             # If anything fails, log failure and exit.
             self.logger.exception(
-                "Catalog collection check/create failed for job %s collection %s: %s",
+                "Catalog collection check failed for job %s collection %s: %s",
                 self.job_id,
                 catalog_collection,
                 exc,
             )
-            self.log_job_execution(JobStatus.failed, 0, f"Failed to create catalog collection: {exc}")
+            self.log_job_execution(
+                JobStatus.failed,
+                0,
+                f"Failed to check catalog collection: {_describe_exception(exc)}",
+            )
         return False
 
     async def check_catalog(self, catalog_collection: str, features: list[Feature]) -> bool:
@@ -593,7 +646,7 @@ class Staging(
         """
         exists = await asyncio.to_thread(self.check_if_collection_exists, catalog_collection)
         if not exists:
-            # Stop catalog check if staging is unable to create the collection
+            # Stop catalog check if the collection does not exist
             return False
         # Set the filter containing the item ids to be inserted
         # Get each feature id and create /catalog/search argument
@@ -620,11 +673,11 @@ class Staging(
         )
 
         try:
-            response = await common_settings.http_client().get(
+            response = await self._async_catalog_check_get(
                 search_url,
+                f"searching catalog collection {catalog_collection}",
                 headers=self.auth_headers,
                 params=filter_object,
-                timeout=5,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
             # check the response type
@@ -663,9 +716,9 @@ class Staging(
                 len(self.expired_items),
             )
             return True
-        except (RequestException, JSONDecodeError, RuntimeError) as exc:
-            self.logger.exception("Catalog search failed for job %s: %s", self.job_id, exc)
-            self.log_job_execution(JobStatus.failed, 0, f"Failed to search catalog: {exc}")
+        except (httpx.HTTPError, RequestException, JSONDecodeError, RuntimeError) as exc:
+            self.logger.exception("Catalog search failed for job %s: %s", self.job_id, _describe_exception(exc))
+            self.log_job_execution(JobStatus.failed, 0, f"Failed to search catalog: {_describe_exception(exc)}")
             return False
 
     def create_streaming_list(self, features: list[Feature], catalog_response: dict):

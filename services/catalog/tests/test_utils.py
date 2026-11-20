@@ -15,6 +15,7 @@
 """Unit tests for utils module."""
 
 import os
+from io import BytesIO
 from typing import Any
 
 import pytest
@@ -486,10 +487,18 @@ class TestGetS3Handler:
         # Make sure that item can't be published
         assert s3_manager.check_if_item_can_be_published(content) is False
 
-    def test_update_assets_checksums(self, mocker, s3_manager):
-        """
-        Test that S3 object checksum attributes are added to each STAC asset.
-        """
+    @pytest.mark.parametrize(
+        ("md5_checksum", "expected_checksum", "uses_object"),
+        [
+            (None, "d50110900150983cd24fb0d6963f7d28e17f72", True),
+            ("", "d50110900150983cd24fb0d6963f7d28e17f72", True),
+            ("invalid-base64", "d50110900150983cd24fb0d6963f7d28e17f72", True),
+            ("YWJj", "d50110900150983cd24fb0d6963f7d28e17f72", True),
+            ("1B2M2Y8AsgTpgAmY7PhCfg==", "d50110d41d8cd98f00b204e9800998ecf8427e", False),
+        ],
+    )
+    def test_update_assets_checksums(self, mocker, s3_manager, md5_checksum, expected_checksum, uses_object):
+        """Use a valid provider MD5 or calculate it from the object, including when metadata is missing."""
         content = {
             "collection": "test_collection",
             "properties": {"owner": "test_user"},
@@ -503,25 +512,41 @@ class TestGetS3Handler:
         mocker.patch.object(
             s3_manager.s3_handler,
             "get_object_attributes",
-            side_effect=[
-                {"Checksum": {"ChecksumSHA256": "checksum-1"}},
-                {"Checksum": {"ChecksumCRC32": "checksum-2"}},
-            ],
+            side_effect=[{"Checksum": {"ChecksumSHA256": "checksum-1", "ChecksumMD5": md5_checksum}}, {}],
         )
+        bodies = []
+
+        def get_object(**kwargs):
+            """
+            Fills the body of an asset with:
+                - b"abc" for the first asset
+                - b"" (empty) for the second
+
+            The method `update_assets_checksums` requires a body to compute the checksums.
+            """
+            body = BytesIO(b"abc" if kwargs["Key"] == "file1" else b"")
+            bodies.append(body)
+            return {"Body": body}
+
+        s3_client = mocker.patch.object(s3_manager.s3_handler, "s3_client")
+        s3_client.get_object.side_effect = get_object
 
         result = s3_manager.update_assets_checksums(content)
 
-        assert result["assets"]["asset1"]["file:checksum"] == "checksum-1"
-        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
+        assert result["assets"]["asset1"]["file:checksum"] == expected_checksum
+        assert result["assets"]["asset2"]["file:checksum"] == "d50110d41d8cd98f00b204e9800998ecf8427e"
         assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "file1"),
             mocker.call("rspython-ops-catalog-all-production", "file2"),
         ]
+        expected_calls = [mocker.call(Bucket="rspython-ops-catalog-all-production", Key="file2")]
+        if uses_object:
+            expected_calls.insert(0, mocker.call(Bucket="rspython-ops-catalog-all-production", Key="file1"))
+        assert s3_client.get_object.call_args_list == expected_calls
+        assert all(body.closed for body in bodies)
 
     def test_update_assets_checksums_skips_asset_without_href(self, mocker, s3_manager):
-        """
-        Test that assets without href are skipped when adding checksum attributes.
-        """
+        """Skip assets without an href and compute checksums for other assets."""
         content = {
             "collection": "test_collection",
             "properties": {"owner": "test_user"},
@@ -530,54 +555,51 @@ class TestGetS3Handler:
                 "asset2": {"href": "s3://rspython-ops-catalog-all-production/file2"},
             },
         }
-
         s3_manager.is_catalog_local_mode = False
-        mocker.patch.object(
-            s3_manager.s3_handler,
-            "get_object_attributes",
-            return_value={"Checksum": {"ChecksumCRC32": "checksum-2"}},
-        )
+        mocker.patch.object(s3_manager.s3_handler, "get_object_attributes", return_value={})
+        s3_client = mocker.patch.object(s3_manager.s3_handler, "s3_client")
+        s3_client.get_object.return_value = {"Body": BytesIO(b"abc")}
 
         result = s3_manager.update_assets_checksums(content)
 
         assert "file:checksum" not in result["assets"]["asset1"]
-        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
+        assert result["assets"]["asset2"]["file:checksum"] == "d50110900150983cd24fb0d6963f7d28e17f72"
         s3_manager.s3_handler.get_object_attributes.assert_called_once_with(
             "rspython-ops-catalog-all-production",
             "file2",
         )
 
-    def test_update_assets_checksums_skips_asset_when_checksum_lookup_fails(self, mocker, s3_manager):
-        """
-        Test that checksum lookup errors do not stop checksum updates for other assets.
-        """
+    def test_update_assets_checksums_when_checksum_lookup_fails(self, mocker, s3_manager):
+        """Compute the checksum when the metadata lookup fails."""
         content = {
             "collection": "test_collection",
             "properties": {"owner": "test_user"},
-            "assets": {
-                "asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"},
-                "asset2": {"href": "s3://rspython-ops-catalog-all-production/file2"},
-            },
+            "assets": {"asset1": {"href": "s3://rspython-ops-catalog-all-production/file1"}},
         }
-
         s3_manager.is_catalog_local_mode = False
-        mocker.patch.object(
-            s3_manager.s3_handler,
-            "get_object_attributes",
-            side_effect=[
-                RuntimeError("checksum unavailable"),
-                {"Checksum": {"ChecksumCRC32": "checksum-2"}},
-            ],
-        )
+        mocker.patch.object(s3_manager.s3_handler, "get_object_attributes", side_effect=RuntimeError("unavailable"))
+        s3_client = mocker.patch.object(s3_manager.s3_handler, "s3_client")
+        s3_client.get_object.return_value = {"Body": BytesIO(b"abc")}
 
         result = s3_manager.update_assets_checksums(content)
 
-        assert "file:checksum" not in result["assets"]["asset1"]
-        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
-        assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
-            mocker.call("rspython-ops-catalog-all-production", "file1"),
-            mocker.call("rspython-ops-catalog-all-production", "file2"),
-        ]
+        assert result["assets"]["asset1"]["file:checksum"] == "d50110900150983cd24fb0d6963f7d28e17f72"
+        s3_client.get_object.assert_called_once_with(Bucket="rspython-ops-catalog-all-production", Key="file1")
+
+    def test_update_assets_checksums_fails_when_object_cannot_be_read(self, mocker, s3_manager):
+        """Do not silently retain an old checksum when the object cannot be read."""
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {"asset1": {"href": "s3://rspython-ops-catalog-all-production/file1", "file:checksum": "old"}},
+        }
+        s3_manager.is_catalog_local_mode = False
+        mocker.patch.object(s3_manager.s3_handler, "get_object_attributes", return_value={})
+        s3_client = mocker.patch.object(s3_manager.s3_handler, "s3_client")
+        s3_client.get_object.side_effect = OSError("read failed")
+
+        with pytest.raises(HTTPException, match="Failed to compute MD5 checksum for asset asset1"):
+            s3_manager.update_assets_checksums(content)
 
     def test_update_patch_assets_local_mode(self, mocker, s3_manager):
         """Test that PATCH asset enrichment is skipped in local catalog mode."""
@@ -681,16 +703,19 @@ class TestGetS3Handler:
             ],
         )
 
+        s3_client = mocker.patch.object(s3_manager.s3_handler, "s3_client")
+        s3_client.get_object.side_effect = [{"Body": BytesIO(b"abc")}, {"Body": BytesIO(b"")}]
+
         result = s3_manager.update_patch_assets(item, assets)
 
         assert result is assets
         assert result["asset1"]["file:size"] == 123
         assert result["asset1"]["file:local_path"] == "product/asset1.tif"
-        assert result["asset1"]["file:checksum"] == "checksum-1"
+        assert result["asset1"]["file:checksum"] == "d50110900150983cd24fb0d6963f7d28e17f72"
         # Pre-existing file:size is preserved despite the S3 lookup returning a different size.
         assert result["asset2"]["file:size"] == 999
         assert result["asset2"]["file:local_path"] == "product/asset2.tif"
-        assert result["asset2"]["file:checksum"] == "checksum-2"
+        assert result["asset2"]["file:checksum"] == "d50110d41d8cd98f00b204e9800998ecf8427e"
         assert s3_manager.s3_handler.check_s3_key_on_bucket.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "product/asset1.tif"),
             mocker.call("rspython-ops-catalog-all-production", "product/asset2.tif"),

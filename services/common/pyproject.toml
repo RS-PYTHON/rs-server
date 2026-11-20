@@ -90,6 +90,7 @@ antimeridian = "^0.4.7"
 # Requirement of jsonpath-ng through eodag, pinpoined to last version without CVE
 # See https://data.safetycli.com/v/SFTY-20260120-09218/eda
 ply = "3.10"
+multiformats = "^0.3.1.post4"
 
 [tool.poetry.group.dev]
 optional = true
