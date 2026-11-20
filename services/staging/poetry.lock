@@ -420,14 +420,14 @@ files = [
 
 [[package]]
 name = "authlib"
-version = "1.9.9"
+version = "1.9.10"
 description = "The ultimate Python library in building OAuth and OpenID Connect servers and clients."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "authlib-1.9.9-py2.py3-none-any.whl", hash = "sha256:0199649865fefb4304fc57683eaebb15614523073e41e09d98c72f3268ce5cbc"},
-    {file = "authlib-1.9.9.tar.gz", hash = "sha256:cca3dffa51c8d80d6df19aee2279e47219dc996f5a527c06ac2e39d0757c99ef"},
+    {file = "authlib-1.9.10-py2.py3-none-any.whl", hash = "sha256:c62d10e1b23945c6d4c578a16170bfefe4879bd23d4be62edea494993dce70aa"},
+    {file = "authlib-1.9.10.tar.gz", hash = "sha256:f7453c4a3f5975f94cc55223c4d48ff9c7d8d3b4e3d727ed2549edaeb9b85d50"},
 ]
 
 [package.dependencies]
@@ -482,18 +482,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.44.6"
+version = "1.44.7"
 description = "The AWS SDK for Python (Boto3)"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "boto3-1.44.6-py3-none-any.whl", hash = "sha256:7d5f43c824bdfcf203fd7c115cfb7bd4283f63caac01c731d8a667f8da096d52"},
-    {file = "boto3-1.44.6.tar.gz", hash = "sha256:af75aa81455f1c4dbbdd9bbd14c6ee3e66fb827430d1615014d4c45878e79c49"},
+    {file = "boto3-1.44.7-py3-none-any.whl", hash = "sha256:15fac273416d37cd5e3f0c02b33fd8d7f27d3e64c5f64b911f8b953772302609"},
+    {file = "boto3-1.44.7.tar.gz", hash = "sha256:cc19922a2db90ac98f259b5290e08fcf7143a314eb6b2e430afec26a5d1f4e10"},
 ]
 
 [package.dependencies]
-botocore = ">=1.44.6,<1.45.0"
+botocore = ">=1.44.7,<1.45.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.19.0,<0.20.0"
 
@@ -502,14 +502,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.44.6"
+version = "1.44.7"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "botocore-1.44.6-py3-none-any.whl", hash = "sha256:757c7f33d006e8a3c873e1fed71611baaaa2ee4d72e6f830ec0423d02ec5de2d"},
-    {file = "botocore-1.44.6.tar.gz", hash = "sha256:9deb4d9479d63aabf8fbd9169800821c1f47be77352d8b9b3d020de9a824794a"},
+    {file = "botocore-1.44.7-py3-none-any.whl", hash = "sha256:56ec7cf3a7c0012c7e105c8f498c67077afa722df916dbdbe667b584fe7e5f99"},
+    {file = "botocore-1.44.7.tar.gz", hash = "sha256:3cbf1d9f50b5f1f95b715e570bc03b8c7c94b86777f96dd647321134f57290b2"},
 ]
 
 [package.dependencies]
@@ -2256,14 +2256,14 @@ files = [
 
 [[package]]
 name = "jsonpatch"
-version = "1.47"
+version = "1.48"
 description = "Apply JSON-Patches (RFC 6902) "
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "jsonpatch-1.47-py3-none-any.whl", hash = "sha256:c9ba6de59c481bf2be05041514ecb0d97f994aa645c4e00831805dbe2281811a"},
-    {file = "jsonpatch-1.47.tar.gz", hash = "sha256:5ed650b7517789e0f43428aa7b09442c0b90de0a0fd17a53fd0ebf55205c601e"},
+    {file = "jsonpatch-1.48-py3-none-any.whl", hash = "sha256:389f25f006940b7bc939c33ca0f6cf8875527dc70599520652a269040ce40b63"},
+    {file = "jsonpatch-1.48.tar.gz", hash = "sha256:81e9a03754137a1201d9b534ddd599cc0eb5983fe941bce238dc8a76e442bb94"},
 ]
 
 [package.dependencies]
@@ -3643,14 +3643,14 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "4.14.7"
+version = "4.14.8"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "platformdirs-4.14.7-py3-none-any.whl", hash = "sha256:391513b74707c42335fff3ea17eaac657a7ee9ffcadd809634d34ea594d0122c"},
-    {file = "platformdirs-4.14.7.tar.gz", hash = "sha256:5472257c1cf97a14658af52997011c7e59e4aebf3a24950b973c11b579e1b074"},
+    {file = "platformdirs-4.14.8-py3-none-any.whl", hash = "sha256:1e34af590de4d978631b751eb2202f2fee4497537a17c1720b12fcf57b331392"},
+    {file = "platformdirs-4.14.8.tar.gz", hash = "sha256:96893d686e84e9e6f358a9ea41a8de544df66dbf2ba6cda250e7dc73acf85b9b"},
 ]
 
 [[package]]
@@ -4365,14 +4365,14 @@ stubs = ["pyshp-stubs"]
 
 [[package]]
 name = "pystac"
-version = "1.16.0"
+version = "1.16.1"
 description = "Python library for working with the SpatioTemporal Asset Catalog (STAC) specification"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "pystac-1.16.0-py3-none-any.whl", hash = "sha256:064d4ce15d0bde404b2c869ec0684d2d896296f848a6e577fafbb6a6fee90b62"},
-    {file = "pystac-1.16.0.tar.gz", hash = "sha256:7cf58fee25d3cf640d79c11f5dc750d8d2552193c4f83c86179efd997a393ea1"},
+    {file = "pystac-1.16.1-py3-none-any.whl", hash = "sha256:8ff7c1311c9e46b92c25d984e9166c2cb445b304712ab5c5f0615d830c8167fb"},
+    {file = "pystac-1.16.1.tar.gz", hash = "sha256:25126c9c7e78f44a3f4b5f61ec0dacf35ae0c2dc320412483701d0501793270b"},
 ]
 
 [package.dependencies]
@@ -4408,14 +4408,14 @@ validation = ["jsonschema (>=4.18,<5.0)"]
 
 [[package]]
 name = "pystac-core"
-version = "1.16.0"
+version = "1.16.1"
 description = "Core functionality for PySTAC without extensions. Most users will want to use pystac, not this package"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "pystac_core-1.16.0-py3-none-any.whl", hash = "sha256:141f42acb6469018a2c74a975b9d589bb5a6c354c8a0088f1de2adb55a200ea3"},
-    {file = "pystac_core-1.16.0.tar.gz", hash = "sha256:98e58f7b4fb164251a8442a5cf2e04cb9859eaf00e203d2c1f333bd63082880e"},
+    {file = "pystac_core-1.16.1-py3-none-any.whl", hash = "sha256:a194274553dc2d20c28998473b7635557ad4b7a799b7a5315484467bf4177b02"},
+    {file = "pystac_core-1.16.1.tar.gz", hash = "sha256:a55f135b535e2fc154981fd73ed407329cc24ee584e768f840036383c9b9b113"},
 ]
 
 [package.dependencies]
@@ -5781,14 +5781,14 @@ stac-fastapi-types = ">=7.0,<8.0"
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "7.2.2"
+version = "7.3.0"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "stac_fastapi_pgstac-7.2.2-py3-none-any.whl", hash = "sha256:cdc12bdfa143b54dbe5552e86b7c4ab96a626b1dba2b52bcef01bbb099ab6d08"},
-    {file = "stac_fastapi_pgstac-7.2.2.tar.gz", hash = "sha256:ae4c071730c25ff453d7a29b5f38ad8923b9bb013a6c362fa261445ea1e901e4"},
+    {file = "stac_fastapi_pgstac-7.3.0-py3-none-any.whl", hash = "sha256:96a299cf9557655c0e154052df40b5b873cb901a0af94363196e2ba86b21a4d4"},
+    {file = "stac_fastapi_pgstac-7.3.0.tar.gz", hash = "sha256:10627853782272506fc5bc66705eb8cf6fa1d969f91da88028c16fdd079fea9a"},
 ]
 
 [package.dependencies]
@@ -5809,7 +5809,7 @@ stac-fastapi-extensions = ">=7.0,<8.0"
 stac-fastapi-types = ">=7.0,<8.0"
 
 [package.extras]
-catalogs = ["stac-fastapi-catalogs-extension (>=1.0.0,<2.0)"]
+catalogs = ["stac-fastapi-catalogs-extension (>=1.1.0,<2.0)"]
 metrics = ["stac-fastapi-api[metrics]"]
 server = ["uvicorn[standard] (==0.38.0)"]
 validation = ["stac-pydantic[validation]"]
