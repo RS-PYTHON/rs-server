@@ -46,7 +46,6 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
-from urllib3.exceptions import HTTPWarning
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 # Max number of parallel threads when checking asset existence on S3 during publication
@@ -475,7 +474,7 @@ class S3Manager:
                     botocore.exceptions.ClientError,
                     OSError,
                     RuntimeError,
-                ) as _:
+                ):
                     logger.warning("Failed to compute MD5 checksum for asset %s", asset_name)
 
         return content
