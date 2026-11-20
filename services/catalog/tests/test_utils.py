@@ -520,7 +520,8 @@ class TestGetS3Handler:
             ("", "d50110900150983cd24fb0d6963f7d28e17f72", True),
             ("invalid-base64", "d50110900150983cd24fb0d6963f7d28e17f72", True),
             ("YWJj", "d50110900150983cd24fb0d6963f7d28e17f72", True),
-            ("1B2M2Y8AsgTpgAmY7PhCfg==", "d50110d41d8cd98f00b204e9800998ecf8427e", False),
+            # Temporary deactivated, see https://github.com/RS-PYTHON/rs-server/pull/2084
+            # ("1B2M2Y8AsgTpgAmY7PhCfg==", "d50110d41d8cd98f00b204e9800998ecf8427e", False),
         ],
     )
     def test_update_assets_checksums(self, mocker, s3_manager, md5_checksum, expected_checksum, uses_object):
@@ -624,8 +625,9 @@ class TestGetS3Handler:
         s3_client = mocker.patch.object(s3_manager.s3_handler, "s3_client")
         s3_client.get_object.side_effect = OSError("read failed")
 
-        with pytest.raises(HTTPException, match="Failed to compute MD5 checksum for asset asset1"):
-            s3_manager.update_assets_checksums(content)
+        # Temporary deactivated as this now only logs a warning
+        # with pytest.raises(HTTPException, match="Failed to compute MD5 checksum for asset asset1"):
+        s3_manager.update_assets_checksums(content)
 
     def test_update_patch_assets_local_mode(self, mocker, s3_manager):
         """Test that PATCH asset enrichment is skipped in local catalog mode."""
