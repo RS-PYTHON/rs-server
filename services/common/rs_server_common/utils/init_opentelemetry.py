@@ -190,7 +190,7 @@ def init_traces(app: fastapi.FastAPI | None, service_name: str):
 
     # Run the opentelemetry auto instrumentation on all packages under opentelemetry.instrumentation.*
     # This is what the command line "opentelemetry-instrumentation" would do.
-    # NOTE: we need 'poetry run opentelemetry-bootstrap -a install' to install these packages.
+    # NOTE: we need 'uv pip install $(uv run opentelemetry-bootstrap -a requirements)' to install these packages.
     try:
         auto_instrumentation.initialize()
     finally:

@@ -33,16 +33,16 @@ RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
-# We copy them into a /tmp directory that we can clean at the end.
-RUN mkdir -p /tmp/whl
-ADD ./*.whl /tmp/whl
+# We copy them into a /tmp directory that we can clean at the end, with the exact dependency versions
+# from the uv.lock file, exported by the CI into constraints.txt
+COPY ./*.whl ./constraints.txt /tmp/whl/
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
-RUN cd /tmp/whl && pip install --no-cache-dir \
+RUN pip install --no-cache-dir --only-binary=:all: --no-binary=ply -c /tmp/whl/constraints.txt \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    rs_server_common-*.whl rs_server_adgs-*.whl && \
+    /tmp/whl/rs_server_common-*.whl /tmp/whl/rs_server_adgs-*.whl && \
     layer-cleanup.sh
 
 # Install opentelemetry instrumentation packages for dependencies

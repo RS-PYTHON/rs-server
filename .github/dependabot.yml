@@ -23,20 +23,16 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-  - package-ecosystem: "pip"
-    directories:
-      - "/"
-      - "/services/adgs"
-      - "/services/prip"
-      - "/services/cadip"
-      - "/services/catalog"
-      - "/services/common"
-      - "/services/frontend"
-      - "/services/staging"
-      - "/services/osam"
+
+  # A single uv.lock file for all the services of the uv workspace (see pyproject.toml).
+  # Each dependency update creates a single pull request that updates pyproject.toml and uv.lock,
+  # no custom script or workflow is needed.
+  - package-ecosystem: "uv"
+    directory: "/"
     schedule:
       interval: "daily"
     ignore:
-      - dependency-name: "dask:*"
-      - dependency-name: "dask-gateway:*"
-      - dependency-name: "distributed:*"
+      # The dask versions must be the same as in the dask cluster images, see rs-workflow-env
+      - dependency-name: "dask"
+      - dependency-name: "dask-gateway"
+      - dependency-name: "distributed"
