@@ -14,6 +14,7 @@
 
 """Module to process the Requests sent by users to the Catalog before routing them to stac-fastapi."""
 
+import asyncio
 import copy
 import getpass
 import json
@@ -524,7 +525,7 @@ field is not permitted also."
                 # Keep ESA behavior (accept null geometry+bbox) while ensuring pgstac persistence compatibility.
                 content = enforce_pgstac_defaults_for_null_geometry(content)
 
-                if not self.s3_manager(request).check_if_item_can_be_published(content):
+                if not await asyncio.to_thread(self.s3_manager(request).check_if_item_can_be_published, content):
                     logger.debug("The item cannot be published because some of its assets are not yet available in S3")
                     raise HTTPException(
                         status_code=HTTP_400_BAD_REQUEST,
@@ -532,7 +533,7 @@ field is not permitted also."
                     )
                 logger.debug("All assets of the item are available in S3, the item can be published or updated")
                 logger.info("All assets are available for catalog item %s", content.get("id"))
-                content = self.s3_manager(request).update_assets_checksums(content)
+                content = await asyncio.to_thread(self.s3_manager(request).update_assets_checksums, content)
                 if content:
                     if request.method == "POST":
                         # Add UUID to the item's properties
@@ -921,7 +922,11 @@ collection owned by the '{self.request_ids['owner_id']}' user",
 
             if is_item and isinstance(content.get("assets"), dict):
                 # Validate and enrich only assets explicitly present in this PATCH.
-                content["assets"] = self.s3_manager(request).update_patch_assets(item, content["assets"])
+                content["assets"] = await asyncio.to_thread(
+                    self.s3_manager(request).update_patch_assets,
+                    item,
+                    content["assets"],
+                )
 
             # Keep the existing UUID when externalIds are patched.
             if is_item and "properties" in content and "externalIds" in content["properties"]:
