@@ -38,14 +38,14 @@ files = [
 
 [[package]]
 name = "antimeridian"
-version = "0.4.9"
+version = "0.5.0"
 description = "Correct GeoJSON geometries that cross the 180th meridian"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "antimeridian-0.4.9-py3-none-any.whl", hash = "sha256:0f6a0e875264422de4809bc04aefaec449d3957a8082b05ea648dd5d3017b7a1"},
-    {file = "antimeridian-0.4.9.tar.gz", hash = "sha256:7ac3799ab74613d87425b92e09a098a8eb71998bbe33d02d17302c566fd31064"},
+    {file = "antimeridian-0.5.0-py3-none-any.whl", hash = "sha256:a967803b8e4549a923a7a9182ddd77dfb06a28d77007917fe54dc119b307bd32"},
+    {file = "antimeridian-0.5.0.tar.gz", hash = "sha256:41bdfb77ae04660657906c27bcbbe3b94f302358817e77a51f9a6657e54ee1b9"},
 ]
 
 [package.dependencies]
@@ -4189,4 +4189,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "916c2f3a05df98eccb8943fb418c660e75e1086c792778945fc94e6506d1b766"
+content-hash = "19defe32fa8db81933200a52b16bbacf039969235add14be5dea1ceceda2b306"
