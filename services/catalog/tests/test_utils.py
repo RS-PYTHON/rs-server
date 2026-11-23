@@ -538,7 +538,10 @@ class TestGetS3Handler:
         mocker.patch.object(
             s3_manager.s3_handler,
             "get_object_attributes",
-            side_effect=[{"Checksum": {"ChecksumSHA256": "checksum-1", "ChecksumMD5": md5_checksum}}, {}],
+            # Assets are processed in parallel, so the answer must depend on the key, not on the call order.
+            side_effect=lambda bucket, key: (
+                {"Checksum": {"ChecksumSHA256": "checksum-1", "ChecksumMD5": md5_checksum}} if key == "file1" else {}
+            ),
         )
         bodies = []
 
@@ -561,14 +564,18 @@ class TestGetS3Handler:
 
         assert result["assets"]["asset1"]["file:checksum"] == expected_checksum
         assert result["assets"]["asset2"]["file:checksum"] == "d50110d41d8cd98f00b204e9800998ecf8427e"
-        assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
-            mocker.call("rspython-ops-catalog-all-production", "file1"),
-            mocker.call("rspython-ops-catalog-all-production", "file2"),
-        ]
+        s3_manager.s3_handler.get_object_attributes.assert_has_calls(
+            [
+                mocker.call("rspython-ops-catalog-all-production", "file1"),
+                mocker.call("rspython-ops-catalog-all-production", "file2"),
+            ],
+            any_order=True,
+        )
         expected_calls = [mocker.call(Bucket="rspython-ops-catalog-all-production", Key="file2")]
         if uses_object:
-            expected_calls.insert(0, mocker.call(Bucket="rspython-ops-catalog-all-production", Key="file1"))
-        assert s3_client.get_object.call_args_list == expected_calls
+            expected_calls.append(mocker.call(Bucket="rspython-ops-catalog-all-production", Key="file1"))
+        s3_client.get_object.assert_has_calls(expected_calls, any_order=True)
+        assert s3_client.get_object.call_count == len(expected_calls)
         assert all(body.closed for body in bodies)
 
     def test_update_assets_checksums_skips_asset_without_href(self, mocker, s3_manager):

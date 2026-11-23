@@ -51,6 +51,9 @@ PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATIO
 # Max number of parallel threads when checking asset existence on S3 during publication
 PUBLISH_CHECK_MAX_WORKERS = int(os.environ.get("RSPY_S3_PUBLISH_CHECK_MAX_WORKERS", "6"))
 
+# Max number of parallel threads when computing asset checksums (may download whole objects)
+CHECKSUM_MAX_WORKERS = int(os.environ.get("RSPY_S3_CHECKSUM_MAX_WORKERS", "6"))
+
 logger = Logging.default(__name__)
 
 
@@ -416,6 +419,55 @@ class S3Manager:
         logger.info("S3 availability check for item %s finished: can_publish=%s", content.get("id"), can_publish)
         return can_publish
 
+    def _compute_asset_checksum(self, bucket_name: str, asset_name: str, key: str) -> str:
+        """Return the MD5 multihash (hex) of an S3 object, using the storage checksum if available.
+
+        Raises:
+            HTTPException: If the checksum cannot be computed from the object content.
+        """
+        try:
+            logger.debug("Fetching checksum attributes for asset %s key=%s", asset_name, key)
+            object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
+        except RuntimeError as error:
+            logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
+            object_attributes = {}
+
+        checksum = object_attributes.get("Checksum", {})
+        md5_digest = None
+
+        if md5_checksum := checksum.get("ChecksumMD5"):
+            try:
+                digest = b64decode(md5_checksum, validate=True)
+                if len(digest) != 16:
+                    raise ValueError("MD5 digest must be 16 bytes")
+                md5_digest = digest
+            except (Base64Error, ValueError) as error:
+                logger.warning("Invalid MD5 checksum for asset %s: %s", asset_name, error)
+
+        if md5_digest is None:
+            try:
+                md5 = hashlib.md5(usedforsecurity=False)
+                self.s3_handler.connect_s3()
+                s3_object = self.s3_handler.s3_client.get_object(Bucket=bucket_name, Key=key)
+                with closing(s3_object["Body"]) as body:
+                    for chunk in iter(partial(body.read, 1024 * 1024), b""):
+                        md5.update(chunk)
+                md5_digest = md5.digest()
+                logger.debug("Computed MD5 checksum for asset %s from S3 object content", asset_name)
+            except (
+                botocore.exceptions.BotoCoreError,
+                botocore.exceptions.ClientError,
+                OSError,
+                RuntimeError,
+            ) as error:
+                logger.exception("Failed to compute MD5 checksum for asset %s", asset_name)
+                raise HTTPException(
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to compute MD5 checksum for asset {asset_name}",
+                ) from error
+
+        return multihash.wrap(md5_digest, "md5").hex()
+
     def update_assets_checksums(self, content: dict) -> dict:
         """
         Store each asset checksum as an MD5 multihash.
@@ -432,55 +484,32 @@ class S3Manager:
         bucket_name = get_bucket_name_from_config(user, collection_id, item_eopf_type)
         logger.info("Updating asset checksums for item %s; bucket=%s", content.get("id"), bucket_name)
 
+        assets_to_checksum = []
         for asset_name, asset_info in content.get("assets", {}).items():
             href = asset_info.get("href")
             if not href:
                 logger.warning("Asset %s has no href; skipping checksum update", asset_name)
                 continue
+            assets_to_checksum.append((asset_name, asset_info, href.removeprefix(f"s3://{bucket_name}/")))
 
-            key = href.removeprefix(f"s3://{bucket_name}/")
-            try:
-                logger.debug("Fetching checksum attributes for asset %s key=%s", asset_name, key)
-                object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
-            except RuntimeError as error:
-                logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
-                object_attributes = {}
+        if not assets_to_checksum:
+            return content
 
-            checksum = object_attributes.get("Checksum", {})
-            md5_digest = None
+        # Create the client once, so that worker threads don't race to instantiate it.
+        self.s3_handler.connect_s3()
 
-            if md5_checksum := checksum.get("ChecksumMD5"):
-                try:
-                    digest = b64decode(md5_checksum, validate=True)
-                    if len(digest) != 16:
-                        raise ValueError("MD5 digest must be 16 bytes")
-                    md5_digest = digest
-                except (Base64Error, ValueError) as error:
-                    logger.warning("Invalid MD5 checksum for asset %s: %s", asset_name, error)
+        def _compute(asset: tuple[str, dict, str]) -> str:
+            asset_name, _, key = asset
+            return self._compute_asset_checksum(bucket_name, asset_name, key)
 
-            if md5_digest is None:
-                try:
-                    md5 = hashlib.md5(usedforsecurity=False)
-                    self.s3_handler.connect_s3()
-                    s3_object = self.s3_handler.s3_client.get_object(Bucket=bucket_name, Key=key)
-                    with closing(s3_object["Body"]) as body:
-                        for chunk in iter(partial(body.read, 1024 * 1024), b""):
-                            md5.update(chunk)
-                    md5_digest = md5.digest()
-                    logger.debug("Computed MD5 checksum for asset %s from S3 object content", asset_name)
-                except (
-                    botocore.exceptions.BotoCoreError,
-                    botocore.exceptions.ClientError,
-                    OSError,
-                    RuntimeError,
-                ) as error:
-                    logger.exception("Failed to compute MD5 checksum for asset %s", asset_name)
-                    raise HTTPException(
-                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Failed to compute MD5 checksum for asset {asset_name}",
-                    ) from error
+        # Computing an MD5 may require downloading the whole object, so process assets in parallel.
+        max_workers = min(len(assets_to_checksum), max(1, CHECKSUM_MAX_WORKERS))
+        logger.debug("Computing checksums of %d asset(s) with %d worker(s)", len(assets_to_checksum), max_workers)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            checksums = list(executor.map(_compute, assets_to_checksum))
 
-            asset_info["file:checksum"] = multihash.wrap(md5_digest, "md5").hex()
+        for (asset_name, asset_info, _), checksum in zip(assets_to_checksum, checksums):
+            asset_info["file:checksum"] = checksum
             logger.debug("Updated checksum for asset %s as MD5 multihash", asset_name)
 
         return content
