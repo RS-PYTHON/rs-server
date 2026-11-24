@@ -78,39 +78,6 @@ def is_s3_path(s3_key):
     return bool(s3_pattern.match(s3_key))
 
 
-def get_temp_bucket_name(files_s3_key: list[str]) -> str | None:
-    """
-    Retrieve the temporary bucket name from a list of S3 keys.
-
-    Args:
-        files_s3_key (list[str]): A list of S3 key strings.
-
-    Returns:
-        str | None: The name of the temporary S3 bucket if valid, otherwise None.
-
-    Raises:
-        RuntimeError: If an S3 key does not match the expected s3://bucket/path pattern,
-            or if the keys span more than one bucket.
-    """
-    if not files_s3_key:
-        return None
-
-    bucket_names = set()
-
-    for s3_key in files_s3_key:
-        if not is_s3_path(s3_key):
-            raise RuntimeError(
-                f"The S3 key '{s3_key}' does not match the correct S3 path pattern " "(s3://bucket_name/path/to/obj)",
-            )
-        # Extract and add the bucket name to the set
-        bucket_names.add(s3_key.split("/")[2])
-
-    if len(bucket_names) != 1:
-        raise RuntimeError(f"A single temporary S3 bucket should be used in the assets: {bucket_names!r}")
-
-    return bucket_names.pop()
-
-
 def get_token_for_pagination(items_dic: dict[Any, Any]):
     """Used to get the token to be used when calling functions from the stac-fastapi-pgstac object."""
     token = None

@@ -482,6 +482,7 @@ class CatalogResponseManager:
             )
 
             for collection in collections:
+                # The href needs the short id, but the title fallback is the collection id exposed everywhere else
                 collection_id = (
                     collection["id"].removeprefix(f"{collection['owner']}_")
                     if collection["owner"]
@@ -491,7 +492,7 @@ class CatalogResponseManager:
                     {
                         "rel": "child",
                         "type": "application/json",
-                        "title": collection.get("title") or collection_id,
+                        "title": collection.get("title") or collection["id"],
                         "href": urljoin(base_url, f"collections/{collection['owner']}:{collection_id}"),
                     },
                 )
@@ -513,7 +514,7 @@ class CatalogResponseManager:
             if item:
                 item["href"] = urlunparse(urlparse(item["href"])._replace(query=""))
 
-            content["collections"] = StacManager.update_links_for_all_collections(request, content["collections"])
+            content["collections"] = StacManager.update_links_for_all_collections(content["collections"])
 
         # If we are in cluster mode and the user_login is not authorized
         # to this endpoint raise a HTTP_401_UNAUTHORIZED status.
@@ -637,21 +638,19 @@ class CatalogResponseManager:
         """
         Adapt a successful DELETE response.
 
-        pgstac returns internal owner-prefixed collection ids. The public
-        response removes that prefix. S3 cleanup has already completed during
-        request pre-processing, before the DELETE was forwarded to pgstac.
+        pgstac returns internal owner-prefixed collection ids. They are returned
+        as is, so that all the endpoints expose the same "<owner_id>_<collection_id>"
+        id. S3 cleanup has already completed during request pre-processing,
+        before the DELETE was forwarded to pgstac.
 
         Args:
             response (StreamingResponse): The client response.
             user (str): The owner id.
 
         Returns:
-            JSONResponse: The new response with the updated collection name.
+            JSONResponse: The response, including the owner-prefixed deleted collection id.
         """
         response_content = await read_streaming_response(response)
         logger.info("Managing delete response for owner=%s", user)
-        logger.debug("Delete response content before adaptation: %s", response_content)
-        if "deleted collection" in response_content:
-            response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
-        logger.info("Finished adapting delete response for owner=%s", user)
+        logger.debug("Delete response content: %s", response_content)
         return JSONResponse(response_content, HTTP_200_OK, headers_minus_content_length(response))
