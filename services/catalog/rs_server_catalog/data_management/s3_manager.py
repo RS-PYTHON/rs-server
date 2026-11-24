@@ -21,6 +21,7 @@ from dataclasses import replace
 
 import botocore
 from fastapi import HTTPException
+from multiformats import multihash
 from rs_server_catalog.data_management.stac_manager import StacManager
 from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
@@ -412,10 +413,11 @@ class S3Manager:
 
     def update_assets_checksums(self, content: dict) -> dict:
         """
-        Update each asset with checksum data returned by S3 GetObjectAttributes.
+        Encode each single-part MD5 ETag as a multihash in the STAC asset.
+        Skips .zarr products as they can't contain an etag.
 
-        Missing checksum metadata is non-fatal: publication can continue because
-        object presence was already checked separately.
+        Missing or non-MD5 ETags are non-fatal: publication can continue because object presence
+        was already checked separately.
         """
         if self.is_catalog_local_mode:
             logger.debug("Skipping checksum update in local catalog mode")
@@ -428,6 +430,10 @@ class S3Manager:
         logger.info("Updating asset checksums for item %s; bucket=%s", content.get("id"), bucket_name)
 
         for asset_name, asset_info in content.get("assets", {}).items():
+            if asset_name.endswith(".zarr"):
+                logger.warning("Asset %s is a .zarr directory; skipping checksum update", asset_name)
+                continue
+
             href = asset_info.get("href")
             if not href:
                 logger.warning("Asset %s has no href; skipping checksum update", asset_name)
@@ -435,24 +441,29 @@ class S3Manager:
 
             key = href.removeprefix(f"s3://{bucket_name}/")
             try:
-                logger.debug("Fetching checksum attributes for asset %s key=%s", asset_name, key)
+                logger.debug("Fetching ETag for asset %s key=%s", asset_name, key)
                 object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
             except RuntimeError as error:
-                logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
+                logger.warning("Failed to get ETag for asset %s: %s, skipping", asset_name, error)
                 continue
 
-            # GetObjectAttributes returns the checksum values in the S3/AWS format:
-            # a "Checksum" dict containing one or more algorithm-specific base64 values
-            # such as ChecksumCRC32, ChecksumCRC32C, ChecksumSHA1 or ChecksumSHA256.
-            # For now we store the first checksum value returned by the object storage
-            # into the STAC asset field; the multihash/STAC-normalized conversion can
-            # build on this once we preserve the selected algorithm alongside the value.
-            checksum = object_attributes.get("Checksum", {})
-            for checksum_key, checksum_value in checksum.items():
-                if checksum_key.startswith("Checksum") and checksum_value:
-                    asset_info["file:checksum"] = checksum_value
-                    logger.debug("Updated checksum for asset %s using %s", asset_name, checksum_key)
-                    break
+            # Use the returned ETag from aws as a checksum, which should be MD5. We check its
+            # number of characters as MD5 is 32 characters long, as a simple check.
+            etag = object_attributes.get("ETag")
+            if isinstance(etag, str):
+                etag = etag.strip('"')
+                try:
+                    digest = bytes.fromhex(etag)
+                except ValueError:
+                    digest = b""
+
+                # MD5 checksum is 32 characters
+                if len(etag) == 32 and len(digest) == 16:
+                    asset_info["file:checksum"] = multihash.wrap(digest, "md5").hex()
+                    logger.debug("Updated checksum for asset %s using its MD5 ETag", asset_name)
+                    continue
+
+            logger.warning("Asset %s has no single-part MD5 ETag; checksum was not updated", asset_name)
 
         return content
 

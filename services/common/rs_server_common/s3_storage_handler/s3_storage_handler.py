@@ -788,7 +788,7 @@ class S3StorageHandler:
         """Get S3 object attributes for an object key.
 
         This uses the S3-compatible GetObjectAttributes API supported by OVH Object Storage.
-        Only the Checksum attribute is requested because it is needed for the STAC file:checksum field.
+        Only the ETag attribute is requested because it is needed for the STAC file:checksum field.
 
         Args:
             bucket (str): The S3 bucket name.
@@ -803,7 +803,7 @@ class S3StorageHandler:
             return self.s3_client.get_object_attributes(
                 Bucket=bucket,
                 Key=key,
-                ObjectAttributes=["Checksum"],
+                ObjectAttributes=["ETag"],
             )
         except (botocore.client.ClientError, botocore.exceptions.BotoCoreError) as error:
             self.logger.exception("Failed to get object attributes for s3://%s/%s: %s", bucket, key, error)

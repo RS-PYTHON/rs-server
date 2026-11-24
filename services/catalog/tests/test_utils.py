@@ -514,7 +514,7 @@ class TestGetS3Handler:
 
     def test_update_assets_checksums(self, mocker, s3_manager):
         """
-        Test that S3 object checksum attributes are added to each STAC asset.
+        Test that S3 object ETags are added to each STAC asset unchanged.
         """
         content = {
             "collection": "test_collection",
@@ -530,15 +530,18 @@ class TestGetS3Handler:
             s3_manager.s3_handler,
             "get_object_attributes",
             side_effect=[
-                {"Checksum": {"ChecksumSHA256": "checksum-1"}},
-                {"Checksum": {"ChecksumCRC32": "checksum-2"}},
+                {
+                    "ETag": '"e8a303bf3d85200514f727db60e7db65"',
+                    "Checksum": {"ChecksumSHA256": "ignored"},
+                },
+                {"ETag": "0123456789abcdef0123456789abcdef"},
             ],
         )
 
         result = s3_manager.update_assets_checksums(content)
 
-        assert result["assets"]["asset1"]["file:checksum"] == "checksum-1"
-        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
+        assert result["assets"]["asset1"]["file:checksum"] == "d50110e8a303bf3d85200514f727db60e7db65"
+        assert result["assets"]["asset2"]["file:checksum"] == "d501100123456789abcdef0123456789abcdef"
         assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "file1"),
             mocker.call("rspython-ops-catalog-all-production", "file2"),
@@ -561,13 +564,13 @@ class TestGetS3Handler:
         mocker.patch.object(
             s3_manager.s3_handler,
             "get_object_attributes",
-            return_value={"Checksum": {"ChecksumCRC32": "checksum-2"}},
+            return_value={"ETag": "0123456789abcdef0123456789abcdef"},
         )
 
         result = s3_manager.update_assets_checksums(content)
 
         assert "file:checksum" not in result["assets"]["asset1"]
-        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
+        assert result["assets"]["asset2"]["file:checksum"] == "d501100123456789abcdef0123456789abcdef"
         s3_manager.s3_handler.get_object_attributes.assert_called_once_with(
             "rspython-ops-catalog-all-production",
             "file2",
@@ -592,18 +595,34 @@ class TestGetS3Handler:
             "get_object_attributes",
             side_effect=[
                 RuntimeError("checksum unavailable"),
-                {"Checksum": {"ChecksumCRC32": "checksum-2"}},
+                {"ETag": "0123456789abcdef0123456789abcdef"},
             ],
         )
 
         result = s3_manager.update_assets_checksums(content)
 
         assert "file:checksum" not in result["assets"]["asset1"]
-        assert result["assets"]["asset2"]["file:checksum"] == "checksum-2"
+        assert result["assets"]["asset2"]["file:checksum"] == "d501100123456789abcdef0123456789abcdef"
         assert s3_manager.s3_handler.get_object_attributes.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "file1"),
             mocker.call("rspython-ops-catalog-all-production", "file2"),
         ]
+
+    @pytest.mark.parametrize(
+        "response",
+        [{}, {"ETag": ""}, {"ETag": "multipart-etag-2"}, {"Checksum": {"ChecksumSHA256": "ignored"}}],
+    )
+    def test_update_assets_checksums_missing_or_non_md5_etag(self, mocker, s3_manager, response):
+        """Missing or non-MD5 ETags leave existing asset metadata unchanged."""
+        content = {
+            "collection": "test_collection",
+            "properties": {"owner": "test_user"},
+            "assets": {"asset1": {"href": "s3://rspython-ops-catalog-all-production/file1", "file:checksum": "old"}},
+        }
+        s3_manager.is_catalog_local_mode = False
+        mocker.patch.object(s3_manager.s3_handler, "get_object_attributes", return_value=response)
+
+        assert s3_manager.update_assets_checksums(content)["assets"]["asset1"]["file:checksum"] == "old"
 
     def test_update_patch_assets_local_mode(self, mocker, s3_manager):
         """Test that PATCH asset enrichment is skipped in local catalog mode."""
@@ -702,8 +721,8 @@ class TestGetS3Handler:
             s3_manager.s3_handler,
             "get_object_attributes",
             side_effect=[
-                {"Checksum": {"ChecksumSHA256": "checksum-1"}},
-                {"Checksum": {"ChecksumSHA256": "checksum-2"}},
+                {"ETag": "e8a303bf3d85200514f727db60e7db65"},
+                {"ETag": "0123456789abcdef0123456789abcdef"},
             ],
         )
 
@@ -712,11 +731,11 @@ class TestGetS3Handler:
         assert result is assets
         assert result["asset1"]["file:size"] == 123
         assert result["asset1"]["file:local_path"] == "product/asset1.tif"
-        assert result["asset1"]["file:checksum"] == "checksum-1"
+        assert result["asset1"]["file:checksum"] == "d50110e8a303bf3d85200514f727db60e7db65"
         # Pre-existing file:size is preserved despite the S3 lookup returning a different size.
         assert result["asset2"]["file:size"] == 999
         assert result["asset2"]["file:local_path"] == "product/asset2.tif"
-        assert result["asset2"]["file:checksum"] == "checksum-2"
+        assert result["asset2"]["file:checksum"] == "d501100123456789abcdef0123456789abcdef"
         assert s3_manager.s3_handler.check_s3_key_on_bucket.call_args_list == [
             mocker.call("rspython-ops-catalog-all-production", "product/asset1.tif"),
             mocker.call("rspython-ops-catalog-all-production", "product/asset2.tif"),
