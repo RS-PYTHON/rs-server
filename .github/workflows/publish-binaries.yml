@@ -32,10 +32,25 @@ env:
   OPENAPI_JSON: services/frontend/resources/openapi.json
 
 jobs:
+  # The integration tests are skipped only for the Dependabot pull requests that update GitHub Actions or
+  # development dependencies. The other updates can break them with side effects that pytest does not see.
+  need-integration-tests:
+    name: Check if the integration tests are needed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # to read the Dependabot metadata
+    outputs:
+      needed: ${{ steps.check.outputs.needed }}
+    steps:
+      - id: check
+        uses: RS-PYTHON/actions/.github/actions/need-integration-tests@develop
+
   build-frontend:
     name: Build frontend openapi.json
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
+    needs: need-integration-tests
+    if: needs.need-integration-tests.outputs.needed == 'true'
     permissions:
       contents: write # for the git push
     outputs:
@@ -121,6 +136,7 @@ jobs:
         env:
           # Use the rs-dpr-service image with the same tag as the current branch, else latest
           DPR_IMAGE_TAGS: ${{ steps.set-binary-env.outputs.docker_tags }},latest
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -x
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
@@ -134,7 +150,10 @@ jobs:
 
             # If e.g. the 'develop' branch is protected, we cannot push the file, but it's ok
             # because we also upload the file as an artifact. It will be downloaded before building the wheel.
-            git push || true
+            # Don't push to the Dependabot branches: Dependabot would stop updating its pull request.
+            if [[ "$PR_AUTHOR" != 'dependabot[bot]' ]]; then
+              git push || true
+            fi
             artifact=true
           fi
 
@@ -152,7 +171,6 @@ jobs:
     name: "Build wheels"
     needs: build-frontend
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
     strategy:
       matrix:
         service: # all services must be under the services/ folder
@@ -190,7 +208,6 @@ jobs:
 
   set-binary-env:
     name: Set Docker environment
-    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     needs: build-wheels
     outputs:
@@ -209,7 +226,6 @@ jobs:
   publish-docker-images:
     name: "Build and publish Docker images"
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
     needs: set-binary-env
     permissions:
       security-events: write # needed for github/codeql-action/upload-sarif
@@ -369,7 +385,6 @@ jobs:
   get-pushed-images:
     name: Get pushed Docker image names
     needs: [set-binary-env, publish-docker-images]
-    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       pushed_images: ${{ steps.read.outputs.pushed_images }}
@@ -393,7 +408,6 @@ jobs:
   # Test rs-demo with the new Docker images
   test-demo:
     name: Test rs-demo
-    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     needs: [set-binary-env, publish-docker-images, get-pushed-images]
     permissions:
@@ -454,7 +468,7 @@ jobs:
 
   publish-wheels-pypi:
     name: "Publish wheels and sdists to PyPI"
-    if: (github.actor != 'dependabot[bot]') && (github.event_name == 'push') && startsWith(github.ref, 'refs/tags')
+    if: (github.event_name == 'push') && startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-latest
     needs: [test-demo] # only if the tests succeeded
     permissions:
