@@ -74,7 +74,7 @@ dependencies = [
     "antimeridian>=0.4.7,<0.6",
     # Requirement of jsonpath-ng through eodag, pinpoined to last version without CVE
     # See https://data.safetycli.com/v/SFTY-20260120-09218/eda
-    "ply==3.10",
+    "ply==3.11",
 ]
 
 [project.urls]
