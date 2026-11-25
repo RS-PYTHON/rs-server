@@ -10,7 +10,7 @@ section of the documentation.
 ```text
 rs-server
 ├── docs/                  # This documentation: Markdown pages (doc/), PlantUML sources (uml/) and images (images/)
-├── resources/             # Development scripts (configuration files synchronisation, dependency updates...)
+├── resources/             # Development scripts (configuration files synchronisation, framework versions...)
 ├── services/
 │   ├── adgs/              # rs-server-adgs (AUXIP instances)
 │   ├── cadip/             # rs-server-cadip (CADIP stations)
@@ -21,7 +21,8 @@ rs-server
 │   ├── prip/              # rs-server-prip (PRIP instances)
 │   └── staging/           # rs-server-staging
 ├── tests/                 # Tests of the station services and of the common package
-├── pyproject.toml         # Poetry project that includes all the services
+├── pyproject.toml         # uv workspace that includes all the services, with the dev dependencies
+├── uv.lock                # Locked versions of all the dependencies of the workspace
 └── CHANGELOG.md
 ```
 
@@ -31,7 +32,8 @@ Each service folder contains:
 - `config/`: its configuration files, e.g. the [STAC mapping](../users/stac-mapping.md) and the
   [virtual collections](../users/external-data-sources.md#collections) of the stations,
 - `tests/`: its tests (for some of them),
-- `pyproject.toml`: its own Poetry project, used to build its wheel package,
+- `pyproject.toml`: its own project (a member of the [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/)),
+  with its dependencies, used to build its wheel package,
 - `.github/Dockerfile`: its Docker image, built by the CI (see [Repositories and CI/CD](https://github.com/RS-PYTHON/rs-documentation/blob/develop/docs/developers/ci-cd.md)).
 
 The `rs_server_common` package contains the code shared by the services:
@@ -46,14 +48,23 @@ The `rs_server_common` package contains the code shared by the services:
 
 ## Set up and test
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+
 ```shell
-poetry install --with dev
-poetry run opentelemetry-bootstrap -a install
-poetry run pre-commit install
+# Install all the services and the dev dependencies in .venv/, from uv.lock
+uv sync --all-packages
+uv pip install $(uv run opentelemetry-bootstrap -a requirements)
+uv run pre-commit install
 
 # Run the tests (the catalog tests start a pgstac database with Docker)
-poetry run pytest -m unit
+uv run pytest -m unit
 ```
+
+The dependencies of each service are declared in its own `services/<service>/pyproject.toml` file, and the dev
+dependencies in the root `pyproject.toml` file. A single `uv.lock` file contains the versions of all the
+dependencies, used by the CI/CD and by the Docker images. To add or update a dependency, modify the `pyproject.toml`
+file, then run `uv lock` (or e.g. `uv add --package rs-server-common <dependency>`) and commit both files.
+Dependabot updates the dependencies automatically, with a pull request for each update.
 
 The tests of the catalog use [pytest-docker](https://github.com/avast/pytest-docker) to run a
 [pgstac](https://github.com/stac-utils/pgstac) database: Docker must be installed.

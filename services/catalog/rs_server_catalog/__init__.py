@@ -14,9 +14,11 @@
 
 """RS Server catalog service."""
 
+from importlib.metadata import version
+
 from rs_server_common import settings
 
-# Set automatically by running `poetry dynamic-versioning`
-__version__ = "0.0.0"
+# Version of the installed package, calculated from the git tags when building it
+__version__ = version("rs-server-catalog")
 
 settings.SERVICE_NAME = "rs.server.catalog"

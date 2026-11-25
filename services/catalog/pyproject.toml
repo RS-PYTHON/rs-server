@@ -14,18 +14,11 @@
 
 [project]
 name = "rs-server-catalog"
-dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
-
-[tool.poetry]
-name = "rs-server-catalog"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Copernicus Sentinel rs-server, STAC catalog."
-license = "Apache-2.0"
-authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
 readme = "README.md"
-homepage = "https://home.rs-python.eu/"
-repository = "https://github.com/RS-PYTHON/rs-server"
-documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+license = "Apache-2.0"
+authors = [{ name = "ESA under contract with Airbus and CS", email = "ops_coprs@airbus.com" }]
 keywords = ["stac", "copernicus", "sentinel", "processing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,52 +28,46 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: GIS",
-    "Topic :: Scientific/Engineering :: Image Processing"
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+requires-python = ">=3.13,<4"
+dependencies = [
+    "rs-server-common",
+    "xmltodict>=1.0.2,<2",
 ]
 
-packages = [
-    { include = "rs_server_catalog" },
-    { include = "tests", format = "sdist" },
-]
+[project.urls]
+Homepage = "https://home.rs-python.eu/"
+Repository = "https://github.com/RS-PYTHON/rs-server"
+Documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
 
-# Add configuration files to the .whl package
-include = [
-    { path = "config", format = ["wheel"] }
-]
+[build-system]
+requires = ["hatchling>=1.33.0", "uv-dynamic-versioning>=0.14.1"]
+build-backend = "hatchling.build"
 
-[tool.poetry.dependencies]
-python = ">=3.13,<4"
-rs-server-common = "*"
-xmltodict = "^1.0.2"
+# The version is calculated from the git tags, see: https://github.com/ninoseki/uv-dynamic-versioning
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
 
-[tool.poetry.group.dev]
-optional = true
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+metadata = false
+fallback-version = "0.0.0" # when git is not available e.g. for Dependabot
 
-[tool.poetry.group.dev.dependencies]
-rs-server-common = {path = "../common", develop = true}
-# Formatting
-black = ">=26.3.1"
-# Testing
-pytest = "^9.0.3"
-pytest-asyncio = "^1.3.0"
-pytest-cov = "^7.1.0"
-pytest-docker = "^3.2.5"
-pytest-dotenv = "^0.5.2"
-pytest-error-for-skips = "^2.0.2"
-pytest-httpx = ">=0.36"
-pytest-mock = "^3.15.1"
-pytest-responses = ">=0.5.1,<0.7.0"
-moto = "^5.1.10"
-flask = "^3.1.1" # for moto
-flask-cors = "^6.0.1" # for moto
-sqlalchemy-utils = "^0.43.0"
-psycopg2 = "^2.9.11"
+# Rebuild the package metadata (version) when the git commit or tags change
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
 
+[tool.hatch.build.targets.wheel]
+packages = ["rs_server_catalog"]
 
 [tool.black]
 line-length = 120
-
 
 [tool.pytest.ini_options]
 markers = [
@@ -93,15 +80,3 @@ env_files = [
 ]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
-
-
-[tool.poetry.requires-plugins]
-poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
-
-[tool.poetry-dynamic-versioning]
-enable = true
-metadata = false
-
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"

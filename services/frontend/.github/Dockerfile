@@ -33,13 +33,15 @@ RUN pip install --no-cache-dir --upgrade pip && layer-cleanup.sh
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
-# We copy them into a /tmp directory that we can clean at the end.
-RUN mkdir -p /tmp/whl
-ADD ./*.whl /tmp/whl
+# We copy them into a /tmp directory that we can clean at the end, with the exact dependency versions
+# from the uv.lock file, exported by the CI into constraints.txt
+COPY ./*.whl ./constraints.txt /tmp/whl/
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl && layer-cleanup.sh
+RUN pip install --no-cache-dir --only-binary=:all: -c /tmp/whl/constraints.txt \
+    /tmp/whl/rs_server_frontend-*.whl && \
+    layer-cleanup.sh
 
 # Set env var to the aggregated openapi.json released in the .whl package
 RUN ln -sf /usr/local/lib/python3.* /usr/local/lib/python3
