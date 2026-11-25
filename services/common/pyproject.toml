@@ -14,18 +14,11 @@
 
 [project]
 name = "rs-server-common"
-dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
-
-[tool.poetry]
-name = "rs-server-common"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Copernicus Sentinel rs-server, common services."
-license = "Apache-2.0"
-authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
 readme = "README.md"
-homepage = "https://home.rs-python.eu/"
-repository = "https://github.com/RS-PYTHON/rs-server"
-documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+license = "Apache-2.0"
+authors = [{ name = "ESA under contract with Airbus and CS", email = "ops_coprs@airbus.com" }]
 keywords = ["stac", "copernicus", "sentinel", "processing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,77 +28,84 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: GIS",
-    "Topic :: Scientific/Engineering :: Image Processing"
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+requires-python = ">=3.13,<4"
+dependencies = [
+    # prefect 3.8.x server is incompatible with fastapi >= 0.155 (Body(min_items=...) removed),
+    # prefect >= 3.9.0 caps fastapi < 0.151. Remove this pin when prefect supports newer fastapi.
+    "fastapi>=0.141.2,<0.155",
+    "starlette>=1.4.1",
+    "boto3>=1.40.2",
+    "botocore>=1.40.2",
+    "sqlalchemy>=2.1.4",
+    "eodag>=4.10.1,<5",
+    # NOTE: to use a forked eodag version, add it in [tool.uv.sources] e.g.:
+    # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
+    "pydantic>=2.13.5",
+    "markdown>=3.8.2,<4",
+    "python-dotenv>=1.0.0,<2",
+    "filelock>=3.20.3",
+    "uvicorn>=0.35.0",
+    "httpx>=0.28.1,<0.29",
+    "cachetools>=7.0.1",
+    "cachetools_async>=0.0.5",
+    "opentelemetry-distro>=0.66b1,<0.67", # then run 'uv run opentelemetry-bootstrap -a install'
+    "opentelemetry-exporter-otlp>=1.45.1,<2",
+    "protobuf>=6.31.1",
+    "authlib>=1.6.1,<2",
+    "python-keycloak>=7.1.1,<8.0",
+    "itsdangerous>=2.2.0,<3",
+    "pyjwt[crypto]>=2.9.0,<3",
+    "stac-fastapi-pgstac>=7.2.0",
+    "stac-fastapi-api>=7.0.0",
+    "stac-fastapi-extensions>=7.0.0",
+    "stac-fastapi-types>=7.0.0",
+    "pydantic-settings>=2.15.0,<3.0.0",
+    "stac-pydantic>=3.6.0,<4",
+    "geojson-pydantic==2.2.0",
+    "requests>=2.34.2,<3",
+    "xmltodict>=1.0.2,<2",
+    "urllib3>=2.6.3",
+    "antimeridian>=0.4.7,<0.6",
+    # Requirement of jsonpath-ng through eodag, pinpoined to last version without CVE
+    # See https://data.safetycli.com/v/SFTY-20260120-09218/eda
+    "ply==3.10",
 ]
 
-packages = [
-    { include = "rs_server_common" },
-    { include = "tests", format = "sdist" },
-]
+[project.urls]
+Homepage = "https://home.rs-python.eu/"
+Repository = "https://github.com/RS-PYTHON/rs-server"
+Documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+
+[build-system]
+requires = ["hatchling>=1.33.0", "uv-dynamic-versioning>=0.14.1"]
+build-backend = "hatchling.build"
+
+# The version is calculated from the git tags, see: https://github.com/ninoseki/uv-dynamic-versioning
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+metadata = false
+fallback-version = "0.0.0" # when git is not available e.g. for Dependabot
+
+# Rebuild the package metadata (version) when the git commit or tags change
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+
+[tool.hatch.build.targets.wheel]
+packages = ["rs_server_common"]
 
 # Add configuration files to the .whl package
-include = [
-    { path = "config", format = ["wheel"] }
-]
-
-[tool.poetry.dependencies]
-python = ">=3.13,<4"
-# prefect 3.8.x server is incompatible with fastapi >= 0.155 (Body(min_items=...) removed),
-# prefect >= 3.9.0 caps fastapi < 0.151. Remove this pin when prefect supports newer fastapi.
-fastapi = ">=0.141.2,<0.155"
-starlette = ">=1.4.1"
-boto3 = ">=1.40.2"
-botocore = ">=1.40.2"
-sqlalchemy = ">=2.1.4"
-eodag = "^4.10.1"
-# NOTE: to use a forked eodag version we would use:
-# eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
-pydantic = ">=2.13.5"
-markdown = "^3.8.2"
-python-dotenv = "^1.0.0"
-filelock = ">=3.20.3"
-uvicorn = ">=0.35.0"
-httpx = "^0.28.1"
-cachetools = ">=7.0.1"
-cachetools_async = ">=0.0.5"
-opentelemetry-distro = "^0.66b1" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-exporter-otlp = "^1.45.1"
-protobuf = ">=6.31.1"
-authlib = "^1.6.1"
-python-keycloak = ">=7.1.1,<8.0"
-itsdangerous = "^2.2.0"
-pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = ">=7.2.0"
-stac-fastapi-api = ">=7.0.0"
-stac-fastapi-extensions = ">=7.0.0"
-stac-fastapi-types = ">=7.0.0"
-pydantic-settings = ">=2.15.0,<3.0.0"
-stac-pydantic = "^3.6.0"
-geojson-pydantic = "2.2.0"
-requests = "^2.34.2"
-xmltodict = "^1.0.2"
-urllib3 = ">=2.6.3"
-antimeridian = "^0.4.7"
-# Requirement of jsonpath-ng through eodag, pinpoined to last version without CVE
-# See https://data.safetycli.com/v/SFTY-20260120-09218/eda
-ply = "3.10"
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^9.0.3"
-pytest-asyncio = "^1.3.0"
-pytest-cov = "^7.1.0"
-pytest-docker = "^3.2.5"
-pytest-error-for-skips = "^2.0.2"
-pytest-httpx = ">=0.36"
-pytest-mock = "^3.15.1"
-responses = "^0.26.0"
-moto = "^5.1.10"
-flask = "^3.1.1" # for moto
-flask-cors = "^6.0.1" # for moto
+[tool.hatch.build.targets.wheel.force-include]
+"config" = "config"
 
 [tool.black]
 line-length = 120
@@ -122,14 +122,3 @@ asyncio_mode = "auto"
 warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
-
-[tool.poetry.requires-plugins]
-poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
-
-[tool.poetry-dynamic-versioning]
-enable = true
-metadata = false
-
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"

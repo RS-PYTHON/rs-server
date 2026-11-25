@@ -76,10 +76,8 @@ jobs:
 
           # Add project files that contain the pygeoapi or stac-fastapi version
           found="${found} \
-            services/catalog/poetry.lock \
-            services/staging/poetry.lock \
-            services/common/poetry.lock \
-            rs-dpr-service/poetry.lock"
+            uv.lock \
+            rs-dpr-service/uv.lock"
 
           # Add everything from the frontend, except the openapi.json file itself
           found="${found} \
@@ -116,7 +114,7 @@ jobs:
           echo "regenerate=$regenerate" >> "$GITHUB_OUTPUT"
 
       - if: ${{ steps.find.outputs.regenerate == 'true'}}
-        uses: RS-PYTHON/actions/.github/actions/setup-poetry@develop
+        uses: RS-PYTHON/actions/.github/actions/setup-uv@develop
       - id: generate
         name: Generate the aggregated openapi.json/swagger
         if: ${{ steps.find.outputs.regenerate == 'true'}}
@@ -230,44 +228,54 @@ jobs:
           - staging-dask-local
 
         # Options specific to each image.
+        # package is the uv workspace package installed in the image.
         # whl_pattern is a glob pattern to download the right binary wheels:
         # rs_server_adgs-<version>.whl, rs_server_cadip-<version>.whl, ...
         # Other options are from the publish-docker action.
         include:
           - image: adgs
+            package: rs-server-adgs
             whl_pattern: "{rs_server_adgs-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/adgs/.github/Dockerfile
             image_suffix: rs-server-adgs
           - image: cadip
+            package: rs-server-cadip
             whl_pattern: "{rs_server_cadip-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/cadip/.github/Dockerfile
             image_suffix: rs-server-cadip
           - image: catalog
+            package: rs-server-catalog
             whl_pattern: "{rs_server_catalog-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/catalog/.github/Dockerfile
             image_suffix: rs-server-catalog
           - image: frontend
+            package: rs-server-frontend
             whl_pattern: "rs_server_frontend-*.whl"
             dockerfile: ./services/frontend/.github/Dockerfile
             image_suffix: rs-server-frontend
           - image: osam
+            package: rs-server-osam
             whl_pattern: "{rs_server_osam-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/osam/.github/Dockerfile
             image_suffix: rs-server-osam
           - image: prip
+            package: rs-server-prip
             whl_pattern: "{rs_server_prip-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/prip/.github/Dockerfile
             image_suffix: rs-server-prip
           - image: staging
+            package: rs-server-staging
             whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/staging/.github/Dockerfile
             image_suffix: rs-server-staging
           - image: staging-dask-k8s
+            package: rs-server-staging
             whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/staging/.github/Dockerfile.dask-staging
             image_suffix: dask/staging/k8s
             build_args: "BASE_IMAGE_TARGET=k8s"
           - image: staging-dask-local
+            package: rs-server-staging
             whl_pattern: "{rs_server_staging-*.whl,rs_server_common-*.whl}"
             dockerfile: ./services/staging/.github/Dockerfile.dask-staging
             image_suffix: dask/staging/local
@@ -286,6 +294,17 @@ jobs:
         run: cp ./services/frontend/.github/entrypoint_frontend.sh ./build_context_path
       - name: Copy Dockerfile requirements
         run: cp -t ./build_context_path ./.github/scripts/layer-cleanup.sh ./.github/scripts/restore-apt.sh
+
+      # The Docker image installs the exact dependency versions from the uv.lock file, tested by the CI/CD
+      - uses: RS-PYTHON/actions/.github/actions/setup-uv@develop
+      - name: Export the locked dependency versions
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -x
+          uv export --frozen --package "$PACKAGE" --no-dev --no-emit-workspace --no-hashes --no-header --no-annotate \
+            --output-file ./build_context_path/constraints.txt
+          cat ./build_context_path/constraints.txt
 
       - name: Handle debug mode
         env:

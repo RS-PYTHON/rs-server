@@ -67,7 +67,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     done
 
     # Idem for pgstac database
-    db_image="ghcr.io/stac-utils/pgstac:v0.10.1"
+    db_image="ghcr.io/stac-utils/pgstac:v0.10.2"
     docker pull "$db_image"
     (docker run --rm --network=$network --name=$pgstac_container \
         -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
@@ -122,6 +122,13 @@ if [[ " $@ " == *" --run-services "* ]]; then
     done
     echo "DPR service container is healthy"
 
+    # Install all the services of the uv workspace and the otel instrumentation packages for their dependencies
+    (
+        cd "${FRONT_DIR}"
+        uv sync --all-packages --no-build
+        uv pip install --only-binary=:all: $(uv run --no-sync opentelemetry-bootstrap -a requirements)
+    )
+
     # Run local fastapi services
     run_local_service() {
         path=$(realpath "${FRONT_DIR}/$1")
@@ -136,11 +143,9 @@ if [[ " $@ " == *" --run-services "* ]]; then
         export OIDC_CLIENT_SECRET=OIDC_CLIENT_SECRET
         export RSPY_COOKIE_SECRET=RSPY_COOKIE_SECRET
 
-        # Install the poetry environment and run uvicorn with the environment variables set above
+        # Run uvicorn from the uv workspace environment with the environment variables set above
         cd "$path"
-        poetry install
-        poetry run opentelemetry-bootstrap -a install # install otel instrumentation packages for dependencies
-        (poetry run uvicorn "$app" --host=127.0.0.1 --port="$port" --workers=1)&
+        (uv run --no-sync uvicorn "$app" --host=127.0.0.1 --port="$port" --workers=1)&
         on_exit="$on_exit; kill -9 $!" # kill the last process = unvicorn on exit
         cd -
 
@@ -183,15 +188,16 @@ to_file="${SCRIPT_DIR}/openapi.json" # output file = aggregated json
 # Build the aggregated openapi.json
 (
     cd "${SCRIPT_DIR}"
-    poetry install
 
-    # Set hard-coded version name from git tags.
-    # WARNING: this changes pyproject.toml and __init__.py
+    # Install all the services of the uv workspace (if they are running, they must not be uninstalled)
+    uv sync --all-packages --no-build
+
+    # Recalculate the version name from the git tags
     if [[ " $@ " == *" --set-version "* ]]; then
-        poetry self add "poetry-dynamic-versioning[plugin]" && poetry dynamic-versioning
+        uv sync --all-packages --no-build --reinstall-package rs-server-frontend
     fi
 
-    poetry run python -m tools.openapi "$services_file" "$to_file"
+    uv run --no-sync python -m tools.openapi "$services_file" "$to_file"
 )
 
 echo -e "\nAggregated openapi generated under: '$to_file'\n"

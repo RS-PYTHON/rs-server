@@ -14,5 +14,7 @@
 
 """Main package of commons of rs-server services."""
 
-# Set automatically by running `poetry dynamic-versioning`
-__version__ = "0.0.0"
+from importlib.metadata import version
+
+# Version of the installed package, calculated from the git tags when building it
+__version__ = version("rs-server-common")

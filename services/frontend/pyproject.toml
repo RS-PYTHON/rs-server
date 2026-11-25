@@ -14,18 +14,11 @@
 
 [project]
 name = "rs-server-frontend"
-dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
-
-[tool.poetry]
-name = "rs-server-frontend"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Copernicus Sentinel rs-server, web frontend."
-license = "Apache-2.0"
-authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
 readme = "README.md"
-homepage = "https://home.rs-python.eu/"
-repository = "https://github.com/RS-PYTHON/rs-server"
-documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+license = "Apache-2.0"
+authors = [{ name = "ESA under contract with Airbus and CS", email = "ops_coprs@airbus.com" }]
 keywords = ["stac", "copernicus", "sentinel", "processing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,62 +28,56 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: GIS",
-    "Topic :: Scientific/Engineering :: Image Processing"
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+requires-python = ">=3.13,<4"
+dependencies = [
+    # prefect 3.8.x server is incompatible with fastapi >= 0.155 (Body(min_items=...) removed),
+    # prefect >= 3.9.0 caps fastapi < 0.151. Remove this pin when prefect supports newer fastapi.
+    "fastapi>=0.141.1",
+    "starlette>=1.4.1",
+    "uvicorn>=0.35.0",
+    "requests>=2.32.5,<3",
+    "attrs>=25.3.0,<27.0",
+    "pyyaml>=6.0.2,<7",
 ]
 
-packages = [
-    { include = "rs_server_frontend" },
-    { include = "tools", format = "sdist" },
-    { include = "tests", format = "sdist" },
-]
+[project.urls]
+Homepage = "https://home.rs-python.eu/"
+Repository = "https://github.com/RS-PYTHON/rs-server"
+Documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+
+[build-system]
+requires = ["hatchling>=1.33.0", "uv-dynamic-versioning>=0.14.1"]
+build-backend = "hatchling.build"
+
+# The version is calculated from the git tags, see: https://github.com/ninoseki/uv-dynamic-versioning
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+metadata = false
+fallback-version = "0.0.0" # when git is not available e.g. for Dependabot
+
+# Rebuild the package metadata (version) when the git commit or tags change
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+
+[tool.hatch.build.targets.wheel]
+packages = ["rs_server_frontend"]
 
 # Add configuration files to the .whl package
-include = [
-    { path = "resources/openapi.json", format = ["wheel"] }
-]
-
-[tool.poetry.dependencies]
-python = ">=3.13,<4"
-fastapi = ">=0.141.1"
-starlette = ">=1.4.1"
-uvicorn = ">=0.35.0"
-requests = "^2.32.5"
-attrs = ">=25.3.0,<27.0"
-pyyaml = "^6.0.2"
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-# Testing
-pytest = "^9.0.3"
-pytest-asyncio = "^1.3.0"
-pytest-cov = "^7.1.0"
-pytest-docker = "^3.2.5"
-pytest-error-for-skips = "^2.0.2"
-pytest-httpx = ">=0.36"
-pytest-mock = "^3.15.1"
-# Testing fastapi
-httpx = "^0.28.1"
-# Test tools
-responses = "^0.26.0"
-pylint = "^4.0.2"
-
+[tool.hatch.build.targets.wheel.force-include]
+"resources/openapi.json" = "resources/openapi.json"
 
 [tool.pytest.ini_options]
 markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
-
-[tool.poetry.requires-plugins]
-poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
-
-[tool.poetry-dynamic-versioning]
-enable = true
-metadata = false
-
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
