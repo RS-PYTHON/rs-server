@@ -36,6 +36,7 @@ classifiers = [
 ]
 requires-python = ">=3.13,<4"
 dependencies = [
+    "multiformats>=0.3.1.post4",
     "rs-server-common",
     "xmltodict>=1.0.2,<2",
 ]
