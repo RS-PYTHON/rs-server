@@ -6478,6 +6478,107 @@
         }
       }
     },
+    "/odata/v1/Products": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Search OData products",
+        "description": "Search by publication-date range and return the matching assets as OData products.",
+        "operationId": "search_products_odata_v1_Products_get",
+        "security": [
+          {
+            "API key authentication": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "OData filter expression. Currently supports PublicationDate gt <start> and PublicationDate lt <end>, with inclusive bounds and timezone-aware ISO 8601 dates.",
+              "examples": [
+                "PublicationDate gt 2026-01-01T00:00:00Z and PublicationDate lt 2026-02-01T00:00:00Z"
+              ],
+              "title": "$Filter"
+            },
+            "description": "OData filter expression. Currently supports PublicationDate gt <start> and PublicationDate lt <end>, with inclusive bounds and timezone-aware ISO 8601 dates."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataProductList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported filter or query option",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication or authorization failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid query parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataError"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Catalog error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/processes": {
       "get": {
         "tags": [
@@ -10222,6 +10323,250 @@
         },
         "type": "array",
         "title": "Links"
+      },
+      "ODataChecksum": {
+        "properties": {
+          "Algorithm": {
+            "type": "string",
+            "const": "MD5",
+            "title": "Algorithm"
+          },
+          "Value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "ChecksumDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksumdate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Algorithm",
+          "Value",
+          "ChecksumDate"
+        ],
+        "title": "ODataChecksum",
+        "description": "Checksum metadata in the current product representation."
+      },
+      "ODataContentDate": {
+        "properties": {
+          "Start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "End": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Start",
+          "End"
+        ],
+        "title": "ODataContentDate",
+        "description": "Sensing dates in the current product representation."
+      },
+      "ODataError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "description"
+        ],
+        "title": "ODataError",
+        "description": "Error representation produced by the catalog exception middleware."
+      },
+      "ODataProduct": {
+        "properties": {
+          "Id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "Name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ContentType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contenttype"
+          },
+          "ContentLength": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contentlength"
+          },
+          "OriginDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origindate"
+          },
+          "PublicationDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicationdate"
+          },
+          "EvictionDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evictiondate"
+          },
+          "ContentDate": {
+            "$ref": "#/components/schemas/ODataContentDate"
+          },
+          "Checksum": {
+            "$ref": "#/components/schemas/ODataChecksum"
+          },
+          "ProductionType": {
+            "type": "string",
+            "title": "Productiontype"
+          },
+          "GeoFootPrint": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Point"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MultiPoint"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LineString"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MultiLineString"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Polygon"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MultiPolygon"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryCollection-Output"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "GeometryCollection": "#/components/schemas/GeometryCollection-Output",
+                    "LineString": "#/components/schemas/LineString",
+                    "MultiLineString": "#/components/schemas/MultiLineString",
+                    "MultiPoint": "#/components/schemas/MultiPoint",
+                    "MultiPolygon": "#/components/schemas/MultiPolygon",
+                    "Point": "#/components/schemas/Point",
+                    "Polygon": "#/components/schemas/Polygon"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geofootprint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "Id",
+          "Name",
+          "ContentType",
+          "ContentLength",
+          "OriginDate",
+          "PublicationDate",
+          "EvictionDate",
+          "ContentDate",
+          "Checksum",
+          "ProductionType",
+          "GeoFootPrint"
+        ],
+        "title": "ODataProduct",
+        "description": "An asset exposed as a product by the current STAC-to-OData mapping."
+      },
+      "ODataProductList": {
+        "items": {
+          "$ref": "#/components/schemas/ODataProduct"
+        },
+        "type": "array",
+        "title": "ODataProductList",
+        "description": "The existing JSON product list, without changing its wire format."
       },
       "PartialCollection": {
         "properties": {
