@@ -40,7 +40,7 @@ COPY ./*.whl ./constraints.txt /tmp/whl/
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
-RUN pip install --no-cache-dir --only-binary=:all: --no-binary=ply -c /tmp/whl/constraints.txt \
+RUN pip install --no-cache-dir --only-binary=:all: -c /tmp/whl/constraints.txt \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
     /tmp/whl/rs_server_common-*.whl /tmp/whl/rs_server_osam-*.whl && \
     layer-cleanup.sh

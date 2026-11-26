@@ -72,7 +72,6 @@ package = false # don't build the root project
 # Packages without binary wheels, built from their source distribution. All the other packages must be installed
 # from wheels (e.g. with 'uv sync --no-build') so that no setup script is executed.
 no-binary-package = [
-    "ply", # pinned to the last version without CVE, see services/common/pyproject.toml
     "psycopg2",
 ]
 

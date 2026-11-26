@@ -2771,12 +2771,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ply"
-version = "3.10"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ce/3d/1f9ca69192025046f02a02ffc61bfbac2731aab06325a218370fd93e18df/ply-3.10.tar.gz", hash = "sha256:96e94af7dd7031d8d6dd6e2a8e0de593b511c211a86e28a9c9621c275ac8bacb", size = 150926, upload-time = "2017-01-31T18:38:34.244Z" }
-
-[[package]]
 name = "pre-commit"
 version = "4.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4287,7 +4281,6 @@ dependencies = [
     { name = "markdown" },
     { name = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-otlp" },
-    { name = "ply" },
     { name = "protobuf" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -4324,7 +4317,6 @@ requires-dist = [
     { name = "markdown", specifier = ">=3.8.2,<4" },
     { name = "opentelemetry-distro", specifier = ">=0.66b1,<0.67" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.45.1,<2" },
-    { name = "ply", specifier = "==3.10" },
     { name = "protobuf", specifier = ">=6.31.1" },
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "pydantic-settings", specifier = ">=2.15.0,<3.0.0" },
