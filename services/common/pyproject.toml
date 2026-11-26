@@ -72,9 +72,6 @@ dependencies = [
     "xmltodict>=1.0.2,<2",
     "urllib3>=2.6.3",
     "antimeridian>=0.4.7,<0.6",
-    # Requirement of jsonpath-ng through eodag, pinpoined to last version without CVE
-    # See https://data.safetycli.com/v/SFTY-20260120-09218/eda
-    "ply==3.10",
 ]
 
 [project.urls]
