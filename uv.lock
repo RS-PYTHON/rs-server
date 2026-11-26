@@ -4300,14 +4300,12 @@ requires-dist = [{ name = "rs-server-common", editable = "services/common" }]
 name = "rs-server-catalog"
 source = { editable = "services/catalog" }
 dependencies = [
-    { name = "multiformats" },
     { name = "rs-server-common" },
     { name = "xmltodict" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "multiformats", specifier = ">=0.3.1.post4" },
     { name = "rs-server-common", editable = "services/common" },
     { name = "xmltodict", specifier = ">=1.0.2,<2" },
 ]
@@ -4329,6 +4327,7 @@ dependencies = [
     { name = "httpx" },
     { name = "itsdangerous" },
     { name = "markdown" },
+    { name = "multiformats" },
     { name = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-otlp" },
     { name = "ply" },
@@ -4366,6 +4365,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1,<0.29" },
     { name = "itsdangerous", specifier = ">=2.2.0,<3" },
     { name = "markdown", specifier = ">=3.8.2,<4" },
+    { name = "multiformats", specifier = ">=0.3.1.post4" },
     { name = "opentelemetry-distro", specifier = ">=0.66b1,<0.67" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.45.1,<2" },
     { name = "ply", specifier = "==3.10" },
