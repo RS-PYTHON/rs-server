@@ -29,7 +29,8 @@ from rs_server_osam.utils.tools import (
     get_configmap_user_values,
     get_keycloak_user_from_description,
     load_configmap_data,
-    match_roles,
+    match_role,
+    parse_configmap_row,
     parse_role,
 )
 
@@ -292,46 +293,46 @@ def test_parse_role_returns_none_when_no_underscore_in_rhs():
 
 
 @pytest.mark.parametrize(
-    "roles, expected",
+    "role, expected",
     [
-        # match_roles([("paul", "s1-l1")]) = {...}
+        # match_role(..., "paul", "s1-l1", ...) = {...}
         (
-            [("paul", "s1-l1")],
+            ("paul", "s1-l1"),
             {
                 "rspython-ops-catalog/paul/s1-l1/",
                 "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                 "rspython-ops-catalog-paul/paul/s1-l1/",
             },
         ),
-        # match_roles([("copernicus", "s1-l1")])
+        # match_role(..., "copernicus", "s1-l1", ...)
         (
-            [("copernicus", "s1-l1")],
+            ("copernicus", "s1-l1"),
             {
                 "rspython-ops-catalog/copernicus/s1-l1/",
                 "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
                 "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
             },
         ),
-        # match_roles([("copernicus", "s1-aux")])
+        # match_role(..., "copernicus", "s1-aux", ...)
         (
-            [("copernicus", "s1-aux")],
+            ("copernicus", "s1-aux"),
             {
                 "rspython-ops-catalog/copernicus/s1-aux/",
                 "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
                 "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
             },
         ),
-        # match_roles([("emilie", "s1-aux")])
+        # match_role(..., "emilie", "s1-aux", ...)
         (
-            [("emilie", "s1-aux")],
+            ("emilie", "s1-aux"),
             {
                 "rspython-ops-catalog/emilie/s1-aux/",
                 "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
             },
         ),
-        # match_roles([("*", "s1-l1")])
+        # match_role(..., "*", "s1-l1", ...)
         (
-            [("*", "s1-l1")],
+            ("*", "s1-l1"),
             {
                 "rspython-ops-catalog/*/s1-l1/",
                 "rspython-ops-catalog-default-s1-l1/*/s1-l1/",
@@ -339,9 +340,9 @@ def test_parse_role_returns_none_when_no_underscore_in_rhs():
                 "rspython-ops-catalog-paul/*/s1-l1/",
             },
         ),
-        # match_roles([("emilie", "*")])
+        # match_role(..., "emilie", "*", ...)
         (
-            [("emilie", "*")],
+            ("emilie", "*"),
             {
                 "rspython-ops-catalog/emilie/*/",
                 "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
@@ -350,30 +351,61 @@ def test_parse_role_returns_none_when_no_underscore_in_rhs():
         ),
     ],
 )
-def test_match_roles(roles, expected):
-    """Tests of match_roles, based on input pairs and output roles."""
-    assert match_roles(roles) == expected
+def test_match_role(role, expected):
+    """Tests of match_role, based on input pairs and output roles."""
+    owner, collection = role
+    with patch("rs_server_osam.utils.tools.logger") as mock_logger:
+        assert match_role("test_role", owner, collection, load_configmap_data()) == expected
+    # Each matched path is logged with its configmap line
+    messages = [call.args[0] for call in mock_logger.info.call_args_list]
+    for path in expected:
+        assert any(msg.startswith("Role 'test_role' matches the configmap line ") and path in msg for msg in messages)
+    mock_logger.error.assert_not_called()
+
+
+def test_match_role_logs_error_when_nothing_matches():
+    """A role that matches no configmap line gives no right: this must be logged as an error."""
+    configmap = [["paul", "s1-l1", "*", "100", "bucket-paul"]]
+    with patch("rs_server_osam.utils.tools.logger") as mock_logger:
+        assert match_role("rs_catalog_emilie:s1-l1_read", "emilie", "s1-l1", configmap) == set()
+    mock_logger.error.assert_called_once()
+    assert "matches no configmap line" in mock_logger.error.call_args.args[0]
+
+
+@pytest.mark.parametrize(
+    "role, error_logged",
+    [
+        ("default-roles-rspy", False),  # not a catalog role
+        ("rs_osam_update", False),  # not a catalog role
+        ("rs_catalog_paul:s1-l1_read", False),  # valid catalog role
+        ("invalidformat:s1-l1_read", True),  # no owner
+        ("rs_catalog_paul:read", True),  # no operation
+        ("rs_catalog_paul:s1:l1_read", True),  # too many ':'
+    ],
+)
+def test_parse_role_logs_errors(role, error_logged):
+    """Only the invalid catalog roles, that give no S3 access right, are logged as errors."""
+    with patch("rs_server_osam.utils.tools.logger") as mock_logger:
+        parse_role(role)
+    assert mock_logger.error.called == error_logged
+    mock_logger.warning.assert_not_called()
+
+
+def test_parse_configmap_row_invalid():
+    """A configmap line without 5 columns raises an error with its line number."""
+    assert parse_configmap_row(1, ["*", "*", "*", "100", "bucket"]) == ("*", "*", "*", "100", "bucket")
+    with pytest.raises(RuntimeError, match="Invalid configmap line 3"):
+        parse_configmap_row(3, [])
 
 
 @patch("rs_server_osam.utils.tools.load_configmap_data", return_value=None)
-def test_match_roles_and_get_configmap_user_values_handle_missing_configmap(mock_load):
+def test_get_configmap_user_values_handle_missing_configmap(mock_load):
     """
-    Test that both functions gracefully handle a missing or unreadable configmap CSV file
+    Test that get_configmap_user_values gracefully handles a missing or unreadable configmap CSV file
     by returning empty results when load_configmap_data() returns None.
-    This covers both early return paths and makes sonarqube happy as well...
     """
-    # Test match_roles
-    roles_to_match = [("paul", "s1-l1"), ("emilie", "*")]
-    result = match_roles(roles_to_match)
-    assert result == set()  # empty set
-    assert mock_load.called
-
-    # Test get_configmap_user_values
     collections, eopf_types, buckets = get_configmap_user_values("paul")
     assert not collections
     assert not eopf_types
     assert not buckets
-    assert mock_load.called  # called again (or same call count)
-
-    # Verify load_configmap_data was called exactly twice (once per function)
-    assert mock_load.call_count == 2
+    assert mock_load.call_count == 1

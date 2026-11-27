@@ -14,7 +14,6 @@
 
 """Class to handle connection and requests to Keycloak"""
 
-import logging
 import os
 import re
 
@@ -24,8 +23,9 @@ from keycloak.exceptions import (
     KeycloakConnectionError,
     KeycloakPutError,
 )
+from rs_server_common.utils.logging import Logging
 
-logger = logging.getLogger(__name__)
+logger = Logging.default(__name__)
 
 
 class KeycloakHandler:
