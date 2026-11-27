@@ -87,7 +87,7 @@ class S3Manager:
             logger.debug("Creating S3 handler for catalog operation")
             s3_handler = S3StorageHandler(s3_credentials)
         except RuntimeError:
-            logger.warning(f"Failed to create the s3 handler: {traceback.format_exc()}")
+            logger.warning(f"⚠️ Failed to create the s3 handler: {traceback.format_exc()}")
             return None
 
         return s3_handler
@@ -165,7 +165,7 @@ class S3Manager:
             ) from exc
         if item_s3_path != s3_key:
             logger.error(
-                "Rejected asset path change for item %s asset %s: existing=%s new=%s",
+                "❌ Rejected asset path change for item %s asset %s: existing=%s new=%s",
                 item.get("id"),
                 asset_name,
                 item_s3_path,
@@ -299,7 +299,7 @@ class S3Manager:
         try:
             s3_path = content["assets"][asset_id]["href"].removeprefix(f"s3://{bucket_name}/")
         except KeyError:
-            logger.warning("Asset %s not found while generating presigned URL for item %s", asset_id, item_id)
+            logger.warning("⚠️ Asset %s not found while generating presigned URL for item %s", asset_id, item_id)
             return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
             # Sign with a browser-accessible endpoint while retaining the internal
@@ -368,7 +368,7 @@ class S3Manager:
         # assets that are already invalid from the STAC payload itself.
         for asset_name, asset_info in content.get("assets", {}).items():
             if not (s3_key := asset_info.get("href")):
-                logger.error(f"Asset: {asset_name}, No href key found for this asset")
+                logger.error(f"❌ Asset: {asset_name}, No href key found for this asset")
                 exist_list.append(False)
                 continue
 
@@ -376,7 +376,8 @@ class S3Manager:
             # If the href points to a different bucket, we can reject it immediately.
             if bucket_name not in s3_key:
                 logger.error(
-                    f"Asset: {asset_name}, The s3 key {s3_key} should contain the bucket name {bucket_name}",
+                    f"❌ Asset: {asset_name}, The s3 key '{s3_key}' should contain the bucket name '{bucket_name}'.",
+                    "Check the configmap content and the URL path.",
                 )
                 exist_list.append(False)
                 continue
@@ -394,7 +395,7 @@ class S3Manager:
                 logger.info(f"Asset: {asset_name}, Found on bucket: {exists}, Size: {size}")
                 return exists
             except HTTPException as e:
-                logger.error(f"Asset: {asset_name}, Error: {e.detail}")
+                logger.error(f"❌ Asset: {asset_name}, Error: {e.detail}")
                 return False
 
         if assets_to_check:
@@ -430,7 +431,7 @@ class S3Manager:
         for asset_name, asset_info in content.get("assets", {}).items():
             href = asset_info.get("href")
             if not href:
-                logger.warning("Asset %s has no href; skipping checksum update", asset_name)
+                logger.warning("⚠️ Asset %s has no href; skipping checksum update", asset_name)
                 continue
 
             key = href.removeprefix(f"s3://{bucket_name}/")
@@ -438,7 +439,7 @@ class S3Manager:
                 logger.debug("Fetching checksum attributes for asset %s key=%s", asset_name, key)
                 object_attributes = self.s3_handler.get_object_attributes(bucket_name, key)
             except RuntimeError as error:
-                logger.warning("Failed to get checksum attributes for asset %s: %s", asset_name, error)
+                logger.warning("⚠️ Failed to get checksum attributes for asset %s: %s", asset_name, error)
                 continue
 
             # GetObjectAttributes returns the checksum values in the S3/AWS format:
@@ -540,7 +541,7 @@ class S3Manager:
             return True
         if not self.s3_handler:
             message = "Failed to create the s3 handler when trying to delete the s3 files"
-            logger.error("Failed to create the s3 handler when trying to delete the s3 files")
+            logger.error("❌ Failed to create the s3 handler when trying to delete the s3 files")
             raise RuntimeError(message)
 
         try:
