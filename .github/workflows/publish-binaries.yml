@@ -375,41 +375,12 @@ jobs:
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           build_args: ${{ matrix.build_args }}
-      - uses: cloudposse/github-action-matrix-outputs-write@81ea135d4c4f90a5220bb38304380073c571dbb8
-        with:
-          matrix-step-name: publish-docker-images
-          matrix-key: ${{ matrix.image }}
-          outputs: |
-            docker_images: ${{ steps.publish-docker.outputs.docker_images }}
-
-  get-pushed-images:
-    name: Get pushed Docker image names
-    needs: [set-binary-env, publish-docker-images]
-    runs-on: ubuntu-latest
-    outputs:
-      pushed_images: ${{ steps.read.outputs.pushed_images }}
-    steps:
-      - id: read-matrix-outputs
-        if: ${{ needs.set-binary-env.outputs.docker_final_tags != '' }} # only if a temp Docker tag has been set
-        uses: cloudposse/github-action-matrix-outputs-read@ddb62566e896c85614f5eeec2daa43d6d1dc6cb0
-        with:
-            matrix-step-name: publish-docker-images
-      - id: read
-        if: ${{ needs.set-binary-env.outputs.docker_final_tags != '' }}
-        run: |
-          set -x
-          # Docker images that have been pushed
-          # e.g. {"docker_images": {"cadip": "<cadip_image>", "adgs": "<adgs_image>" }}
-          json_images='${{ steps.read-matrix-outputs.outputs.result }}' # use simple quotes, not double quotes !
-          pushed_images=$(echo "$json_images" | jq -r .docker_images[] | paste -sd,) # separate values with ','
-
-          echo pushed_images="$pushed_images" >> "$GITHUB_OUTPUT"
 
   # Test rs-demo with the new Docker images
   test-demo:
     name: Test rs-demo
     runs-on: ubuntu-latest
-    needs: [set-binary-env, publish-docker-images, get-pushed-images]
+    needs: [set-binary-env, publish-docker-images]
     permissions:
      packages: write # needed for 'docker push'
      pull-requests: write # to report the notebooks in the pull request
@@ -463,7 +434,6 @@ jobs:
         if: ${{ needs.set-binary-env.outputs.docker_final_tags != '' }}
         uses: RS-PYTHON/actions/.github/actions/tag-push-docker@develop
         with:
-          old_docker_images: ${{ needs.get-pushed-images.outputs.pushed_images }}
           new_tags: ${{ needs.set-binary-env.outputs.docker_final_tags }}
 
   publish-wheels-pypi:
