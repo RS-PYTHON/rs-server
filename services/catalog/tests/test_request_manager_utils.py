@@ -57,6 +57,69 @@ def test_combine_filters_without_existing():
     assert rm.combine_filters(None, extra) == extra
 
 
+def test_escape_like_literal():
+    """Escapes SQL LIKE wildcards and backslashes."""
+    assert rm.escape_like_literal(r"S03_2025%a\b") == r"S03\_2025\%a\\b"
+
+
+@pytest.mark.parametrize(
+    "raw_ids, expected",
+    [
+        ("a,b,a,", ["a", "b"]),
+        (["a", "", "b", "a"], ["a", "b"]),
+        ("", None),
+        ([], None),
+        (None, None),
+        (123, None),
+        (["a", 123], None),
+    ],
+)
+def test_parse_search_ids(raw_ids, expected):
+    """Parses GET strings and POST lists, deduplicating while ignoring empty or invalid values."""
+    assert rm.parse_search_ids(raw_ids) == expected
+
+
+def test_translate_ids_search_without_existing_filter():
+    """Translates ids into exact-or-extension CQL2-JSON filter with escaped LIKE patterns."""
+    result = rm.translate_ids_search(None, "cql2-json", ["S03_ITEM1", "ITEM2"])
+    assert result == {
+        "op": "or",
+        "args": [
+            {"op": "=", "args": [{"property": "id"}, "S03_ITEM1"]},
+            {"op": "like", "args": [{"property": "id"}, r"S03\_ITEM1.%"]},
+            {"op": "=", "args": [{"property": "id"}, "ITEM2"]},
+            {"op": "like", "args": [{"property": "id"}, "ITEM2.%"]},
+        ],
+    }
+    # Ensure stac-fastapi-pgstac's cql2 validator accepts the generated filter.
+    rm.cql2.Expr(result).validate()  # pylint: disable=no-member
+
+
+def test_translate_ids_search_combines_with_existing_filter():
+    """Combines translated ids filter with an existing filter via AND."""
+    existing = {"op": "=", "args": [{"property": "product:type"}, "S03OLCIL0"]}
+    result = rm.translate_ids_search(existing, "cql2-json", "S03_ITEM1")
+    assert result == {
+        "op": "and",
+        "args": [
+            existing,
+            {
+                "op": "or",
+                "args": [
+                    {"op": "=", "args": [{"property": "id"}, "S03_ITEM1"]},
+                    {"op": "like", "args": [{"property": "id"}, r"S03\_ITEM1.%"]},
+                ],
+            },
+        ],
+    }
+
+
+def test_translate_ids_search_empty_returns_none():
+    """Returns None when ids are absent or empty."""
+    assert rm.translate_ids_search(None, "cql2-text", "") is None
+    assert rm.translate_ids_search(None, "cql2-json", []) is None
+
+
 @pytest.mark.asyncio
 async def test_manage_delete_request_s3_cleanup_retries_exhausted(mocker):
     """Return HTTP 500 after the retry of an S3 cleanup failure is exhausted."""

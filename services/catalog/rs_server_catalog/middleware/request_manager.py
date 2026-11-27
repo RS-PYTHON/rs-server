@@ -119,10 +119,7 @@ def parse_filter_to_json(raw_filter: Any, filter_lang: str) -> dict | None:
         except Exception as exc:  # pylint: disable=broad-exception-caught
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Invalid filter format for externalIds search: "
-                    f"raw_filter={raw_filter!r}, filter_lang={filter_lang!r}"
-                ),
+                detail=("Invalid filter format: " f"raw_filter={raw_filter!r}, filter_lang={filter_lang!r}"),
             ) from exc
     return None
 
@@ -132,6 +129,67 @@ def combine_filters(existing: dict | None, extra: dict) -> dict:
     if existing is None:
         return extra
     return {"op": "and", "args": [existing, extra]}
+
+
+def escape_like_literal(value: str) -> str:
+    """Escape SQL LIKE wildcards (\\, %, _) so a string is matched literally."""
+    # Escape backslash first so the backslashes added for '%' and '_' are not escaped again.
+    # Sentinel product IDs contain underscores, which SQL LIKE would otherwise treat as wildcards.
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def parse_search_ids(raw_ids: Any) -> list[str] | None:
+    """
+    Parse the `ids` search parameter from a GET query string or POST JSON list.
+
+    Returns None when `ids` is absent, empty, or not a valid string/list of strings
+    so downstream stac-fastapi validation remains unchanged.
+    """
+    if isinstance(raw_ids, str):
+        # GET /search passes ids as a comma-separated string.
+        parsed = [item_id for item_id in raw_ids.split(",") if item_id]
+    elif isinstance(raw_ids, list) and all(isinstance(item_id, str) for item_id in raw_ids):
+        # POST /search passes ids as a JSON list of strings.
+        parsed = [item_id for item_id in raw_ids if item_id]
+    else:
+        return None
+    if not parsed:
+        return None
+    # Deduplicate while preserving the caller's order.
+    return list(dict.fromkeys(parsed))
+
+
+def translate_ids_search(raw_filter: Any, filter_lang: str, raw_ids: Any) -> dict | None:
+    """
+    Translate the `ids` search parameter into a CQL2-JSON filter matching either the exact id
+    or the id followed by a dot-prefixed extension (e.g. `id = 'X' OR id LIKE 'X.%'`).
+
+    Args:
+        raw_filter: the CQL2 filter of the search, if any.
+        filter_lang (str): the language of the filter.
+        raw_ids: the value of the `ids` search parameter, if any.
+
+    Returns:
+        dict | None: the new CQL2-JSON filter, or None if `ids` should not be translated.
+    """
+    item_ids = parse_search_ids(raw_ids)
+    if not item_ids:
+        return None
+
+    # Match either the exact item ID or the ID with any dot-prefixed extension (e.g. .zarr, .SAFE)
+    # without matching unrelated sibling prefixes such as '<id>_extra'.
+    conditions: list[dict[str, Any]] = []
+    for item_id in item_ids:
+        escaped = escape_like_literal(item_id)
+        conditions.append({"op": "=", "args": [{"property": "id"}, item_id]})
+        conditions.append({"op": "like", "args": [{"property": "id"}, f"{escaped}.%"]})
+
+    ids_filter: dict[str, Any] = {"op": "or", "args": conditions}
+    existing_filter = parse_filter_to_json(raw_filter, filter_lang)
+    translated = combine_filters(existing_filter, ids_filter)
+    logger.info("Translated ids in catalog search for %d id(s)", len(item_ids))
+    logger.debug("Translated catalog ids search filter: %s", translated)
+    return translated
 
 
 def translate_external_ids_search(raw_filter: Any, filter_lang: str, raw_external_ids: Any) -> dict | None:
@@ -769,6 +827,20 @@ collection owned by the '{self.request_ids['owner_id']}' user",
                 content.pop("filter", None)
                 # The "filter-lang" field has to be placed BEFORE the filter.
                 content = {**content, "filter-lang": "cql2-json", "filter": external_ids_filter}
+
+            # Translate `ids` after `externalIds` so both combine via AND into one CQL2-JSON filter.
+            ids_filter = translate_ids_search(
+                content.get("filter"),
+                content.get("filter-lang", "cql2-json"),
+                content.get("ids"),
+            )
+            if ids_filter is not None:
+                content.pop("ids", None)
+                content.pop("filter-lang", None)
+                content.pop("filter", None)
+                # The "filter-lang" field has to be placed BEFORE the filter.
+                content = {**content, "filter-lang": "cql2-json", "filter": ids_filter}
+
             if content != original_content:
                 request = self._override_request_body(request, content)
 
@@ -826,6 +898,18 @@ collection owned by the '{self.request_ids['owner_id']}' user",
             if external_ids_filter is not None:
                 query_params_dict["filter"] = json.dumps(external_ids_filter)
                 query_params_dict["filter-lang"] = "cql2-json"
+
+            # Translate `ids` after `externalIds` so both combine via AND into one CQL2-JSON filter.
+            ids_filter = translate_ids_search(
+                query_params_dict.get("filter"),
+                query_params_dict.get("filter-lang", "cql2-text"),
+                query_params_dict.get("ids"),
+            )
+            if ids_filter is not None:
+                query_params_dict.pop("ids", None)
+                query_params_dict["filter"] = json.dumps(ids_filter)
+                query_params_dict["filter-lang"] = "cql2-json"
+
             if query_params_dict != original_query_params:
                 request = self._override_request_query_string(request, query_params_dict)
 
