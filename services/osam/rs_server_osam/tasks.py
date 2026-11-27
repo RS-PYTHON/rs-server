@@ -22,6 +22,7 @@ import os
 # pylint: disable = wrong-import-order
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from fnmatch import fnmatchcase
 from functools import wraps
 from typing import Any
 
@@ -383,6 +384,32 @@ def add_default_bucket_access(
         download_set.add(path)
 
 
+def remove_covered_paths(paths: set[str], covering_paths: set[str] | None = None) -> set[str]:
+    """
+    Removes the access paths that are already granted by another (wildcard) access path.
+
+    A path is removed when it is also in ``covering_paths``, or when it matches a different
+    wildcard path of ``paths`` or ``covering_paths``. For example, ``bucket/owner/collection/``
+    is removed when ``bucket/owner/*/`` is present. This keeps the OVH user policy under its
+    size limit when a user has one role per collection, without changing the granted rights.
+
+    Args:
+        paths (set[str]): Access paths to filter.
+        covering_paths (set[str] | None): Access paths of a higher (or equal) access level,
+            whose rights include the ones of ``paths``.
+
+    Returns:
+        set[str]: The paths of ``paths`` that are not covered by another path.
+    """
+    covering_paths = covering_paths or set()
+    wildcards = {path for path in paths | covering_paths if WILDCARD_CHAR in path}
+    return {
+        path
+        for path in paths - covering_paths
+        if not any(wildcard != path and fnmatchcase(path, wildcard) for wildcard in wildcards)
+    }
+
+
 @traced_function()
 def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
     """
@@ -431,10 +458,11 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
             logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
             add_default_bucket_access(bucket, user, read_set, write_set, download_set)
 
-    # Step 3: Merge access
-    read_only = read_set - download_set - write_set
-    read_download = download_set
-    write_download = write_set
+    # Step 3: Merge access. The write+download rights include the read+download ones, which
+    # include the read ones: drop the paths already granted by the same or a higher access level.
+    write_download = remove_covered_paths(write_set)
+    read_download = remove_covered_paths(download_set, write_set)
+    read_only = remove_covered_paths(read_set, download_set | write_set)
 
     # Step 4: Output
     output = {
@@ -500,6 +528,9 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                 continue
             bucket = f"arn:aws:s3:::{parts[0]}"
             owner_collection = f"{parts[1]}/{parts[2]}"
+            # The ListBucket prefix condition must also match the keys under the collection
+            if not owner_collection.endswith(WILDCARD_CHAR):
+                owner_collection += f"/{WILDCARD_CHAR}"
 
             # Add the bucket to the bucket level actions statement
             if bucket not in template_bucketlevelactions["Resource"]:

@@ -14,6 +14,8 @@
 
 """Unit tests for tasks"""
 
+import json
+import re
 from datetime import datetime
 from pprint import pprint
 from unittest.mock import MagicMock, patch
@@ -30,6 +32,7 @@ from rs_server_osam.tasks import (
     delete_obs_user_account_if_not_used_by_keycloak_account,
     get_user_s3_credentials,
     link_rspython_users_and_obs_users,
+    remove_covered_paths,
     update_s3_rights_lists,
 )
 from rs_server_osam.utils.tools import DESCRIPTION_TEMPLATE
@@ -246,13 +249,10 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-paul/paul/s1-l1/",
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
-                        "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
                 "read_download": sorted(
-                    [
-                        "rspython-ops-catalog/paul/*/",
-                    ],
+                    [],
                 ),
                 "write_download": sorted(
                     [
@@ -270,8 +270,6 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-copernicus-s1-aux-infinite/copernicus/s1-aux/",
                         "rspython-ops-catalog-copernicus-s1-aux/copernicus/s1-aux/",
-                        "rspython-ops-catalog/copernicus/*/",
-                        "rspython-ops-catalog/copernicus/s1-aux/",
                     ],
                 ),
                 "write_download": sorted(
@@ -289,7 +287,6 @@ def test_build_users_data_map(mocker):
                 "read_download": sorted(
                     [
                         "prip-rs-sentinel-3-s03-aux/copernicus/ax___fro_ax/",
-                        "rspython-ops-catalog/copernicus-s3/*/",
                         "rspython-ops-catalog/copernicus/ax___fro_ax/",
                     ],
                 ),
@@ -308,8 +305,6 @@ def test_build_users_data_map(mocker):
                 "read_download": sorted(
                     [
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/s1-aux/",
-                        "rspython-ops-catalog/emilie/*/",
-                        "rspython-ops-catalog/emilie/s1-aux/",
                     ],
                 ),
                 "write_download": sorted(
@@ -328,7 +323,6 @@ def test_build_users_data_map(mocker):
                     [
                         "rspython-ops-catalog-default-s1-l1/emilie/*/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                        "rspython-ops-catalog/emilie/*/",
                     ],
                 ),
                 "write_download": sorted(
@@ -344,16 +338,13 @@ def test_build_users_data_map(mocker):
             {
                 "read": [],
                 "read_download": sorted(
-                    [
-                        "rspython-ops-catalog/copernicus/*/",
-                    ],
+                    [],
                 ),
                 "write_download": sorted(
                     [
                         "rspython-ops-catalog-copernicus-s1-l1/copernicus/s1-l1/",
                         "rspython-ops-catalog-default-s1-l1/copernicus/s1-l1/",
                         "rspython-ops-catalog/copernicus/*/",
-                        "rspython-ops-catalog/copernicus/s1-l1/",
                     ],
                 ),
             },
@@ -367,16 +358,13 @@ def test_build_users_data_map(mocker):
             {
                 "read": [],
                 "read_download": sorted(
-                    [
-                        "rspython-ops-catalog/paul/*/",
-                    ],
+                    [],
                 ),
                 "write_download": sorted(
                     [
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
                         "rspython-ops-catalog/paul/*/",
-                        "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
             },
@@ -403,12 +391,8 @@ def test_build_users_data_map(mocker):
                 "read_download": sorted(
                     [
                         "rspython-ops-catalog-default-s1-l1/emilie/*/",
-                        "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                         "rspython-ops-catalog-emilie-s1-aux-infinite/emilie/*/",
-                        "rspython-ops-catalog-paul/paul/s1-l1/",
                         "rspython-ops-catalog/emilie/*/",
-                        "rspython-ops-catalog/paul/*/",
-                        "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
                 "write_download": sorted(
@@ -416,7 +400,6 @@ def test_build_users_data_map(mocker):
                         "rspython-ops-catalog-default-s1-l1/paul/s1-l1/",
                         "rspython-ops-catalog-paul/paul/s1-l1/",
                         "rspython-ops-catalog/paul/*/",
-                        "rspython-ops-catalog/paul/s1-l1/",
                     ],
                 ),
             },
@@ -429,9 +412,7 @@ def test_build_users_data_map(mocker):
             {
                 "read": [],
                 "read_download": sorted(
-                    [
-                        "rspython-ops-catalog/testuser/*/",
-                    ],
+                    [],
                 ),
                 "write_download": sorted(
                     [
@@ -483,7 +464,7 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
                             "arn:aws:s3:::rspython-ops-catalog",
                         ],
-                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["paul/s1-l1/*"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -532,7 +513,7 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux",
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-aux-infinite",
                         ],
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-aux/*"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -584,7 +565,7 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
                         ],
-                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["copernicus/s1-l1/*"]}},
                     },
                     {
                         "Sid": "BucketLevelActions",
@@ -668,14 +649,14 @@ def test_build_s3_rights(user, user_info, expected):
                             "arn:aws:s3:::rspython-ops-catalog",
                             "arn:aws:s3:::rspython-ops-catalog-default-s1-l1",
                         ],
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1", "paul/s1-l1", "emilie/*"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*", "paul/s1-l1/*", "emilie/*"]}},
                     },
                     {
                         "Sid": "ListBucketSentinel",
                         "Effect": "Allow",
                         "Action": ["s3:ListBucket"],
                         "Resource": "arn:aws:s3:::rspython-ops-catalog-copernicus-s1-l1",
-                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1"]}},
+                        "Condition": {"StringLike": {"s3:prefix": ["*/s1-l1/*"]}},
                     },
                     {
                         "Sid": "ListBucketSentinel",
@@ -1165,3 +1146,67 @@ def test_add_default_bucket_access(
     assert read_set == expected_read
     assert write_set == expected_write
     assert download_set == expected_download
+
+
+@pytest.mark.parametrize(
+    "paths, covering_paths, expected",
+    [
+        # No wildcard: nothing to remove
+        ({"b/o/c1/", "b/o/c2/"}, None, {"b/o/c1/", "b/o/c2/"}),
+        # The collection paths are covered by the owner wildcard path of the same bucket
+        ({"b/o/*/", "b/o/c1/", "b/o/c2/", "b2/o/c1/"}, None, {"b/o/*/", "b2/o/c1/"}),
+        # Another owner or another bucket is not covered
+        ({"b/o/*/", "b/o2/c1/", "b2/o/c1/"}, None, {"b/o/*/", "b/o2/c1/", "b2/o/c1/"}),
+        # A wildcard owner covers the same collection of every owner, and a narrower wildcard path
+        ({"b/*/c1/", "b/o/c1/", "b/o/*/", "b/*/*/"}, None, {"b/*/*/"}),
+        # The paths of a higher access level are removed, and their wildcards cover the other paths
+        ({"b/o/c1/", "b/o/c2/", "b2/o/c1/"}, {"b/o/c1/", "b2/o/*/"}, {"b/o/c2/"}),
+        # Partial collection wildcard
+        ({"b/o/s1_*/", "b/o/s1_l0/", "b/o/s2_l0/"}, None, {"b/o/s1_*/", "b/o/s2_l0/"}),
+    ],
+)
+def test_remove_covered_paths(paths, covering_paths, expected):
+    """Unit tests for remove_covered_paths"""
+    assert remove_covered_paths(paths, covering_paths) == expected
+
+
+def test_user_policy_size_with_one_role_per_collection(mocker):
+    """
+    A user with one role per collection must not get one access path per collection in the
+    buckets that accept all collections (e.g. the playground): its default <bucket>/<user>/*/
+    access path already grants them. The OVH user policy must stay under its size limit.
+    """
+    nb_collections = 300
+    configmap = [
+        ["*", "*", "*", "120", "prip-rs-playground"],
+        ["validator", "benchmark_s1_input", "*", "7300", "benchmark-rs-input"],
+        ["validator", "benchmark_s1_output", "*", "60", "benchmark-rs-output"],
+    ]
+    mocker.patch("rs_server_osam.tasks.load_configmap_data", return_value=configmap)
+    mocker.patch("rs_server_osam.utils.tools.load_configmap_data", return_value=configmap)
+    collections = ["benchmark_s1_input", "benchmark_s1_output"] + [f"collection_{i}" for i in range(nb_collections)]
+    roles = [
+        f"rs_catalog_validator:{collection}_{op}" for collection in collections for op in ("read", "write", "download")
+    ]
+
+    s3_rights = build_s3_rights("validator", {"keycloak_roles": roles})
+
+    assert s3_rights == {
+        "read": [],
+        "read_download": [],
+        "write_download": [
+            "benchmark-rs-input/validator/benchmark_s1_input/",
+            "benchmark-rs-output/validator/benchmark_s1_output/",
+            "prip-rs-playground/validator/*/",
+        ],
+    }
+    policy = update_s3_rights_lists(s3_rights)
+    list_bucket_prefixes = {
+        prefix
+        for statement in policy["Statement"]
+        if statement.get("Sid") == "ListBucketSentinel"
+        for prefix in statement["Condition"]["StringLike"]["s3:prefix"]
+    }
+    assert list_bucket_prefixes == {"validator/*", "validator/benchmark_s1_input/*", "validator/benchmark_s1_output/*"}
+    # OVH limit: 20,480 characters, excluding <CR>, <TAB> and <SPACE>
+    assert len(re.sub(r"[ \t\r\n]", "", json.dumps(policy, indent=4))) < 20480
