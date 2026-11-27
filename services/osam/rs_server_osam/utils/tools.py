@@ -176,7 +176,7 @@ def load_configmap_data():
 
 # Should this be read once and that's it?  Or should it be re-read each time to catch updates?
 # If latter, we should wrap it in each function that calls it:
-# - match_roles
+# - match_role
 # - get_configmap_user_values
 # configmap_data = S3StorageConfigurationSingleton().get_s3_bucket_configuration(
 #     os.environ.get(CSV_PATH_ENV_VAR, DEFAULT_CSV_PATH),
@@ -225,6 +225,9 @@ def parse_role(role):
     This function expects the role to follow the format: `<prefix>_<owner>:<collection>_<operation>`.
     It extracts and returns the owner, collection name, and operation (e.g., read, write, download).
 
+    The roles without ':' are not catalog roles: they are ignored. The roles with ':' that don't
+    follow this format can't give any S3 access right: they are logged as errors.
+
     Args:
         role (str): Role string to be parsed.
 
@@ -232,49 +235,83 @@ def parse_role(role):
         tuple[str, str, str] | None: A tuple (owner, collection, operation) if parsing is successful;
                                      otherwise, returns None on format error or exception.
     """
+    if ":" not in role:
+        logger.debug(f"Role '{role}' is not a catalog role, ignored")
+        return None
     try:
         lhs, rhs = role.split(":")
         # Split the left part from the last underscore to get owner
         process_owner_split = lhs.rsplit("_", 1)
         if len(process_owner_split) != 2:
+            logger.error(f"Invalid role '{role}': no owner found before ':', no S3 access right given")
             return None
         owner = process_owner_split[1]
 
         # Right side is collection_operation
         if "_" not in rhs:
+            logger.error(f"Invalid role '{role}': no '_<operation>' found after ':', no S3 access right given")
             return None
         collection, op = rhs.rsplit("_", 1)
         return owner.strip(), collection.strip(), op.lower().strip()
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.warning(f"Error parsing role '{role}': {e}")
+        logger.error(f"Error parsing role '{role}', no S3 access right given: {e}")
         return None
 
 
-def match_roles(roles):
+def parse_configmap_row(line_number: int, row: list[str]) -> tuple[str, str, str, str, str]:
     """
-    Matches parsed roles against a configuration map to determine S3 bucket access paths.
+    Checks and returns the columns of a configmap row: owner, collection, product type, expiration, bucket.
 
     Args:
-        roles (list[tuple[str, str]]): List of tuples representing (owner, collection) pairs
-                                       from parsed user roles.
+        line_number (int): Line number of the row in the configmap, for logging.
+        row (list[str]): Row of the configmap.
 
     Returns:
-        set[str]: Set of S3 access paths that match the given roles based on wildcards and
+        tuple[str, str, str, str, str]: The 5 columns of the row.
+
+    Raises:
+        RuntimeError: If the row doesn't have 5 columns.
+    """
+    if len(row) != 5:
+        message = (
+            f"Invalid configmap line {line_number}: {row}. "
+            "Expected 5 columns: owner, collection, product type, expiration, bucket"
+        )
+        logger.error(message)
+        raise RuntimeError(message)
+    cfg_owner, cfg_collection, product_type, expiration, bucket = row
+    return cfg_owner, cfg_collection, product_type, expiration, bucket
+
+
+def match_role(role: str, role_owner: str, role_collection: str, configmap_data: list[list[str]]) -> set[str]:
+    """
+    Matches a parsed role against a configuration map to determine S3 bucket access paths.
+
+    The configmap lines matched by the role are logged.
+
+    Args:
+        role (str): Keycloak role name, for logging.
+        role_owner (str): Owner of the parsed role.
+        role_collection (str): Collection of the parsed role.
+        configmap_data (list[list[str]]): Content of the configmap.
+
+    Returns:
+        set[str]: Set of S3 access paths that match the given role based on wildcards and
                   configmap entries.
     """
     matched: set[str] = set()
-    configmap_data = load_configmap_data()
-    if configmap_data is None:
-        return matched
-
-    for role_owner, role_collection in roles:
-        for cfg_owner, cfg_collection, _, _, bucket in configmap_data:
-            owner_match = role_owner == "*" or cfg_owner == "*" or fnmatch(cfg_owner.strip(), role_owner)
-            collection_match = (
-                role_collection == "*" or cfg_collection == "*" or fnmatch(cfg_collection.strip(), role_collection)
-            )
-            if owner_match and collection_match:
-                matched.add(f"{bucket.strip()}/{role_owner.strip()}/{role_collection.strip()}/")
+    for line_number, row in enumerate(configmap_data, start=1):
+        cfg_owner, cfg_collection, _, _, bucket = parse_configmap_row(line_number, row)
+        owner_match = role_owner == "*" or cfg_owner == "*" or fnmatch(cfg_owner.strip(), role_owner)
+        collection_match = (
+            role_collection == "*" or cfg_collection == "*" or fnmatch(cfg_collection.strip(), role_collection)
+        )
+        if owner_match and collection_match:
+            path = f"{bucket.strip()}/{role_owner.strip()}/{role_collection.strip()}/"
+            logger.info(f"Role '{role}' matches the configmap line {line_number}: {','.join(row)} => {path}")
+            matched.add(path)
+    if not matched:
+        logger.error(f"Role '{role}' matches no configmap line: no S3 access right given")
     return matched
 
 

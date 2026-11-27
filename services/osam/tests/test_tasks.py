@@ -1036,7 +1036,8 @@ def test_get_user_s3_credentials(
                 False,
                 {
                     "detail": "Failed to apply the access policy to the OVH account "
-                    "associated with the Keycloak account obs_test. ",
+                    "associated with the Keycloak account obs_test. No OVH account is associated with this "
+                    "Keycloak account (missing 'obs-user' attribute).",
                 },
             ),
         ),
@@ -1210,3 +1211,109 @@ def test_user_policy_size_with_one_role_per_collection(mocker):
     assert list_bucket_prefixes == {"validator/*", "validator/benchmark_s1_input/*", "validator/benchmark_s1_output/*"}
     # OVH limit: 20,480 characters, excluding <CR>, <TAB> and <SPACE>
     assert len(re.sub(r"[ \t\r\n]", "", json.dumps(policy, indent=4))) < 20480
+
+
+def test_build_s3_rights_logs_roles_matches_and_reduction(mocker):
+    """
+    The Keycloak roles, the configmap line matched by each role, and the S3 rights before and after
+    the reduction must be logged.
+    """
+    configmap = [
+        ["*", "*", "*", "120", "prip-rs-playground"],
+        ["paul", "s1-l1", "*", "100", "bucket-paul"],
+    ]
+    mocker.patch("rs_server_osam.tasks.load_configmap_data", return_value=configmap)
+    mock_logger = mocker.patch("rs_server_osam.tasks.logger")
+    mock_tools_logger = mocker.patch("rs_server_osam.utils.tools.logger")
+    roles = ["rs_osam_update", "rs_catalog_paul:s1-l1_read", "rs_catalog_paul:s1-l1_write"]
+
+    s3_rights = build_s3_rights("paul", {"keycloak_roles": roles})
+
+    assert s3_rights == {
+        "read": [],
+        "read_download": [],
+        "write_download": ["bucket-paul/paul/s1-l1/", "prip-rs-playground/paul/*/"],
+    }
+    infos = [call.args[0] for call in mock_logger.info.call_args_list]
+    assert f"Keycloak roles of user paul: {sorted(roles)}" in infos
+    assert any("from the configmap line 1: *,*,*,120,prip-rs-playground" in msg for msg in infos)
+    tools_infos = [call.args[0] for call in mock_tools_logger.info.call_args_list]
+    for op in ("read", "write"):
+        assert (
+            f"Role 'rs_catalog_paul:s1-l1_{op}' matches the configmap line 1: *,*,*,120,prip-rs-playground "
+            "=> prip-rs-playground/paul/s1-l1/"
+        ) in tools_infos
+        assert (
+            f"Role 'rs_catalog_paul:s1-l1_{op}' matches the configmap line 2: paul,s1-l1,*,100,bucket-paul "
+            "=> bucket-paul/paul/s1-l1/"
+        ) in tools_infos
+    before = next(msg for msg in infos if "before reduction" in msg)
+    after = next(msg for msg in infos if "after reduction" in msg)
+    removed = next(msg for msg in infos if "removed by the reduction" in msg)
+    assert json.loads(before.split(": ", 1)[1]) == {
+        "read": ["bucket-paul/paul/s1-l1/", "prip-rs-playground/paul/*/", "prip-rs-playground/paul/s1-l1/"],
+        "read_download": ["prip-rs-playground/paul/*/"],
+        "write_download": ["bucket-paul/paul/s1-l1/", "prip-rs-playground/paul/*/", "prip-rs-playground/paul/s1-l1/"],
+    }
+    assert json.loads(after.split(": ", 1)[1]) == s3_rights
+    assert json.loads(removed.split(": ", 1)[1]) == {
+        "read": ["bucket-paul/paul/s1-l1/", "prip-rs-playground/paul/*/", "prip-rs-playground/paul/s1-l1/"],
+        "read_download": ["prip-rs-playground/paul/*/"],
+        "write_download": ["prip-rs-playground/paul/s1-l1/"],
+    }
+    mock_logger.error.assert_not_called()
+    mock_tools_logger.error.assert_not_called()
+
+
+def test_build_s3_rights_logs_unknown_operation(mocker):
+    """A role with an unknown operation gives no S3 access right: this must be logged as an error."""
+    mocker.patch("rs_server_osam.tasks.load_configmap_data", return_value=[["*", "*", "*", "120", "bucket"]])
+    mock_logger = mocker.patch("rs_server_osam.tasks.logger")
+
+    s3_rights = build_s3_rights("paul", {"keycloak_roles": ["rs_catalog_paul:s1-l1_delete"]})
+
+    assert s3_rights["read"] == [] and s3_rights["read_download"] == []
+    mock_logger.error.assert_called_once()
+    assert "unknown operation 'delete'" in mock_logger.error.call_args.args[0]
+
+
+def test_build_s3_rights_raises_when_configmap_is_missing(mocker):
+    """The S3 rights can't be built without the configmap."""
+    mocker.patch("rs_server_osam.tasks.load_configmap_data", return_value=None)
+    with pytest.raises(RuntimeError, match="the configmap could not be loaded"):
+        build_s3_rights("paul", {"keycloak_roles": ["rs_catalog_paul:s1-l1_read"]})
+
+
+@pytest.mark.parametrize("raise_exception", [False, True])
+@patch("rs_server_osam.tasks.get_ovh_handler")
+@patch("rs_server_osam.tasks.get_keycloak_handler")
+def test_apply_user_access_policy_logs_errors(mock_get_keycloak_handler, mock_get_ovh_handler, raise_exception):
+    """Each failure to apply the access policy must be logged as an error."""
+    if raise_exception:
+        mock_get_keycloak_handler.return_value.get_obs_user_from_keycloak_username.side_effect = RuntimeError("KO")
+    else:
+        mock_get_keycloak_handler.return_value.get_obs_user_from_keycloak_username.return_value = None
+
+    with patch("rs_server_osam.tasks.logger") as mock_logger:
+        result, content = apply_user_access_policy("obs_test", "{}")
+
+    assert not result
+    if raise_exception:
+        mock_logger.exception.assert_called_once()
+        assert content["detail"].endswith("KO")
+    else:
+        mock_logger.error.assert_called_once()
+        assert "missing 'obs-user' attribute" in content["detail"]
+    mock_get_ovh_handler.return_value.apply_user_access_policy.assert_not_called()
+
+
+def test_update_s3_rights_lists_logs_wrong_access():
+    """A wrong access path is logged as an error, and gives no statement with an empty resource list."""
+    with patch("rs_server_osam.tasks.logger") as mock_logger:
+        policy = update_s3_rights_lists({"read": ["bucket/paul/s1-l1/"], "read_download": ["wrong"]})
+
+    mock_logger.error.assert_called_once_with("Wrong obs policy access found, ignored: wrong")
+    assert all(statement["Resource"] for statement in policy["Statement"])
+    assert not any(
+        statement["Action"] == ["s3:GetObject", "s3:ListMultipartUploadParts"] for statement in policy["Statement"]
+    )

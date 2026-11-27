@@ -38,7 +38,8 @@ from rs_server_osam.utils.tools import (
     create_description_from_template,
     get_keycloak_user_from_description,
     load_configmap_data,
-    match_roles,
+    match_role,
+    parse_configmap_row,
     parse_role,
 )
 
@@ -333,15 +334,22 @@ def apply_user_access_policy(user, current_rights):
     Apply access policy over an user in ovh
     """
     msg = ""
+    obs_user = None
     try:
         obs_user = get_keycloak_handler().get_obs_user_from_keycloak_username(user)
         if obs_user:
+            logger.info(f"Applying the S3 access policy to the OVH user id {obs_user} of the Keycloak user {user}")
             get_ovh_handler().apply_user_access_policy(obs_user, current_rights)
+            logger.info(f"S3 access policy applied to the OVH user id {obs_user} of the Keycloak user {user}")
             return True, {
                 "detail": f"S3 access policy applied for the OVH account associated with the Keycloak user {user}",
             }
+        msg = "No OVH account is associated with this Keycloak account (missing 'obs-user' attribute)."
+        logger.error(f"Error while applying access policy for Keycloak user {user}. {msg}")
     except Exception as exc:  # pylint: disable = broad-exception-caught
-        logger.error(f"Error while applying access policy for OVH user id {obs_user}. {exc}")
+        logger.exception(
+            f"Error while applying access policy for OVH user id {obs_user} of the Keycloak user {user}. {exc}",
+        )
         msg = str(exc)
     return False, {
         "detail": "Failed to apply the access policy to the OVH account "
@@ -428,34 +436,46 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
               - "read": List of read-only access paths.
               - "read_download": List of read+download access paths.
               - "write_download": List of write+download access paths.
-    """
-    # Step 1: Parse roles
-    read_roles = []
-    write_roles = []
-    download_roles = []
 
-    for role in user_info["keycloak_roles"]:
+    Raises:
+        RuntimeError: If the configmap could not be loaded or has an invalid line.
+    """
+    keycloak_roles = user_info["keycloak_roles"]
+    logger.info(f"Keycloak roles of user {user}: {sorted(keycloak_roles)}")
+
+    configmap_data = load_configmap_data()
+    if configmap_data is None:
+        raise RuntimeError(f"Cannot build the S3 rights of user {user}: the configmap could not be loaded")
+
+    # Step 1: Parse roles and match them against configmap
+    read_set: set[str] = set()
+    write_set: set[str] = set()
+    download_set: set[str] = set()
+    sets_by_operation = {"read": read_set, "write": write_set, "download": download_set}
+
+    for role in keycloak_roles:
         parsed = parse_role(role)
         if not parsed:
             continue
         owner, collection, op = parsed
-        if op == "read":
-            read_roles.append((owner, collection))
-        elif op == "write":
-            write_roles.append((owner, collection))
-        elif op == "download":
-            download_roles.append((owner, collection))
+        if op not in sets_by_operation:
+            logger.error(
+                f"Invalid role '{role}': unknown operation '{op}', expected one of {list(sets_by_operation)}. "
+                "No S3 access right given",
+            )
+            continue
+        sets_by_operation[op].update(match_role(role, owner, collection, configmap_data))
 
-    # Step 2: Match against configmap
-    read_set = match_roles(read_roles)
-    write_set = match_roles(write_roles)
-    download_set = match_roles(download_roles)
-    # add the default roles with * for owner, collection and product type, if there is a
+    # Step 2: add the default roles with * for owner, collection and product type, if there is a
     # bucket defined in the configmap. these roles will be assigned to the current
     # user account on ovh when the  /storage/account/{user}/update endpoint is called
-    for cfg_owner, cfg_collection, product_type, _, bucket in load_configmap_data():
+    for line_number, row in enumerate(configmap_data, start=1):
+        cfg_owner, cfg_collection, product_type, _, bucket = parse_configmap_row(line_number, row)
         if cfg_owner == WILDCARD_CHAR and cfg_collection == WILDCARD_CHAR and product_type == WILDCARD_CHAR:
-            logger.debug(f"Adding default bucket access for {bucket.strip()}/{user.strip()}")
+            logger.info(
+                f"Adding default bucket access for {bucket.strip()}/{user.strip()} "
+                f"from the configmap line {line_number}: {','.join(row)}",
+            )
             add_default_bucket_access(bucket, user, read_set, write_set, download_set)
 
     # Step 3: Merge access. The write+download rights include the read+download ones, which
@@ -470,8 +490,15 @@ def build_s3_rights(user, user_info):  # pylint: disable=too-many-locals
         STRKEY_ACCESS_RIGHT_READ_DWN_LIST: sorted(read_download),
         STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST: sorted(write_download),
     }
-
-    logger.info(json.dumps(output, indent=2))
+    before_reduction = {
+        STRKEY_ACCESS_RIGHT_READ_LIST: sorted(read_set),
+        STRKEY_ACCESS_RIGHT_READ_DWN_LIST: sorted(download_set),
+        STRKEY_ACCESS_RIGHT_WRITE_DWN_LIST: sorted(write_set),
+    }
+    removed = {key: sorted(set(paths) - set(output[key])) for key, paths in before_reduction.items()}
+    logger.info(f"S3 rights of user {user} before reduction: {json.dumps(before_reduction, indent=2)}")
+    logger.info(f"S3 rights of user {user} after reduction: {json.dumps(output, indent=2)}")
+    logger.info(f"S3 rights of user {user} removed by the reduction: {json.dumps(removed, indent=2)}")
     return output
 
 
@@ -524,7 +551,7 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
             parts = access.strip().split("/")
             # protection against a wrong obs access policy
             if len(parts) < 3:
-                logger.warning(f"Wrong obs policy access found: {access}")
+                logger.error(f"Wrong obs policy access found, ignored: {access}")
                 continue
             bucket = f"arn:aws:s3:::{parts[0]}"
             owner_collection = f"{parts[1]}/{parts[2]}"
@@ -550,16 +577,17 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
                 template_bucket["Condition"]["StringLike"]["s3:prefix"] = [owner_collection]
                 statements.append(template_bucket)
 
-            template: dict[str, Any] = copy.deepcopy(block)
-            resource = f"{template['Resource'].replace('%placeholder%', access)}"
+            resource = str(block["Resource"]).replace("%placeholder%", access)
             # find the first "all" (*) and remove everything after it, because it's useless, and
             # moreover, ovh will not recognize the syntax
             # there should be at least one * char, the last one, see the template['Resource'], last char
             # so no need for protection in case the * char is not found
             resources.append(resource[: resource.find("*") + 1])
 
-        template["Resource"] = resources
-        statements.append(template)
+        if resources:
+            template: dict[str, Any] = copy.deepcopy(block)
+            template["Resource"] = resources
+            statements.append(template)
 
     # Final list of statements to be added to the final policy
     final_statements: list[dict[str, Any]] = []
@@ -603,5 +631,5 @@ def update_s3_rights_lists(s3_rights):  # pylint: disable=too-many-locals
     final_policy = copy.deepcopy(S3_ACCESS_RIGHTS_TEMPLATE)
     final_policy["Version"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     final_policy["Statement"] = final_statements
-    logger.info(json.dumps(final_policy, indent=2))
+    logger.info(f"Final S3 access policy: {json.dumps(final_policy, indent=2)}")
     return final_policy

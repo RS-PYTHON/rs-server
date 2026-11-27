@@ -273,8 +273,9 @@ def __get_user_rights(user):
                 app.state.users_info = build_users_data_map()
 
     if user not in app.state.users_info:
+        logger.error(f"User '{user}' not found in the Keycloak users read during the last synchronization")
         return None
-    logger.debug(f"Building the rights for user {user}")
+    logger.info(f"Building the rights for user {user}")
     s3_rights = build_s3_rights(user, app.state.users_info[user])
     return update_s3_rights_lists(s3_rights)
 
@@ -309,7 +310,7 @@ async def update_obs_user_rights(request: Request, user: str):
     # Check that the user has the right role for this endpoint
     auth_validation(request)
 
-    logger.debug("Endpoint for applying the user access policy")
+    logger.info(f"Endpoint for applying the user access policy of user {user}")
     current_rights = __get_user_rights(user)
     if not current_rights:
         raise HTTPException(
